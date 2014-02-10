@@ -5,7 +5,7 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 4.1.0
+Version: 4.1.1
 Release: 0
 #Copyright: GPL
 License: GPL
@@ -19,7 +19,7 @@ Prefix: opt/enstore
 Requires: postgresql-libs, mt-st
 
 %description
-Enstore Distributed Mass Storage System. 
+Enstore Distributed Mass Storage System.
 The main storage media it uses is magnetic tape, although the new media can be added.
 Beginning with version 3.X File Aggregation Feature is added.
 For the postinstallation and configuration instructions please see enstore/README
@@ -44,7 +44,7 @@ if [ $? -ne 0 ]; then
 fi
 
 cd $RPM_BUILD_ROOT
-echo "BUILD ROOT $RPM_BUILD_ROOT " 
+echo "BUILD ROOT $RPM_BUILD_ROOT "
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
 rm -rf enstore-setup
 
@@ -102,7 +102,7 @@ fi
 
 PATH=/usr/sbin:$PATH
 # check if user "enstore" and group "enstore "exist"
-echo 'Checking if group "enstore" exists' 
+echo 'Checking if group "enstore" exists'
 grep enstore /etc/group
 if [ $? -ne 0 ]; then
     echo 'Creating group "enstore"'
@@ -152,7 +152,7 @@ fi
 sed -e /requiretty/{d} /etc/sudoers.enstore_save > /etc/sudoers.e
 chmod 740 /etc/sudoers.e
 # Need to add env_keep because in RH5 the sudoers was modified to
-#reset all environment 
+#reset all environment
 echo 'Defaults env_keep =	"PATH PYTHON_DIR PYTHONPATH PYTHONINC PYTHONLIB \' >> /etc/sudoers.e
 echo '                        	ENSTORE_CONFIG_HOST ENSTORE_CONFIG_PORT ENSTORE_DIR ENSTORE_MAIL \' >> /etc/sudoers.e
 echo '                        	FTT_DIR	KRBTKFILE"' >> /etc/sudoers.e
@@ -179,7 +179,7 @@ echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
 cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
 echo "Updating symbolic links"
 $ENSTORE_DIR/external_distr/update_sym_links.sh
-if [ ! -d ~enstore/config ]; then 
+if [ ! -d ~enstore/config ]; then
    echo "Creating default output directory: /var/log/enstore"
    mkdir -p /var/log/enstore
    chown enstore.enstore /var/log/enstore
@@ -207,12 +207,14 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Mon Feb 10 2014  <moibenko@fnal.gov> -
+- new version 4.1.1
 * Fri Jan 12 2014  <moibenko@fnal.gov> -
-- started using python 2.7.6 rpm 
+- started using python 2.7.6 rpm
 * Thu Dec 12 2013  <moibenko@fnal.gov> -
-- new version 4.0.0-4 
+- new version 4.0.0-4
 * Wed Nov 27 2013  <moibenko@fnal.gov> -
-- started using git, version major number 4 
+- started using git, version major number 4
 * Mon Feb 11 2013  <moibenko@fnal.gov> -
 - new version 3.1.2-0
 * Tue Feb  5 2013  <moibenko@fnal.gov> -
@@ -251,7 +253,7 @@ rm -rf $RPM_BUILD_ROOT/*
 * Tue Mar 23 2010  <moibenko@fnal.gov> -
 - added dependency on postgresql-libs, because there now are many clients that require it
 - added a message: Enstore installed. Please read README file
-- changed Version to 2.0.1 and Release to 0  
+- changed Version to 2.0.1 and Release to 0
 * Mon Nov 05 2007  <moibenko@fnal.gov> -
 - added configuration files
 * Fri Aug 17 2007  <moibenko@fnal.gov> -
@@ -260,5 +262,5 @@ rm -rf $RPM_BUILD_ROOT/*
 * Thu Aug 16 2007  <moibenko@fnal.gov> -
 - Moved creation of system files from create_enstore_environment.sh here
 - Added enstore_monitor-boot
-* Wed Feb 21 2007  <moibenko@fnal.gov> - 
+* Wed Feb 21 2007  <moibenko@fnal.gov> -
 - Initial build.
