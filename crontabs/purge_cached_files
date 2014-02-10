@@ -1,0 +1,1 @@
+0-59/20 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p purgefiles purge_files_wrapper.py >/dev/null 2>/dev/null

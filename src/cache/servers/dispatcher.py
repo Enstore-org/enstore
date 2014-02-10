@@ -36,6 +36,7 @@ import cache.messaging.mw_client
 from cache.messaging.messages import MSG_TYPES as mt
 import cache.messaging.file_list as file_list
 import cache.en_logging.en_logging
+import cache.messaging.normalize_ticket as normalize_ticket
 
 MY_NAME = enstore_constants.DISPATCHER
 
@@ -140,6 +141,7 @@ class Dispatcher(mw.MigrationWorker,
         self.handlers = {mt.FILE_DELETED:  self.handle_file_deleted,
                          mt.CACHE_MISSED:  self.handle_cache_missed,
                          mt.CACHE_PURGED:  self.handle_cache_purged,
+                         mt.MDC_PURGE:     self.handle_purge_cache,
                          mt.CACHE_WRITTEN: self.handle_cache_written,
                          mt.CACHE_STAGED:  self.handle_cache_staged,
                          }
@@ -339,18 +341,20 @@ class Dispatcher(mw.MigrationWorker,
                self.move_to_migration_pool(pool, key)
                self.md.start_migration(self.migration_pool, id)
       files_to_purge = []
-      for key in self.cache_purge_pool.keys():
-          if self.cache_purge_pool[key].list_expired():
-            id = self.cache_purge_pool[key].list_id
+      Trace.trace(10, "check_pools: purge_pool %s"%(self.cache_purge_pool,))
+
+      for key, val in self.cache_purge_pool.items():
+          if val.list_expired():
+            id = val.list_id
             # List time expired,
             # pass this list to Migration Dispatcher
             Trace.trace(10, "check pools passing purge to migration dispatcher %s" % (key,))
-            for item in self.cache_purge_pool[key].file_list:
-               files_to_purge.append({'bfid': item['bfid'], 
+            for item in val.file_list:
+               files_to_purge.append({'bfid': item['bfid'],
                                       'cache_status':file_cache_status.CacheStatus.PURGING_REQUESTED,
                                       'archive_status': None,        # we are not changing this
                                       'cache_location': None})       # we are not changing this yet
-            
+
             rc = set_cache_status.set_cache_status(self.fcc, files_to_purge)
             if rc['status'][0] != e_errors.OK:
                Trace.log(e_errors.ERROR, "set_cache_status failed %s"%(rc,))
@@ -419,10 +423,29 @@ class Dispatcher(mw.MigrationWorker,
           self.md.start_migration(self.migration_pool, id)
        return True
 
-
    def handle_cache_purged(self, message):
        Trace.trace(10, "handle_cache_purged received: %s"%(message))
        pass
+
+   def handle_purge_cache(self, message):
+       Trace.trace(10, "handle_purge_cache received: %s"%(message))
+       properties = normalize_ticket.normalize_ticket(message.properties)
+       list_id = properties["list_id"]
+       list_of_files = normalize_ticket.normalize_ticket(message.content)
+       Trace.trace(10, "handle_purge_cache: message file list %s"%(list_of_files,))
+       self._lock.acquire()
+       try:
+          f_list = file_list.FileList(list_id,
+                                      list_type = mt.MDC_PURGE,
+                                      list_name = properties["list_name"],
+                                      disk_library = properties["disk_library"])
+          Trace.trace(10, "handle_purge_cache: f_list %s"%(f_list,))
+
+          f_list.file_list = list_of_files
+          self.cache_purge_pool[list_id] = f_list
+       except Exception, detail:
+          Trace.log(e_errors.ERROR, "Error moving to migration pool: %s"%(detail,))
+       self._lock.release()
 
    def handle_cache_written(self, message):
        Trace.trace(10, "handle_cache_written: %s"%(message))

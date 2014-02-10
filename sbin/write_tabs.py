@@ -6,7 +6,7 @@
 #
 # This script is originally written by Alexander Moibenko. I just added
 # more stuff to it (Dmitry Litvintsev 05/10)
-# 
+#
 ###############################################################################
 import sys
 import os
@@ -38,7 +38,7 @@ def main():
         inq_host=inq.get('www_host').split('/')[2]
     servers=[]
     servers=csc.get('known_config_servers')
-    
+
     html_file=open("write_tabs_by_library.html",'w')
     html_file.write("<html><head><title>Tape Write Tabs per Library</title></head>")
     html_file.write("<body text=\"#000066\" bgcolor=\"#FFFFFF\" link=\"#0000EF\" vlink=\"#55188A\" alink=\"#FF0000\" background=\"enstore.gif\">")
@@ -64,7 +64,7 @@ def main():
     if html_host == None or html_dir == None :
         print "Failed to find html host or html dir"
         sys.exit(1)
-        
+
 
     for server in servers:
         server_name,server_port = servers.get(server)
@@ -83,7 +83,7 @@ def main():
             Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
             now_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
             start_time  = now_time-30*3600*24-7*3600*24
-            
+
             h  = histogram.Histogram1D("write_tabs_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
             h1 = histogram.Histogram1D("write_tabs_not_done_%s"%(name,),"Number of tabs to be flipped  %s"%(name,),37,float(start_time),float(now_time))
             h2 = histogram.Histogram1D("write_tabs_done_%s"%(name,),"Number of tabs flipped per day %s"%(name,),37,float(start_time),float(now_time))
@@ -119,8 +119,8 @@ def main():
             html_file.write("<p>&nbsp;<p><center><font size=5 color=\"#AA0000\"><b>%s</b></font></center>\n"%(server,));
             html_file.write("<TABLE align=\"CENTER\" cols=\"%s\" "%(ncols,))
             html_file.write("cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n<TR>")
-                
-            
+
+
             for library in libraries:
                 cols = cols + 1
                 h_1 = histogram.Histogram1D("write_tabs_%s_%s"%(name,library,),"Write tab states for %s library"%(library,),37,float(start_time),float(now_time))
@@ -128,17 +128,17 @@ def main():
                 h_3 = histogram.Histogram1D("write_tabs_done_%s_%s"%(name,library,),"Number of tabs flipped per day in %s library"%(library,),37,float(start_time),float(now_time))
 
 
-                
+
                 h_1.set_time_axis(True)
                 h_1.set_profile(True)
                 h_1.set_ylabel("# of tapes that should have write tabs ON")
                 h_1.set_xlabel("Date (year-month-day)")
-                
+
                 h_2.set_time_axis(True)
                 h_2.set_profile(True)
                 h_2.set_ylabel("# of tapes that  have write tabs OFF")
                 h_2.set_xlabel("Date (year-month-day)")
-                
+
                 h_3.set_time_axis(True)
                 h_3.set_profile(True)
                 h_3.set_ylabel("# of tapes that should have write tabs ON")
@@ -213,11 +213,11 @@ def main():
                 html_file.write("<a href=\"%s.jpg\"><img src=\"%s_stamp.jpg\"></a><br>\n"%(h_1.get_name(),h_1.get_name(),))
                 html_file.write("<a href=\"%s.jpg\"><img src=\"%s_stamp.jpg\"></a><br> %s \n"%(h_3.get_name(),h_3.get_name(),library))
                 html_file.write("</font></b></td>")
-                
-                
-                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s/write_tabs/"%(h_1.get_name(),h_1.get_name(),h_1.get_name(),html_host,html_dir)
+
+
+                cmd = "$ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s/write_tabs/"%(h_1.get_name(),h_1.get_name(),h_1.get_name(),html_host,html_dir)
                 os.system(cmd)
-                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s/write_tabs/"%(h_3.get_name(),h_3.get_name(),h_3.get_name(),html_host,html_dir)
+                cmd = "$ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s/write_tabs/"%(h_3.get_name(),h_3.get_name(),h_3.get_name(),html_host,html_dir)
                 os.system(cmd)
                 cmd = "rm %s.jpg %s.ps %s_stamp.jpg"%(h_1.get_name(),h_1.get_name(),h_1.get_name(),)
                 os.system(cmd)
@@ -226,7 +226,7 @@ def main():
                 if ( cols % ncols == 0 ) :
                     html_file.write("</tr><tr>")
 
-                    
+
             res=db.query(SELECT_STMT)
             should  =  res.getresult()[0][2]
             not_yet =  res.getresult()[0][3]
@@ -243,7 +243,7 @@ def main():
                     h2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[4])
 
             db.close()
-            
+
             html_file.write("</tr>")
             html_file.write("</table><p>&nbsp;<p>")
 
@@ -296,9 +296,9 @@ def main():
                     derivative2.binarray[i] = math.log10(derivative2.binarray[i])
 
             derivative2.plot2(derivative1, True)
-            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s"%(h.get_name(),h.get_name(),h.get_name(),html_host,html_dir)
+            cmd = "$ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s"%(h.get_name(),h.get_name(),h.get_name(),html_host,html_dir)
             os.system(cmd)
-            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s"%(h2.get_name(),h2.get_name(),h2.get_name(),html_host,html_dir)
+            cmd = "$ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s"%(h2.get_name(),h2.get_name(),h2.get_name(),html_host,html_dir)
             os.system(cmd)
             cmd = "rm %s.jpg %s.ps %s_stamp.jpg"%(h.get_name(),h.get_name(),h.get_name(),)
             os.system(cmd)
@@ -307,7 +307,7 @@ def main():
 
     html_file.write("</body></html>")
     html_file.close()
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp write_tabs_by_library.html %s:%s/write_tabs/"%(html_host,html_dir)
+    cmd = "$ENSTORE_DIR/sbin/enrcp write_tabs_by_library.html %s:%s/write_tabs/"%(html_host,html_dir)
     os.system(cmd)
     os.system("rm write_tabs_by_library.html")
     sys.exit(0)

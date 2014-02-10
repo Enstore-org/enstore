@@ -695,18 +695,32 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # rename the keys from the query.
     # If all_files is False then get list of files, only resided on tape,
     # do not include members of packages.
-    def __tape_list(self, external_label, export_format = False, all_files = True):
-        q = "select f.bfid, f.crc, f.deleted, f.drive, v.label as label, \
-                    f.location_cookie, f.pnfs_path, f.pnfs_id, \
-                    f.sanity_size, f.sanity_crc, f.size, \
-		    f.package_id, f.archive_status, f.cache_status \
-             from file f, volume v\
-             where \
-                 f.volume = v.id and v.label='%s' \
-		 order by f.location_cookie"%((external_label,))
-        res = self.filedb_dict.query_dictresult(q)
+    def __tape_list(self, external_label, export_format = False, all_files = True, skip_unknown = False):
+        q = """
+            SELECT f.bfid,
+                f.crc,
+                f.deleted,
+                f.drive,
+                v.label AS label,
+                f.location_cookie,
+                f.pnfs_path,
+                f.pnfs_id,
+                f.sanity_size,
+                f.sanity_crc,
+                f.size,
+                f.package_id,
+                f.archive_status,
+                f.cache_status
+            FROM file f,
+                volume v
+            WHERE f.volume = v.id
+                AND v.label='{}'
+            ORDER BY f.location_cookie
+	    """
+        res = self.filedb_dict.query_dictresult(q.format(external_label))
         # convert to external format
         file_list = []
+	location_cookies={}
         for file_info in res:
             if export_format:
                 # used for tape_list3()
@@ -714,6 +728,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             else:
                 # used for tape_list2()
                 value = file_info
+	    lc = value.get("location_cookie")
+	    location_cookies[lc] = location_cookies.get(lc,0)+1
+	    if value['deleted'] == 'unknown' and skip_unknown :
+		    continue
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
@@ -733,6 +751,12 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 		       if not value.has_key('pnfs_name0'):
 			       value['pnfs_name0'] = "unknown"
 		       file_list.append(value)
+
+	if skip_unknown:
+	   duplicate_cookies = [ cookie for cookie, count in location_cookies.iteritems() if count > 1 ]
+	   if duplicate_cookies :
+	      Trace.alarm(e_errors.WARNING, "Volume {} contains duplicate cookie(s) : {}".format(external_label,
+												 string.join(duplicate_cookies,",")))
         return file_list
 
     #### DONE
@@ -753,7 +777,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label)
 
-        vol = self.__tape_list(external_label, all_files = ticket.get("all", True))
+        vol = self.__tape_list(external_label,
+			       all_files = ticket.get("all", True),
+			       skip_unknown = ticket.get("skip_unknown",False))
 
         # finishing up
 
@@ -783,7 +809,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label + " (2)")
 
-        vol = self.__tape_list(external_label, all_files = ticket.get("all", True))
+        vol = self.__tape_list(external_label,
+			       all_files = ticket.get("all", True),
+			       skip_unknown = ticket.get("skip_unknown",False))
+
 
 
         # finishing up
@@ -825,7 +854,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # get reply
         file_info = self.__tape_list(external_label,
 				     export_format = True,
-				     all_files = ticket.get("all", True))
+				     all_files = ticket.get("all", True),
+				     skip_unknown = ticket.get("skip_unknown",False))
+
         ticket['tape_list'] = file_info
 
         # send the reply

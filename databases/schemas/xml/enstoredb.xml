@@ -279,6 +279,32 @@
     <column name="unknown_files" type="bigint"/>
     <column name="deleted_files" type="bigint"/>
   </table>
+  <table name="volume_audit">
+    <column name="id" type="bigint" null="no" default="nextval('volume_audit_id_seq'::regclass)" key="1"/>
+    <column name="volume" type="integer" null="no"/>
+    <column name="start" type="timestamptz" null="no"/>
+    <column name="finish" type="timestamptz" null="no"/>
+    <column name="bfid" type="varchar"/>
+    <column name="result" type="integer" null="no"/>
+    <column name="error" type="varchar"/>
+    <relations>
+        <relation name="$1" column="volume" table="volume" fk="id" ondelete="cascade"/>
+    </relations>
+  </table>
+  <table name="volume_audit_counter">
+    <column name="counter" type="integer"/>
+    <column name="volume" type="integer" null="no"/>
+    <relations>
+        <relation name="$1" column="volume" table="volume" fk="id" ondelete="cascade"/>
+    </relations>
+  </table>
+  <table name="volume_audit_counter">
+    <column name="counter" type="integer"/>
+    <column name="volume" type="integer" null="no"/>
+    <relations>
+        <relation name="$1" column="volume" table="volume" fk="id" ondelete="cascade"/>
+    </relations>
+  </table>
   <view name="cms_volume_with_only_deleted_files">
     SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library FROM volume WHERE (((((volume.storage_group)::text = 'cms'::text) AND ((volume.system_inhibit_0)::text = 'none'::text)) AND ((volume.active_files + volume.unknown_files) = 0)) AND (volume.deleted_files &gt; 0));
   </view>
@@ -720,5 +746,18 @@ where
         time &lt; $2::timestamp
 group by media_type
 order by media_type;
+  </function>
+  <function name="volume_audit" arguments="" returns="trigger" language="plpgsql">
+BEGIN
+IF (TG_OP='INSERT') THEN
+      INSERT into volume_audit_counter select 0,NEW.volume where not exists (select volume from volume_audit_counter where volume=NEW.volume);
+      UPDATE volume_audit_counter SET counter=counter+1 where volume=NEW.volume;
+END IF;
+IF (TG_OP='DELETE') THEN
+      UPDATE volume_audit_counter SET counter=counter-1 where volume=OLD.volume;
+      RETURN OLD;
+END IF;
+RETURN NEW;
+END;
   </function>
 </schema>

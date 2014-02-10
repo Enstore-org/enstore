@@ -342,115 +342,19 @@ class fileInfoMethods(generic_client.GenericClient):
         return ticket
 
     def tape_list(self, external_label, all_files = True,
+                  skip_unknown = False,
                   timeout = generic_client.DEFAULT_TIMEOUT,
                   retry = generic_client.DEFAULT_TRIES):
         ticket = {"work"           : "tape_list3",
                   "external_label" : external_label,
-                  "all" : all_files, # If all is False then get list of files, only resided on tape,
-                  # do not include members of packages.
+                  "all" : all_files, # If all is False then get list of files, only resided on tape, do not include members of packages.
+                  "skip_unknown" : skip_unknown,
                   }
-        
+
         done_ticket = self.send(ticket, rcv_timeout = timeout,
                                 tries = retry, long_reply = 1)
 
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.tape_list_old(external_label)
-            return done_ticket #Avoid duplicate "convert to external format"
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def tape_list_old(self, external_label):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"           : "tape_list2",
-                  "callback_addr"  : (host, port),
-                  "external_label" : external_label}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            errmsg = "timeout waiting for file clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-
-        ticket= callback.read_tcp_obj(data_path_socket)
-        vol = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        # convert to external format
-        ticket['tape_list'] = []
-        for s in vol:
-            if s['deleted'] == 'y':
-                deleted = 'yes'
-            elif s['deleted'] == 'n':
-                deleted = 'no'
-            else:
-                deleted = 'unknown'
-
-            if s['sanity_size'] == -1:
-                sanity_size = None
-            else:
-                sanity_size = s['sanity_size']
-
-            if s['sanity_crc'] == -1:
-                sanity_crc = None
-            else:
-                sanity_crc = s['sanity_crc']
-
-            if s['crc'] == -1:
-                crc = None
-            else:
-                crc = s['crc']
-
-            record = {
-                'bfid': s['bfid'],
-                'complete_crc': crc,
-                'deleted': deleted,
-                'drive': s['drive'],
-                'external_label': s['label'],
-                'location_cookie': s['location_cookie'],
-                'pnfs_name0': s['pnfs_path'],
-                'pnfsid': s['pnfs_id'],
-                'sanity_cookie': (sanity_size, sanity_crc),
-                'size': s['size']
-                }
-
-            if s.has_key('uid'):
-                record['uid'] = s['uid']
-            if s.has_key('gid'):
-                record['gid'] = s['gid']
-            ticket['tape_list'].append(record)
-
-        return ticket
 
     def show_bad(self):
         ticket = {"work"          : "show_bad2",

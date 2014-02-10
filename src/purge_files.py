@@ -38,7 +38,6 @@ class FilePurger:
     def  __init__(self, csc, max_time_in_cache=None, watermarks=None, libraries=None):
         # Obtain information from the configuration server.
         self.csc = csc
-        configuration_client.ConfigurationClient(csc)
         try:
             dbInfo = self.csc.get('database')
             dbHome = dbInfo['db_dir']
@@ -297,22 +296,74 @@ class FilePurger:
         return write_purge_list + read_purge_list
 
 if __name__ == "__main__":
-    # get a file purger
+    import getopt
+    short_opt = "hp"
+    long_opt = ["help", "purge"]
+
+    def usage(name):
+        print "Usage: %s [options] [<library list>]"%(name,)
+        print "\t -p [--purge]           : purge files"
+        print "\t -h [--help]            : show this message"
+
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], short_opt, long_opt)
+    except:
+        usage(sys.argv[0])
+        sys.exit(-1)
+
+    purge = False
+    try:
+        for o,a in opts:
+            if o in ["-p", "--purge"]:
+                purge = True
+            else:
+                usage(sys.argv[0])
+                sys.exit(-1)
+    except:
+        usage(sys.argv[0])
+        sys.exit(-1)
+
     config_host = os.getenv('ENSTORE_CONFIG_HOST')
     config_port = int(os.getenv('ENSTORE_CONFIG_PORT'))
-    Trace.init("PPP", "yes")
-    Trace.print_levels[5,10]=1
-
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-    print "With read libraries"
-    fp = FilePurger(csc, libraries=["CD-DiskSF", "CD-DiskSFT"])
-    for _ in range(5):
-        fc = fp.files_to_purge()
-        print fc
-        print len(fc)
+    Trace.init("PURGER", "yes")
 
-    print "Without read libraries"
-    fp = FilePurger(csc)
+    libs = args or None
+
+    purge_watermarks = None
+    max_time_in_cache = MAX_TIME_IN_CACHE
+    if purge:
+        # get watermarks
+        disp = csc.get("dispatcher")
+        if disp:
+            purge_watermarks = disp.get("purge_watermarks")
+            max_time_in_cache = disp.get("max_time_in_cache", MAX_TIME_IN_CACHE)
+
+            # connect to qpid queues
+            import cache.messaging.client as qpid_client
+            import cache.messaging.md_client as md_client
+            amqp_broker_dict = csc.get("amqp_broker")
+            pe_queue = "%s; {create: always}"%(disp['queue_work'],)
+            reply_queue = "%s; {create: always}"%(disp['queue_reply'],)
+            en_qpid_client = qpid_client.EnQpidClient((amqp_broker_dict['host'],
+                                                       amqp_broker_dict['port']),
+                                                      reply_queue,
+                                                      pe_queue)
+            en_qpid_client.start()
+
+
+    fp = FilePurger(csc,max_time_in_cache, purge_watermarks, libs)
+    #fp = FilePurger(csc,max_time_in_cache, None, libs)
+
     fc = fp.files_to_purge()
-    print fc
-    print len(fc)
+    if fc and purge:
+        for item in fc:
+            md_purge_command = md_client.MDCPurge(item.file_list)
+            md_purge_command.properties["disk_library"] = item.disk_library
+            md_purge_command.properties["list_id"] = item.list_id
+            md_purge_command.properties["list_name"] = item.list_name
+            Trace.trace(10, "Sending %s"%(md_purge_command,))
+            en_qpid_client.send(md_purge_command)
+
+    sys.exit(0)

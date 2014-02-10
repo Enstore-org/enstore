@@ -55,7 +55,7 @@ def sort_the_file(infile):
         fo.write('%s\n' % (ol,))
     fi.close()
     fo.close()
-    
+
 def get_capacity(volume, system):
     rtn = os.popen("grep %s %s.vol_sizes"%(volume, system)).readlines()[0]
     if rtn:
@@ -104,13 +104,13 @@ for server in servers:
         config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
         acc = config_server_client.get(enstore_constants.DRIVESTAT_SERVER)
         db_server_name = acc.get('dbhost','localhost')
-        db_name        = acc.get('dbname','drivestat')                                
+        db_name        = acc.get('dbname','drivestat')
         db_user        = acc.get('dbuser','enstore')
         db_port        = acc.get('dbport',5432)
         name           = db_server_name.split('.')[0]
         pipeObj = popen2.Popen3(query_cmd%(db_server_name,db_port,db_user,db_server_name,"'", d1, "'", "'", d2, "'"), 0, 0)
         if pipeObj is None:
-            sys.exit(1) 
+            sys.exit(1)
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
         os.system("cat drivestat.%s.txt >> dstat.txt"%(db_server_name,))
@@ -283,13 +283,13 @@ while 1:
                     cap = 100
                 libraries[system][l]['volume_capacity'] = cap
             break
-    
+
     # convert date
     ti = time.mktime(time.strptime(d,"%Y-%m-%d"))
     do = time.strftime("%d-%b-%y",time.localtime(ti))
-    
+
     ol = string.join((do.upper(),v,mb),'\t')
-    if not g in ['ALL_9940B', 'ALL_9940']: 
+    if not g in ['ALL_9940B', 'ALL_9940']:
         o.write('%s\n' % (ol,))
     if l in ['CD-LTO3', 'CDF-LTO3', 'D0-LTO3']:
         if l == 'CD-LTO3' :
@@ -318,7 +318,7 @@ while 1:
        if l == 'CD-9940B':
            cd_9940b_v[v] = 1
            CD_9940B.write('%s\n' % (ol,))
-         
+
     elif l in ['samlto', 'samlto2'] or sg in ['cms']:
         pass
     elif l == 'eagle':
@@ -382,14 +382,14 @@ for g in group_fd.keys():
               cd_9940b_wv = cd_9940b_wv + int(wv)
               cd_9940b_bv = cd_9940b_bv + int(bv)
               cd_9940b_su = cd_9940b_su + su
-             
+
         elif l in ['mezsilo', 'cdf', '9940']:
           su = float(su.split("G")[0])
-          rpt.write("GROUP %s WR %s BL %s GB %s\n"%(g, wv,bv,su)) 
+          rpt.write("GROUP %s WR %s BL %s GB %s\n"%(g, wv,bv,su))
           _9940_wv = _9940_wv + int(wv)
           _9940_bv = _9940_bv + int(bv)
           _9940_su = _9940_su + su
-        
+
 
         elif l in ['CD-LTO3', 'CDF-LTO3', 'D0-LTO3']:
           su = float(su.split("G")[0])
@@ -411,7 +411,7 @@ for g in group_fd.keys():
           all_lto4_wv = all_lto4_wv + int(wv)
           all_lto4_bv = all_lto4_bv + int(bv)
           all_lto4_su = all_lto4_su + su
-        
+
 
     elif g == "CD-9840":
         (wv1,bv1,su1,l) = QUOTAS.get('blank-9840.none',('-1','-1','-1','-1'))
@@ -478,7 +478,6 @@ print cmd
 os.system(cmd)
 
 
-cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:%s/burn-rate'%(this_web_host,html_dir)
+cmd = '$ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:%s/burn-rate'%(this_web_host,html_dir)
 print cmd
 os.system(cmd)
-

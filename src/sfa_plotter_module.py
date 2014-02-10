@@ -65,7 +65,7 @@ class SFAStatsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             sys.exit(1)
         self.files_cached_histogram = self.create_histogram(self.name+"_files_cached",
                                                             "Files Cached",
-                                                            "Number of Files Cached") 
+                                                            "Number of Files Cached")
         self.files_purged_histogram = self.create_histogram(self.name+"_files_purged",
                                                             "Files Purged",
                                                             "Number of Files Purged")
@@ -73,7 +73,7 @@ class SFAStatsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                                               "Files Archived",
                                                               "Number of Files Archived")
 
-        
+
     def fill(self, frame):
         # Files cached and purged histograms
         #################################################
@@ -161,7 +161,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         @param grep_pattern - pattern to grep in enstore log files
         @param tmp_file - file to temporary save grep results
         """
-        
+
         enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
         self.name = name
         self.rate_histograms = {}
@@ -188,7 +188,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             sys.exit("No log server info")
 
         self.log_file_path = log_server_info.get('log_file_path')
-        
+
     def _get_migrators(self):
         migrators = self.csc.get_migrators()
         for migrator in migrators:
@@ -196,7 +196,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             migrator_configuration = self.csc.get(migrator, None)
             if migrator_configuration:
                 self.log_names.append(migrator_configuration['logname'])
-        
+
     def fill(self, frame):
         self.log_names = []
         self._get_migrators()
@@ -207,7 +207,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         else:
             lf_name = 'LOG-%s' % (self.date)
         path = os.path.join(self.log_file_path, lf_name)
-        
+
         if self.data_file:
             # try to append data for the previous day
             yesterday = time.time() - 24*60*60
@@ -231,7 +231,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                   (self.pattern, path, self.tmp_file)
         if cmd:
             os.system(cmd)
-        
+
         for log_name in self.log_names:
             #cmd = "fgrep %s /tmp/tar_rates > /tmp/%s_tar_rates"%(log_name, log_name)
             cmd = "fgrep %s %s > /tmp/%s_%s"%(log_name,
@@ -254,6 +254,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 continue
             nbins = int(max-min)
             if nbins == 0:
+                max = min + 1
                 nbins = 1
             self.rate_histograms[log_name] = histogram.Histogram1D(log_name+"_%s_rates"%(self.data_file_name,),
                                                                    "%s %s"%(log_name,self.name),nbins, min, max)
@@ -261,7 +262,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             self.rate_histograms[log_name].set_line_width(10)
             self.rate_histograms[log_name].set_xlabel("Rates [MB/s]")
             self.rate_histograms[log_name].set_ylabel("Entries")
-            
+
             self.rate_ntuples[log_name] = histogram.Ntuple(log_name+"_%s_rate_vs_date"%(self.data_file_name,),
                                                            "%s %s"%(log_name,self.name))
             self.rate_ntuples[log_name].set_time_axis()
@@ -281,15 +282,15 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 self.rate_ntuples[log_name].entries += 1
                 ln = in_f.readline()
             data_file.close()
-                                
-        
+
+
     def plot(self):
         for log_name in self.log_names:
             try:
                 self.rate_histograms[log_name].plot(directory = self.web_dir)
                 self.rate_ntuples[log_name].get_data_file().flush()
                 self.rate_ntuples[log_name].get_data_file().close()
-                self.rate_ntuples[log_name].plot("1:3",directory = self.web_dir) 
+                self.rate_ntuples[log_name].plot("1:3",directory = self.web_dir)
             except:
                 pass
 

@@ -3,7 +3,7 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 . /usr/local/etc/setups.sh
 setup python
-source /home/enstore/gettkt
+source $ENSTORE_DIR/sbin/gettkt
 
 cd
 basedir=`pwd`/enstore
@@ -41,5 +41,3 @@ date >> $output
 
 /usr/bin/Mail -s "Nonproduction files in cvs repository" enstore-auto@fnal.gov <$output
 #/usr/bin/Mail -s "Nonproduction files in cvs repository" moibenko@fnal.gov <$output
-
-

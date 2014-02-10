@@ -1358,17 +1358,9 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore %s tape library.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster, library_type.upper())
 
 	return snow_fliptab.submit_ticket(
-		Service_Type='User Service Request',
-		Impact_Type='3-Moderate/Limited',
-		Urgency_Type='3-Medium',
 		Summary=short_message,
-		Notes=long_message,
-		Action = 'CREATE',
-		Status_Type = 'Assigned',
+		Comments=long_message,
 		CiName = system_name.upper().split('.')[0],
-		Assigned_Group='Logistics/PREP Support', # group that takes care of tab flipping
-		Product_Categorization_Tier_1='Logistics/PREP Support',
-		Product_Categorization_Tier_2='Tape Handling',
 		)
 
 def get_last_job_time(cluster, job_type):

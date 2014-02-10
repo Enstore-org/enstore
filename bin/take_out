@@ -66,7 +66,7 @@ case $action in
      ;;
   remove)
      work=$HOME/isa-tools/purge_volumes_work
-     . $HOME/gettkt
+     . $ENSTORE_DIR/sbin/gettkt
      ;;
   *) usage
      exit 1

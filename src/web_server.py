@@ -77,6 +77,10 @@ class WebServer:
                 print "Config file ",configfile," does not exist"
                 self.is_ok=False
                 sys.exit(1)
+        self.server_dict['ServerTokens']='Prod'
+        self.server_dict['Timeout']=300
+        self.server_dict['KeepAlive']='True'
+        self.server_dict['AllowOverride']='All'
         self.inq_d = self.config_dict.get(enstore_constants.INQUISITOR, {})
         self.Root = self.server_dict.get(SERVER_ROOT,'/etc/httpd')
         self.config_file = "%s/conf/httpd.conf"%(self.Root)
@@ -99,21 +103,11 @@ class WebServer:
         if not self.is_ok :
             return 1
         self.lines=[]
-        # always work with configuration file copy
-        s = "."
-        fcopy = s.join((self.config_file, "enstore_copy"))
-        try:
-            os.system("cp -p %s %s"%(self.config_file, fcopy))
-        except OSError, detail:
-            print "Faile to create %s"%(fcopy,)
-            return 1
-        #f=open("httpd.conf","r")
-        f=open(fcopy,"r")
-        try:
-            for line in f:
-                self.lines.append(line)
-        except:
-            rc=1
+        if not os.path.exists("%s%s"%(self.config_file,SUFFIX)) :
+            if self.move_httpd_conf(self.config_file,"%s%s"%(self.config_file,SUFFIX)) :
+                return 1
+        f=open("%s%s"%(self.config_file,SUFFIX),"r")
+        self.lines=f.readlines()[:]
         f.close()
         return rc
 
@@ -131,8 +125,6 @@ class WebServer:
         rc=0
         if not self.is_ok :
             return 1
-        if self.move_httpd_conf(self.config_file,"%s%s"%(self.config_file,SUFFIX)) :
-            return 1
         f=open(self.config_file,"w")
         try:
             for line in self.lines:
@@ -142,7 +134,7 @@ class WebServer:
                         if key == "status" :
                             continue
                         indx=line.lstrip().find(key)
-                        if indx == 0 :
+                        if indx==0 and key == line.split()[0].strip():
                             if key == "CustomLog" :
                                 #
                                 # type of log files
@@ -161,9 +153,11 @@ class WebServer:
                                     txt = txt + "   Order deny,allow\n"
                                     txt = txt + "   Allow from 127.0.0.1\n"
                                     if self.domain_name==FNAL_DOMAIN :
-                                        txt = txt + "   Allow from .fnal.gov\n"
+                                        txt = txt + "   Allow from  131.225\n"
                                         txt = txt + "   Allow from  137.138\n"
                                         txt = txt + "   Allow from  131.169\n"
+                                        txt = txt + "   Allow from  131.225.73\n"
+                                        txt = txt + "   Allow from  131.225.74\n"
                                     else:
                                         txt = txt + "   Allow from "+self.domain_name+"\n"
                                     for e in ["PYTHONINC", "PYTHONPATH", "PYTHONLIB", "PATH"]:
@@ -176,7 +170,8 @@ class WebServer:
                                 txt = key + " " + str(self.server_dict[key]) +"\n"
                                 break
                 f.write(txt)
-        except:
+        except Exception, msg:
+            print str(msg)
             rc=1
         f.close()
         return rc

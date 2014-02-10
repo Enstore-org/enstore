@@ -5,7 +5,7 @@
 #
 # Assuming that enstore account was created do the following
 #
-# 
+#
 ###############################################################################
 
 #set -u  # force better programming and ability to use check for not set
@@ -15,7 +15,7 @@ if [ "${1:-x}" = "fnal" ]; then export fnal=$1; shift; else fnal="x";fi
 
 if [ "${ENSTORE_VERBOSE:-x}" != "x" ]; then
     set -xv
-fi 
+fi
 
 if [ "`whoami`" != 'root' ]
 then
@@ -26,7 +26,7 @@ fi
 PATH=/usr/sbin:$PATH
 
 rpm -q enstore > /dev/null
-if [ $? -eq 0 ]; 
+if [ $? -eq 0 ];
 then
     ENSTORE_DIR=`rpm -ql enstore | head -1`
 else
@@ -57,29 +57,24 @@ chown enstore.enstore $ENSTORE_HOME/.bashrc
 
 if [ $fnal = "fnal" ];
 then
-    if [ ! -r $ENSTORE_HOME/gettkt ]
-    then
-	ln -s $ENSTORE_DIR/sbin/gettkt $ENSTORE_HOME/gettkt
-	chown enstore.enstore $ENSTORE_HOME/gettkt
-    fi
     if [ -f $ENSTORE_DIR/etc/xinetd.conf ]
     then
 	cp -f $ENSTORE_DIR/etc/xinetd.conf /etc/xinetd.conf
     fi
     if [ -f $ENSTORE_DIR/etc/ntp.conf ]
-    then 
-	cp -f $ENSTORE_DIR/etc/ntp.conf /etc/ntp.conf 
+    then
+	cp -f $ENSTORE_DIR/etc/ntp.conf /etc/ntp.conf
     fi
 fi
 
 if [ ! -f $ENSTORE_HOME/.forward ]
-then 
+then
     echo "Creating $ENSTORE_HOME/.forward"
     echo $ENSTORE_MAIL > $ENSTORE_HOME/.forward
     chown enstore.enstore $ENSTORE_HOME/.forward
 fi
 if [ ! -f /root/.forward ]
-then 
+then
     echo "Creating /root/.forward"
     echo $ENSTORE_MAIL > /root/.forward
 fi
@@ -115,20 +110,20 @@ install=0
 	else
 	    # check if e_home is empty and if yes install correct value
 	    s=` grep "e_home=" /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"=" | awk '{print $2}'` > /dev/null 2>&1
-	    
+
 	    if [ -z $s ]; then
 		rm -rf /usr/local/etc/setups.sh
 		install=1
-	    fi	
+	    fi
 	fi
     else
 	install=1
     fi
 fi
-    
-if [ $install -eq 1 ]; then 
+
+if [ $install -eq 1 ]; then
     sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
-    
+
     ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
 fi
 chown -R enstore.enstore $ENSTORE_HOME
@@ -138,7 +133,7 @@ then
     if [ ! -f $ENSTORE_CONFIG_FILE -a $this_host = $ENSTORE_CONFIG_HOST ];
     then
 	echo "will install a minimal enstore configuration file: ${ENSTORE_DIR}/etc/minimal_enstore.conf"
-	echo "it can be replased later"
+	echo "it can be replaced later"
 	cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
     fi
 fi

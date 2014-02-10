@@ -7,7 +7,7 @@
 ###############################################################################
 
 ###############################################################################
-# 
+#
 # This script monitors files in dcache
 #
 ###############################################################################
@@ -31,7 +31,7 @@ def usage(cmd):
     print "Usage: %s -s [--sleep=] "%(cmd,)
     print "\t --sleep : sampling interval in seconds"
 
-    
+
 def do_work(db_name,username):
     #
     # extract entries from volatile files
@@ -52,7 +52,7 @@ def do_work(db_name,username):
 
 
 if __name__ == '__main__':
-    
+
     interval=10
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hs:ss:", ["help","sleep="])
@@ -66,7 +66,7 @@ if __name__ == '__main__':
             sys.exit(1)
         if o in ("-s", "--sleep"):
             interval = a
-            
+
 
     #
     # get info from config server
@@ -101,14 +101,14 @@ if __name__ == '__main__':
         html_dir=inq_d["html_file"]
     else:
         html_dir = enstore_files.default_dir
-    
+
 
     html_host=None
     if inq_d.has_key("host"):
         html_host=inq_d["host"]
     else:
         html_host = enstore_files.default_dir
-    
+
 
     ntuple = histogram.Ntuple("transactions_on_%s"%system_name,"transactions per second on %s"%system_name)
     ntuple.set_time_axis()
@@ -116,8 +116,8 @@ if __name__ == '__main__':
     ntuple.set_line_width(2)
     ntuple.set_marker_type("lines")
     ntuple.set_time_axis_format("%H:%M");
-    ntuple.set_ylabel("Transactions per second") 
-    ntuple.set_xlabel("(hour:minute)") 
+    ntuple.set_ylabel("Transactions per second")
+    ntuple.set_xlabel("(hour:minute)")
     so=0
     sn=0
     n=0
@@ -134,7 +134,7 @@ if __name__ == '__main__':
                 ntuple.get_data_file().close()
                 ntuple.plot("1:3")
                 ntuple.data_file=open(ntuple.get_data_file_name(),"a");
-                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp transactions_on_*  %s.fnal.gov:%s"%(html_host,html_dir)
+                cmd = "$ENSTORE_DIR/sbin/enrcp transactions_on_*  %s.fnal.gov:%s"%(html_host,html_dir)
                 if os.system(cmd):
                     print "failed ", cmd
                     sys.exit(1)
@@ -146,10 +146,6 @@ if __name__ == '__main__':
         ntuple.get_data_file().close()
         ntuple.set_line_color(1)
         ntuple.set_line_width(1)
-        ntuple.set_marker_type("lines")        
+        ntuple.set_marker_type("lines")
         ntuple.plot("1:3")
         sys.exit(0)
-            
-        
-
-

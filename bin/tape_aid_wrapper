@@ -217,7 +217,7 @@ case $script in
 	  ;;
        remove)
 	  work=$HOME/isa-tools/${robot}_purge_volumes_work
-	  . $HOME/gettkt
+	  . $ENSTORE_DIR/sbin/gettkt
 	  ;;
        xfer)
 	  work=$HOME/isa-tools/${robot}_xfer_volumes_work
