@@ -55,7 +55,6 @@ class Interface(generic_server.GenericServerInterface):
 
 	def valid_dictionary(self):
 		return (self.help_options)
-query_lock = threading.Lock()
 
 class Server(file_clerk.FileClerkInfoMethods,
 	     volume_clerk.VolumeClerkInfoMethods,
@@ -524,19 +523,16 @@ class Server(file_clerk.FileClerkInfoMethods,
 	def __query_db_part2(self, ticket):
 		q = ticket["query"]
 		result = {}
-		query_lock.acquire()
 		try:
-			res = self.db.query(q)
-			result['result'] = res.getresult()
-			result['fields'] = res.listfields()
-			result['ntuples'] = res.ntuples()
+			columns, res = self.volumedb_dict.dbaccess.query_with_columns(q)
+			result['fields'] = columns
+			result['result'] = res
+			result['ntuples'] = len(res)
 			result['status'] = (e_errors.OK, None)
-		except (edb.pg.ProgrammingError, edb.pg.InternalError):
+		except:
 			exc_type, exc_value = sys.exc_info()[:2]
 			msg = 'query_db(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
 			result['status'] = (e_errors.DATABASE_ERROR, msg)
-		finally:
-			query_lock.release()
 		return result
 
 	def query_db(self, ticket):
