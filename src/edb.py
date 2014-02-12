@@ -39,9 +39,7 @@ import os
 import Trace
 import e_errors
 import pg
-import psycopg2
-import psycopg2.extras
-from DBUtils.PooledDB import PooledDB
+import dbaccess
 
 
 default_database = 'enstoredb'
@@ -52,17 +50,7 @@ default_database = 'enstoredb'
 # (e.g. returned by query_dictresult())
 #
 def sanitize_datetime_values(dictionaries) :
-    for item in dictionaries:
-        if type(item) == psycopg2.extras.RealDictRow:
-            for key in item.keys():
-                if isinstance(item[key],datetime.datetime):
-                    item[key] = item[key].isoformat(' ')
-        elif type(item) == psycopg2.extras.DictRow:
-            for i in range(0,len(item)):
-                if isinstance(item[i],datetime.datetime):
-                    item[i] = item[i].isoformat(' ')
-    return dictionaries
-
+    return dbaccess.sanitize_datetime_values(dictionaries)
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
@@ -207,157 +195,37 @@ class DbTable:
                                 port=self.port,
                                 dbname=self.database,
                                 user=self.user)
-        self.pool =  PooledDB(psycopg2,
-                              maxconnections=max_connections,
-                              maxcached=max_idle,
-                              blocking=True,
-                              host=self.host,
-                              port=self.port,
-                              user=self.user,
-                              database=self.database)
+        self.dbaccess =  dbaccess.DatabaseAccess(maxconnections=max_connections,
+                                                 maxcached=max_idle,
+                                                 blocking=True,
+                                                 host=self.host,
+                                                 port=self.port,
+                                                 user=self.user,
+                                                 database=self.database)
 
     def query(self,s,cursor_factory=None) :
-        db = None
-        cursor = None
-        try:
-            db=self.pool.connection();
-            if cursor_factory :
-                cursor=db.cursor(cursor_factory=cursor_factory)
-            else:
-                cursor=db.cursor()
-            cursor.execute(s)
-            res=cursor.fetchall()
-            cursor.close()
-            db.close()
-            cursor = None
-            db     = None
-            return res
-        except psycopg2.Error, msg:
-            try:
-                if cursor:
-                    cursor.close()
-                if db:
-                    db.close()
-            except:
-                # if we failed to close just silently ignore the exception
-                pass
-            curor = None
-            db    = None
-            #
-            # propagate exception to caller
-            #
-            raise e_errors.EnstoreError(None,
-                                        str(msg),
-                                        e_errors.DATABASE_ERROR)
-        except:
-            try:
-                if cursor:
-                    cursor.close()
-                if db:
-                    db.close()
-            except:
-                # if we failed to close just silently ignore the exception
-                pass
-            #
-            # propagate exception to caller
-            #
-            raise
-
+        return self.dbaccess.query(s,cursor_factory)
 
     def update(self,s):
-        db = None
-        cursor = None
-        try:
-            db=self.pool.connection();
-            cursor=db.cursor()
-            cursor.execute(s)
-            db.commit()
-            cursor.close()
-            db.close()
-        except psycopg2.Error, msg:
-            try:
-                if db:
-                    db.rollback()
-                if cursor:
-                    cursor.close()
-                if db:
-                    db.close()
-            except:
-                # if we failed to close just silently ignore the exception
-                pass
-            curor = None
-            db    = None
-            #
-            # propagate exception to caller
-            #
-            raise e_errors.EnstoreError(None,
-                                        str(msg),
-                                        e_errors.DATABASE_ERROR)
-        except:
-            if db:
-                db.rollback()
-            if cursor:
-                cursor.close()
-            if db:
-                db.close()
-            #
-            # propagate exception to caller
-            #
-            raise
+        self.dbaccess.update(s)
 
     def insert(self,s):
-        return self.update(s)
+        self.dbaccess.insert(s)
 
     def remove(self,s):
-        return self.update(s)
+        self.dbaccess.remove(s)
 
     def delete(self,s):
         return self.remove(s)
 
     def query_dictresult(self,s):
-        result=self.query(s,cursor_factory=psycopg2.extras.RealDictCursor)
-        #
-        # code below converts the result, which is
-        # psycopg2.extras.RealDictCursor object into ordinary
-        # dictionary. We need it b/c some parts of volume_clerk, file_clerk
-        # send the result over the wire to the client, and client
-        # chokes on psycopg2.extras.RealDictCursor is psycopg2.extras is not
-        # installed on the client side
-        #
-        res=[]
-        for row in result:
-            r={}
-            for key in row.keys():
-                if isinstance(row[key],datetime.datetime):
-                    r[key] = row[key].isoformat(' ')
-                else:
-                    r[key] = row[key]
-            res.append(r)
-        return res
+        return self.dbaccess.query_dictresult(s)
 
     def query_getresult(self,s):
-        result=self.query(s,cursor_factory=psycopg2.extras.DictCursor)
-        #
-        # code below converts the result, which is
-        # psycopg2.extras.DictCursor object into list lists
-        # We need it b/c some parts of volume_clerk, file_clerk
-        # send the result over the wire to the client, and client
-        # chokes on psycopg2.extras.DictCursor is psycopg2.extras is not
-        # installed on the client side
-        #
-        res=[]
-        for row in result:
-            r=[]
-            for item in row:
-                if isinstance(item,datetime.datetime):
-                    r.append(item.isoformat(' '))
-                else:
-                    r.append(item)
-            res.append(r)
-        return res
+        return self.dbaccess.query_getresult(s)
 
     def query_tuple(self,s):
-        return self.query(s)
+        return self.dbaccess.query_tuple(s)
 
     # translate database output to external format
     def export_format(self, s):
@@ -368,7 +236,7 @@ class DbTable:
         return s
 
     def __getitem__(self, key):
-        res=self.query_dictresult(self.retrieve_query%(key))
+        res=self.dbaccess.query_dictresult(self.retrieve_query%(key))
         if len(res) == 0:
             return None
         else:
@@ -378,10 +246,10 @@ class DbTable:
         if self.auto_journal:
             self.jou[key] = value
         v1 = self.import_format(value)
-        res = self.query_dictresult(self.retrieve_query%(key))
+        res = self.dbaccess.query_dictresult(self.retrieve_query%(key))
         if len(res) == 0:        # insert
             cmd = self.insert_query%get_fields_and_values(v1)
-            self.insert(cmd)
+            self.dbaccess.insert(cmd)
         else:                        # update
             d = diff_fields_and_values(res[0], v1)
             if d:        # only if there is any difference
@@ -392,18 +260,18 @@ class DbTable:
                 cmd = self.update_query%(setstmt, key)
                 Trace.log(e_errors.MISC, "Updating  "+cmd)
                 # print cmd
-                res = self.update(cmd)
+                res = self.dbaccess.update(cmd)
 
     def __delitem__(self, key):
         if self.auto_journal:
             if not self.jou.has_key(key):
                 self.jou[key] = self.__getitem__(key)
             del self.jou[key]
-        res = self.delete(self.delete_query%(key))
+        res = self.dbaccess.delete(self.delete_query%(key))
 
 
     def keys(self):
-        res = self.query_getresult('select %s from %s order by %s;'%(self.pkey, self.table, self.pkey))
+        res = self.dbaccess.query_getresult('select %s from %s order by %s;'%(self.pkey, self.table, self.pkey))
         keys = []
         for i in res:
             keys.append(i[0])
@@ -416,7 +284,7 @@ class DbTable:
             return 0
 
     def __len__(self):
-        return int(self.query_getresult('select count(*) from %s;'%(self.table))[0][0])
+        return int(self.dbaccess.query_getresult('select count(*) from %s;'%(self.table))[0][0])
 
     def start_backup(self):
         self.backup_flag = 0
@@ -627,7 +495,7 @@ class FileDB(DbTable):
         return record
 
     def __getitem__(self, key):
-        res=self.query_dictresult(self.retrieve_query%(key))
+        res=self.dbaccess.query_dictresult(self.retrieve_query%(key))
         if len(res) == 0:
             return None
         else:
@@ -637,7 +505,7 @@ class FileDB(DbTable):
             #
             if file.get('package_id',None) and \
                    file.get('package_id',None) != file.get('bfid',key) :
-                res1=self.query_dictresult(self.retrieve_query%(file.get('package_id')))
+                res1=self.dbaccess.query_dictresult(self.retrieve_query%(file.get('package_id')))
                 if len(res1) != 0 :
                     package=res1[0]
                     file["tape_label"] = package.get("label",None)
