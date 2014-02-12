@@ -2049,6 +2049,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         now = time.time()
+        transfer_stuck = 0
         Trace.trace(20, "reset_timer %s"%(reset_timer,))
         if reset_timer:
             self.reset_interval_timer(self.update_lm)
@@ -2064,7 +2065,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
                 send_alarm = True
                 if self.state == ACTIVE:
-                    transfer_stuck = 0
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
                     if self.bytes_read_last == self.bytes_read:
                         if self.mode in (WRITE, ASSERT):
@@ -2129,7 +2129,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.time_in_state = time_in_state
                 self.in_state_to_cnt = self.in_state_to_cnt+1
                 Trace.trace(8, "in state cnt %s"%(self.in_state_to_cnt,))
-                Trace.trace(8, "transfer stuck %s"%(transfer_stuck,))
                 Trace.trace(8, "in_state_to_cnt %s max_in_state_cnt %s"%(self.in_state_to_cnt, self.max_in_state_cnt,))
 
                 if ((self.in_state_to_cnt >= self.max_in_state_cnt) and
