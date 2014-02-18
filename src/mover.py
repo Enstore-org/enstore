@@ -4187,6 +4187,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         stat = self._error
                         ticket['return_file_list'][loc_cookie] = stat
                         Trace.trace(24, "ticket!: %s"%(ticket['return_file_list'][loc_cookie],))
+                        break
 
                 if self.interrupt_assert:
                     Trace.log(e_errors.INFO, "The assert client is gone %s" %
@@ -4751,8 +4752,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.network_write_active = False # reset to indicate no network activity
 
         if self.mode == ASSERT:
-            self.tr_failed = 0 # to let assert finish
-            return
+            if any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO")):
+                # stop assert
+                pass
+            else:
+                self.tr_failed = 0 # to let assert finish
+                return
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
             self.log_state(logit=1)
