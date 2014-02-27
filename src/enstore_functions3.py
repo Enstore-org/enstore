@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-# This file contains function for determining if a string is of the format
-# of Enstore metadata.  The number of Enstore imports should be kept to
-# a minimum.
-#
-###############################################################################
-
+"""
+This file contains function for determining if a string is of the format
+of Enstore metadata.  The number of Enstore imports should be kept to
+a minimum.
+"""
 # system imports
 import types
 import re
@@ -30,7 +25,7 @@ def is_bfid(bfid):
         result = re.search("^[0-9]{11,16}$", bfid)
         if result != None:
             return 1
-        
+
         #The only part of the bfid that is of constant form is that the last
         # n characters are all digits.  There are no restrictions on what
         # is in a brand or how long it can be (though there should be).
@@ -81,7 +76,7 @@ def is_volume(volume):
     #The last type of volume tested for are disk volumes.  These are
     # colon seperated values consiting of the library, volume_family
     # and a unique number assigned by the disk mover.
-    
+
     if type(volume) == types.StringType:
         if is_volume_tape(volume):
             return 1
@@ -106,7 +101,7 @@ def is_volume_disk(volume):
     if type(volume) == types.StringType:
         # volume name is
         # hostname:SG.FF.WRAPPER:YYYY-mm-ddTHH:MM:SSZ
-        # or 
+        # or
         # hostname:SG.FF.WRAPPER:YYYY-mm-ddTHH:MM:SSZ.deleted
         # time format: ISO8601
         if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[-TZ:0-9]+(.deleted){0,1}$"
@@ -116,7 +111,7 @@ def is_volume_disk(volume):
         else:
             # legacy naming
             # hostname:SG.FF.WRAPPER:time_in_seconds
-            # or 
+            # or
             # hostname:SG.FF.WRAPPER:time_in_seconds.deleted
             if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[0-9]+(.deleted){0,1}$"
                          % (charset.hostnamecharset, charset.charset,
@@ -141,22 +136,13 @@ is_location_cookie_null = is_location_cookie_tape
 
 def is_location_cookie_disk(lc):
     if type(lc) == types.StringType:
-        #For old disk volumes.
-        #  /data/rain//pnfs/mist/test_files/Makefile2:1192477203
-        disk_regex = re.compile("^[/0-9A-Za-z_]*(//)[/0-9A-Za-z_]*(:)[0-9]*$")
+        #For new disk volumes.
+        #  /vol1/scratch/000/0AF/0001000000000000000AF418
+        # must start with "/" and be not less than 4 components in the path
+        disk_regex = re.compile("^(?:/[/\w]+){4}")
 
         if disk_regex.match(lc):
             return 1
-
-        #For new disk volumes.
-        #  /scratch/000/100/000/000/000/000/0AF/0001000000000000000AF418
-        # This should also match locations based on Chimera IDs, but this is
-        # currently untested.
-        new_disk_regex = re.compile("^[/0-9A-Za-z_]*(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-Fa-f]{24}|[0-9A-Fa-f]{36}")
-
-        if new_disk_regex.match(lc):
-            return 1
-
     return 0
 
 def is_location_cookie(lc):
@@ -165,7 +151,7 @@ def is_location_cookie(lc):
             return 1
         elif is_location_cookie_disk(lc):
             return 1
-        
+
     return 0
 
 from pnfs import is_pnfsid
@@ -248,7 +234,7 @@ def extract_file_number(location_cookie):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             return None
-        
+
     return None
 
 
@@ -272,8 +258,8 @@ def file_id2path(root, file_id):
     file_id_hex = int("0x"+file_id, 16)
     first = "%03x"%((file_id_hex & 0xFFF) ^ ( (file_id_hex >> 24) & 0xFFF),)
     second = "%03x"%((file_id_hex>>12) & 0xFFF,)
-    path = os.path.join(root, first, second, file_id) 
-    
+    path = os.path.join(root, first, second, file_id)
+
     return path
 
 
