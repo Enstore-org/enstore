@@ -257,6 +257,8 @@ autodoc_default_flags = ['members', 'private-members', 'special-members',
                          #'undoc-members',  # Can be noisy.
                          'show-inheritance']
 
+autodoc_member_order = 'groupwise'
+
 def autodoc_skip_member(app, what, name, obj, skip, options):
     exclusions = ('__weakref__',  # special-members
                   '__doc__', '__module__', '__dict__',  # undoc-members
