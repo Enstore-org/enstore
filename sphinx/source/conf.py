@@ -25,9 +25,15 @@ needs_sphinx = '1.2'  # Must be a major.minor version string, e.g. '1.1'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.ifconfig',
-              'sphinx.ext.autosummary', 'sphinx.ext.todo',
-              'sphinx.ext.intersphinx', 'sphinx.ext.viewcode']
+extensions = [
+              'sphinx.ext.autodoc',
+              'sphinx.ext.autosummary',
+              'sphinx.ext.ifconfig',
+              'sphinx.ext.inheritance_diagram',  # Requires Graphviz dot
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.todo',
+              'sphinx.ext.viewcode',
+              ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -256,7 +262,6 @@ intersphinx_mapping = {'python': ('http://docs.python.org', None)}
 autodoc_default_flags = ['members', 'private-members', 'special-members',
                          #'undoc-members',  # Can be noisy.
                          'show-inheritance']
-
 autodoc_member_order = 'groupwise'
 
 def autodoc_skip_member(app, what, name, obj, skip, options):

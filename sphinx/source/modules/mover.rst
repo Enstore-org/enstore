@@ -1,6 +1,8 @@
 mover
 =====
 
+.. inheritance-diagram:: mover
+
 .. include:: ../toc.txt
 
 .. automodule:: mover

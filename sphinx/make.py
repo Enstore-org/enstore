@@ -8,6 +8,7 @@ Make HTML developer documentation files for Enstore using Sphinx.
 # Python imports
 from __future__ import print_function
 import argparse
+import distutils.spawn
 import os
 import subprocess
 import sys
@@ -19,7 +20,7 @@ parser.add_argument('--builddir',
                           ' using the Enstore configuration client.'))
 args = parser.parse_args()
 
-# Import sphinx
+# Test Sphinx for availability
 try:
     import sphinx
 except ImportError:
@@ -29,6 +30,13 @@ except ImportError:
     pip install sphinx"""
     exit(msg)
 # Note: Sphinx version requirement is defined in conf.py.
+
+# Test Graphviz dot for availability
+if distutils.spawn.find_executable('dot') is None:
+    msg = ("The Graphviz dot executable is required but could not be found. "
+           "To install its x86_64 RPM, run:\n"
+           "\tyum install graphviz.x86_64")
+    exit(msg)
 
 # Determine make directory
 make_dir = os.path.abspath(os.path.dirname(__file__))
@@ -55,8 +63,10 @@ os.environ['BUILDDIR'] = build_dir
 print("""The HTML directory path is printed after the build has finished.
 
 General troubleshooting steps:
-• If docs fail to generate for a module, ensure its .rst file exists in {}.
-• If docs fail to update for a module, "touch" its .rst file.
+• If the HTML output fails to get generated for a Python module, ensure it can
+  be imported by Python, and that its .rst file exists in {}.
+• If the HTML output fails to get updated for a Python module, "touch" its .rst
+  file.
 """.format(py_rst_dir))
 
 # GNU make
