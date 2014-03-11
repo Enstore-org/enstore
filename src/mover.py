@@ -6174,34 +6174,34 @@ class Mover(dispatching_worker.DispatchingWorker,
                             Trace.log(e_errors.ERROR, "error positioning to last fm %s %s"%(exc, detail,))
                             return
                     self.update_tape_stats()
-                    if self.tr_failed:
-                        return
-                    bloc_loc = self.bloc_loc
-                    if bloc_loc != self.last_absolute_location:
-                        Trace.alarm(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
-                                  (self.current_volume, self.last_absolute_location,
-                                   bloc_loc,))
-                        self.vcc.set_system_readonly(self.current_volume)
-                        # also set volume to NOACCESS, so far
-                        # no alarm is needed here because it is send by volume clerk
-                        # when it sets a volume to NOACCESS
-                        self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
-                        # log all running proceses
-                        self.log_processes(logit=1)
-
-                    else:
-                        try:
-                            self.tape_driver.writefm()
-                        except:
-                            Trace.alarm(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
-                            Trace.handle_error()
+                    if self.write_counter != 0:
+                        # try to write additional file mark
+                        bloc_loc = self.bloc_loc
+                        if bloc_loc != self.last_absolute_location:
+                            Trace.alarm(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
+                                      (self.current_volume, self.last_absolute_location,
+                                       bloc_loc,))
                             self.vcc.set_system_readonly(self.current_volume)
                             # also set volume to NOACCESS, so far
                             # no alarm is needed here because it is send by volume clerk
                             # when it sets a volume to NOACCESS
-                            self.set_volume_noaccess(self.current_volume, "Error writing file mark. See log for details")
+                            self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
                             # log all running proceses
                             self.log_processes(logit=1)
+
+                        else:
+                            try:
+                                self.tape_driver.writefm()
+                            except:
+                                Trace.alarm(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
+                                Trace.handle_error()
+                                self.vcc.set_system_readonly(self.current_volume)
+                                # also set volume to NOACCESS, so far
+                                # no alarm is needed here because it is send by volume clerk
+                                # when it sets a volume to NOACCESS
+                                self.set_volume_noaccess(self.current_volume, "Error writing file mark. See log for details")
+                                # log all running proceses
+                                self.log_processes(logit=1)
 
 
         if not self.do_eject:
