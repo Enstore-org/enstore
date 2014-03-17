@@ -3496,6 +3496,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         idle_time = 0. # accumulative time when not reading
         break_here = 0
         network_slow = False
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             loop_start = time.time()
             Trace.trace(133,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
@@ -4952,10 +4953,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         ftt_eio =0
 
-        if self.mode == ASSERT:
-            self._error = exc # I do this here to not break the rest of the code
-            self.assert_ok.set()
-
         if type(msg) != type(""):
             msg = str(msg)
 
@@ -5089,12 +5086,21 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.network_write_active = False # reset to indicate no network activity
 
         if self.mode == ASSERT:
-            if any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO")):
+            return_here = False
+            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO"))
+                or exc == e_errors.ENCP_GONE):
                 # stop assert
                 pass
             else:
                 self.tr_failed = 0 # to let assert finish
+                self.assert_return = exc
+                return_here = True
+                #return
+            self._error = exc
+            self.assert_ok.set()
+            if return_here:
                 return
+
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
             self.log_state(logit=1)
