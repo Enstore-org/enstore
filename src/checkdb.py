@@ -155,11 +155,12 @@ def check_backup(backup_dir, backup_node):
 
 # start postmaster
 def start_postmaster(db_path):
-	cmd = "ps -axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)
+	cmd = "ps axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)
 	pid = os.popen(cmd).readline()
 	pid = string.strip(pid)
 	if pid:
-		print timeofday.tod(), "postmaster has already been started -- pid =", pid
+                print timeofday.tod(), "postmaster has already been started -- pid =", pid
+                sys.exit(1)
 	else:
 		print timeofday.tod(), "Starting postmaster ..."
 		# take care of left over pid info, if any
@@ -178,7 +179,7 @@ def stop_postmaster(db_path):
 	pid = string.strip(pid)
 	if pid:
 		print timeofday.tod(), "Stopping postmaster"
-		os.kill(int(pid), signal.SIGTERM)
+		os.kill(int(pid), signal.SIGKILL)
 	else:
 		print timeofday.tod(), "postmaster is not running"
 
@@ -288,6 +289,8 @@ if __name__ == "__main__":
 		sys.exit(0)
 
 	(backup_dir, check_dir, current_dir, backup_node, dest_path, db_path) = configure(1) #non-None argument!
+        #stop postmaster if it was running already
+        stop_postmaster(db_path)
 	# checking for the directories
 	if not os.access(check_dir, os.F_OK):
 		os.makedirs(check_dir)
