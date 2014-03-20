@@ -484,20 +484,20 @@ ALTER FUNCTION public.update_volume_file_counters() OWNER TO enstore;
 
 CREATE OR REPLACE FUNCTION populate_file_table() RETURNS "trigger"
     AS $$
+DECLARE
+update_time TIMESTAMP;
 BEGIN
---      IF(TG_OP='INSERT') THEN
-        -- NEW.cache_status='CREATED';
-	-- NEW.cache_mod_time=LOCALTIMESTAMP(0);
 IF (TG_OP='UPDATE') THEN
-        IF (OLD.cache_status<>NEW.cache_status) THEN
-		NEW.cache_mod_time=LOCALTIMESTAMP(0);
+        update_time := LOCALTIMESTAMP(0);
+        IF (NEW.cache_status IS DISTINCT FROM OLD.cache_status) THEN
+                NEW.cache_mod_time=update_time;
 	END IF;
-        IF (OLD.archive_status<>NEW.archive_status) THEN
-		NEW.archive_mod_time=LOCALTIMESTAMP(0);
+        IF (NEW.archive_status IS DISTINCT from OLD.archive_status) THEN
+		NEW.archive_mod_time=update_time;
 	END IF;
 	IF (NEW.deleted<>OLD.deleted) THEN
 	   IF (OLD.deleted='n') THEN
-	   	   IF (NEW.deleted='y' OR NEW.deleted='u') THEN
+                   IF (NEW.deleted='y' OR NEW.deleted='u') THEN
 		      ---
 		      --- Updating package counters
 		      ---
