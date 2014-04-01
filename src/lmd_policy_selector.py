@@ -2,7 +2,7 @@
 
 ###############################################################################
 # $Id$
-# Library Manager Directior policy selector. 
+# Library Manager Director policy selector.
 # This module is based on the approach in discipline.py
 # Lots of coding was copied from there
 # The purpose of this module is to return a library manager name based
@@ -27,7 +27,8 @@ import dict_u2a
 #                                          'wrapper':'cpio_odc'
 #                                     }
 #                            'minimal_file_size': 2000000000L
-#                            'max_files_in_pack': 100, 
+#                            'max_member_size': 20000000L
+#                            'max_files_in_pack': 100,
 #                            'max_waiting_time': 300,
 #                            'resulting_library': 'new_library'
 #                            }
@@ -35,12 +36,13 @@ import dict_u2a
 #
 #                         }
 # 'minimal_file_size' - if file is less this file will be aggregated
+# 'max_member_size' - if file is bigger it will not be packaged (optional)
 # 'max_files_in_pack' - maximal number of files in package,
 #                       if total size of files to be aggregated is less than minimal_file_size
 #                       and number of files >= max_files_in_pack then files will get packaged
 # 'max_waiting_time' - if time of collection of files for a package exceeds this value (sec),
 #                      the files will get packaged
-                            
+
 class Selector:
 
     # Read policy file
@@ -53,7 +55,7 @@ class Selector:
 
         # Lint hack, otherwise lint can't see where configdict is defined.
         policydict = {}
-        del policydict 
+        del policydict
         policydict = {}
 
         # do not use try: except here, the exception will be processed in
@@ -62,14 +64,14 @@ class Selector:
         # ok, we read entire file - now set it to real dictionary
         self.policydict = policydict
         f.close()
-        
+
 
     def __init__(self, policy_file):
         self.policy_file = policy_file
         # do not process exception here
         # it will be processed by the caller
         self.read_config()
-        
+
 
 
     # match value from key, value pair with valule from conf_key, value pair
@@ -115,7 +117,7 @@ class Selector:
         # returns a tuple:
         # True if match was found, False - if not
         # library manager name, None othrewise
-        
+
         # default match settings
         match = False, None
 
@@ -125,7 +127,7 @@ class Selector:
         # make a "flat" copy of ticket
         flat_ticket = self.make_flat_ticket(ticket)
         Trace.trace(10, "FLAT TICKET:%s"%(flat_ticket,))
-        
+
         library = flat_ticket['library']
         library_manager = library + ".library_manager"
         if self.policydict.has_key(library_manager):
@@ -140,10 +142,18 @@ class Selector:
                 if nmatches == len(rule_dict):
                     # match found
                     # check the file size:
-                    Trace.trace(10, "policy %s %s %s"%(library_manager, rule,self.policydict[library_manager][rule]))  
+                    Trace.trace(10, "policy %s %s %s"%(library_manager, rule,self.policydict[library_manager][rule]))
                     if ticket['file_size'] < self.policydict[library_manager][rule]['minimal_file_size']:
                         match = (True, self.policydict[library_manager][rule]['resulting_library'])
-                        return match
+                        if 'max_member_size' in self.policydict[library_manager][rule]:
+                            if self.policydict[library_manager][rule]['max_member_size'] > self.policydict[library_manager][rule]['minimal_file_size']:
+                                Trace.alarm(e_errors.WARNING, "Max member size can not exceed the package size. LM %s policy %s"%
+                                            (library_manager, self.policydict[library_manager][rule]))
+                                match = (False, None)
+                            else:
+                                if ticket['file_size'] > self.policydict[library_manager][rule]['max_member_size']:
+                                    match = (False, None)
+                        break
         return match
 
 
@@ -169,7 +179,7 @@ class Selector:
         # make a "flat" copy of ticket
         flat_ticket = self.make_flat_ticket(ticket)
         Trace.trace(10, "FLAT TICKET:%s"%(flat_ticket,))
-        
+
         library = flat_ticket['library']
         library_manager = library + ".library_manager"
         if self.policydict.has_key(library_manager):
@@ -244,18 +254,18 @@ if __name__ == "__main__":
                'infile': '/opt/scratch/DEBUGLOG-2011-07-06',
                'outfile': '/pnfs/data2/test/moibenko/LTO3/regression_test/encp_test/.(access)(00020000000000000045E410)',
                'fc': {'pnfsid': '000200', 'unique_id': 'enmvr050.fnal.gov-1319666280-1783-0'}}
-    
+
     ticket2 = ticket1
     ret = r.match_found(ticket)
     print "Match result", ret
     print "========================================"
     ret = r.match_found(ticket1)
-    
+
     print "Match result", ret
 
     ticket2['file_size'] = 1000000
     print "========================================"
     ret = r.match_found(ticket2)
-    
+
     print "Match result", ret
-    
+
