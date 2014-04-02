@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 ###############################################################################
-#
-# $Id: library_manager.py,v 1.705 2013/03/18 20:10:59 moibenko Exp $
-#
+# Library manager receives client requests (encp)
+# and directs them to assigned movers.
+# It manages encp request queue and selects a better appropriate request
+# based on different criteria, such as priority, location on tape, etc.
 ###############################################################################
 
 # system imports
@@ -454,7 +455,7 @@ class AtMovers:
         # returns
         # 0 - success
         # -1 - failure
-       
+
         Trace.trace(self.trace_level, "AtMovers delete. before: %s" % (self.at_movers,))
         Trace.trace(self.trace_level+1, "AtMovers delete. before: sg_vf: %s" % (self.sg_vf,))
         mover = mover_info['mover']
@@ -1039,7 +1040,7 @@ class LibraryManagerMethods:
         # this is for disk movers
         if ip_map == requestor['ip_map']:
             # file is on disk of the mover where it was originally written
-            return {'status':(e_errors.OK, None)}
+            rc = {'status':(e_errors.OK, None)}
         else:
             # check if file is on disk of the mover where it was originally written
             # and if yes return e_errors.MEDIA_IN_ANOTHER_DEVICE
@@ -1047,15 +1048,17 @@ class LibraryManagerMethods:
             if self.is_file_available(fcc, requested_file_bfid):
                 # skip this mover
                 # the request will go to the mover where the file currently is
-                return {'status': (e_errors.MEDIA_IN_ANOTHER_DEVICE, None)}
+                rc = {'status': (e_errors.MEDIA_IN_ANOTHER_DEVICE, None)}
             else:
                 # allow to stage this file from tape if possible.
                 ret = fcc.find_copies(requested_file_bfid)
                 if ret['status'][0] == e_errors.OK and ret['copies']:
-                    return {'status':(e_errors.OK, None)}
+                    rc = {'status':(e_errors.OK, None)}
                 else:
                     # actually this file was lost
-                    return {'status': (e_errors.NO_FILE, None)}
+                    rc = {'status': (e_errors.NO_FILE, None)}
+        Trace.trace(self.trace_level+1, "is_disk_vol_available rc %s"%(rc,))
+        return rc
 
     # set volume clerk client
     def set_vcc(self, vol_server_address=None):
@@ -1201,7 +1204,7 @@ class LibraryManagerMethods:
                 Trace.alarm(e_errors.INFO, "volume clerk problem next_write_volume: TIMEDOUT")
             if v['status'][0] == e_errors.OK and v['external_label']:
                 self.write_volumes.append(v)
-                
+
             return v
 
     ########################################
@@ -1436,7 +1439,7 @@ class LibraryManagerMethods:
                                 # break, we have no more requests to process
                                 request = None
                             break # return to while loop to check request against active works
-                            
+
                 else:
                     break
             else:
@@ -1667,12 +1670,12 @@ class LibraryManagerMethods:
             # do not continue scan if we have a bound volume.
             self.continue_scan = 0
         # is this mover, volume in suspect mover list?
-        suspect_v,suspect_mv = self.is_mover_suspect(requestor['mover'], rq.ticket["fc"]["external_label"])
+        suspect_v,suspect_mv = self.is_mover_suspect(requestor['mover'], rq.ticket["vc"]["external_label"])
         if suspect_mv:
             Trace.log(e_errors.INFO,"mover %s is suspect for %s cannot assign a read work"%
                       (requestor['mover'], rq.ticket["fc"]["external_label"]))
             rq = None
-        
+
         Trace.trace(self.trace_level+4, "process_read_request: returning %s %s"%(rq, key_to_check))
         return rq, key_to_check
 
@@ -2023,7 +2026,9 @@ class LibraryManagerMethods:
             w = rq.ticket
             if w["status"][0] == e_errors.OK:
                 if self.mover_type(requestor) == 'DiskMover':
-                    ret = self.is_disk_vol_available(rq.work,w['fc']['external_label'], requestor)
+                    key = 'vc' if (w['work'] == 'read_from_hsm') else 'fc'
+                    label = w[key]['external_label']
+                    ret = self.is_disk_vol_available(rq.work,label, requestor)
                 else:
                     fsize = w['wrapper'].get('size_bytes', 0L)
                     method = w.get('method', None)
@@ -2201,7 +2206,13 @@ class LibraryManagerMethods:
                     (external_label,vol_family, last_work, requestor, current_location, priority))
         status = None
         # what is current volume state?
-        self.current_volume_info = self.inquire_vol(external_label)
+        if requestor['mover_type'] != 'DiskMover':
+            label = external_label
+        else:
+            # For disk mover external label is package_id
+            label = requestor['volume']
+        self.current_volume_info = self.inquire_vol(label)
+
         Trace.trace(self.trace_level, "next_work_this_volume: current volume info: %s"%(self.current_volume_info,))
         if self.current_volume_info['status'][0] == e_errors.TIMEDOUT:
             Trace.log(e_errors.ERROR, "No volume info %s. Do not know how to proceed"%
@@ -2272,7 +2283,12 @@ class LibraryManagerMethods:
                     # and if yes skip request so that it will be picked by bound mover
                     # this is done to aviod a sinle stream bouncing between different tapes
                     # if FF width is more than 1
-                    if self.mover_type(requestor) != 'DiskMover':
+                    if self.mover_type(requestor) == 'DiskMover':
+                        rq = self._get_request(requestor, self.pending_work.get_admin_request, next=1,
+                                               disabled_hosts=self.disabled_hosts) # get next request
+                        continue
+
+                    else:
                         vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
                         Trace.trace(self.trace_level+42,'next_work_this_volume: veto %s, wr_en %s'%
                                     (vol_veto_list, wr_en))
@@ -2335,6 +2351,12 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == 'write_to_hsm':
+                if self.mover_type(requestor) == 'DiskMover':
+                    rq = self._get_request(requestor, self.pending_work.get_admin_request, key=key_for_admin_priority,
+                                            next=1,
+                                            disabled_hosts=self.disabled_hosts) # get next request
+                    continue
+
                 rq, key = self.process_write_request(rq, requestor, last_work=last_work, would_preempt=would_preempt)
                 if self.continue_scan:
                     if rq:
@@ -2481,6 +2503,12 @@ class LibraryManagerMethods:
                             continue
                         break
                     elif rq.work == 'write_to_hsm':
+                        if self.mover_type(requestor) == 'DiskMover': # no write requests in bound for disk mover
+                            rq =  self._get_request(requestor, self.pending_work.get, external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+
+                            continue
+
+
                         rq, key = self.process_write_request(rq, requestor, last_work=last_work)
                         Trace.trace(self.trace_level+10, "next_work_this_volume:process_write_request returned %s continue_scan %s "%((rq, key), self.continue_scan))
                         if self.continue_scan:
@@ -2517,7 +2545,7 @@ class LibraryManagerMethods:
             if exc_limit_rq: # request with exceeded SG limit
                 rq = exc_limit_rq
 
-            if rq and rq.work == 'write_to_hsm':
+            if rq and rq.work == 'write_to_hsm' and self.mover_type(requestor) != 'DiskMover':
                 while rq:
                     Trace.trace(self.trace_level+10,"next_work_this_volume: LABEL %s RQ %s" % (external_label, rq))
                     # regular write request must have the same volume label
@@ -2540,7 +2568,7 @@ class LibraryManagerMethods:
                 if checked_request and checked_request.unique_id == rq.unique_id:
                     status = (e_errors.OK, None)
                 else:
-                    rq, status = self.check_read_request(external_label, rq, requestor)
+                    rq, status = self.check_read_request(label, rq, requestor)
                 return rq, status
 
         return (None, (e_errors.NOWORK, None))
@@ -2562,7 +2590,7 @@ class LibraryManagerMethods:
                               (vol['external_label'],))
                     self.suspect_volumes.remove(vol)
 
-        Trace.trace(self.trace_level+11, "is_volume_suspect: external label %s suspect_volumes.list: %s"%(external_label,self.suspect_volumes.list)) 
+        Trace.trace(self.trace_level+11, "is_volume_suspect: external label %s suspect_volumes.list: %s"%(external_label,self.suspect_volumes.list))
         for vol in self.suspect_volumes.list:
             if external_label == vol['external_label']:
                 Trace.trace(self.trace_level+11, "is_volume_suspect: returning %s"%(vol, ))
@@ -2968,7 +2996,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket = None
         return ticket
 
-        
+
     ########################################
     # data transfer requests
     ########################################
@@ -3291,6 +3319,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # set up priorities
             ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
 	    log_add_to_pending_queue(ticket['vc'])
+            if ('media_type' in ticket['vc']
+                and ticket['vc']['media_type'] == 'disk'
+                and ticket['fc']['package_id']):
+                # replace external_label to allow processing of HAVE_BOUND disk mover requests
+                 ticket['fc']['external_label'] =  ticket['fc']['package_id']
             # put ticket into request queue
             rq, status = self.pending_work.put(ticket)
             ticket['status'] = (status, None)
@@ -3507,7 +3540,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if not w["vc"].has_key("external_label"):
                 w["vc"]["external_label"] = None
                 #w["vc"]["wrapper"] = "null"
-        
+
         # reply now to avoid deadlocks
         _format = "%s work on vol=%s mover=%s requester:%s"
         Trace.log(e_errors.INFO, _format%\
@@ -3535,11 +3568,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w['mover'] = mticket['mover']
         w['mover_type'] = self.mover_type(mticket) # this is needed for packaged files processing
         if w['mover_type'] == "DiskMover" and w['work'] == 'read_from_hsm':
+            # save external_label (package_id)
+            label = w['fc']['external_label']
             fcc = file_clerk_client.FileClient(self.csc)
             # update file info
             rc = fcc.bfid_info(w['fc']['bfid'])
             if rc['status'][0] == e_errors.OK:
                 w['fc'].update(rc)
+                # restore external_label
+                w['fc']['external_label'] = label
             else:
                 Trace.log(e_errors.ERROR, "bfid_info %s"%(rc,))
                 self.reply_to_caller(nowork)
@@ -3669,7 +3706,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             else:
                 Trace.trace(self.my_trace_level, "mover_busy: updated mover ticket: %s"%(mticket,))
                 self.volumes_at_movers.put(mticket)
-                
+
         # do not reply to mover as it does not
         # expect reply for "mover_busy" work
 
@@ -3710,7 +3747,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                       (mticket['external_label'],))
             self.reply_to_caller(nowork)
             return
-            
+
         last_work = mticket['operation']
         self.known_volumes = {}
         # Library manager may not be able to respond to a mover
@@ -3743,7 +3780,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # Or mover did not return a "good" status for this volume
             # Try to get volume info.
             # If it fails then log this and send "nowork" to mover
-            
+
             if self.mover_type(mticket) == 'DiskMover':
                 mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
             else:
@@ -3760,7 +3797,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                (vol_info['status'],))
                    self.reply_to_caller(nowork)
                    return
-                    
+
         #transfer_deficiency = mticket.get('transfer_deficiency', 1)
         sg = volume_family.extract_storage_group(mticket['volume_family'])
         self.postponed_requests.update(sg, 1)
@@ -3814,6 +3851,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if status[0] == e_errors.OK:
             w = rq.ticket
             if self.mover_type(mticket) == 'DiskMover':
+                if w['work'] != 'read_from_hsm':
+                    blank_reply = {'work': None, 'r_a': saved_reply_address}
+                    self.reply_to_caller(blank_reply)
+                    return
+
                 # volume clerk may not return external_label in vc ticket
                 # for write requests
                 if not w["vc"].has_key("external_label"):
@@ -3841,36 +3883,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
             w['mover_type'] = self.mover_type(mticket) # this is needed for packaged files processing
-            if w['mover_type'] == "DiskMover" and w['work'] == 'read_from_hsm':
-                fcc = file_clerk_client.FileClient(self.csc)
-
-                # open_bitfile tells file clerk to initiate disk cache file staging if it is not in the cache.
-                # The mover to which this work (w) is submitted waits until file is cached
-                # and transfers file to the client.
-                # If file is a part of a package open the corresponding package istead of opening a requested file.
-                # This guaraties that the files in the package will be opened syncronously.
-                bfid_to_open = self.is_packaged(w) # package id
-                Trace.trace(self.my_trace_level+1, "_mover_bound_volume: bfid_to_open %s"%(bfid_to_open,))
-                
-                if not bfid_to_open:
-                    bfid_to_open = w['fc']['bfid']
-                    rc = fcc.open_bitfile(bfid_to_open)
-                else:
-                    rc = fcc.open_bitfile_for_package(bfid_to_open)
-
-                if rc['status'][0] == e_errors.OK:
-                    # update file info
-                    rc = fcc.bfid_info(w['fc']['bfid'])
-                    if rc['status'][0] == e_errors.OK:
-                        w['fc'].update(rc)
-                    else:
-                        Trace.log(e_errors.ERROR, "open_bitfile returned %s"%(rc,))
-                        self.reply_to_caller(nowork)
-                        return
-                else:
-                    Trace.log(e_errors.ERROR, "open_bitfile returned %s"%(rc,))
-                    self.reply_to_caller(nowork)
-                    return
 
             if w['work'] == 'write_to_hsm':
                 # update volume info
@@ -3890,7 +3902,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(self.my_trace_level, "_mover_bound_volume: HAVE_BOUND: Sending")
             if w.has_key("work_in_work"):
                 w['work'] = w['work_in_work']
-            
+
             self.reply_to_caller(w)
             Trace.trace(self.my_trace_level, "_mover_bound_volume: HAVE_BOUND: Sent")
 
@@ -3898,7 +3910,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # which may happen in case of high pri. work
             # update volumes_at_movers
             if w["vc"]["external_label"] != mticket['external_label']:
-                # update mticket volume status 
+                # update mticket volume status
                 # perhaps this is a hipri request forcing a tape replacement
                 mticket['external_label'] = w["vc"]["external_label"]
                 # update volume status
@@ -4015,7 +4027,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             # There was an attempt to preempt a mounted volume
                             # with admin. priority request.
                             # This is why the volume returned by mover
-                            # was not equal to the volume in at_movers list 
+                            # was not equal to the volume in at_movers list
                             # and self.volumes_at_movers.delete has not succeded
                             # (see volumes_at_movers.delete).
                             # Try to delete mover from the at_movers list.

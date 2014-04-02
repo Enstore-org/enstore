@@ -7416,6 +7416,7 @@ class DiskMover(Mover):
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
             if self.buffer.complete_crc != self.file_info['complete_crc']:
+                if self.tr_failed: return # do not calculate CRC if net thead detected a failed transfer
                 Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
                           (self.buffer.complete_crc, self.file_info['complete_crc']))
                 # this is to fix file db
@@ -7497,7 +7498,7 @@ class DiskMover(Mover):
 
         self.state = SETUP
         # the following settings are needed by LM to update it's queues
-        self.tmp_vol = ticket['fc'].get('external_label', None)
+        self.tmp_vol = ticket['vc'].get('external_label', None)
         self.tmp_vf = ticket['vc'].get('volume_family', None)
         self.need_lm_update = (1, self.state, 1, None)
         self.unlock_state()
@@ -7505,9 +7506,14 @@ class DiskMover(Mover):
         ticket['mover']={}
         ticket['mover'].update(self.config)
         ticket['mover']['device'] = "%s:%s" % (self.config['ip_map'], self.config['device'])
+        self.current_package =  ticket['fc'].get('external_label', None)
         if ticket['fc']['external_label'] == None:
             del(ticket['fc']['external_label'])
+        else:
+            ticket['fc']['external_label'] = ticket['vc']['external_label']
         self.current_work_ticket = ticket
+        Trace.log(DEBUG_LOG, "CURR TICK: %s"%(self.current_work_ticket,))
+        Trace.trace(DEBUG_LOG, "CURR PACK %s"%(self.current_package,))
         self.run_in_thread('client_connect_thread', self.connect_client)
 
     def finish_transfer_setup(self):
@@ -7554,7 +7560,7 @@ class DiskMover(Mover):
 
         # if client_crc is ON:
         #    write requests -- calculate CRC when writing from memory to tape
-        #    read requetsts -- calculate CRC when reading from tape to memory
+        #    read requests -- calculate CRC when reading from tape to memory
         # if client_crc is OFF:
         #    write requests -- calculate CRC when writing to memory
         #    read requetsts -- calculate CRC when reading memory
@@ -7562,7 +7568,7 @@ class DiskMover(Mover):
         self.reset(sanity_cookie, client_crc_on)
         # restore self.current_work_ticket after it gets cleaned in the reset()
         self.current_work_ticket = ticket
-        self.current_volume =  self.file_info.get('external_label', None)
+        self.current_volume =  self.vol_info.get('external_label', None)
         self.delay = 31536000  # 1 year
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=fc['address'])
@@ -7570,6 +7576,8 @@ class DiskMover(Mover):
                                                          server_address=vc['address'])
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = self.current_volume
+        Trace.log(e_errors.INFO, "CUR LABEL %s" % (volume_label,))
+
         self.current_location = 0L
         if volume_label:
             self.vol_info.update(self.vcc.inquire_vol(volume_label))
@@ -7694,13 +7702,14 @@ class DiskMover(Mover):
         :rtype: :obj:`str` file location in cache or :obj:`None`
         """
 
-        cache_status = self.file_info['cache_status']
+        info = self.fcc.bfid_info(self.file_info['bfid'])
+        cache_status = info['cache_status']
         if cache_status != file_cache_status.CacheStatus.CACHED:
             Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
             # make this better!
             # When file gets staged its cache_status must change as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
-            if cache_status == file_cache_status.CacheStatus.PURGING_REQUESTED:
+            if cache_status in (file_cache_status.CacheStatus.PURGING_REQUESTED,):
                 # There were lots of cases when files do not get purged leaving them
                 # in this intermediate state and preventing from being transferred immediately.
                 info = self.fcc.bfid_info(self.file_info['bfid'])
@@ -7732,8 +7741,25 @@ class DiskMover(Mover):
 
             file_cache_location = None
             loop_counter = 1L
+            open_bitfile_sent = False
             while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
+                if info['cache_status'] in (file_cache_status.CacheStatus.PURGING_REQUESTED,
+                                            file_cache_status.CacheStatus.PURGING):
+                    # looks as there was no request to open bitfile
+                    if not open_bitfile_sent:
+                        open_bitfile_sent = True
+                        package_id = info.get('package_id')
+                        if package_id:
+                            rticket = self.fcc.open_bitfile_for_package(package_id)
+                        else:
+                            rticket = self.fcc.open_bitfile(info['bfid'])
+                        Trace.log(DEBUG_LOG, "open_bifile returned %s"%(rticket,))
+                        if rticket['status'][0] != e_errors.OK:
+                            Trace.log(e_errors.ERROR, "File staging has failed for %s %s"%
+                                      (info['bfid'], info['pnfs_name0']))
+                            break
+
                 Trace.log(DEBUG_LOG, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
 
                 if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
@@ -7910,6 +7936,7 @@ class DiskMover(Mover):
 
 
         self.current_work_ticket['status'] = (str(exc), str(msg))
+        self.current_work_ticket['fc']['external_label'] = self.current_work_ticket['vc']['external_label']
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
         self.network_write_active = False # reset to indicate no network activity
@@ -7933,10 +7960,15 @@ class DiskMover(Mover):
 
             self.offline()
         else:
-            self.idle()
-            self.current_volume = None
+            if self.mode == READ:
+                self.state = HAVE_BOUND
+                self.need_lm_update = (1, None, 1, None)
+            else:
+                self.idle()
+                self.current_volume = None
+        Trace.log(e_errors.INFO, "transfer failed state %s"%(state_name(self.state),))
 
-        self.tr_failed = 0
+        #self.tr_failed = 0
 
     def transfer_completed(self):
         """
@@ -7980,9 +8012,16 @@ class DiskMover(Mover):
                 self.transfer_failed(e_errors.OSERROR, 'transfer failure: %s' % (str(detail),), error_source=DRIVE)
                 self.idle()
 
+        Trace.trace(10, "transfer complete mode %s"%(self.mode,))
+        if self.mode == READ:
+            self.state = HAVE_BOUND
+            self.need_lm_update = (1, None, 0, None)
+        Trace.log(e_errors.INFO, "transfer complete state %s"%(state_name(self.state),))
+        Trace.trace(10, "transfer complete state %s"%(state_name(self.state),))
 
         now = time.time()
         self.dismount_time = now + self.delay
+        self.current_work_ticket['fc']['external_label'] = self.current_work_ticket['vc']['external_label']
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
@@ -7995,7 +8034,8 @@ class DiskMover(Mover):
         if self.draining:
             self.offline()
         else:
-            self.idle()
+            if self.mode != READ:
+                self.idle()
         self.need_lm_update = (1, None, 1, None)
         self.log_state()
 
@@ -8103,14 +8143,20 @@ class DiskMover(Mover):
         work = None
         if state is None:
             state = self.state
-        Trace.trace(20,"format_lm_ticket: state %s"%(state,))
+        Trace.trace(20,"format_lm_ticket: state %s"%(state_name(state),))
         volume_label = self.current_volume
+        Trace.trace(20,"format_lm_ticket: CV %s lv %s vf %s lvf %s"%(self.current_volume, self.last_volume, self.volume_family, self.last_volume_family))
         if self.current_volume:
             volume_label = self.current_volume
             volume_family = self.volume_family
         else:
             volume_label = self.last_volume
             volume_family = self.last_volume_family
+
+        external_label = None
+        if hasattr(self, "current_package") and self.current_package:
+            external_label = volume_label
+            volume_label = self.current_package
 
         if state is IDLE:
             work = "mover_idle"
@@ -8171,6 +8217,7 @@ class DiskMover(Mover):
             "mover":  self.name,
             "address": self.address,
             "external_label":  volume_label,
+            "volume": external_label,
             "current_location": loc_to_cookie(0),
             'mover_type': self.mover_type,
             'ip_map' : self.ip_map,
