@@ -1860,6 +1860,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
+                proc_counter = self._change_proc_counter(-1)
                 # send error message
                 content = {"migrator_status":
                            mt.FAILED,
@@ -1873,7 +1874,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 except Exception, e:
                     self.trace.exception("sending reply, exception %s", e)
                 return False
-
+            if proc_counter == self.max_proc:
+                self.suspended = True
+                Trace.log(e_errors.INFO, "Process counter %s. Suspended request fetching"%(proc_counter,))
 
         elif request_type in (mt.MWC_STATUS): # there could more request of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details
