@@ -320,19 +320,22 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         self.clustered_configuration = self.my_dispatcher.get("clustered_configuration")
         self.migration_worker_configuration = {'server':{}}
+
+        work_exchange = self.my_conf.get('migrator_work')
+        if not work_exchange:
+            Trace.alarm(e_errors.ALARM, "migrator_work is not defined. Fix configuration. Bye")
+            sys.exit(1)
+
         if self.clustered_configuration:
-            work_exchange = self.my_dispatcher['migrator_work']
-            work_queue_key = self.my_conf.get('disk_library')
-            if not work_queue_key:
+            if not self.my_conf.get('disk_library'):
                 Trace.alarm(e_errors.ALARM, "disk_library is not defined. Fix configuration. Bye")
                 sys.exit(1)
+            work_queue_key = "_".join((work_exchange, self.my_conf.get('disk_library')))
             work_queue = work_queue_key
+            Trace.trace(10, "work exchange %s"%(work_exchange,))
             self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always, node:{x-bindings:[{exchange:'%s', queue:'%s',key:'%s'}]}}"%(work_queue, work_exchange, work_queue, work_queue_key)
         else:
-            self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(self.my_dispatcher['migrator_work'],)
-
-
-
+            self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(work_exchange,)
 
         self.migration_worker_configuration['server']['queue_reply'] = "%s; {create: always}"%(self.my_dispatcher['migrator_reply'],)
 

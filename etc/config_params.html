@@ -80,7 +80,7 @@ corresponding server when generating the SAAG page, and will not use
 <td>
 <br>library_manager_1: # as described in configuration
 <br>   {1: # first entry
-<br>       'host': host1, # rule applies to this host (regex) 
+<br>       'host': host1, # rule applies to this host (regex)
 <br>       'function': discipline_function, # restrict_host_access
 <br>       'args':[host1, # rule applies to this host
 <br>               (max_allowed, # maximal concurrent requests
@@ -1030,7 +1030,11 @@ See details in "Small Files Aggregation High Level Design" document.
 	   <td>Mandatory</td><td>None</td>
 </tr>
 </tr>
-<tr><td><a NAME="migrator_work">migrator_work</a></td><td>Migrator queue name</td>
+<tr><td><a NAME="queue_write">queue_write</a></td><td>Migrator write queue or exchange name</td>
+	   <td>Mandatory</td><td>None</td>
+<tr><td><a NAME="queue_read">queue_read</a></td><td>Migrator read queue or exchange name</td>
+	   <td>Mandatory</td><td>None</td>
+<tr><td><a NAME="queue_purge">queue_purge</a></td><td>Migrator purge queue or exchange name</td>
 	   <td>Mandatory</td><td>None</td>
 </tr>
 <tr><td><a NAME="migrator_reply"migrator_reply</a></td><td>Migrator reply queue name</td>
@@ -1042,10 +1046,10 @@ See details in "Small Files Aggregation High Level Design" document.
 <tr><td><a NAME="max_time_in_cache">max_time_in_cache</a></td><td>Maximal time before files get purged from cache</td>
 	   <td>Optional</td><td>1 hour</td>
 </tr>
-<tr><td><a NAME="purge_watermarks">purge_watermarks</a></td><td> Tuple 
+<tr><td><a NAME="purge_watermarks">purge_watermarks</a></td><td> Tuple
                 <p>
 		<ul>
-		   <li> start purge if data space is full more than this factor 
+		   <li> start purge if data space is full more than this factor
 		   <li> stop purge if data space is full less than this factor
 		</ul>
 	   </td>
@@ -1095,6 +1099,8 @@ See details in "Small Files Aggregation High Level Design" document.
 </tr>
 
 <tr><td><a NAME="migration_dispatcher">migration_dispatcher</a></td><td>migration dispatcher in configuration</td>
+	   <td>Mandatory</td><td>None</td>
+<tr><td><a NAME="migrator_work">migrator_work</a></td><td>migrator work queue or exchange name on which migrator receives requests from dispatcher</td>
 	   <td>Mandatory</td><td>None</td>
 </tr>
 <tr><td><a NAME="data_area">data_area</a></td><td>disk area where (written) files are stored</td>
