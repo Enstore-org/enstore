@@ -3951,6 +3951,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                status[0] == e_errors.VOL_SET_TO_FULL or
                status[0] == 'full'):
             ret_ticket = {'work': 'no_work'}
+            if self.mover_type(mticket) == 'DiskMover':
+                # No work for this package.
+                # To avoid delay between mover solicitation for next request
+                # pick up any request as if disk mover was idle.
+                Trace.trace(self.my_trace_level, "no work for bound volume, will try idle request")
+                self._mover_idle(mticket)
+                return
             if (status[0] == e_errors.VOL_SET_TO_FULL or
                 status[0] == 'full'):
                 # update at_movers information
