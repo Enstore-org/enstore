@@ -4088,7 +4088,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         :type ticket: :obj:`dict`
         :arg ticket: ticket received from library manager.
         """
-        Trace.log(e_errors.INFO, "WRITE_TO_HSM")
+        Trace.log(e_errors.INFO, "WRITE_TO_HSM. Mover state %s"%(state_name(self.state),))
         Trace.trace(10, "State %s"%(state_name(self.state),))
         if ticket.has_key('copy') and not ticket['fc'].has_key('original_bfid'):
             # this is a file copy request
@@ -4125,7 +4125,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         :arg ticket: ticket received from library manager.
         """
 
-        Trace.log(e_errors.INFO,"READ FROM HSM")
+        Trace.log(e_errors.INFO,"READ FROM HSM. Mover state %s"%(state_name(self.state),))
         self.method = ticket.get("method", None)
         Trace.trace(98, "read_from_hsm %s"%(ticket,))
         if self.method and self.method == "read_next":
@@ -7803,10 +7803,9 @@ class DiskMover(Mover):
             loop_counter = loop_counter + 1
         else:
             # check if file exists in cache
-            file_cache_location = self.file_info.get('cache_location')
-            if os.path.exists(file_cache_location):
-                file_cache_location = self.file_info.get('cache_location', None)
-            else:
+            file_cache_location = info.get('cache_location')
+            Trace.log(e_errors.INFO, "check if file is in cache %s"%(file_cache_location,))
+            if not os.path.exists(file_cache_location):
                 Trace.log(e_errors.ERROR, "file cache status was reported as %s, but it is not in cache. Setting to %s" %
                           (file_cache_status.CacheStatus.CACHED, file_cache_status.CacheStatus.PURGED))
                 file_cache_location = None
