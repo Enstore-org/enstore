@@ -320,19 +320,22 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         self.clustered_configuration = self.my_dispatcher.get("clustered_configuration")
         self.migration_worker_configuration = {'server':{}}
+
+        work_exchange = self.my_conf.get('migrator_work')
+        if not work_exchange:
+            Trace.alarm(e_errors.ALARM, "migrator_work is not defined. Fix configuration. Bye")
+            sys.exit(1)
+
         if self.clustered_configuration:
-            work_exchange = self.my_dispatcher['migrator_work']
-            work_queue_key = self.my_conf.get('disk_library')
-            if not work_queue_key:
+            if not self.my_conf.get('disk_library'):
                 Trace.alarm(e_errors.ALARM, "disk_library is not defined. Fix configuration. Bye")
                 sys.exit(1)
+            work_queue_key = "_".join((work_exchange, self.my_conf.get('disk_library')))
             work_queue = work_queue_key
+            Trace.trace(10, "work exchange %s"%(work_exchange,))
             self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always, node:{x-bindings:[{exchange:'%s', queue:'%s',key:'%s'}]}}"%(work_queue, work_exchange, work_queue, work_queue_key)
         else:
-            self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(self.my_dispatcher['migrator_work'],)
-
-
-
+            self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(work_exchange,)
 
         self.migration_worker_configuration['server']['queue_reply'] = "%s; {create: always}"%(self.my_dispatcher['migrator_reply'],)
 
@@ -1860,6 +1863,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
+                proc_counter = self._change_proc_counter(-1)
                 # send error message
                 content = {"migrator_status":
                            mt.FAILED,
@@ -1873,7 +1877,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 except Exception, e:
                     self.trace.exception("sending reply, exception %s", e)
                 return False
-
+            if proc_counter == self.max_proc:
+                self.suspended = True
+                Trace.log(e_errors.INFO, "Process counter %s. Suspended request fetching"%(proc_counter,))
 
         elif request_type in (mt.MWC_STATUS): # there could more request of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details

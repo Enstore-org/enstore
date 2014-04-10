@@ -11,11 +11,13 @@ This script select a random tape, takes first, last and random file in between
 and performs encp of these files.
 """
 
+from optparse import OptionParser
 import os
 import random
 import string
+import sys
 import time
-from optparse import OptionParser
+
 
 import configuration_client
 import dbaccess
@@ -156,23 +158,30 @@ class VolumeAudit:
         start=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
         bfid=None
         rc=0
-        try:
-            for bfid in bfid_set:
-                argv=ENCP_ARGS+[bfid,"/dev/null"]
-                encp=encp_wrapper.Encp()
-                rc  = encp.encp(argv)
-        except Exception, e:
-            rc=-1
-            error_msg=str(e)
-        finally:
-            if error_msg:
-                q=INSERT_QUERY_WITH_ERROR.format(volume,start,'now()',bfid,rc,error_msg)
-                Trace.alarm(e_errors.WARNING, "Failed on volume %s with error %s"%(label,error_msg,))
-            else:
-                q=INSERT_QUERY_WO_ERROR.format(volume,start,'now()',bfid,rc)
-                if rc :
-                    Trace.alarm(e_errors.WARNING, "Failed on volume %s, encp return code was %d"%(label,rc,))
-            self.db.insert(q)
+        for bfid in bfid_set:
+            argv=ENCP_ARGS+[bfid,"/dev/null"]
+            encp=encp_wrapper.Encp()
+            rc        = encp.encp(argv)
+            error_msg = encp.err_msg
+            #
+            # first breaks, quit
+            #
+            if rc :
+                break
+        if error_msg:
+            #
+            # need to escape single ' with '' for SQL to work
+            #
+            q=INSERT_QUERY_WITH_ERROR.format(volume,start,'now()',bfid,rc,error_msg.replace("'", "''"),)
+            if rc:
+                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with error %s, return code %d"%(label,bfid,error_msg,rc))
+        else:
+            q=INSERT_QUERY_WO_ERROR.format(volume,start,'now()',bfid,rc)
+            if rc:
+                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with return code %d"%(label,bfid,rc,))
+        self.db.insert(q)
+        return rc
+
 
     def __del__(self):
         """destructor"""
@@ -189,5 +198,6 @@ if __name__ == "__main__":
     csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
                                                     enstore_functions2.default_port()))
     audit = VolumeAudit(csc,options.days)
-    audit.do_work()
+    rc = audit.do_work()
+    sys.exit(rc)
 

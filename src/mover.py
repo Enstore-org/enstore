@@ -1,5 +1,19 @@
 #!/usr/bin/env python
 
+"""
+Enstore mover.
+
+Delivers files from client to tape and from tape to client.
+Data delivery request is picked up from the library manager the mover is assigned to.
+The mover can be assigned to more than one library manager.
+Mover sends tape mount / dismount requests to the media changer specifying the address (name) of
+the tape and the address of the tape drive the mover is assigned to.
+Data delivery reliability is provided by end-to-end checksumming.
+Mover also randomly checks written files by reading them back from tape and caclulating checksum.
+Volume assert functionality serves for checking write tab consistency as well as data integrity checks
+by reading files from tape and calculating checksum.
+"""
+
 # python modules
 import sys
 import os
@@ -61,48 +75,14 @@ import scsi_mode_select
 import set_cache_status
 
 DEBUG_LOG=11
-"""
-Mover:
-
-  Any single mount or dismount failure ==> state=BROKEN, vol=NOACCESS
-        (At some point, we'll want single failures to be 2-3 failures)
-
-  Any single eject failure ==> state=BROKEN, vol=NOACCESS, no dismount
-                                  attempt, tape stays in drive.
-
-  Two consecutive transfer failures ==> state=BROKEN
-        Exclude obvious failures like encp_gone.
-
-  Any 3 transfer failures within an hour ==> state=BROKEN
-
-
-  By BROKEN, I mean the normal ERROR state plus:
-        a. Alarm is raised.
-        b. Nanny doesn't fix it.   (enstore sched --down xxx   stops nanny)
-        c. It's sticky across mover process restarts.
-        d. Admin has to investigate and take drive out of BROKEN state.
-
-I know I'm swinging way to far to the right and I know this is more
-work for everyone, especially the admins.  Could you both please
-comment and maybe suggest other things. I just don't want to come in
-some morning and have all the D0 tapes torn apart and have the
-possibility exist that Enstore could have done more to prevent it.
-
-
-Jon
-"""
-
-"""TODO:
-
-Make a class for EOD objects to handle all conversions from loc_cookie to integer
-automatically.  It's confusing in this code when `eod' is a cookie vs a plain old int.
-
-
-"""
 
 WRAPPER_ERROR = 'WRAPPER_ERROR'
 BUF_SIZE_CH_ERR = 'Buffer error: changing blocksize of nonempty buffer'
 class MoverError(exceptions.Exception):
+    """
+    Needed to raise mover specific exceptions.
+
+    """
     def __init__(self, arg):
         exceptions.Exception.__init__(self,arg)
 
@@ -135,14 +115,15 @@ MB=enstore_constants.MB
 GB=enstore_constants.GB
 
 SANITY_SIZE = 65536
-
-#used in the threshold calculation
 TRANSFER_THRESHOLD = 2*MB
-# maximal allowed buffer size
-# for 32 bit architecture maximal process size is 4 GB
-# so maximal buffer size can not be bigger than this value
-# practice shows that the safe size should be 2.5 GB
+"""Used in the threshold calculation"""
+
 MAX_BUFFER = 2500*MB
+"""Maximal allowed buffer size
+for 32 bit architecture maximal process size is 4 GB,
+so maximal buffer size can not be bigger than this value.
+Practice shows that the safe size should be 2.5 GB.
+"""
 
 #Return total system memory or None if unable to determine.
 def total_memory():
@@ -203,7 +184,26 @@ def is_threshold_passed(bytes_transfered, bytes_notified, bytes_to_transfer,
     return 0
 
 class Buffer:
+    """
+    Provide memory buffer for incoming and outgoing data.
+
+    """
     def __init__(self, blocksize, min_bytes = 0, max_bytes = 1*MB, crc_seed=1L):
+        """
+
+        :type blocksize: :obj:`int`
+        :arg blocksize: buffer block size. Read / write requests are done by blocks
+
+        :type min_bytes: :obj:`int`
+        :arg min_bytes: lower buffer watermark
+
+        :type max_bytes: :obj:`int`
+        :arg max_bytes: upper buffer watermark
+
+        :type crc_seed: :obj:`long`
+        :arg crc_seed: seed for adler32 checksum calculation
+        """
+
         self.blocksize = blocksize
         self.min_bytes = min_bytes
         self.max_bytes = max_bytes
@@ -354,12 +354,23 @@ class Buffer:
         self._lock.release()
 
     def push(self, data):
+        """
+        Push data into the buffer.
+
+        :type data: :obj:`str`
+        :arg data: portion of the transferring data
+
+        """
         self._lock.acquire()
         self._buf.append(data)
         self._buf_bytes = self._buf_bytes + len(data)
         self._lock.release()
 
     def pull(self):
+        """
+        Pull data out of the buffer.
+
+        """
         self._lock.acquire()
         data = self._buf.pop(0)
         self._buf_bytes = self._buf_bytes - len(data)
@@ -382,6 +393,13 @@ class Buffer:
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
     def dump(self, f):
+        """
+        Dump buffer content into file for debugging purposes.
+
+        :type f: :obj:`file`
+        :arg f: file to dump into.
+        """
+
         for name, value in self.__class__.__dict__.items( ) + self.__dict__.items( ):
             v = value
             try:
@@ -398,6 +416,17 @@ class Buffer:
 
 
     def block_read(self, nbytes, driver, fill_buffer=1):
+        """
+        Read data using specified driver.
+
+        :type nbytes: :obj:`int`
+        :arg nbytes: bytes to read.
+        :type driver: :class:`disk_driver.DiskDriver`, :class:`ftt_driver.FTTDriver`, :class:`null_driver.NullDriver`
+        :arg driver: disk, tape or null driver
+        :type fill_buffer: :obj:`int`
+        :arg fill_buffer: fill buffer (if != 0). (0 can be used for testing or null driver)
+        :rtype: :obj:`int` number of bytes read
+        """
 
         if self.client_crc_on:
             # calculate checksum when reading from
@@ -502,6 +531,15 @@ class Buffer:
         return bytes_read
 
     def block_write(self, nbytes, driver):
+        """
+        Write data using specified driver.
+
+        :type nbytes: :obj:`int`
+        :arg nbytes: bytes to read
+        :type driver: :class:`disk_driver.DiskDriver`, :class:`ftt_driver.FTTDriver`, :class:`null_driver.NullDriver`
+        :arg driver: disk, tape or null driver
+        :rtype: :obj:`int` number of written bytes
+        """
         #Trace.trace(22,"block_write: bytes %s"%(nbytes,))
 
         if self.client_crc_on:
@@ -583,6 +621,16 @@ class Buffer:
 
 
     def stream_read(self, nbytes, driver):
+        """
+        Read data from the stream using specified driver.
+
+        :type nbytes: :obj:`int`
+        :arg nbytes: bytes to read.
+        :type driver: :class:`net_driver.NetDriver` or :class:`string_driver.StringDriver`
+        :arg driver: network or string driver.
+        :rtype: :obj:`int` number of bytes read
+        """
+
         if not self.client_crc_on:
             # calculate checksum when reading from
             # the network (see comment in setup_transfer)
@@ -651,6 +699,15 @@ class Buffer:
             self._read_ptr = None
 
     def stream_write(self, nbytes, driver):
+        """
+        Write data to the stream using specified driver.
+
+        :type nbytes: :obj:`int`
+        :arg nbytes: bytes to read.
+        :type driver: :class:`net_driver.NetDriver` or :class:`string_driver.StringDriver`
+        :arg driver: network or string driver.
+        :rtype: :obj:`int` number of bytes written
+        """
         if not self.client_crc_on:
             # calculate checksum when writing to
             # the network (see comment in setup_transfer)
@@ -765,8 +822,22 @@ def host_type():
 
 class Mover(dispatching_worker.DispatchingWorker,
             generic_server.GenericServer):
+    """
+    Mover (tape, or null) class.
+
+    Accepts tickets from library manager and does specified in it work.
+
+    Accepts enstore commands and launches specified in it metods.
+    """
 
     def __init__(self, csc_address, name):
+        """
+        :type csc_address: :obj:`tuple`
+        :arg csc_address: configuration server host name :obj:`str`, configuration server port :obj:`int`
+        :type name: :obj:`str`
+        :arg name: mover unique name
+
+        """
         generic_server.GenericServer.__init__(self, csc_address, name,
                                               function = self.handle_er_msg)
         self.name = name # log name
@@ -916,12 +987,29 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.__dict__[attr] = val
 
     def dump(self, ticket):
+        """
+        Dump some internal variables.
+        This method is invoked via :class:`dispatching_worker.DispatchingWorker`.
+        The corresponding enstore command is::
+
+           enstore mover --dump <mover_name>
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from mover client
+
+        """
         x = ticket
         out_ticket = {'status':(e_errors.OK,None)}
         self.reply_to_caller(out_ticket)
         self.dump_vars()
 
     def dump_vars(self, header=None):
+        """
+        Dump some internal variables into the file.
+
+        The file name is described inside of the code
+
+        """
         d=os.environ.get("ENSTORE_OUT","/tmp")
         pid = os.getpid()
         f = open("%s/mover_dump-%s"%(d,pid,), "a")
@@ -953,8 +1041,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         f.write("=========================================\n")
         f.close()
 
-    # new_bit_file wrapper
     def set_new_bitfile(self, request):
+        """
+        Mover requests to create a new record in file table after file was written to media
+        by sending ``new_bit_file`` ``work`` to file clerk.
+
+        :type request: :obj:`dict`
+        :arg request: parameters needed to fill in the new record in file table
+        :rtype: :obj:`dict` reply from file clerk (or file clerk client in case of time-out)
+
+        """
+
         Trace.log(e_errors.INFO,"new bitfile request %s"%(request))
         for i in range(2):
             fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
@@ -981,8 +1078,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         return fcc_reply
 
-    # execute shell command
     def shell_command(self, command):
+        """
+        Execute shell command.
+
+        :type command: :obj:`str`
+        :arg command: shell command.
+        """
+
         res = enstore_functions2.shell_command(command)
         if res:
             result = res[0] # stdout
@@ -991,6 +1094,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         return result
 
     def init_data_buffer(self):
+        """
+        Prepare data buffer for data transfer between media and client.
+
+        """
+
         Trace.trace(10, "init_data_buffer started")
         if self.buffer:
             self.buffer.clear()
@@ -1007,6 +1115,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         return state_name(self.state)
 
     def log_state(self,logit=0):
+        """
+        Log current mover state into enstore log file.
+
+        :type logit: :obj:`int`
+        :arg logit: do log if not 0
+        """
         if self.log_mover_state or logit:
             cmd = "EPS | grep %s"%(self.name,)
             result =  self.shell_command(cmd)
@@ -1029,10 +1143,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
 
-    # log a snapshot of all running processes
-    # this is done to check for activities during
-    # tape operation failure
     def log_processes(self,logit=0):
+        """
+        Log a snapshot of all running processes.
+
+        This is done to check for activities during
+        tape operation failure
+
+        :type logit: :obj:`int`
+        :arg logit: do log if not 0
+        """
+
         if self.log_mover_state or logit:
             # the format of the "ps" command is such
             # that it usally fits into udp message and
@@ -1048,8 +1169,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO,"LOG: CurThread %s"%(thread_name))
 
 
-    # from entv
     def memory_in_use(self):
+        """
+        Get information about memory in use by the current mover process for debugging purposes.
+
+        """
         if os.uname()[0] == "Linux":
             f = open("/proc/%d/status" % (os.getpid(),), "r")
             proc_info = f.readlines()
@@ -1065,6 +1189,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             return None
 
     def memory_usage(self):
+        """
+        Get information about memory in use on the host for debugging purposes.
+
+        """
         self.on_start = 0
         if self.on_start:
             self.on_start=0
@@ -1109,6 +1237,11 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def watch_syslog(self):
+        """
+        Get information for syslog around current time.
+
+        Used for investigation of problems.
+        """
         if self.syslog_match:
             try:
                 cmd = "$ENSTORE_DIR/src/match_syslog.py '%s'"%(self.syslog_match)
@@ -1125,10 +1258,14 @@ class Mover(dispatching_worker.DispatchingWorker,
     def unlock_state(self):
         self._state_lock.release()
 
-    # check if we are known to be down (offline) in the outage file
-    # this still uses rsh to avoid a race condition with the mover starting before the
-    # inquisitor
     def check_sched_down(self):
+        """
+        Check if we are known to be down (offline) in the outage file.
+
+        This still uses rsh to avoid a race condition with the mover starting before the
+        inquisitor.
+        """
+
 	inq = self.csc.get('inquisitor')
 	host = inq.get('host')
 	dirname = inq.get('html_file')
@@ -1155,8 +1292,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 		    return 1
 	return 0
 
-    # set ourselves to be known down in the outage file
     def set_sched_down(self):
+        """
+        Set ourselves to be known down in the outage file.
+
+        """
+
 	self.inq = inquisitor_client.Inquisitor(self.csc)
 	ticket = self.inq.down(self.name, "set by mover", 15)
 	if not e_errors.is_ok(ticket):
@@ -1166,6 +1307,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     # get the initial statistics
     def init_stat(self, drive_name):
+        """
+        Initialize statistics reporting for tape media.
+
+        :type drive_name: :obj:`str`
+        :arg drive_name: from mover configuration.
+        """
+
         self.stats_on = 0
         self.send_stats = self.config.get('send_stats',1)
         if not self.stat_file: return
@@ -1181,6 +1329,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def set_volume_noaccess(self, volume, reason=None):
+        """
+        Wrapper method to set volume to *NOACCESS*.
+
+        :type volume: :obj:`str`
+        :arg volume: volume name
+        :type reason: :obj:`str`
+        :arg reason: reason for setting volume to *NOACCESS*.
+        """
+
         Trace.alarm(e_errors.ALARM, "marking %s NOACCESS. Mover: %s. Reason: %s"%(volume,  self.shortname, reason))
         ret = self.vcc.set_system_noaccess(volume)
         if ret['status'][0] != e_errors.OK:
@@ -1191,8 +1348,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.vol_info.update(self.vcc.inquire_vol(volume))
 
-    # get tape stats
     def update_tape_stats(self):
+        """
+        Get tape stats.
+
+        """
+
         try:
             self.stats = self.tape_driver.get_stats()
             self.block_n = self.stats[self.ftt.BLOCK_NUMBER]
@@ -1207,8 +1368,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
             return
 
-    # update statistics
     def update_stat(self):
+        """
+        Record drive statistics into the local file (see the code)
+        and send it to drivestat server to enter into drivestat DB.
+
+        """
         if self.driver_type != 'FTTDriver':
             return
         if self.tape_driver and self.tape_driver.ftt:
@@ -1350,6 +1515,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   self.name)
 
     def start(self):
+        """
+        Set up the mover configuration received from configuration server and
+        start serving requests.
+
+        """
+
         self.logname = self.config.get('logname', self.name)
         Trace.init(self.logname, self.config.get('include_thread_name', 'yes'))
         # do not restart if some mover processes are already running
@@ -1733,7 +1904,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dump_vars("At the start")
 
 
-    # restart itselfs
     def restart_lockfile_name(self):
         d=os.environ.get("ENSTORE_TMP","/tmp")
         return os.path.join(d, "restart_lock%s"%(self.name,))
@@ -1760,6 +1930,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def restart(self, do_restart=1):
+        """
+        Restart myself.
+
+        """
         cur_thread = threading.currentThread()
         if cur_thread:
             cur_thread_name = cur_thread.getName()
@@ -1818,6 +1992,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.alarm(e_errors.ALARM, "Could not exit! Sys.exit did not work")
 
     def send_error_and_restart(self, err = (None, None), do_restart=1):
+        """
+        Send error message and restart.
+
+        """
+
         if err[0]:
             e = self.error_msg(err)
         else:
@@ -1827,26 +2006,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.restart()
 
 
-    # device_dump(self, sendto=[], notify=['enstore-admin@fnal.gov'])
-    #   -- internal device dump
-    #   Initially, this is mainly for M2 drives. It can be generalized
-    #   for other drives.
-    #
-    #   if sendto is set, it is either an email address or a list of
-    #   them which the dump file will be sent to.
-    #
-    #   if notify is set, it is either an email address or a list of
-    #   them which the notification is sent to. By default, notify is
-    #   set to ['enstore-admin@fnal.gov']
-    #
-    # device_dump_S() is a server hook for device_dump()
-
-    # device_dump_S(self, ticket) -- server hook for device_dump()
-
     def device_dump_S(self, ticket):
-
         """
-        device_dump_S(self, ticket) -- server hook for device_dump()
+        Server hook for :meth:`device_dump`.
+
         """
 
         if ticket.has_key('sendto'):
@@ -1902,17 +2065,25 @@ class Mover(dispatching_worker.DispatchingWorker,
 	return res
 
 
-    # check drive rate and update suspect drive table
-    # if needed
     def check_drive_rate(self, bfid, file_size, drive_rate, rw, read_err, write_err, drive_stats):
-        # bfid - bfid of transferred file
-        # file_size - size of last writtent or read file in bytes
-        # drive_rate - rate of tape drive in bytes/s.
-        # rw - read ('r') or write ('w')
-        # read_errors - tape drive read errors for this file
-        #               (we have seen non 0 read errors during write operation).
-        # write_errors - tape drive write errors for this file
-        # drive_stats - information returned by drive.get_stats
+        """
+        Check drive rate and update suspect drive table if needed.
+
+        :type bfid: :obj:`str`
+        :arg bfid: bfid of transferred file
+        :type file_size: :obj:`long`
+        :arg file_size: size of last writtent or read file in bytes
+        :type drive_rate: :obj:`float`
+        :arg drive_rate: rate of tape drive in bytes/s.
+        :type rw:  :obj:`str`
+        :arg rw: read (``r``) or write (``w``)
+        :type read_errors:  :obj:`int`
+        :arg read_errors: tape drive read errors for this file (we have seen non 0 read errors during write operation).
+        :type write_errors: :obj:`int`
+        :arg write_errors: tape drive write errors for this file
+        :type drive_stats: :class:`ftt.FTT`
+        :arg drive_stats: information returned by :meth:`drive.get_stats`.
+        """
 
         if hasattr(self, "drive_rate_threshold") and type(self.drive_rate_threshold) == types.TupleType:
             if file_size > self.drive_rate_threshold[0]: # self.drive_rate_threshold[0] - cut off file size
@@ -1933,6 +2104,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def check_written_file(self):
+        """
+        Define if it is time to check written file.
+
+        """
         rc = 0
         if self.just_mounted and self.check_first_written_enabled:
             self.just_mounted = 0
@@ -1944,6 +2119,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         return rc
 
     def nowork(self, ticket):
+        """
+        No work is no work.
+
+        """
         Trace.trace(98, "nowork")
         x =ticket # to trick pychecker
         if self.control_socket:
@@ -1964,6 +2143,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
+        """
+        Log the mover error.
+
+        """
         x = tb # to trick pychecker
         Trace.log(e_errors.ERROR, "handle mover error %s %s"%(exc, msg))
         Trace.trace(10, "%s %s" %(self.current_work_ticket, state_name(self.state)))
@@ -1974,8 +2157,21 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 pass
 
-    ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
+        """
+        Send updated mover state and additional information to library manager(s).
+
+        As a rule this method is called from the main thread.
+
+        :type state: :obj:`int`
+        :arg state: mover state
+        :type reset_timer: :obj:`int`
+        :arg reset_timer: reset LM update interval timer (:meth:`update_lm` is called periodically or by direct call).
+        :type error_source: :obj:`str`
+        :arg error_source: ``TAPE``, ``ROBOT``, ``NETWORK``, ``DRIVE``, ``USER``, ``MOVER``, ``UNKNOWN``
+
+        """
+
         Trace.trace(20,"update_lm: dont_update=%s" % (self.dont_update_lm,))
         if self.state == IDLE:
             # check memory usage and if bad restart
@@ -2049,6 +2245,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         now = time.time()
+        transfer_stuck = 0
         Trace.trace(20, "reset_timer %s"%(reset_timer,))
         if reset_timer:
             self.reset_interval_timer(self.update_lm)
@@ -2064,7 +2261,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
                 send_alarm = True
                 if self.state == ACTIVE:
-                    transfer_stuck = 0
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
                     if self.bytes_read_last == self.bytes_read:
                         if self.mode in (WRITE, ASSERT):
@@ -2129,7 +2325,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.time_in_state = time_in_state
                 self.in_state_to_cnt = self.in_state_to_cnt+1
                 Trace.trace(8, "in state cnt %s"%(self.in_state_to_cnt,))
-                Trace.trace(8, "transfer stuck %s"%(transfer_stuck,))
                 Trace.trace(8, "in_state_to_cnt %s max_in_state_cnt %s"%(self.in_state_to_cnt, self.max_in_state_cnt,))
 
                 if ((self.in_state_to_cnt >= self.max_in_state_cnt) and
@@ -2289,8 +2484,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.run_in_thread('delayed_update_thread', self._do_delayed_update_lm)
 
     def check_dismount_timer(self):
+        """
+        See if the dismount timer has expired.
+
+        """
         self.lock_state()
-        ## See if the delayed dismount timer has expired
         now = time.time()
         if self.state is HAVE_BOUND and self.dismount_time and now>self.dismount_time:
             self.state = DISMOUNT_WAIT
@@ -2300,9 +2498,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.unlock_state()
 
-    # send a single error message to LM - requestor
-    # can be done from any thread
     def send_error_msg(self,error_info=(None,None),error_source=None,returned_work=None):
+        """
+        Send a single error message to LM - requestor.
+
+        This can be done from any thread.
+
+        :type error_info: :obj:`tuple`
+        :arg error_info: error code :obj:`str`, error description :obj:`str`
+        :type error_source: :obj:`str`
+        :arg error_source: ``TAPE``, ``ROBOT``, ``NETWORK``, ``DRIVE``, ``USER``, ``MOVER``, ``UNKNOWN``
+        :type returned_work: :obj:`dict`
+        :arg returned_work: work ticket received from library manager
+
+        """
+
         if self.lm_address != ('none',0): # send error message only to LM that called us
             ticket = self.format_lm_ticket(state=ERROR,
                                            error_info = error_info,
@@ -2311,6 +2521,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.udpc.send_no_wait(ticket, self.lm_address)
 
     def idle(self):
+        """
+        Set state to `IDLE`.
+        """
         if self.state == ERROR:
             return
         if not self.do_eject:
@@ -2355,6 +2568,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def reset(self, sanity_cookie, client_crc_on):
+        """
+        Prepare for data transfer.
+
+        :type sanity_cookie: :obj:`int`
+        :arg sanity_cookie: sanity cookie
+        :type client_crc_on: :obj:`int`
+        :arg client_crc_on: controls crc check
+        """
+
         Trace.trace(22, "reset: client_crc_on %s"%(client_crc_on,))
         self.current_work_ticket = None
         self.init_data_buffer()
@@ -2363,6 +2585,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_written = 0L
 
     def return_work_to_lm(self,ticket):
+        """
+        Return work back to library manager.
+
+        The work was not done.
+        """
         Trace.trace(21, "return_work_to_lm %s"%(ticket,))
         try:
             lm_address = ticket['lm']['address']
@@ -2379,6 +2606,11 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     # read data from the network
     def read_client(self):
+        """
+        Read data from the network.
+
+        """
+
         Trace.trace(8, "read_client starting,  bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.net_driver
         if self.bytes_read == 0 and self.header: #splice in cpio headers, as if they came from client
@@ -2471,6 +2703,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def position_for_crc_check(self):
+        """
+        Position tape for crc check.
+
+        """
         Trace.trace(22, "position media")
         Trace.log(e_errors.INFO, "compression %s"%(self.compression,))
         try:
@@ -2530,6 +2766,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         return save_location
 
     def client_update_enabled(self, ticket):
+        """
+        This method checks if client code can handle updates from mover.
+
+        This was introduced to avoid client disconnection if crc check takes longer than the client
+        wait time (15 min).
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from library manager
+        :rtype: :obj:`bool`
+
+        """
+
         legal_encp_version = "v3_11c" # used for backward compatibility
         rc = False
         c_legal_version = enstore_functions2.convert_version(legal_encp_version)
@@ -2545,9 +2793,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         return rc
 
-    # this is to send to encp updated status if selective CRC check runs too long
-    # to avoid encp timeouts
     def send_client_update(self, percent_completed):
+        """
+        Send to client (encp) updated status if selective CRC check runs too long
+        to avoid encp timeouts.
+
+        :type percent_completed: :obj:`float`
+        :arg percent_completed: completed part of a file crc check
+        """
+
         if not self.client_update_enabled(self.current_work_ticket):
             return
         Trace.trace(20, "send_client_update: percent done %s"%(percent_completed,))
@@ -2561,6 +2815,11 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def selective_crc_check(self):
+        """
+        Read back a file after write, calculate its crc and compare with calculated during transfer.
+
+        """
+
         failed = 0
         save_location = self.position_for_crc_check()
         if self.tr_failed:
@@ -2741,6 +3000,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                    rates))
 
     def write_tape(self):
+        """
+        Write file to tape.
+
+        """
+
         Trace.log(e_errors.INFO, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
         driver = self.tape_driver
@@ -3192,9 +3456,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 self.transfer_failed(e_errors.EPROTO)
 
-
-    # read data from the tape
     def read_tape(self):
+        """
+        Read file from tape.
+
+        """
         self.read_tape_running = 1 # use this to synchronize read and network threads
 
         if self.driver_type == 'FTTDriver':
@@ -3230,6 +3496,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         idle_time = 0. # accumulative time when not reading
         break_here = 0
         network_slow = False
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             loop_start = time.time()
             Trace.trace(133,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
@@ -3641,8 +3908,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.read_tape_running = 0
 
-    # write data out to the network
     def write_client(self):
+        """
+        Write data out to the network.
+
+        """
+
         Trace.trace(8, "write_client starting, bytes_to_write=%s" % (self.bytes_to_write,))
         if not self.buffer.client_crc_on:
             # calculate checksum when writing to
@@ -3809,13 +4080,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_completed()
         else:
             self.assert_ok.set()
-        #
 
-
-
-    # the library manager has asked us to write a file to the hsm
     def write_to_hsm(self, ticket):
-        Trace.log(e_errors.INFO, "WRITE_TO_HSM")
+        """
+        The library manager has asked mover to write a file to the hsm.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from library manager.
+        """
+        Trace.log(e_errors.INFO, "WRITE_TO_HSM. Mover state %s"%(state_name(self.state),))
         Trace.trace(10, "State %s"%(state_name(self.state),))
         if ticket.has_key('copy') and not ticket['fc'].has_key('original_bfid'):
             # this is a file copy request
@@ -3825,6 +4098,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.setup_transfer(ticket, mode=WRITE)
 
     def update_volume_info(self, ticket):
+        """
+        Volume information coming in the ticket from library manager may be not up to date.
+
+        Update it with request to volume clerk
+
+        :type ticket: :obj:`dict`
+        :arg ticket: current ticket originally received from library manager
+        """
         Trace.trace(20, "update_volume_info for %s. Current %s"%(ticket['external_label'],
                                                                  self.vol_info))
         if not self.vol_info:
@@ -3836,9 +4117,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.vol_info.update(self.vcc.inquire_vol(ticket['external_label']))
 
 
-    # the library manager has asked us to read a file from the hsm
     def read_from_hsm(self, ticket):
-        Trace.log(e_errors.INFO,"READ FROM HSM")
+        """
+        The library manager has asked mover to read a file from the hsm.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from library manager.
+        """
+
+        Trace.log(e_errors.INFO,"READ FROM HSM. Mover state %s"%(state_name(self.state),))
         self.method = ticket.get("method", None)
         Trace.trace(98, "read_from_hsm %s"%(ticket,))
         if self.method and self.method == "read_next":
@@ -3846,10 +4133,27 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.setup_transfer(ticket, mode=READ)
 
     def volume_assert(self, ticket):
+        """
+        The library manager has asked mover to make volume assert -
+        read specified or all files on tape and report result.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from library manager.
+        """
         Trace.log(e_errors.INFO,"VOLUME ASSERT")
         self.setup_transfer(ticket, mode=ASSERT)
 
     def setup_transfer(self, ticket, mode):
+        """
+        Prepare for data transfer.
+
+        Read specified or all files on tape and report result.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from library manager.
+        :type mode: :obj:`int`
+        :arg mode: ``READ``, ``WRITE``, ``ASSERT`` (see the source)
+        """
         # see what threads are running
         threads = threading.enumerate()
         for thread in threads:
@@ -3993,8 +4297,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket = ticket
         self.run_in_thread('client_connect_thread', self.connect_client)
 
-    # check connection in ASSERT mode
     def check_connection(self):
+        """
+        Check connection in ``ASSERT`` mode.
+
+        Assert can run for a long period of time.
+        The client initiated assert could be gone.
+        This allows to check if the client is still connected and interrupt assert if it is gone.
+        """
         Trace.trace(40, "check_connection started")
         while self.mode == ASSERT:
             Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
@@ -4018,6 +4328,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def assert_vol(self):
+        """
+        Performing volume assert.
+
+        """
         self.net_driver = null_driver.NullDriver()
         ticket = self.current_work_ticket
         self.assert_ok.clear()
@@ -4188,6 +4502,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         stat = self._error
                         ticket['return_file_list'][loc_cookie] = stat
                         Trace.trace(24, "ticket!: %s"%(ticket['return_file_list'][loc_cookie],))
+                        break
 
                 if self.interrupt_assert:
                     Trace.log(e_errors.INFO, "The assert client is gone %s" %
@@ -4213,6 +4528,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def finish_transfer_setup(self):
+        """
+        Complete data transfer setup.
+
+        """
         Trace.trace(10, "client connect returned: %s %s" % (self.control_socket, self.client_socket))
         Trace.trace(24, "finish_transfer_setup %s %s"%(mode_name(self.mode), mode_name(self.setup_mode)))
         ticket = self.current_work_ticket
@@ -4414,7 +4733,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.error(msg, err)
 
     def position_media(self, verify_label=1):
-        #At this point the media changer claims the correct volume is loaded; now position it
+        """
+        At this point the media changer claims the correct volume is loaded, Now position it.
+
+        :type verify_label: :obj:`int`
+        :arg verify_label: verify tape label if 1
+        """
+
         label_tape = 0
         have_tape = 0
         err = None
@@ -4586,6 +4911,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
 
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
+        """
+        Declare that transfer is failed and complete it accordingly.
+
+        :type exc: :obj:`~exceptions.Exception`
+        :arg exc: returned by exception
+        :type msg: :obj:`str`
+        :arg msg: additional message
+        :type error_source: :obj:`int`
+        :arg error_source: :obj:`int`
+        :type dismount_allowed: :obj:`int`
+        :arg dismount_allowed: initiate tape dismount if 1
+        """
+
         exc = str(exc)
 
         if self.state == OFFLINE:
@@ -4614,10 +4952,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.tr_failed = 1
         broken = ""
         ftt_eio =0
-
-        if self.mode == ASSERT:
-            self._error = exc # I do this here to not break the rest of the code
-            self.assert_ok.set()
 
         if type(msg) != type(""):
             msg = str(msg)
@@ -4752,8 +5086,21 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.network_write_active = False # reset to indicate no network activity
 
         if self.mode == ASSERT:
-            self.tr_failed = 0 # to let assert finish
-            return
+            return_here = False
+            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO"))
+                or exc == e_errors.ENCP_GONE):
+                # stop assert
+                pass
+            else:
+                self.tr_failed = 0 # to let assert finish
+                self.assert_return = exc
+                return_here = True
+                #return
+            self._error = exc
+            self.assert_ok.set()
+            if return_here:
+                return
+
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
             self.log_state(logit=1)
@@ -4902,6 +5249,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dont_update_lm = 0
 
     def transfer_completed(self, error=None):
+        """
+        Complete the transfer.
+
+        :type  error: :obj:`int`
+        :arg  error: error code (see source)
+        """
+
         self.init_data_buffer() # reset (buffer)
         # simple synchonizatin between tape and network threads.
         # without this not updated file info is transferred to get
@@ -4978,6 +5332,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.need_lm_update = (1, None, 1, None)
 
     def maybe_clean(self):
+        """
+        Check if tape is clean.
+        """
+
         if self.memory_error:
             return 1
         Trace.log(e_errors.INFO, "maybe_clean")
@@ -5031,6 +5389,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         return did_cleaning
 
     def update_after_writing(self):
+        """
+        Update necessary information after file was successfully written to tape.
+
+        """
         previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
         eod_increment = 0
         if self.header_labels:
@@ -5174,6 +5536,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
 
     def malformed_ticket(self, ticket, expected_keys=None):
+        """
+        Check if ticked received from library manager
+        conforms to rules.
+        """
+
         msg = "Missing keys "
         if expected_keys is not None:
             msg = "%s %s"(msg, expected_keys)
@@ -5181,6 +5548,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, msg)
 
     def send_client_done(self, ticket, status, error_info=None):
+        """
+        Send ticket to client (encp, volume_assert) the final information.
+
+        """
         Trace.trace(13, "send_client_done %s"%(self.control_socket))
         Trace.trace(13, "send_client_done status %s error_info %s ticket %s"%(status, error_info, ticket))
         if self.control_socket == None:
@@ -5229,6 +5600,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass
 
     def connect_client(self):
+        """
+        Connect to client (encp) to setup the data transfer.
+
+        """
+
         self.client_socket = None
         # run this in a thread
         self.host = None
@@ -5572,6 +5948,19 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
 
     def format_lm_ticket(self, state=None, error_info=None, returned_work=None, error_source=None):
+        """
+        Format ticket to library manager to be sent by :meth:`update_lm`.
+
+        :type state: :obj:`int`
+        :arg state: mover state (see source)
+        :type error_info: :obj:`tuple`
+        :arg error_info: error code :obj:`str`, error description :obj:`str`
+        :type returned_work: :obj:`dict`
+        :arg returned_work: work ticket received from library manager
+        :type error_source: :obj:`str`
+        :arg error_source: ``TAPE``, ``ROBOT``, ``NETWORK``, ``DRIVE``, ``USER``, ``MOVER``, ``UNKNOWN``
+
+        """
         status = e_errors.OK, None
         work = None
         if state is None:
@@ -5675,6 +6064,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         return ticket
 
     def run_in_thread(self, thread_name, function, args=(), after_function=None):
+        """
+        Launch the thread.
+
+        :type thread_name: :obj:`str`
+        :arg thread_name: name of thread
+        :type function: :obj:`callable`
+        :arg function: function to run in thread
+        :type args: :obj:`tuple`
+        :arg args: function arguments
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after function in thread is completed
+        :rtype: :obj:`int` -1 if thread is already running, 0 - if thread started
+
+        """
+
         thread = getattr(self, thread_name, None)
         for wait in range(5):
             if thread and thread.isAlive():
@@ -5698,6 +6102,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 0
 
     def dismount_volume(self, after_function=None):
+        """
+        Dismount tape currently mounted in the tape drive: rewind, eject and unload.
+
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after dismount is done.
+        """
         if self.current_volume == None: # no volume - no need to dismount
             if after_function:
                 after_function()
@@ -5770,34 +6180,34 @@ class Mover(dispatching_worker.DispatchingWorker,
                             Trace.log(e_errors.ERROR, "error positioning to last fm %s %s"%(exc, detail,))
                             return
                     self.update_tape_stats()
-                    if self.tr_failed:
-                        return
-                    bloc_loc = self.bloc_loc
-                    if bloc_loc != self.last_absolute_location:
-                        Trace.alarm(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
-                                  (self.current_volume, self.last_absolute_location,
-                                   bloc_loc,))
-                        self.vcc.set_system_readonly(self.current_volume)
-                        # also set volume to NOACCESS, so far
-                        # no alarm is needed here because it is send by volume clerk
-                        # when it sets a volume to NOACCESS
-                        self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
-                        # log all running proceses
-                        self.log_processes(logit=1)
-
-                    else:
-                        try:
-                            self.tape_driver.writefm()
-                        except:
-                            Trace.alarm(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
-                            Trace.handle_error()
+                    if self.write_counter != 0:
+                        # try to write additional file mark
+                        bloc_loc = self.bloc_loc
+                        if bloc_loc != self.last_absolute_location:
+                            Trace.alarm(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
+                                      (self.current_volume, self.last_absolute_location,
+                                       bloc_loc,))
                             self.vcc.set_system_readonly(self.current_volume)
                             # also set volume to NOACCESS, so far
                             # no alarm is needed here because it is send by volume clerk
                             # when it sets a volume to NOACCESS
-                            self.set_volume_noaccess(self.current_volume, "Error writing file mark. See log for details")
+                            self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
                             # log all running proceses
                             self.log_processes(logit=1)
+
+                        else:
+                            try:
+                                self.tape_driver.writefm()
+                            except:
+                                Trace.alarm(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
+                                Trace.handle_error()
+                                self.vcc.set_system_readonly(self.current_volume)
+                                # also set volume to NOACCESS, so far
+                                # no alarm is needed here because it is send by volume clerk
+                                # when it sets a volume to NOACCESS
+                                self.set_volume_noaccess(self.current_volume, "Error writing file mark. See log for details")
+                                # log all running proceses
+                                self.log_processes(logit=1)
 
 
         if not self.do_eject:
@@ -5885,6 +6295,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.nowork({})
 
     def unload_volume(self, vol_info,after_function=None):
+        """
+        Unload tape from drive by media changer.
+
+        :type vol_info: :obj:`dict`
+        :arg vol_info: mounted volume information.
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after dismount is done.
+        """
         broken= ''
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
@@ -5986,6 +6404,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         return
 
     def mount_volume(self, volume_label, after_function=None):
+        """
+        Mount tape.
+
+        :type volume_label: :obj:`str`
+        :arg volume_label: label of the volume to be mounted.
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after mount is done.
+        """
+
         self.dismount_time = None
         self.just_mounted = 0
         if self.current_volume:
@@ -6216,6 +6643,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             #self.current_volume = None
 
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
+        """
+        Seek tape to the specified location.
+
+        :type location: :obj:`int`
+        :arg location: location on a tape.
+        :type eot_ok: :obj:`int`
+        :arg eot_ok: if 1 - ok to seek to end of tape.
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after seek is done.
+        """
+
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
         failed=0
         try:
@@ -6316,6 +6754,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             after_function()
 
     def start_transfer(self):
+        """
+        Start data transfer.
+
+        """
         Trace.trace(10, "start transfer")
         #If we've gotten this far, we've mounted, positioned, and connected to the client.
         # If seek takes too long and main thread sets mover to ERROR state
@@ -6338,6 +6780,18 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(e_errors.ERROR, "invalid mode %s" % (self.mode,))
 
     def status(self, ticket):
+        """
+        Send mover status to the client.
+
+        This method is invoked via :class:`dispatching_worker.DispatchingWorker`.
+        The corresponding enstore command is::
+
+           enstore mover --status <mover_name>
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from mover client
+        """
+
         x = ticket # to trick pychecker
         now = time.time()
         status_info = (e_errors.OK, None)
@@ -6440,7 +6894,11 @@ class Mover(dispatching_worker.DispatchingWorker,
     def check_lockfile(self):
         return os.path.exists(self.lockfile_name())
 
-    def start_draining(self, ticket):       # put itself into draining state
+    def start_draining(self, ticket):
+        """
+        Finish current work and stop accepting any new work.
+
+        """
         x = ticket # to trick pychecker
         save_state = self.state
         self.draining = 1
@@ -6461,7 +6919,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             #self.state = OFFLINE
         return
 
-    def stop_draining(self, ticket, do_restart=1):        # put itself into draining state
+    def stop_draining(self, ticket, do_restart=1):
+        """
+        Start accepting new work.
+        """
         x = ticket # to trick pychecker
         if self.state != OFFLINE:
             out_ticket = {'status':("EPROTO","Not OFFLINE")}
@@ -6480,6 +6941,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.idle()
 
     def warm_restart(self, ticket):
+        """
+        Restart gracefully: finish current work and restart.
+
+        """
         self.start_draining(ticket)
         out_ticket = {'status':(e_errors.OK,None),'state':self.state}
         self.reply_to_caller(out_ticket)
@@ -6493,6 +6958,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
 
     def quit(self, ticket):
+        """
+        Stop mover gracefully.
+
+        This method is invoked via :class:`dispatching_worker.DispatchingWorker`.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from mover client
+        """
+
         Trace.log(e_errors.INFO, "Mover has received a quit command")
         self.start_draining(ticket)
         out_ticket = {'status':(e_errors.OK,None),'state':self.state}
@@ -6507,6 +6981,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
 
     def clean_drive(self, ticket):
+        """
+        Clean drive.
+        This method is invoked via :class:`dispatching_worker.DispatchingWorker`.
+        The corresponding enstore command is::
+
+           enstore mover --clean-drive <mover_name>
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from mover client
+        """
+
         x = ticket # to trick pychecker
         save_state = self.state
         if self.state not in (IDLE, OFFLINE):
@@ -6547,8 +7032,16 @@ class MoverInterface(generic_server.GenericServerInterface):
             self.name = self.args[0]
 
 class DiskMover(Mover):
+    """
+    Implements disk mover.
+
+    """
 
     def device_dump_S(self, ticket):
+        """
+        Overriden from :meth:`Mover.device_dump_S`.
+
+        """
         x =ticket # to trick pychecker
         t = {"status":(e_errors.ERROR, "not implemented")}
         self.reply_to_caller(t)
@@ -6564,6 +7057,10 @@ class DiskMover(Mover):
         self.current_library = None
 
     def idle(self):
+        """
+        Overriden from :meth:`Mover.idle`.
+
+        """
         self.__idle()
         thread = threading.currentThread()
         if thread:
@@ -6577,6 +7074,10 @@ class DiskMover(Mover):
             self.need_lm_update = (1, None, 0, None)
 
     def nowork(self):
+        """
+        Overriden from :meth:`Mover.nowork`.
+
+        """
         Trace.trace(98, "NOWORK")
         Mover.nowork(self,{})
         self.__idle()
@@ -6589,6 +7090,10 @@ class DiskMover(Mover):
         self.nowork()
 
     def write_tape(self):
+        """
+        Overriden from :meth:`Mover.write_tape`.
+
+        """
         Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
         driver = self.tape_driver
@@ -6793,6 +7298,9 @@ class DiskMover(Mover):
                 self.transfer_failed(e_errors.EPROTO)
 
     def read_tape(self):
+        """
+        Overriden from :meth:`Mover.read_tape`.
+        """
         Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
             # calculate checksum when reading from
@@ -6908,6 +7416,7 @@ class DiskMover(Mover):
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
             if self.buffer.complete_crc != self.file_info['complete_crc']:
+                if self.tr_failed: return # do not calculate CRC if net thead detected a failed transfer
                 Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
                           (self.buffer.complete_crc, self.file_info['complete_crc']))
                 # this is to fix file db
@@ -6941,10 +7450,22 @@ class DiskMover(Mover):
                     (self.bytes_read, self.bytes_to_read))
 
     def create_volume_name(self, ip_map, volume_family):
+        """
+        Combine disk volume name.
+
+        :type ip_map: :obj:`str`
+        :arg ip_map: IP mapping from mover configuration.
+        :type volume_family: :obj:`str`
+        :arg volume_family: volume family from work ticket
+        """
+
         # time format: ISO8601
         return string.join((ip_map, volume_family,time.strftime("%Y-%m-%dT%H:%M:%SZ")),':')
 
     def setup_transfer(self, ticket, mode):
+        """
+        Overriden from :meth:`Mover.setup_transfer`.
+        """
         self.lock_state()
         self.save_state = self.state
 
@@ -6977,7 +7498,7 @@ class DiskMover(Mover):
 
         self.state = SETUP
         # the following settings are needed by LM to update it's queues
-        self.tmp_vol = ticket['fc'].get('external_label', None)
+        self.tmp_vol = ticket['vc'].get('external_label', None)
         self.tmp_vf = ticket['vc'].get('volume_family', None)
         self.need_lm_update = (1, self.state, 1, None)
         self.unlock_state()
@@ -6985,12 +7506,21 @@ class DiskMover(Mover):
         ticket['mover']={}
         ticket['mover'].update(self.config)
         ticket['mover']['device'] = "%s:%s" % (self.config['ip_map'], self.config['device'])
+        self.current_package =  ticket['fc'].get('external_label', None)
         if ticket['fc']['external_label'] == None:
             del(ticket['fc']['external_label'])
+        else:
+            ticket['fc']['external_label'] = ticket['vc']['external_label']
         self.current_work_ticket = ticket
+        Trace.log(DEBUG_LOG, "CURR TICK: %s"%(self.current_work_ticket,))
+        Trace.trace(DEBUG_LOG, "CURR PACK %s"%(self.current_package,))
         self.run_in_thread('client_connect_thread', self.connect_client)
 
     def finish_transfer_setup(self):
+        """
+        Overriden from :meth:`Mover.finish_transfer_setup`.
+
+        """
         Trace.trace(10, "client connect returned: %s %s" % (self.control_socket, self.client_socket))
         ticket = self.current_work_ticket
         if not self.client_socket:
@@ -7030,7 +7560,7 @@ class DiskMover(Mover):
 
         # if client_crc is ON:
         #    write requests -- calculate CRC when writing from memory to tape
-        #    read requetsts -- calculate CRC when reading from tape to memory
+        #    read requests -- calculate CRC when reading from tape to memory
         # if client_crc is OFF:
         #    write requests -- calculate CRC when writing to memory
         #    read requetsts -- calculate CRC when reading memory
@@ -7038,7 +7568,7 @@ class DiskMover(Mover):
         self.reset(sanity_cookie, client_crc_on)
         # restore self.current_work_ticket after it gets cleaned in the reset()
         self.current_work_ticket = ticket
-        self.current_volume =  self.file_info.get('external_label', None)
+        self.current_volume =  self.vol_info.get('external_label', None)
         self.delay = 31536000  # 1 year
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=fc['address'])
@@ -7046,6 +7576,8 @@ class DiskMover(Mover):
                                                          server_address=vc['address'])
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = self.current_volume
+        Trace.log(e_errors.INFO, "CUR LABEL %s" % (volume_label,))
+
         self.current_location = 0L
         if volume_label:
             self.vol_info.update(self.vcc.inquire_vol(volume_label))
@@ -7141,6 +7673,10 @@ class DiskMover(Mover):
 
     # check connection in READ mode
     def check_connection(self):
+        """
+        Overriden from :meth:`Mover.check_connection`.
+
+        """
         Trace.trace(40, "check_connection started")
         if self.mode == READ:
             Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
@@ -7160,13 +7696,20 @@ class DiskMover(Mover):
     # stage file into cache
     # returns file cache location or None
     def stage_file(self):
-        cache_status = self.file_info['cache_status']
+        """
+        Stage file into cache.
+
+        :rtype: :obj:`str` file location in cache or :obj:`None`
+        """
+
+        info = self.fcc.bfid_info(self.file_info['bfid'])
+        cache_status = info['cache_status']
         if cache_status != file_cache_status.CacheStatus.CACHED:
             Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
             # make this better!
             # When file gets staged its cache_status must change as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
-            if cache_status == file_cache_status.CacheStatus.PURGING_REQUESTED:
+            if cache_status in (file_cache_status.CacheStatus.PURGING_REQUESTED,):
                 # There were lots of cases when files do not get purged leaving them
                 # in this intermediate state and preventing from being transferred immediately.
                 info = self.fcc.bfid_info(self.file_info['bfid'])
@@ -7198,8 +7741,25 @@ class DiskMover(Mover):
 
             file_cache_location = None
             loop_counter = 1L
+            open_bitfile_sent = False
             while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
+                if info['cache_status'] in (file_cache_status.CacheStatus.PURGING_REQUESTED,
+                                            file_cache_status.CacheStatus.PURGING):
+                    # looks as there was no request to open bitfile
+                    if not open_bitfile_sent:
+                        open_bitfile_sent = True
+                        package_id = info.get('package_id')
+                        if package_id:
+                            rticket = self.fcc.open_bitfile_for_package(package_id)
+                        else:
+                            rticket = self.fcc.open_bitfile(info['bfid'])
+                        Trace.log(DEBUG_LOG, "open_bifile returned %s"%(rticket,))
+                        if rticket['status'][0] != e_errors.OK:
+                            Trace.log(e_errors.ERROR, "File staging has failed for %s %s"%
+                                      (info['bfid'], info['pnfs_name0']))
+                            break
+
                 Trace.log(DEBUG_LOG, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
 
                 if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
@@ -7243,10 +7803,9 @@ class DiskMover(Mover):
             loop_counter = loop_counter + 1
         else:
             # check if file exists in cache
-            file_cache_location = self.file_info.get('cache_location')
-            if os.path.exists(file_cache_location):
-                file_cache_location = self.file_info.get('cache_location', None)
-            else:
+            file_cache_location = info.get('cache_location')
+            Trace.log(e_errors.INFO, "check if file is in cache %s"%(file_cache_location,))
+            if not os.path.exists(file_cache_location):
                 Trace.log(e_errors.ERROR, "file cache status was reported as %s, but it is not in cache. Setting to %s" %
                           (file_cache_status.CacheStatus.CACHED, file_cache_status.CacheStatus.PURGED))
                 file_cache_location = None
@@ -7260,6 +7819,10 @@ class DiskMover(Mover):
         return file_cache_location
 
     def position_media(self, filename):
+        """
+        Overriden from :meth:`Mover.position_media`.
+
+        """
         Trace.log(e_errors.INFO, "position media for %s"%(filename,))
         x = filename # to trick pychecker
         have_tape = 0
@@ -7308,6 +7871,11 @@ class DiskMover(Mover):
         return 1
 
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=0):
+        """
+        Overriden from :meth:`Mover.transfer_failed`.
+
+        """
+
         if self.tr_failed:
             return          ## this function has been already called in the other thread
         self.tr_failed = 1
@@ -7367,6 +7935,7 @@ class DiskMover(Mover):
 
 
         self.current_work_ticket['status'] = (str(exc), str(msg))
+        self.current_work_ticket['fc']['external_label'] = self.current_work_ticket['vc']['external_label']
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
         self.network_write_active = False # reset to indicate no network activity
@@ -7390,12 +7959,21 @@ class DiskMover(Mover):
 
             self.offline()
         else:
-            self.idle()
-            self.current_volume = None
+            if self.mode == READ:
+                self.state = HAVE_BOUND
+                self.need_lm_update = (1, None, 1, None)
+            else:
+                self.idle()
+                self.current_volume = None
+        Trace.log(e_errors.INFO, "transfer failed state %s"%(state_name(self.state),))
 
-        self.tr_failed = 0
+        #self.tr_failed = 0
 
     def transfer_completed(self):
+        """
+        Overriden from :meth:`Mover.transfer_completed`.
+
+        """
         self.consecutive_failures = 0
         self.timer('transfer_time')
         ticket = self.current_work_ticket
@@ -7433,9 +8011,16 @@ class DiskMover(Mover):
                 self.transfer_failed(e_errors.OSERROR, 'transfer failure: %s' % (str(detail),), error_source=DRIVE)
                 self.idle()
 
+        Trace.trace(10, "transfer complete mode %s"%(self.mode,))
+        if self.mode == READ:
+            self.state = HAVE_BOUND
+            self.need_lm_update = (1, None, 0, None)
+        Trace.log(e_errors.INFO, "transfer complete state %s"%(state_name(self.state),))
+        Trace.trace(10, "transfer complete state %s"%(state_name(self.state),))
 
         now = time.time()
         self.dismount_time = now + self.delay
+        self.current_work_ticket['fc']['external_label'] = self.current_work_ticket['vc']['external_label']
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
@@ -7448,12 +8033,17 @@ class DiskMover(Mover):
         if self.draining:
             self.offline()
         else:
-            self.idle()
+            if self.mode != READ:
+                self.idle()
         self.need_lm_update = (1, None, 1, None)
         self.log_state()
 
 
     def update_after_writing(self):
+        """
+        Overriden from :meth:`Mover.update_after_writing`.
+
+        """
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
         fc_ticket = {  'location_cookie': self.file,
@@ -7544,18 +8134,28 @@ class DiskMover(Mover):
 
 
     def format_lm_ticket(self, state=None, error_info=None, returned_work=None, error_source=None):
+        """
+        Overriden from :meth:`Mover.format_lm_ticket`.
+
+        """
         status = e_errors.OK, None
         work = None
         if state is None:
             state = self.state
-        Trace.trace(20,"format_lm_ticket: state %s"%(state,))
+        Trace.trace(20,"format_lm_ticket: state %s"%(state_name(state),))
         volume_label = self.current_volume
+        Trace.trace(20,"format_lm_ticket: CV %s lv %s vf %s lvf %s"%(self.current_volume, self.last_volume, self.volume_family, self.last_volume_family))
         if self.current_volume:
             volume_label = self.current_volume
             volume_family = self.volume_family
         else:
             volume_label = self.last_volume
             volume_family = self.last_volume_family
+
+        external_label = None
+        if hasattr(self, "current_package") and self.current_package:
+            external_label = volume_label
+            volume_label = self.current_package
 
         if state is IDLE:
             work = "mover_idle"
@@ -7616,6 +8216,7 @@ class DiskMover(Mover):
             "mover":  self.name,
             "address": self.address,
             "external_label":  volume_label,
+            "volume": external_label,
             "current_location": loc_to_cookie(0),
             'mover_type': self.mover_type,
             'ip_map' : self.ip_map,
@@ -7658,6 +8259,10 @@ class DiskMover(Mover):
     """
 
     def status(self, ticket):
+        """
+        Overriden from :meth:`Mover.status`.
+
+        """
         x =ticket # to trick pychecker
         now = time.time()
         status_info = (e_errors.OK, None)

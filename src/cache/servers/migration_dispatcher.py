@@ -50,13 +50,15 @@ class MigrationList:
 
     def __str__(self):
         return "id %s list: %s"%(self.id, self.list_object)
-        
+
 class MigrationDispatcher():
 
     def __init__(self,
                  name,
                  broker,
-                 queue_work,
+                 queue_write,
+                 queue_read,
+                 queue_purge,
                  queue_reply,
                  lock,
                  migration_pool,
@@ -66,9 +68,11 @@ class MigrationDispatcher():
         @type name: str
         @param name - migration dispatcher name
         @param broker - qpid broker
-        @param queue_work - queue for miration dispatcher requests (request lsists are sent to this queue
+        @param queue_write - queue for migration dispatcher write requests
+        @param queue_read - queue for migration dispatcher read requests
+        @param queue_purge - queue for migration dispatcher purge requests
         @param queue_reply - replies from migrators are sent to this queue
-        @param migration_pool - poll where PE Server part puts lists to get served by Migration Dispatcher
+        @param migration_pool - pool where PE Server part puts lists to get served by Migration Dispatcher
         @param purge_pool - purge pool where PE Server part puts lists to get served by Migration Dispatcher
         @param clustered_configuration - indicates that clustered configuration is used or not
         '''
@@ -78,7 +82,7 @@ class MigrationDispatcher():
         self.lock = lock
         self.migration_pool = migration_pool
         self.purge_pool = purge_pool
-        
+
         self.log = logging.getLogger('log.encache.%s' % name)
         self.trace = logging.getLogger('trace.encache.%s' % name)
 
@@ -92,13 +96,28 @@ class MigrationDispatcher():
 
         amq_broker = (broker['host'], broker['port'])
         self.trace.debug("create clients")
-        self.queue_work = queue_work
+        self.queue_write = queue_write
+        self.queue_read = queue_read
+        self.queue_purge = queue_purge
+        # Each type of request has its own queue
         if self.clustered_configuration:
-            q_w = "%s; {create:always,node:{type:topic,x-declare:{type:direct}}}"%(queue_work,)
+            # And its own exchange for clustered configuration.
+            q_wr = "%s; {create:always,node:{type:topic,x-declare:{type:direct}}}"%(queue_write,)
+            q_rd = "%s; {create:always,node:{type:topic,x-declare:{type:direct}}}"%(queue_read,)
+            q_p = "%s; {create:always,node:{type:topic,x-declare:{type:direct}}}"%(queue_purge,)
         else:
-            q_w = "%s; {create: always}"%(queue_work,)
+            q_wr = "%s; {create: always}"%(queue_write,)
+            q_rd = "%s; {create: always}"%(queue_read,)
+            q_p = "%s; {create: always}"%(queue_purge,)
         q_r = "%s; {create:always}"%(queue_reply,)
-        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=q_r, target=q_w)
+        self.qpid_client_write = cmc.EnQpidClient(amq_broker, myaddr=q_r, target=q_wr)
+        self.qpid_client_read = cmc.EnQpidClient(amq_broker, myaddr=None, target=q_rd)
+        self.qpid_client_purge = cmc.EnQpidClient(amq_broker, myaddr=None, target=q_p)
+        self.qpid_client_write.start()
+        self.qpid_client_read.start()
+        self.qpid_client_purge.start()
+
+        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=q_r, target=q_wr)
 
         # start it here
         self.start()
@@ -115,25 +134,41 @@ class MigrationDispatcher():
     def _ack_message(self, msg):
        try:
           self.trace.debug("_ack_message(): sending acknowledge")
-          self.qpid_client.ssn.acknowledge(msg)         
+          self.qpid_client.ssn.acknowledge(msg)
        except:
           exc, emsg = sys.exc_info()[:2]
-          self.trace.debug("_ack_message(): Can not send auto acknowledge for the message. Exception e=%s msg=%s", str(exc), str(emsg))    
+          self.trace.debug("_ack_message(): Can not send auto acknowledge for the message. Exception e=%s msg=%s", str(exc), str(emsg))
           pass
 
-    def _create_sender(self, queue, routing_key):
-        Trace.trace(10, "_create_sender for %s %s"%(self.queue_work, routing_key))
+    def _create_sender(self, client, queue, routing_key):
+        # Routing key is valuable only for clustered configuration
+        # and is defined by disk library manager.
+        # The routing key is not enough for separate queues based on the type of request.
+        # Each request type has its own message queue defined by request type and disk library:
+        #
+        #
+        #                           |--- read_LIB1
+        #   exchange for cluster 1: |--- write_LIB1
+        #                           |--- purge_LIB1
+        #
+        #                           |--- read_LIB2
+        #   exchange for cluster 2: |--- write_LIB2
+        #                           |--- purge_LIB2
+        #
+
+        key = "_".join((queue, routing_key))
+        Trace.trace(10, "_create_sender for %s %s"%(queue, key))
         if self.clustered_configuration:
-            snd = self.qpid_client.ssn.sender("%s/%s; {create:always,node:{type: topic, x-declare:{type:direct}}}"%(queue, routing_key))
+            snd = client.ssn.sender("%s/%s; {create:always,node:{type: topic, x-declare:{type:direct}}}"%(queue, key))
         else:
-            snd = self.qpid_client.ssn.sender("%s; {create:always}"%(queue,))
-            
+            snd = client.ssn.sender("%s; {create:always}"%(queue,))
+
         return snd
 
     def send_status_request(self):
         Trace.trace(10, "Starting send_status_request")
         status_cmd = mw_client.MWCStatus(request_id=0)
-        
+
         while 1:
             for pool in (self.migration_pool, self.purge_pool):
 
@@ -160,24 +195,33 @@ class MigrationDispatcher():
     def handle_message(self,m):
         # @todo : check "type" present and is string or unicode
         msg_type = m.properties["en_type"]
-        
+
         self.trace.debug("handle_message %s type %s", m, msg_type)
         # can use these to exclude redelivered messages
         correlation_id = m.correlation_id
         redelivered = m.redelivered
         Trace.trace(10, "handle_message:redelivered %s"%(redelivered,))
-        
+
         # @todo check if message is on heap for processing
         if redelivered :
             # this may require additional processing
             pass
-        if self.migration_pool.has_key(m.correlation_id):
-           pool = self.migration_pool
-        elif self.purge_pool.has_key(m.correlation_id):
-           pool = self.purge_pool
+        if m.correlation_id in self.migration_pool:
+            Trace.trace(10, "handle_message:in migration pool %s"%(self.migration_pool[m.correlation_id],))
+            pool = self.migration_pool
+            if self.migration_pool[m.correlation_id].list_object.list_type == mt.CACHE_MISSED:
+                send_queue = self.queue_read
+                client = self.qpid_client_read
+            else:
+                send_queue = self.queue_write
+                client = self.qpid_client_write
+        elif m.correlation_id in self.purge_pool:
+            pool = self.purge_pool
+            send_queue = self.queue_purge
+            client = self.qpid_client_purge
         else:
-            # dispacher must have been restarted and does not have
-            # a record with this cirrelation id
+            # Dispatcher must have been restarted and does not have
+            # a record with this correlation id.
             return
         Trace.trace(10, "handle_message:in pool %s"%(pool[m.correlation_id],))
 
@@ -195,7 +239,7 @@ class MigrationDispatcher():
                    pass # for now
                self.lock.release()
 
-        if msg_type in (mt.MWR_ARCHIVED, mt.MWR_PURGED, mt.MWR_STAGED): 
+        if msg_type in (mt.MWR_ARCHIVED, mt.MWR_PURGED, mt.MWR_STAGED):
             if pool.has_key(m.correlation_id):
                 self.lock.acquire()
                 try:
@@ -203,21 +247,21 @@ class MigrationDispatcher():
                 except:
                     pass
                 self.lock.release()
-            Trace.trace(10, "handle_message:After %s"%(pool,)) 
-            
+            Trace.trace(10, "handle_message:After %s"%(pool,))
+
         if msg_type == mt.MWR_STATUS:
             # This message type can be received only as a result
             # status request sent from this migration dispatcher,
             # which means that the addressed migrator is doing work
             # for migration dispatcher
-            
+
             Trace.trace(10, "handle_message: MWR_STATUS recieved %s %s"%(m.content, m.correlation_id))
             Trace.trace(10, "handle_message: MPOOL %s"%(pool,))
             if  m.content['migrator_status'] == None or m.content['migrator_status'] == mt.FAILED:
                 # Migrator restarted, but before restart it was doing
                 # some work which could have failed.
                 # in this case the request needs to be re-sent
-                if pool.has_key(m.correlation_id): 
+                if pool.has_key(m.correlation_id):
                     Trace.trace(10, "handle_message: Migrator replied with status %s"%
                                 (m.content['migrator_status'],))
                     if m.content['migrator_status'] == mt.FAILED:
@@ -227,17 +271,18 @@ class MigrationDispatcher():
                             # so that it can be rebuilt later
                             del(pool[m.correlation_id])
                             Trace.trace(10, "deleted from migration pool to get rebuilt")
-                    
-                    if pool.has_key(m.correlation_id): 
+
+                    if pool.has_key(m.correlation_id):
                         Trace.trace(10, "handle_message: reposting request")
                         pool[m.correlation_id].state = file_list.FILLED
                         disk_library = pool[m.correlation_id].list_object.disk_library
-                        sender = self._create_sender(self.queue_work, disk_library)
-                           
-                           
+                        #sender = self._create_sender(self.queue_work, disk_library)
+                        sender = self._create_sender(client, send_queue, disk_library)
+
+
                         self.migrate_list(pool[m.correlation_id], sender)
             else:
-                if pool.has_key(correlation_id): 
+                if pool.has_key(correlation_id):
                     if m.content['migrator_status'] == pool[m.correlation_id].expected_reply:
                         # expected reply is announced in the corresponding
                         # migration pool entry
@@ -245,22 +290,22 @@ class MigrationDispatcher():
                         # all messages for a given action have the same correlation id.
                         Trace.trace(10, "handle_message: received expected status reply")
                         del(pool[m.correlation_id])
-                        
+
                     else:
                         Trace.trace(10, "handle_message: received %s expected %s"%
                                     (m.content['migrator_status'],
                                      self.pool[m.correlation_id].expected_reply))
         Trace.trace(10, "handle_message:returning %s"%(True,))
-                
+
         return True
-        
+
     def serve_qpid(self):
         """
         read qpid messages from queue
         """
         self.qpid_client.start()
         print "QPID client started", self.shutdown
-        
+
         try:
             while not self.shutdown:
                 # Fetch message from qpid queue
@@ -276,16 +321,16 @@ class MigrationDispatcher():
                    self.trace.debug("got qpid message=%s", message)
                    if message.properties.has_key("spout-id"):
                        message.correlation_id = message.properties["spout-id"]
-                       self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id ) 
+                       self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id )
                 except:
-                   self.trace.info("exception setting it to spout-id %s", message.correlation_id ) 
+                   self.trace.info("exception setting it to spout-id %s", message.correlation_id )
                    pass
                 #end DEBUG hack
 
                 do_ack = False
                 try:
                     do_ack = self.handle_message(message)
-                    self.trace.debug("message processed correlation_id=%s, do_ack=%s", message.correlation_id, do_ack )   
+                    self.trace.debug("message processed correlation_id=%s, do_ack=%s", message.correlation_id, do_ack )
                 except Exception,e:
                     # @todo - print exception type cleanly
                     Trace.handle_error()
@@ -293,27 +338,27 @@ class MigrationDispatcher():
                                 (e,))
                     self.log.error("can not process message. Exception %s. Original message = %s",e,message)
                     do_ack = True # to not hold message in the queue
-             
+
                 # Acknowledge ORIGINAL ticket thus we will not get it again
                 Trace.trace(10, "serve_qpid doack %s"%(do_ack,))
                 if do_ack:
                     self._ack_message(message)
 
-        # try / while 
+        # try / while
         finally:
             self.qpid_client.stop()
 
     def start(self):
-        # start server in separate thread 
-        self.qpid_srv_thread = threading.Thread(target=self.serve_qpid) 
+        # start server in separate thread
+        self.qpid_srv_thread = threading.Thread(target=self.serve_qpid)
         self.qpid_srv_thread.start()
-        self.status_thread = threading.Thread(target=self.send_status_request, name="Status") 
+        self.status_thread = threading.Thread(target=self.send_status_request, name="Status")
         self.status_thread.start()
-        
+
     def stop(self):
-        # tell serving thread to stop and wait until it finish    
+        # tell serving thread to stop and wait until it finish
         self.shutdown = True
-        
+
         self.qpid_client.stop()
         self.srv_thread.join()
         self.status_thread.join()
@@ -328,7 +373,7 @@ class MigrationDispatcher():
                migration_list.expected_reply =  mt.ARCHIVED
             elif migration_list.list_object.list_type == mt.CACHE_MISSED:
                command = mw_client.MWCStage(migration_list.list_object.file_list, correlation_id = migration_list.id)
-               migration_list.expected_reply = mt.CACHED 
+               migration_list.expected_reply = mt.CACHED
             elif migration_list.list_object.list_type == mt.MDC_PURGE:
                command = mw_client.MWCPurge(migration_list.list_object.file_list, correlation_id = migration_list.id)
                migration_list.expected_reply = mt.PURGED
@@ -337,7 +382,7 @@ class MigrationDispatcher():
                 # and set corresponding list state to ACTIVE
                 # for monitoring of execution
                 send_client.send(command)
-                
+
                 migration_list.state = file_list.ACTIVE
             except:
                 Trace.handle_error()
@@ -345,10 +390,24 @@ class MigrationDispatcher():
     def start_migration(self, pool, key):
         try:
             item = pool[key]
-            sender = self._create_sender(self.queue_work, item.list_object.disk_library)
-            self.migrate_list(item, sender)
         except KeyError, detail:
-            Trace.log(e_errors.ERROR, "Error adding to list %s %s"%(key, item))
+            Trace.log(e_errors.ERROR, "Error adding to list. No such key %s"%(key,))
+            return
+        if item.list_object.list_type == mt.CACHE_MISSED:
+            send_queue = self.queue_read
+            client = self.qpid_client_read
+        elif item.list_object.list_type == mt.MDC_PURGE:
+            send_queue = self.queue_purge
+            client = self.qpid_client_purge
+        elif item.list_object.list_type == mt.CACHE_WRITTEN:
+            send_queue = self.queue_write
+            client = self.qpid_client_write
+        else:
+            Trace.alarm(e_errors.WARNING, "Unknown message type %s"%(item,))
+            return
+
+        sender = self._create_sender(client, send_queue, item.list_object.disk_library)
+        self.migrate_list(item, sender)
 
 
 
