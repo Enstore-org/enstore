@@ -1593,7 +1593,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 # request to stage a package
                 # get all information about children
                 #rc = self.fcc.get_children(package_id)
-                rc = self.infoc.get_children(package_id, timeout=20*60, retry=1)
+                rc = self.fcc.get_children(package_id, timeout=20*60, retry=1)
                 Trace.trace(10, "read_from_tape, bfid_data %s"%(rc,))
                 if rc ['status'][0] != e_errors.OK:
                     Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
