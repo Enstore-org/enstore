@@ -972,6 +972,9 @@ class LibraryManagerMethods:
     # this method applies only to disk movers
     # it checks whether file is avalable on a disk of the disk mover
     def is_file_available(self, fcc, requested_file_bfid):
+        Trace.trace(self.trace_level+1, 'is_file_available: requested_file_bfid %s'%(requested_file_bfid,))
+        if not requested_file_bfid:
+            return False
         ticket = fcc.bfid_info(requested_file_bfid)
         Trace.trace(self.trace_level+1, 'bfid info %s'%(ticket,))
         if ticket['status'][0] ==  e_errors.OK:
