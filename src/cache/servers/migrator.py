@@ -56,7 +56,7 @@ import cache.en_logging.en_logging
 
 DEBUGLOG=11 # log on this level to DEBUGLOG
 
-MAX_PROCESS = 10
+MAX_PROCESS = 70
 
 # intermediate states of migrator
 # to check in more details of what migrator is doing
