@@ -57,6 +57,8 @@ import cache.en_logging.en_logging
 DEBUGLOG=11 # log on this level to DEBUGLOG
 
 MAX_PROCESS = 70
+FCC_TO = 60 # timeout for file clerk and info server requests
+FCC_RETRY = 2 # number of retries for file clerk and info server requests
 
 # intermediate states of migrator
 # to check in more details of what migrator is doing
@@ -505,6 +507,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 rc = 1
         return rc
 
+    # wrapper method for infoc.bfid_info
+    def bfid_info(self, bfid):
+        return self.infoc.bfid_info(bfid, timeout=FCC_TO, retry=FCC_RETRY)
+
     # check files prepared for writing to tape
     # @param package - package complete path
     # @return True/False
@@ -784,7 +790,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # Convert unicode to ASCII strings.
             if type(bfid) == types.UnicodeType:
                 bfid = bfid.encode("utf-8")
-            rec = self.infoc.bfid_info(bfid)
+            rec = self.bfid_info(bfid)
             Trace.trace(10, "write_to_tape: bfid_info %s"%(rec,))
 
             if (rec['status'][0] == e_errors.OK):
@@ -904,7 +910,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # deduce package destination path in name space
         # from bfid info of the first file in the package
         dst_package_fn = os.path.basename(src_file_path)
-        rec = self.infoc.bfid_info(bfid)
+        rec = self.bfid_info(bfid)
         if (rec['status'][0] != e_errors.OK):
             Trace.log(e_errors.ERROR,
                       "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
@@ -1060,7 +1066,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # move destination file to its final destination
             # create final destination directory
             # <packages_dir>/<volume_family>/<external_label>
-            bfid_info = self.infoc.bfid_info(dst_bfids[0])
+            bfid_info = self.bfid_info(dst_bfids[0])
             if (bfid_info['status'][0] != e_errors.OK):
                 Trace.log(e_errors.ERROR,
                           "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
@@ -1082,7 +1088,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             original_pack_bfid = rec['original']
             if rec['original'] != dst_bfids[0]:
                 # get bfid info of original
-                bfid_info = self.infoc.bfid_info(rec['original'])
+                bfid_info = self.bfid_info(rec['original'])
                 if (bfid_info['status'][0] != e_errors.OK):
                     Trace.log(e_errors.ERROR,
                               "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
@@ -1177,7 +1183,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         for bfid in bfid_list:
             if bfid in dst_bfids:
-                rec = self.infoc.bfid_info(bfid)
+                rec = self.bfid_info(bfid)
             else:
                 rec = {}
                 rec['bfid'] = bfid
@@ -1220,7 +1226,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                    dupl_records = []
                    for rec in records:
                        # for duplcate files we need a complete file info.
-                       new_rec = self.infoc.bfid_info(rec['bfid'])
+                       new_rec = self.bfid_info(rec['bfid'])
                        Trace.trace(10, "complete_write_to_tape: creating duplicates %s"%(rec,))
                        new_rec['original_bfid'] = rec['bfid']
                        new_rec['package_id'] = dupl['bfid']
@@ -1296,7 +1302,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             if type(bfid) == types.UnicodeType:
                 bfid = bfid.encode("utf-8")
 
-            rec = self.infoc.bfid_info(bfid)
+            rec = self.bfid_info(bfid)
             if self.really_purge(rec):
                 rec['cache_status'] = file_cache_status.CacheStatus.PURGING
                 Trace.trace(10, "purge_files: purging %s"%(rec,))
@@ -1581,7 +1587,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             bfid = request_list[0]['bfid']
             if type(bfid) == types.UnicodeType:
                 bfid = bfid.encode("utf-8")
-            rec = self.infoc.bfid_info(bfid)
+            rec = self.bfid_info(bfid)
             Trace.trace(10, "read_from_tape: rec %s"%(rec,))
 
             if rec['status'][0] != e_errors.OK:
@@ -1611,7 +1617,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 if type(bfid) == types.UnicodeType:
                     bfid = bfid.encode("utf-8")
 
-                rec = self.infoc.bfid_info(bfid)
+                rec = self.bfid_info(bfid)
                 if rec['status'][0] == e_errors.OK:
                     if not package_id:
                         # read the package id if the First file
@@ -1628,7 +1634,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if not package_id:
             Trace.alarm(e_errors.ERROR, "is file on tape? bfid=%s"%(bfid,))
             return False
-        package = self.infoc.bfid_info(package_id)
+        package = self.bfid_info(package_id)
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
         Trace.log(e_errors.INFO, "Will stage package %s"%(package,))
         self.status_dict['current_migration_file'] = package['pnfs_name0']
