@@ -57,6 +57,73 @@ sayE() { if [ -n "${ERROR}" ];   then  echo $version `date` ${node:-nonode} ${co
 sayS() { if [ -n "${ERROR}" ];   then  echo $version `date` ${node:-nonode} ${command:-nocmd} ${pnfsid:-noid} ${filepath:-nofilepath} $* >> $SUCCESS; fi
       }
 
+#
+# returns file name for pnfs id
+#
+pathfinder() {
+    id=$1
+    fname=`head -n 1 "/pnfs/fs/.(nameof)($id)"`
+    sum=$fname
+    while : ; do
+	id=`head -n 1 "/pnfs/fs/.(parent)($id)" 2>/dev/null`
+	if [ $? -ne 0 ] ; then break ; fi
+	fname=`head -n 1 "/pnfs/fs/.(nameof)($id)" 2>/dev/null`
+	if [ $? -eq 0 ] ; then
+	    sum=${fname}/$sum
+	fi
+    done
+    echo $sum
+}
+
+#
+# TODO : be able to extract constants from somewhere (dcache configuration)
+#
+
+DCAP_DOOR=pnfs://fndca1.fnal.gov
+DCAP_PORT=24125
+DCAP_URL=${DCAP_DOOR}:${DCAP_PORT}
+ADMIN_DOOR=fndca.fnal.gov
+ADMIN_PORT=24223
+
+#
+# check if file is online
+#
+dc_check() {
+    pnfs_id=$1
+    dccp -P -t -1 ${DCAP_URL}/${pnfs_id} > /dev/null 2>&1
+}
+
+#
+# pre-stage a file
+#
+dc_stage() {
+    pnfs_id=$1
+    dccp -P ${DCAP_URL}/${pnfs_id}
+}
+
+#
+# admin interface
+#
+TMP=/tmp/$$.cmd
+
+cmd="ssh -1 -x -o StrictHostKeyChecking=no -i $E_H/.ssh-dcache/identity -l enstore -c blowfish -p ${ADMIN_PORT} ${ADMIN_DOOR}"
+
+admin_interface() {
+    for i in "$@"
+    do
+      echo "$i" >> ${TMP}
+    done
+    echo ".."     >> ${TMP}
+    echo "logoff" >> ${TMP}
+    $cmd < $TMP 2>/dev/null | tr -d '\r'
+    rm -f ${TMP}
+}
+
+rc_ls() {
+    admin_interface "cd PoolManager" "rc ls ${1}.*" | grep -v "PoolManager" | grep "$1"
+}
+
+
 atrap1() { say real-encp trapped SIGHUP; }
 atrap2() { say real-encp trapped SIGINT; }
 atrap3() { say real-encp trapped SIGQUIT; exit 1; }
@@ -242,11 +309,116 @@ if [ "$command" = "get" ] ; then
 #
 # Check if this is SFA file and we can just copy it
 #
-   t0=`date +"%s"`
    py_file="/tmp/${si_bfid}_$$.py"
    enstore info --file ${si_bfid} 1> ${py_file} 2>/dev/null
    rc=$?
    if [ $rc -eq 0 ]; then
+       package_id=`python -c '
+import string
+import sys
+try:
+  f=open("'${py_file}'","r")
+  code="d=%s"%(string.join(f.readlines(),""))
+  f.close()
+  exec(code)
+  print d.get("package_id")
+except:
+  sys.exit(1)
+'`
+       rc=$?
+       if [ ${rc} -eq 0 -a "${package_id}" != "" -a "${package_id}" != "None" -a "${package_id}" != "${si_bfid}" ]; then
+	   #
+	   # get package pnfsid
+	   #
+	   package_pnfsid=`enstore info --file ${package_id} | grep pnfsid | sed -e "s/[[:punct:]]//g" | awk '{ print $NF}'`
+	   #
+	   # get list of children
+	   #
+	   n_children=`enstore info --file ${package_id}  | grep active_package_files_count |  sed -e "s/[[:punct:]]//g"  |awk '{ print $NF}'`
+	   #
+	   # getting list of children overloads info server, so only do it for smallish packages
+	   #
+	   if [ ${n_children} -lt 50 ]; then
+	       children=`enstore info --children ${package_id} | grep pnfsid | sed -e "s/[[:punct:]]//g" | awk '{ print $NF}'`
+	       #
+	       # loop over packaged files and pre-stage then with dccp -P
+	       #
+	       for child in ${children}; do
+		   if [ "${child}" !=  "${package_pnfsid}"  -a  "${child}" !=  ${pnfsid} ]; then
+		       #
+		       # check that the file still exists
+		       #
+		       if [ ! -e ${pnfs_root}/".(nameof)(${child})" ]; then
+			   continue
+		       fi
+		       #
+		       # check if file is already online
+		       #
+		       dc_check ${child}
+		       rc=$?
+		       if [ ${rc} -eq 0 ]; then
+			   say "File ${child} is online "
+			   continue
+		       fi
+		       #
+		       # file is offline, check if we already have it in PoolManager queue
+		       #
+		       rc_ls ${child}
+		       rc=$?
+		       if [ $rc -eq 0 ]; then
+			   #
+			   # File is in PoolManager queue, continue
+			   #
+			   say "File ${child} is staging. Skipping "
+			   continue
+		       fi
+		       say "Pre-staging ${child}"
+		       dc_stage ${child}
+		       rc=$?
+		       if [ ${rc} -ne 0 ]; then
+			   say "Failed to pre-stage $child"
+		       fi
+		   fi
+	       done
+	   fi
+	   #
+	   # continue handling original file
+	   #
+	   package_path=`pathfinder ${package_pnfsid}`
+	   #
+	   # start timer to measure transfer time
+	   #
+	   t0=`date +"%s"`
+	   #
+	   # strip leading slash from location cookie
+	   #
+	   file_path=`echo ${uri_location_cookie} | sed -e 's/^\///g'`
+	   #
+	   # dcap preload library
+	   #
+	   export LD_PRELOAD=/usr/lib64/libpdcap.so.1
+	   #
+	   # extract file from tar
+	   #
+	   file_dir=`dirname ${filepath}`
+	   (cd ${file_dir} && tar -xf ${package_path} ${file_path} --strip-components 5 --force-local)
+	   rc=$?
+	   if [ $rc -eq 0 ]; then
+	       chmod 0644 $filepath
+	       touch $filepath
+	       t1=`date +"%s"`
+	       dt=`echo "${t1}-${t0}"|bc`
+	       say SFA Completed untarring ${uri_size} bytes in ${dt} sec.
+	       exit 0
+	   else
+	       rm -f ${file_path}
+	       say Failed to untar file ${pnfsid}, Proceed to encp it
+	   fi
+       fi
+       #
+       # before encping file check if it is cached and scp it from aggregators:
+       #
+       t0=`date +"%s"`
        cache_location=`python -c '
 import string
 import sys
@@ -310,7 +482,9 @@ except:
 	   fi
        fi
    fi
-
+   #
+   # execute normal encp
+   #
    say  g1   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath
 nice -n -3   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath >>$LOGFILE 2>&1
    ENCP_EXIT=$?
