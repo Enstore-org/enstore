@@ -1680,35 +1680,31 @@ class FileClerkMethods(FileClerkInfoMethods):
 
 		    self.reply_to_caller(ticket)
 		    return
+	    del(ticket["bfids"])
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
 	    for item in list_of_arguments:
 		    bfid = item.get("bfid",None)
 		    if not bfid:
 			    continue
-		    cache_status   = item.get("cache_status",None)
-		    archive_status = item.get("archive_status",None)
-		    cache_location = item.get("cache_location",None)
-		    record = self.filedb_dict[bfid]
-		    if not record:
+		    q = "update file set "
+		    haveAny = False
+		    for key in ("cache_status","archive_status","cache_location"):
+			    value = item.get(key,None)
+			    if not value:
+				    continue
+			    haveAny = True
+			    if value.lower() == "null" :
+				    q += key+"=NULL,"
+			    else:
+				    q += key+"='"+value+"',"
+
+		    if not haveAny:
 			    continue
-		    if cache_location:
-			    if cache_location == "null" :
-				    cache_location = None
-			    record["cache_location"]=cache_location
-		    if cache_status :
-			    if cache_status == "null":
-				    cache_status = None
-			    record["cache_status"]=cache_status
-		    if archive_status:
-			    if archive_status == "null":
-				    archive_status=None
-			    record["archive_status"]=archive_status
-		    #
-		    # record changes in db
-		    #
-		    self.filedb_dict[bfid] = record
-	    del(ticket["bfids"])
-	    ticket["status"] = (e_errors.OK, None)
-	    self.reply_to_caller(ticket)
+
+		    q = q[:-1] + " where bfid='%s'"%(bfid,)
+
+		    self.filedb_dict.update(q)
 
     #### DONE
     def set_crcs(self, ticket):
