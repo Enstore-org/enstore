@@ -8012,9 +8012,7 @@ class DiskMover(Mover):
                 self.idle()
 
         Trace.trace(10, "transfer complete mode %s"%(self.mode,))
-        if self.mode == READ:
-            self.state = HAVE_BOUND
-            self.need_lm_update = (1, None, 0, None)
+        self.state = HAVE_BOUND
         Trace.log(e_errors.INFO, "transfer complete state %s"%(state_name(self.state),))
         Trace.trace(10, "transfer complete state %s"%(state_name(self.state),))
 
@@ -8025,16 +8023,8 @@ class DiskMover(Mover):
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
-        ######### AM 01/30/01
-        ### do not update lm as in a child thread
-        # self.update_lm(reset_timer=1)
-        ##########################
-
         if self.draining:
             self.offline()
-        else:
-            if self.mode != READ:
-                self.idle()
         self.need_lm_update = (1, None, 1, None)
         self.log_state()
 
