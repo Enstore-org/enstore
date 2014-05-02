@@ -401,9 +401,11 @@ except:
 	   # extract file from tar
 	   #
 	   file_dir=`dirname ${filepath}`
-	   (cd ${file_dir} && tar -xf ${package_path} ${file_path} --strip-components 5 --force-local)
+	   old_dir=`pwd`
+	   cd ${file_dir}
+	   output=$(tar --seek --strip-components 5 --force-local -b 400 -xf ${package_path} ${file_path}  2>&1 > /dev/null)
 	   rc=$?
-	   if [ $rc -eq 0 ]; then
+	   if [[ $rc -eq 0 || $rc -eq 2 && `echo $output | grep  "rmtlseek not stopped at a record boundary"` ]]; then
 	       chmod 0644 $filepath
 	       touch $filepath
 	       t1=`date +"%s"`
@@ -411,6 +413,8 @@ except:
 	       say SFA Completed untarring ${uri_size} bytes in ${dt} sec.
 	       exit 0
 	   else
+	       cd ${old_dir}
+	       unset LD_PRELOAD
 	       rm -f ${file_path}
 	       say Failed to untar file ${pnfsid}, Proceed to encp it
 	   fi
