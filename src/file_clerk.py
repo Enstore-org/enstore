@@ -155,6 +155,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 				   "get_brand",
 				   "get_crcs",
 				   "has_undeleted_file",
+				   "open_bitfile",
+				   "open_bitfile_for_package",
 				   "bfid_info") \
 				   or MY_NAME=="info_server":
 	    c = threading.activeCount()
@@ -1039,6 +1041,37 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         return
 
+    def get_children(self, ticket):
+	    #
+	    # this function return files that belong to package back to caller
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+	    #
+	    # check that this is indeed the package file. Package file
+	    #
+	    if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    self.reply_to_caller(ticket)
+		    return
+	    #
+	    # retrieve the children
+	    #
+	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
+	    res = self.filedb_dict.query_getresult(q)
+	    file_records = []
+	    for i in res:
+		    file_records.append(self.filedb_dict[i[0]])
+	    ticket["status"] = (e_errors.OK, None)
+	    ticket["children"] = file_records
+	    try:
+		    self.send_reply_with_long_answer(ticket)
+	    except (socket.error, select.error), msg:
+		    Trace.log(e_errors.INFO, "get_children: %s" % (str(msg),))
+
+
 
 class FileClerkMethods(FileClerkInfoMethods):
 
@@ -1529,63 +1562,36 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    return
 	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
 	    self.filedb_dict[bfid] = record
-	    #
-	    # retrieve the children
-	    #
-	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(record["package_id"],)
-	    res = self.filedb_dict.query_getresult(q)
-	    now = time.time()
-	    for i in res:
-		    child_record = self.filedb_dict[i[0]]
-		    if child_record["cache_status"] != file_cache_status.CacheStatus.CACHED:
-			    child_record["cache_status"] =  file_cache_status.CacheStatus.STAGING_REQUESTED
-		    else:
-			    child_record["cache_mod_time"] = time2timestamp(now)
-		    #
-		    # record change in db
-		    #
-		    self.filedb_dict[i[0]] = child_record
-
+	    q3 = "select v.library from file f, volume v where v.id=f.volume and f.package_id = '%s' and f.deleted='n' and f.bfid!=f.package_id limit 1"%(record["package_id"],)
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["fc"] = record
-	    ticket["fc"]["disk_library"] = child_record["library"]
-	    if self.en_qpid_client :
-		    event = pe_client.evt_cache_miss_fc(ticket,record)
-		    try:
-			    self.en_qpid_client.send(event)
-		    except:
-			    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-	    self.reply_to_caller(ticket)
-
-    def get_children(self, ticket):
-	    #
-	    # this function return files that belong to package back to caller
-	    #
-	    bfid, record = self.extract_bfid_from_ticket(ticket)
-	    if not bfid:
-		    return #extract_bfid_from_ticket handles its own errors.
-	    #
-	    # check that this is indeed the package file. Package file
-	    #
-	    if bfid != record['package_id'] or \
-	       type(record['package_id']) == types.NoneType :
-		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+	    library=None
+	    try:
+		    library=self.filedb_dict.query_getresult(q3)[0][0]
+	    except:
+		    ticket["status"] =  (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 		    self.reply_to_caller(ticket)
 		    return
+	    ticket["fc"]["disk_library"] = library
+	    self.reply_to_caller(ticket)
 	    #
-	    # retrieve the children
+	    # update children + package in one go
 	    #
-	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
-	    res = self.filedb_dict.query_getresult(q)
-	    file_records = []
-	    for i in res:
-		    file_records.append(self.filedb_dict[i[0]])
-	    ticket["status"] = (e_errors.OK, None)
-	    ticket["children"] = file_records
-	    try:
-		    self.send_reply_with_long_answer(ticket)
-	    except (socket.error, select.error), msg:
-		    Trace.log(e_errors.INFO, "get_children: %s" % (str(msg),))
+	    t = time2timestamp(time.time())
+	    q1 = "update file set cache_status='%s' where package_id='%s' and deleted='n' and cache_status!='%s'"%(file_cache_status.CacheStatus.STAGING_REQUESTED,
+														   record["package_id"],
+														   file_cache_status.CacheStatus.CACHED)
+	    q2 = "update file set cache_mod_time='%s' where package_id='%s' and deleted='n' and cache_status='%s'"%(t,
+														    record["package_id"],
+														    file_cache_status.CacheStatus.CACHED)
+
+
+	    for q in (q1,q2):
+		    self.filedb_dict.update(q)
+
+	    if self.en_qpid_client :
+		    event = pe_client.evt_cache_miss_fc(ticket,record)
+		    self.en_qpid_client.send(event)
 
     def set_children(self, ticket):
 	    #
@@ -1674,35 +1680,31 @@ class FileClerkMethods(FileClerkInfoMethods):
 
 		    self.reply_to_caller(ticket)
 		    return
+	    del(ticket["bfids"])
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
 	    for item in list_of_arguments:
 		    bfid = item.get("bfid",None)
 		    if not bfid:
 			    continue
-		    cache_status   = item.get("cache_status",None)
-		    archive_status = item.get("archive_status",None)
-		    cache_location = item.get("cache_location",None)
-		    record = self.filedb_dict[bfid]
-		    if not record:
+		    q = "update file set "
+		    haveAny = False
+		    for key in ("cache_status","archive_status","cache_location"):
+			    value = item.get(key,None)
+			    if not value:
+				    continue
+			    haveAny = True
+			    if value.lower() == "null" :
+				    q += key+"=NULL,"
+			    else:
+				    q += key+"='"+value+"',"
+
+		    if not haveAny:
 			    continue
-		    if cache_location:
-			    if cache_location == "null" :
-				    cache_location = None
-			    record["cache_location"]=cache_location
-		    if cache_status :
-			    if cache_status == "null":
-				    cache_status = None
-			    record["cache_status"]=cache_status
-		    if archive_status:
-			    if archive_status == "null":
-				    archive_status=None
-			    record["archive_status"]=archive_status
-		    #
-		    # record changes in db
-		    #
-		    self.filedb_dict[bfid] = record
-	    del(ticket["bfids"])
-	    ticket["status"] = (e_errors.OK, None)
-	    self.reply_to_caller(ticket)
+
+		    q = q[:-1] + " where bfid='%s'"%(bfid,)
+
+		    self.filedb_dict.update(q)
 
     #### DONE
     def set_crcs(self, ticket):

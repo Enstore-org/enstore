@@ -104,6 +104,12 @@ def diff_fields_and_values(s1, s2):
                                               'unknown_bytes')]
     for k in s2.keys():
         if k in key1 and s1[k] != s2[k]:
+            #
+            # s1['volume'] is an integer, s2['volume']=('lookup_vol',external_label)
+            # therefore never equal. The condition below is to
+            # avoid updating file.volume all the time
+            if k == 'volume' and s1['label'] == s2['volume'][1] :
+                continue
             d[k] = s2[k]
     return d
 
@@ -512,6 +518,7 @@ class FileDB(DbTable):
             else:
                 file["tape_label"]=file.get("label",None)
             return self.export_format(file)
+
 class VolumeDB(DbTable):
     def __init__(self,
                  host='localhost',
