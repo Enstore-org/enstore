@@ -161,11 +161,16 @@ class DatabaseAccess:
         # chokes on psycopg2.extras.RealDictCursor is psycopg2.extras is not
         # installed on the client side
         #
+        res=[]
         for row in result:
+            r={}
             for key in row.keys():
                 if isinstance(row[key],datetime.datetime):
-                    row[key] = row[key].isoformat(' ')
-        return result
+                    r[key] = row[key].isoformat(' ')
+                else:
+                    r[key] = row[key]
+            res.append(r)
+        return res
 
     def query_getresult(self,s):
         result=self.query(s,cursor_factory=psycopg2.extras.DictCursor)
@@ -177,12 +182,19 @@ class DatabaseAccess:
         # chokes on psycopg2.extras.DictCursor is psycopg2.extras is not
         # installed on the client side
         #
+        res=[]
         for row in result:
-            for i, v in enumerate(row):
-                if isinstance(v,datetime.datetime):
-                    row[i]=v.isoformat(' ')
-        return result
+            r=[]
+            for item in row:
+                if isinstance(item,datetime.datetime):
+                    r.append(item.isoformat(' '))
+                else:
+                    r.append(item)
+            res.append(r)
+        return res
+
 
     def query_tuple(self,s):
         return self.query(s)
+
 

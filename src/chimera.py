@@ -1959,8 +1959,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.verify_existance(use_filepath)
         fname = self.fset_file(use_filepath, size)
         try:
-            f = file_utils.open(fname,'w')
-            f.close()
+            os.utime(fname,None)
         except (OSError, IOError), msg:
             if msg.args[0] == errno.ENAMETOOLONG:
                 #If the .(fset) filename is too long for PNFS, then we need
@@ -1999,8 +1998,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 #Set the new file size.
                 try:
                     fname = self.fset_file(link_name, size)
-                    f = file_utils.open(fname, "w")
-                    f.close()
+                    os.utime(fname,None)
                 except (OSError, IOError), msg:
                     os.unlink(link_name)
                     raise sys.exc_info()[0], sys.exc_info()[1], \

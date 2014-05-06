@@ -972,6 +972,9 @@ class LibraryManagerMethods:
     # this method applies only to disk movers
     # it checks whether file is avalable on a disk of the disk mover
     def is_file_available(self, fcc, requested_file_bfid):
+        Trace.trace(self.trace_level+1, 'is_file_available: requested_file_bfid %s'%(requested_file_bfid,))
+        if not requested_file_bfid:
+            return False
         ticket = fcc.bfid_info(requested_file_bfid)
         Trace.trace(self.trace_level+1, 'bfid info %s'%(ticket,))
         if ticket['status'][0] ==  e_errors.OK:
@@ -2503,12 +2506,6 @@ class LibraryManagerMethods:
                             continue
                         break
                     elif rq.work == 'write_to_hsm':
-                        if self.mover_type(requestor) == 'DiskMover': # no write requests in bound for disk mover
-                            rq =  self._get_request(requestor, self.pending_work.get, external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
-
-                            continue
-
-
                         rq, key = self.process_write_request(rq, requestor, last_work=last_work)
                         Trace.trace(self.trace_level+10, "next_work_this_volume:process_write_request returned %s continue_scan %s "%((rq, key), self.continue_scan))
                         if self.continue_scan:
@@ -3851,11 +3848,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if status[0] == e_errors.OK:
             w = rq.ticket
             if self.mover_type(mticket) == 'DiskMover':
-                if w['work'] != 'read_from_hsm':
-                    blank_reply = {'work': None, 'r_a': saved_reply_address}
-                    self.reply_to_caller(blank_reply)
-                    return
-
                 # volume clerk may not return external_label in vc ticket
                 # for write requests
                 if not w["vc"].has_key("external_label"):

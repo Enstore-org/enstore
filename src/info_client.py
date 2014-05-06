@@ -1094,6 +1094,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
         self.bfid = 0
         self.bfids = None
         self.check = ""
+        self.children = None
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.ls_active = None
@@ -1279,7 +1280,11 @@ class InfoClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"volume_name",
                             option.USER_LEVEL:option.ADMIN},
-
+             option.GET_CHILDREN:{option.HELP_STRING:"find all children of the package file",
+                                  option.VALUE_TYPE:option.STRING,
+                                  option.VALUE_USAGE:option.REQUIRED,
+                                  option.VALUE_LABEL:"bfid",
+                                  option.USER_LEVEL:option.USER},
             }
 
 def do_work(intf):
@@ -1405,6 +1410,11 @@ def do_work(intf):
                                        capacity_str(ticket['remaining_bytes']),
                                        ticket['system_inhibit'],
                                        ticket['user_inhibit'])
+    elif intf.children:
+        ticket  = ifc.get_children(intf.children,timeout = 3600, retry=0)
+        if  ticket['status'][0] ==  e_errors.OK:
+            for i in ticket["children"]:
+                pprint.pprint(i)
     elif intf.history:
         ticket = ifc.show_history(intf.history)
         if ticket['status'][0] == e_errors.OK and len(ticket['history']):
