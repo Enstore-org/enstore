@@ -75,6 +75,7 @@ READING_FROM_TAPE = "READING_FROM_TAPE"
 CHANGING_STATE = "CHANGING_STATE"
 
 MAX_CPIO_FILE_SIZE = 8*enstore_constants.GB - 1 # maximal file size for cpoi_odc wrapper is 8GB-1
+DEFAULT_ARCHIVER = "tar"
 
 # calculate file checksum
 # returns a tuple (0_seeded_crc, 1_seeded_crc)
@@ -124,12 +125,18 @@ def _check_packaged_files(archive_area, package):
             Trace.alarm(e_errors.ERROR, "Can not create tmp dir %s"%(tmp_dir,))
             sys.exit("0")
 
-    # uwind the package into this directiry
+    # unwind the package into this directory
     os.chdir(tmp_dir)
-    rtn = enstore_functions2.shell_command2("tar --force-local -xf %s"%(package,))
-    if rtn[0] != 0: # tar return code
+    # guess archiver
+    archiver = package.split(".")[-1]
+    if archiver == "zip":
+        cmd = "unzip "
+    else: # only zip and tar so far
+        cmd = "tar -b %s --force-local -xf "%(self.blocking_factor,)
+    rtn = enstore_functions2.shell_command2("%s %s"%(cmd, package,))
+    if rtn[0] != 0: # archiver return code
         Trace.log(e_errors.ERROR, "Error unwinding tar file %s %s"(rtn[2], package)) #stderr
-        sys.exit("0")
+        sys.exit(1)
 
     # create list of files to check
     try:
@@ -372,6 +379,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.infoc = info_client.infoClient(self.csc,
                                             server_address=(ic_conf['host'],
                                                             ic_conf['port']))
+        self.archiver = self.my_conf.get("archiver", DEFAULT_ARCHIVER)
+        if not self.archiver in ("tar", "zip"):
+            Trace.alarm(e_errors.WARNING, "Unrecognized archive command %s. Will default to %s"%(self.archiver, DEFAULT_ARCHIVER))
+
+            self.archiver = DEFAULT_ARCHIVER # default archiver
         Trace.trace(10, "d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
                                                          self.archive_area,
                                                          self.stage_area,
@@ -606,7 +618,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # Create archive directory
             archive_dir = os.path.join(self.archive_area.remote_path, src_fn)
 
-            src_path = "%s.tar"%(os.path.join(archive_dir, src_fn),)
+            src_path = "%s.%s"%(os.path.join(archive_dir, src_fn),self.archiver)
             special_file_name = "README.1st"
 
             if not os.path.exists(archive_dir):
@@ -632,26 +644,29 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             file_list.close()
 
 
-            # call tar command
+            # call archiver command
             start_t = time.time()
-            Trace.log(DEBUGLOG, "Starting tar of %s files to %s"%(len(cache_file_list), src_path,))
+            Trace.log(DEBUGLOG, "Starting archiving of %s files to %s"%(len(cache_file_list), src_path,))
+            if self.archiver == "zip":
+                archive_cmd = "cat file_list | zip -0 -@ %s"%(src_path,)
+            else: # only zip and tar so far
+                archive_cmd = "tar -b %s --force-local -cf %s --files-from=file_list"%(self.blocking_factor, src_path)
 
             if self.remote_aggregation_host:
                 # run tar on the remote host
-                Trace.trace(10, "will run tar on remote host %s"%(self.remote_aggregation_host,))
-                tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s && tar -b %s --force-local -cf %s --files-from=file_list"'%(self.remote_aggregation_host,
-                                                                                                                               archive_dir,
-                                                                                                                               self.blocking_factor,
-                                                                                                                               src_path,)
-                Trace.trace(10, "tar cmd %s"%(tarcmd,))
+                Trace.trace(10, "will run archiver on remote host %s"%(self.remote_aggregation_host,))
+                archivecmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s && %s"'%(self.remote_aggregation_host,
+                                                                                  archive_dir,
+                                                                                  archive_cmd)
             else:
-                Trace.trace(10, "will run tar on local host")
-                tarcmd = "tar -b %s --force-local -cf %s --files-from=file_list"%(self.blocking_factor, src_path,)
+                Trace.trace(10, "will run archiver on local host")
+                archivecmd =  archive_cmd
 
-            rtn = enstore_functions2.shell_command2(tarcmd)
-            Trace.trace(10, "tar returned %s"%(rtn,))
+            Trace.trace(10, "archive cmd %s"%(archivecmd,))
+            rtn = enstore_functions2.shell_command2(archivecmd)
+            Trace.trace(10, "archiver returned %s"%(rtn,))
 
-            if rtn[0] != 0: # tar return code
+            if rtn[0] != 0: # archiver return code
                 Trace.log(e_errors.ERROR, "Error creating package %s %s"%(src_path, rtn[2])) #stderr
                 return None, None, None
 
@@ -659,7 +674,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             fstats = os.stat(src_path)
             fsize = fstats[stat.ST_SIZE]/1000000.
 
-            Trace.log(e_errors.INFO, "Finished tar to %s size %s MB rate %s MB/s"%(src_path, fsize, fsize/t))
+            Trace.log(e_errors.INFO, "Finished tar to %s size %s MB rate %s MB/s"%(src_path, fsize, fsize/t)) # do not change! It is used in plotter
         os.remove("file_list")
 
         # Qpid converts strings to unicode.
@@ -1387,9 +1402,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # create a temporary directory for staging a package
         # use package name for this
         stage_fname = os.path.basename(package['pnfs_name0'])
+        archiver = stage_fname.split(".")[-1]
         # file name looks like:
         # /pnfs/fs/usr/data/moibenko/d2/LTO3/package-2011-07-01T09:41:46.0Z.tar
-        tmp_stage_dirname = stage_fname.split(".tar")[0]
+        tmp_stage_dirname = stage_fname.split(".%s"%(archiver,))[0]
         tmp_stage_dir_path = os.path.join(self.tmp_stage_area.remote_path, tmp_stage_dirname)
         if not os.path.exists(tmp_stage_dir_path):
             try:
@@ -1441,26 +1457,30 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "stage_files: changing directory to %s"%(tmp_stage_dir_path,))
         os.chdir(tmp_stage_dir_path)
         #if len(files_to_stage) > 1:
-        # untar packaged files
+        # unwind packaged files
         # if package contains more than one file
         Trace.trace(10, "unwinding %s"%(stage_fname,))
+        if archiver == "zip":
+            cmd = "unzip %s"%(stage_fname,)
+        else: # only zip and tar so far
+            cmd = "tar -b %s --force-local -xf %s"%(self.blocking_factor, stage_fname)
+        rtn = enstore_functions2.shell_command2("%s %s"%(cmd, package,))
         if self.remote_staging_host:
-            # run tar on the remote host
-            Trace.trace(10, "will run tar on remote host %s"%(self.remote_aggregation_host,))
-            tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s && tar -b %s --force-local -xf %s"'% \
+            # run archiver on the remote host
+            Trace.trace(10, "will run archiver on remote host %s"%(self.remote_aggregation_host,))
+            archivecmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s && %s"'% \
                      (self.remote_staging_host,
                       tmp_stage_dir_path,
-                      self.blocking_factor,
-                      stage_fname)
+                      cmd)
         else:
-            tarcmd = "tar -b %s --force-local -xf %s"%(self.blocking_factor, stage_fname,)
-        Trace.trace(10, "tar cmd %s"%(tarcmd,))
+            archivecmd = cmd
+        Trace.trace(10, "archive cmd %s"%(archivecmd,))
         start_t = time.time()
-        rtn = enstore_functions2.shell_command2(tarcmd)
+        rtn = enstore_functions2.shell_command2(archivecmd)
         t = time.time() - start_t
         Trace.trace(10, "unwind returned %s"%(rtn,))
 
-        if rtn[0] != 0 : # tar return code
+        if rtn[0] != 0 : # archiver return code
             Trace.alarm(e_errors.ERROR, "Error unwinding package %s %s %s"%
                         (package['bfid'],stage_fname, rtn[2])) # stderr
             # clean up
@@ -1503,14 +1523,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 # create a destination directory
                 if not os.path.exists(os.path.dirname(dst)):
                     try:
-                        Trace.trace(10, "stage_files creating detination directory %s for %s"
+                        Trace.trace(10, "stage_files creating destination directory %s for %s"
                                     %(os.path.dirname(dst), dst))
                         os.makedirs(os.path.dirname(dst))
                     except Exception, detail:
                         Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, detail))
                         return False
-
-
                 try:
                     os.rename(src, dst)
                 except Exception, detail:
