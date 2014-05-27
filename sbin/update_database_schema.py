@@ -141,20 +141,20 @@ if __name__ == "__main__":
 
     cmd="cat %s | grep ALTER > %s"%(diff_file_tmp,alter_file,)
     os.system(cmd)
-    
+
     cmd="cat %s %s %s > %s"%(create_no_index, alter_file, create_index, diff_file,)
     if (os.system(cmd)):
         print_error("failed to execute %s"%(cmd))
         sys.exit(1)
     update_file="%s_update.sql"%(dbname,)
     # take care of sequences, types, triggers and functions
-    cmd="cat %s/%s_header.sql %s  %s/%s_types.sql %s/%s_sequences.sql %s/%s_functions.sql %s/%s_triggers.sql > %s "%(ddl_directory_path,
+    cmd="cat %s/%s_header.sql  %s/%s_types.sql %s/%s_sequences.sql %s %s/%s_functions.sql %s/%s_triggers.sql > %s "%(ddl_directory_path,
+                                                                                                                     dbname,
+                                                                                                                     ddl_directory_path,
+                                                                                                                     dbname,
+                                                                                                                     ddl_directory_path,
                                                                                                                      dbname,
                                                                                                                      diff_file,
-                                                                                                                     ddl_directory_path,
-                                                                                                                     dbname,
-                                                                                                                     ddl_directory_path,
-                                                                                                                     dbname,
                                                                                                                      ddl_directory_path,
                                                                                                                      dbname,
                                                                                                                      ddl_directory_path,
