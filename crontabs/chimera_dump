@@ -1,0 +1,1 @@
+1 23 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -q -p chimera_dump $ENSTORE_DIR/sbin/chimera_dump.py lqcd >/dev/null 2>/dev/null
