@@ -1575,46 +1575,12 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
                                                 alarmc = __alarmc)
     if vcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
-    #Before checking other systems, check the current system.
     elif e_errors.is_ok(vcc.inquire_vol(volume)):
+        __vcc = vcc
+        __csc = csc
         return csc
 
-    #Get the list of all config servers and remove the 'status' element.
-    config_servers = csc.get('known_config_servers', {})
-    if e_errors.is_ok(config_servers['status']):
-        del config_servers['status']
-    else:
-        return csc
-
-    #Loop through systems for the tape that matches the one we're looking for.
-    for server in config_servers.keys():
-        try:
-            #Get the next configuration client.
-            csc_test = configuration_client.ConfigurationClient(
-                config_servers[server])
-
-            #Get the next volume clerk client and volume inquiry.
-            vcc_test = volume_clerk_client.VolumeClerkClient(
-                csc_test, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
-
-            if vcc_test.server_address != None:
-		#If the fcc has been initialized correctly; use it.
-
-		if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
-		    msg = "Using %s based on volume %s." % \
-			  (vcc_test.server_address, volume)
-		    Trace.log(e_errors.INFO, msg)
-
-		    __csc = csc_test  #Set global for performance reasons.
-		    return __csc
-
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
-
+    __csc = csc
     return csc
 
 def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
@@ -1661,43 +1627,11 @@ def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
         file_info = fcc.bfid_info(bfid, 5, 3)
         if e_errors.is_ok(file_info):
             __fcc = fcc
-            return __csc
-
-    #Get the list of all config servers and remove the 'status' element.
-    config_servers = csc.get('known_config_servers', {})
-    if e_errors.is_ok(config_servers['status']):
-        del config_servers['status']
-    else:
-        __csc = csc
-        return __csc
-
-    #Loop through systems for the brand that matches the one we're looking for.
-    for server in config_servers.keys():
-        try:
-            #Get the next configuration client.
-            csc_test = configuration_client.ConfigurationClient(
-                config_servers[server])
-
-            #Get the next file clerk client and its brand.
-            fcc_test = file_clerk_client.FileClient(
-                csc_test, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
-            if fcc_test.server_address != None:
-		#If the fcc has been initialized correctly; use it.
-                file_info = fcc.bfid_info(bfid, 5, 3)
-                if e_errors.is_ok(file_info):
-                    __csc = csc_test  #Set global for performance reasons.
-                    __fcc = fcc_test
-                    return __csc
-
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
+            __csc = csc
+            return csc
 
     __csc = csc
-    return __csc
+    return csc
 
 #Return the correct configuration server client based on the 'brand' (if
 # present) of the bfid or the volume name.
@@ -1729,6 +1663,7 @@ def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
 #
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string,
 #  or a volume name string.
+
 def __get_csc(parameter=None):
     global __csc  #For remembering.
     global __acc
@@ -10941,8 +10876,9 @@ def read_post_transfer_update(done_ticket, out_fd, e):
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    #Update the modification time.
-    update_modification_time(done_ticket['outfile'])
+    if not e.get_cache and not e.put_cache:
+        #Update the modification time only for direct encp files
+        update_modification_time(done_ticket['outfile'])
 
     #If this is a read of a deleted file, leave the outfile permissions
     # to the defaults.
