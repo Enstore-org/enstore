@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-###############################################################################
-# Library manager receives client requests (encp)
-# and directs them to assigned movers.
-# It manages encp request queue and selects a better appropriate request
-# based on different criteria, such as priority, location on tape, etc.
-###############################################################################
+"""
+Library manager receives client requests (encp)
+and directs them to assigned movers.
+It manages encp request queue and selects a better appropriate request
+based on different criteria, such as priority, location on tape, etc.
+"""
 
 # system imports
 import os
@@ -63,6 +63,8 @@ INQUIRE_VOL_TO = 15
 INQUIRE_VOL_RETRY = 2
 
 DEBUG_LOG=9 # make entries in DEBUGLOG file at this level
+
+
 # Trace levels for different classes and methods
 # All timing - 100
 # Requests: 300 - 309
@@ -98,8 +100,14 @@ def log_add_to_wam_queue(dict):
 
 #########################
 
-# check if named thread is running
 def thread_is_running(thread_name):
+    """
+    check if named thread is running
+
+    :type thread_name: :obj:`str`
+    :arg thread_name: thread name
+    """
+
     threads = threading.enumerate()
     for thread in threads:
         if ((thread.getName() == thread_name) and thread.isAlive()):
@@ -109,14 +117,24 @@ def thread_is_running(thread_name):
 
 
 ##############################################################
-## defines the queue of request coming from all kind of clients
 class Requests:
-    def __init__(self, worker=None, lm_server = None, processing_function=None, *args):
-        # worker is a dispatching worker instance
-        # lm_server - library manager instance
-        # processing_function - request processing function
-        # args - arguments of request processing function
+    """
+    Defines the queue of request coming from all kind of clients.
+    Currently there are 2 types of clients: encp and volume assert.
 
+    """
+    def __init__(self, worker=None, lm_server = None, processing_function=None, *args):
+        """
+
+        :type worker: :class:`dispatching_worker.DispatchingWorker`
+        :arg worker: dispatching worker instance
+        :type lm_server: :class:`LibraryManager`
+        :arg lm_server: library manager instance
+        :type processing_function: :obj:`callable`
+        :arg processing_function: function, which will process request
+        :type args: :obj:`tuple`
+        :arg args: arguments of request processing function
+        """
         if worker == None:
            raise e_errors.EnstoreError(None, "Worker is not defined", e_errors.WRONGPARAMETER)
 
@@ -134,8 +152,12 @@ class Requests:
             self.processing_function = self.do_one_request
             self.args = ()
 
-    # get request from the queue
     def get(self):
+        """
+        Get request, coming from the client.
+
+        :rtype: :obj:`tuple` (:obj:`str` - message, :obj:`tuple` (:obj:`str`- IP address, :obj:`int` - port) - client address)
+        """
         Trace.trace(self.trace_level," Requests: get")
         ret = self.worker.get_request()
         Trace.trace(self.trace_level," Requests: get %s"%(ret,))
@@ -168,14 +190,12 @@ class Requests:
             self.worker.handle_error(request, client_address)
 
 
-    # cloned from dispatching_worker.serve_forever to run on a separate port
-    # this needs to run in a thread as it an ifinite loop!
     def serve_forever(self):
+        """
+        Cloned from :class:`dispatching_worker.serve_forever` to run on a separate port.
+        This needs to run in a thread as it an infinite loop!
+        """
         Trace.trace(self.trace_level, "Requests starting %s"%(self,))
-        # processing_function - request processing function
-        # args - arguments of request processing function
-        """Handle one request at a time until doomsday, unless we are in a child process"""
-        ###XXX should have a global exception handler here
         count = 0
         if self.worker.use_raw:
             self.worker.set_out_file()
@@ -216,9 +236,16 @@ class Requests:
         else:
             Trace.trace(self.trace_level,"serve_forever, shouldn't get here")
 
-
-    # process incoming request
     def process_request(self, request, client_address):
+        """
+        Process incoming request.
+        This method defines what method to run based on work contained in request and executes this method.
+
+        :type request: :obj:`str`
+        :arg  request: message
+        :type client_address: :obj:`tuple`
+        :arg client_address: (:obj:`str`- IP address, :obj:`int` - port)
+        """
         t1=time.time()
         Trace.trace(self.trace_level, "RequestQeue:process_request %s"%(request,))
         ticket = udp_server.UDPServer.process_request(self.worker, request,
@@ -299,18 +326,35 @@ class Requests:
 
 
 ##############################################################
-# Active movers per storage group / volume family
-# This class is used in AtMovers class
 class SG_VF:
+    """
+    Active movers per storage group / volume family.
+    This class is used in AtMovers class.
+    """
     def __init__(self):
+        """
+        Internally this class has two dictionaries.
+        Active requests are stored into dictionary based on storage group and
+        into another dictionary based on volume family
+        """
         self.sg = {}
         self.vf = {}
         self.trace_level = 310
 
     def delete(self, mover, volume, sg, vf):
-        #returns
-        # 0 - success
-        # -1 - failure
+        """
+        Delete active request.
+
+        :type mover: :obj:`str`
+        :arg mover: active mover name
+        :type volume: :obj:`str`
+        :arg volume: volume associated with active mover
+        :type sg: :obj:`str`
+        :arg sg: storage group name associated with active mover
+        :type vf: :obj:`str`
+        :arg vf: volume family associated with active mover
+        :rtype: :obj:`int` 0 - success, 1- failure
+        """
         rc = 0
         #if not (mover and volume and sg and vf): return
         Trace.trace(self.trace_level, "SG:delete mover %s, volume %s, sg %s, vf %s" % (mover, volume, sg, vf))
@@ -331,9 +375,13 @@ class SG_VF:
         return rc
 
     def delete_mover(self, mover):
-        #returns
-        # 0 - success
-        # -1 - failure
+        """
+        Find and delete active request for specified mover.
+
+        :type mover: :obj:`str`
+        :arg mover: active mover name
+        :rtype: :obj:`int` 0 - success, 1- failure
+        """
         rc = 0
         m,v = None, None
         # delete from sg
@@ -374,6 +422,18 @@ class SG_VF:
         return rc
 
     def put(self, mover, volume, sg, vf):
+        """
+        Add active request.
+
+        :type mover: :obj:`str`
+        :arg mover: active mover name
+        :type volume: :obj:`str`
+        :arg volume: volume associated with active mover
+        :type sg: :obj:`str`
+        :arg sg: storage group name associated with active mover
+        :type vf: :obj:`str`
+        :arg vf: volume family associated with active mover
+        """
         self.delete(mover, volume, sg, vf) # delete entry to update content
         if not self.sg.has_key(sg):
             self.sg[sg] = []
@@ -389,16 +449,26 @@ class SG_VF:
         return "<storage groups %s volume_families %s >" % (self.sg, self.vf)
 
 ##############################################################
-#Active movers
-# List of movers with assigned work or bound tapes.
-# library manager uses this list to keep the information about
-# Movers that are in the following states:
-# MOUNT_WAIT - waiting for tape to be mounted
-# SETUP - mover sets up connection with client
-# HAVE_BOUND - mover has a mounted tape
-# ACTIVE - data transfer
-# DISMOUNT_WAIT - wiating for tape to be dismounted
 class AtMovers:
+    """
+    Active movers
+
+    List of movers with assigned work or bound tapes.
+
+    Library manager uses this list to keep the information about
+    movers, that are in the following states:
+
+    ``MOUNT_WAIT`` - waiting for tape to be mounted
+
+    ``SETUP`` - mover sets up connection with client
+
+    ``HAVE_BOUND`` - mover has a mounted tape
+
+    ``ACTIVE`` - data transfer
+
+    ``DISMOUNT_WAIT`` - wiating for tape to be dismounted
+    """
+
     def __init__(self):
         self.at_movers = {}
         self.sg_vf = SG_VF()
@@ -410,12 +480,23 @@ class AtMovers:
         self.trace_level = 320
 
     def put(self, mover_info):
-        # mover_info contains:
-        # mover
-        # volume
-        # volume_family
-        # work (read/write)
-        # current location
+        """
+        Add active request.
+
+        :type mover_info: :obj:`dict`
+        :arg mover_info: dictionary containing the following information:
+
+           mover :obj:`str` - mover name
+
+           extrenal_label :obj:`str` - volume name
+
+           volume_family :obj:`str` - volume faimily
+
+           work :obj:`str` - read_from_hsm, write_to_hsm, volume_assert
+
+           current location :obj:`str` - location cookie
+        """
+
         state = mover_info.get('state')
         if state == 'IDLE':
             return
@@ -452,9 +533,23 @@ class AtMovers:
         Trace.trace(self.trace_level+1,"AtMovers put: sg_vf: %s" % (self.sg_vf,))
 
     def delete(self, mover_info):
-        # returns
-        # 0 - success
-        # -1 - failure
+        """
+        Delete active request identified by mover_info
+
+        :type mover_info: :obj:`dict`
+        :arg mover_info: dictionary containing the following information:
+
+           mover :obj:`str` - mover name
+
+           extrenal_label :obj:`str` - volume name
+
+           volume_family :obj:`str` - volume faimily
+
+           work :obj:`str` - read_from_hsm, write_to_hsm, volume_assert
+
+           current location :obj:`str` - location cookie
+        :rtype: :obj:`int` 0 - success, 1- failure
+        """
 
         Trace.trace(self.trace_level, "AtMovers delete. before: %s" % (self.at_movers,))
         Trace.trace(self.trace_level+1, "AtMovers delete. before: sg_vf: %s" % (self.sg_vf,))
@@ -494,8 +589,10 @@ class AtMovers:
         Trace.trace(self.trace_level,"AtMovers delete: sg_vf: %s" % (self.sg_vf,))
         return rc
 
-    # check how long mover did not update its state
     def check(self):
+        """
+        Check how long movers did not update their state and act according to the rules.
+        """
         Trace.trace(self.trace_level+2, "checking at_movers list")
         Trace.trace(self.trace_level+2, "dont_update_list %s"%(self.dont_update,))
         now = time.time()
@@ -552,8 +649,14 @@ class AtMovers:
                 pass
             return movers_to_delete
 
-   # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
+        """
+        Return a list of busy volumes for a given volume family.
+
+        :type volume_family_name: :obj:`str`
+        :arg volume_family_name: string formatted as STORAGE_GROUP.FILE_FAMILY.FILE_FAMILY_WRAPPER
+        :rtype: :obj:`tuple` (:obj:`list` - active volumes, :obj:`int` - volumes enabled to write)
+        """
         Trace.trace(self.trace_level+3,"busy_volumes: family=%s"%(volume_family_name,))
         vols = []
         write_enabled = 0
@@ -581,15 +684,28 @@ class AtMovers:
         Trace.trace(self.trace_level+3,"busy_volumes: returning %s %s" % (vols, write_enabled))
         return vols, write_enabled
 
-    # return active volumes for a given storage group for
-    # a fair share distribution
     def active_volumes_in_storage_group(self, storage_group):
+        """
+        Return active volumes for a given storage group for
+        a fair share distribution
+
+        :type storage_group: :obj:`str`
+        :arg storage_group: storage group
+        :rtype: :obj:`list` - list of active volumes
+        """
+
         if self.sg_vf.sg.has_key(storage_group):
             sg = self.sg_vf.sg[storage_group]
         else: sg = []
         return sg
 
     def get_active_movers(self):
+        """
+        Return active movers.
+
+        :rtype: :obj:`list` - list of active movers
+        """
+
         mv_list = []
         for key in self.at_movers.keys():
             mv_list.append(self.at_movers[key])
@@ -598,6 +714,20 @@ class AtMovers:
     # check if a particular volume with given label is busy
     # for read requests
     def is_vol_busy(self, external_label, mover=None):
+        """
+        Check if a particular volume with given label is busy
+        for read requests. If external_label, mover combination is found in
+        the list of active movers volume is considered not busy.
+
+        :type external_label: :obj:`str`
+        :arg external_label: volume label
+        :type mover: :obj:`str`
+        :arg mover: volume label
+
+        :rtype: :obj:`int` - 0 - not busy
+
+        """
+
         rc = 0
         # see if this volume is in voulemes_at movers list
         for key in self.at_movers.keys():
@@ -612,6 +742,20 @@ class AtMovers:
 
     # return state of volume at mover
     def get_vol_state(self, external_label, mover=None):
+        """
+        Return state of volume at mover.
+        If external_label, mover combination is found in
+        the list of active movers return its state.
+
+        :type external_label: :obj:`str`
+        :arg external_label: volume label
+        :type mover: :obj:`str`
+        :arg mover: volume label
+
+        :rtype: :obj:`str` - mover state (See :class:`AtMovers`)
+
+        """
+
         rc = None
         # see if this volume is in voulemes_at movers list
         for key in self.at_movers.keys():
@@ -626,6 +770,11 @@ class AtMovers:
 
     # return the list of busy volumes
     def active_volumes(self):
+        """
+        Return the list of busy volumes.
+
+        :rtype: :obj:`list` - list of volumes
+        """
         volumes = []
          # see if this volume is in voulemes_at movers list
         for key in self.at_movers.keys():
@@ -636,10 +785,16 @@ class AtMovers:
 ##############################################################
 
 class PostponedRequests:
-    # requests that have been refused because of limit reached go into this "list".
-    # Initally requests were already sorted by prioroty, so that only one request for a given
-    # volume or volume family may be in this list.
+    """
+    Requests that have been refused because of limit reached go into this "list".
+    Initally requests were already sorted by prioroty, so that only one request for a given
+    volume or volume family may be in this list.
+    """
     def __init__(self, keep_time):
+        """
+        :type keep_time: :obj:`int`
+        :arg keep_time: maximum time interval to keep request in seconds
+        """
         self.rq_list = {} # request list (dictionary)
         self.sg_list = {} # storage group list (dictionary)
         self.keep_time = keep_time # time for keeping requsts in the list
@@ -654,9 +809,21 @@ class PostponedRequests:
 
     # check if Postponed request list has expired
     def list_expired(self):
+        """
+        Check if Postponed request list has expired
+
+        :rtype: :obj:`bool` True - if expired
+        """
         return (time.time() - self.start_time > self.keep_time)
 
     def put(self, rq):
+        """
+        Put request into list.
+
+        :type rq: :obj:`manage_queue.Request`
+        :arg rq: request
+        """
+
         replace = 0
         sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
         if self.rq_list.has_key(sg):
@@ -682,6 +849,12 @@ class PostponedRequests:
             self.sg_list[sg] = 0L # to be used to sort list
 
     def get(self):
+        """
+        Get postponed request.
+
+        :rtype: :obj:`manage_queue.Request`
+        """
+
         if self.rq_list:
             # find the least counter
             # the more is the counter the more times
@@ -719,6 +892,9 @@ class PostponedRequests:
             Trace.trace(self.trace_level, "postponed update %s %s %s"%(sg, deficiency, self.sg_list[sg]))
 
 class LibraryManagerMethods:
+    """
+    Library manager request processing methods.
+    """
 
     def init_suspect_volumes(self):
         # make it method for the capability to reinitialze
@@ -735,6 +911,21 @@ class LibraryManagerMethods:
         return ticket.get("mover_type", "Mover")
 
     def __init__(self, name, csc, sg_limits, min_file_size, max_suspect_movers, max_suspect_volumes):
+        """
+
+        :type name: :obj:`str`
+        :arg name: library manager log name
+        :type csc: :class:`configuration_client.ConfigurationClient`
+        :arg csc: configuration client instance
+        :type sg_limits: :obj:`dict`
+        :arg sg_limits: dictionary defining per storage group limits for fair share
+        :type min_file_size: :obj:`int`
+        :arg min_file_size: minimum size for selection of the volume for write operation
+        :type max_suspect_movers: :obj:`int`
+        :arg max_suspect_movers: maximum number of suspect mover to cause alert and primary page
+        :type max_suspect_volumes: :obj:`int`
+        :arg max_suspect_volumes: maximum number of suspect volumes to cause alarm
+       """
         self.name = name
         self.min_file_size = min_file_size
         self.max_suspect_movers = max_suspect_movers
@@ -751,7 +942,7 @@ class LibraryManagerMethods:
         # and LibraryManager._mover_bound_volume()
         self.known_volumes ={}
 
-        # storage roup limits for fair share
+        # storage group limits for fair share
         self.sg_limits = {'use_default' : 1,
                           'default' : 0,
                           'limits' : {}
@@ -789,8 +980,9 @@ class LibraryManagerMethods:
         except:
             pass
 
-    # body of send_regret to run either in thread or as a function call
     def __send_regret(self, ticket):
+        # Body of send_regret to run either in thread or as a function call.
+
         rc = 0
         try:
             Trace.trace(self.trace_level+10,"send_regret %s" % (ticket,))
@@ -848,6 +1040,13 @@ class LibraryManagerMethods:
 
     # send a regret
     def send_regret(self, ticket):
+        """
+        Send regret to caller. Exit if running in a child process.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket to return to the caller
+        """
+
         Trace.trace(self.trace_level, "send_regret")
         if self.do_fork:
             # fork off the regret sender
@@ -865,19 +1064,39 @@ class LibraryManagerMethods:
 
     ###################################
     # End built in networking methods
-    ########################################
+    ###################################
 
     # add idle mover
     def add_idle_mover(self, mover):
+        """
+        Add idle mover to the list of known idle movers.
+
+        :type mover: :obj:`str`
+        :arg mover: mover name
+        """
+
         if not mover in self.idle_movers:
             self.idle_movers.append(mover)
-    # remove idle mover
+
     def remove_idle_mover(self, mover):
+        """
+        Remove idle mover from the list of known idle movers.
+
+        :type mover: :obj:`str`
+        :arg mover: mover name
+        """
         if mover in self.idle_movers:
             self.idle_movers.remove(mover)
 
     # get storage group limit
     def get_sg_limit(self, storage_group):
+        """
+        Get storage group limit.
+
+        :type storage_group: :obj:`str`
+        :arg storage_group: storage group name
+        """
+
         if self.sg_limits['use_default']:
             return self.sg_limits['default']
         else:
@@ -885,6 +1104,13 @@ class LibraryManagerMethods:
 
     # obtain host name from ticket
     def get_host_name_from_ticket(self, ticket):
+        """
+        Obtain host name from ticket
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket
+        """
+
         host_from_ticket = ''
         try:
             callback = ticket.get('callback_addr', None)
@@ -897,10 +1123,16 @@ class LibraryManagerMethods:
             pass
         return host_from_ticket
 
-
-
-    # remove all pending works
     def flush_pending_jobs(self, status, external_label=None):
+        """
+        Remove all pending works.
+
+        :type status: :obj:`str`
+        :arg status: status to return to caller(s)
+        :type external_label: :obj:`str`
+        :arg external_label: remove works for specified volume
+        """
+
         Trace.trace(self.trace_level,"flush_pending_jobs: %s"%(external_label,))
         if not external_label: return
         w = self.pending_work.get(external_label)
@@ -912,11 +1144,20 @@ class LibraryManagerMethods:
             w = self.pending_work.get(external_label)
         # this is just for test
 
-    # return ticket if given labeled volume is in mover queue
-    # only one work can be in the work_at_movers for
-    # a given volume. That's why external label is used
-    # to identify the work
     def get_work_at_movers(self, external_label, mover):
+        """
+        Return ticket if given labeled volume is in mover queue.
+        Only one work can be in the work_at_movers for
+        a given volume. That's why external label is used
+        to identify the work.
+
+        :type external_label: :obj:`str`
+        :arg external_label: volume
+        :type mover: :obj:`str`
+        :arg mover: mover name
+        :rtype: :obj:`dict` ticket
+        """
+
         Trace.trace(self.trace_level,'get_work_at_movers: %s %s'%(external_label, mover))
         rc = {}
         if not external_label: return rc
@@ -933,9 +1174,15 @@ class LibraryManagerMethods:
         Trace.log(DEBUG_LOG, "work at movers list:%s"%(work_at_movers,))
         return rc
 
-    # if returned ticket has no external label use the
-    # following as an alternative to get_work_at_movers
     def get_work_at_movers_m(self, mover):
+        """
+        Alternative to get_work_at_movers to use when there is no external label
+        (usually for write requests, because the volume has not yet been assigned).
+
+        :type mover: :obj:`str`
+        :arg mover: mover name
+        :rtype: :obj:`dict` ticket
+        """
         rc = {}
         if not mover: return rc
         for w in self.work_at_movers.list:
@@ -946,6 +1193,9 @@ class LibraryManagerMethods:
 
     # This method must run in a separate thread
     def check(self):
+        """
+        Periodically check volumes at movers (see :class:`AtMovers.check`). This method must run in a separate thread.
+        """
         while 1:
            time.sleep(self.check_interval)
            movers = self.volumes_at_movers.check()
@@ -968,10 +1218,19 @@ class LibraryManagerMethods:
                    Trace.log(e_errors.ERROR, "Will clear work_at_movers")
                    self.work_at_movers.list = []
 
-    # check if file is available
-    # this method applies only to disk movers
-    # it checks whether file is avalable on a disk of the disk mover
     def is_file_available(self, fcc, requested_file_bfid):
+        """
+        Check if file is available.
+        This method applies only to disk movers.
+        It checks whether file is avalable on a disk of the disk mover
+
+        :type fcc: :class:`file_clerk_client.FileClient`
+        :arg fcc: file clerk client
+        :type requested_file_bfid: :obj:`str`
+        :arg requested_file_bfid: bit file id of file in question
+        :rtype: :obj:`bool`
+        """
+
         Trace.trace(self.trace_level+1, 'is_file_available: requested_file_bfid %s'%(requested_file_bfid,))
         if not requested_file_bfid:
             return False
@@ -999,6 +1258,17 @@ class LibraryManagerMethods:
     # to be used for slection of volume for
     # write request
     def busy_volumes(self, volume_family_name):
+        """
+        Get list and count of busy volumes
+        for a specified volume family
+        to be used for selection of volume for
+        write request.
+
+        :type volume_family_name: :obj:`str`
+        :arg volume_family_name: volume family name
+        :rtype: :obj:`tuple` (:obj:`list` - busy volumes, :obj:`int` - count of write enabled volumes)
+        """
+
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(volume_family_name)
         # look in the list of work_at_movers
         for w in self.work_at_movers.list:
@@ -1022,6 +1292,17 @@ class LibraryManagerMethods:
     # check if a particular volume with given label is busy
     # for read requests
     def is_vol_busy(self, external_label, mover=None):
+        """
+        Check if a particular volume with given label is busy
+        for read requests.
+
+        :type external_label: :obj:`str`
+        :arg external_label: volume name
+        :type mover: :obj:`str`
+        :arg mover: mover name. If :obj:`None` - check the whole list of active movers.
+        :rtype: :obj:`int` 1 - success, 0 - failure
+        """
+
         rc = self.volumes_at_movers.is_vol_busy(external_label, mover)
         if rc: return rc
         rc = 0
@@ -1031,10 +1312,22 @@ class LibraryManagerMethods:
                 break
         return rc
 
-    # check the availability of the disk volume
-    # this method applies only for disk movers
-
     def is_disk_vol_available(self, work, external_label, requestor, requested_file_bfid=None):
+        """
+        Check the availability of the disk volume.
+        This method applies only for disk movers.
+
+        :type work: :obj:`str`
+        :arg work: ``write_to_hsm`` or ``read_from_hsm``
+        :type external_label: :obj:`str`
+        :arg external_label: volume name
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :type requested_file_bfid: :obj:`str`
+        :arg requested_file_bfid: bit file id of file in question
+        :rtype: :obj:`dict` {'status': :obj:`tuple` (:obj:`str` - status, :obj:`None`)}
+        """
+
         if work == 'write_to_hsm':
             return {'status':(e_errors.OK, None)}
         ip_map = string.split(external_label,':')[0]
@@ -1065,6 +1358,13 @@ class LibraryManagerMethods:
 
     # set volume clerk client
     def set_vcc(self, vol_server_address=None):
+        """
+        Set volume clerk client.
+
+        :type vol_server_address: :obj:`tuple`
+        :arg vol_server_address: (:obj:`str`- IP address, :obj:`int` - port)
+        """
+
         if vol_server_address == None:
             return
         else:
@@ -1076,13 +1376,24 @@ class LibraryManagerMethods:
             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,server_address=self.vc_address)
             Trace.trace(self.trace_level+1,"set_vcc returned")
 
-    # to reduce the number of VC requests (which may take a substantial amount of time)
+    ###################################################################################
+    # To reduce the number of VC requests (which may take a substantial amount of time)
     # use this internal metods
+    ###################################################################################
 
-    # check if volume is full #### DONE
-    # same as is_volume_full in volume clerk, but makes no changes in the dictionary or data base
-    # used internally in Library Manager
     def is_volume_full_no_rec(self, v, min_remaining_bytes):
+        """
+        Check if volume is full.
+        Same as is_volume_full in volume clerk, but makes no changes in the dictionary or data base.
+        Used internally in Library Manager.
+
+        :type v: :obj:`dict`
+        :arg v: volume record
+        :type min_remaining_bytes: :obj:`int`
+        :arg min_remaining_bytes: minimum number of remaining bytes. (Pad to define if volume would be full).
+        :rtype: :obj:`str` - e_errors.NOSPACE or ""
+        """
+
         ret = ""
         left = v["remaining_bytes"]
         if left < long(min_remaining_bytes*SAFETY_FACTOR) or left < MIN_LEFT:
@@ -1098,8 +1409,23 @@ class LibraryManagerMethods:
             ret = e_errors.NOSPACE
         return ret
 
-    # copy of volume clerk method adapted for working with records
     def is_vol_available(self, work, label, family=None, size=0, vol_server_address = None):
+        """
+        Copy of volume clerk method adapted for working with records.
+
+        :type work: :obj:`str`
+        :arg work:  ``write_to_hsm`` or ``read_from_hsm``
+        :type label: :obj:`str`
+        :arg label:  volume name
+        :type family: :obj:`str`
+        :arg family:  volume family
+        :type size: :obj:`int`
+        :arg size: size for write requests
+        :type vol_server_address: :obj:`tuple`
+        :arg vol_server_address: (:obj:`str`- IP address, :obj:`int` - port)
+        :rtype: :obj:`dict` {'status': :obj:`tuple` (:obj:`str` - status, :obj:`None`)}
+        """
+
         Trace.trace(self.trace_level+2, 'is_vol_available %s'%(self.known_volumes,))
         # get the current entry for the volume
         if self.known_volumes.has_key(label):
@@ -1172,6 +1498,16 @@ class LibraryManagerMethods:
 
 
     def inquire_vol(self, external_label, vol_server_address = None):
+        """
+        Get volume record.
+
+        :type external_label: :obj:`str`
+        :arg external_label:  volume name
+        :type vol_server_address: :obj:`tuple`
+        :arg vol_server_address: (:obj:`str`- IP address, :obj:`int` - port)
+        :rtype: :obj:`dict` - volume record containing status
+        """
+
         Trace.trace(self.trace_level+2, 'inquire_vol')
         if self.known_volumes.has_key(external_label):
             vol_info = self.known_volumes[external_label]
@@ -1190,6 +1526,24 @@ class LibraryManagerMethods:
 
 
     def next_write_volume(self,library, size, volume_family, veto_list, first_found=0, mover={}):
+        """
+        Get next write volume.
+
+        :type library: :obj:`str`
+        :arg library: get volume in this library
+        :type size: :obj:`long`
+        :arg size: get volume, wich has not less than size remaning bytes
+        :type volume_family: :obj:`str`
+        :arg volume_family: get volume for this volume family
+        :type veto_list: :obj:`list`
+        :arg veto_list: list of volume names to skip
+        :type first_found: :obj:`int`
+        :arg first_found: if > 0 - return first found volume satisfying specified criteria
+        :type mover: :obj:`dict`
+        :arg mover: mover ticket
+        :rtype: :obj:`dict` - volume record containing status
+        """
+
         Trace.trace(self.trace_level+2, 'write_volumes %s'%(self.write_volumes,))
         required_bytes = max(long(size*SAFETY_FACTOR), MIN_LEFT)
         for vol_rec in self.write_volumes:
@@ -1218,14 +1572,29 @@ class LibraryManagerMethods:
     # discipline related methods
     ############################################
 
-    # new implementation - no storage group
-    #
     def restrict_host_access(self, host, max_permitted, rq_host=None, work=None):
-        # the discipline configuration entry last argument is a tuple
-        # which is:
-        # 1 - the number of allowed concurrent transfers from a given host
-        # 2 - Additional number of allowed concurrent transfers from a given host for read requests
-        # 3 - Additional number of allowed concurrent transfers from a given host for write requests
+        """
+        New implementation - no storage group
+        The discipline configuration entry last argument is a tuple
+        which is:
+
+           1 - the number of allowed concurrent transfers from a given host
+
+           2 - Additional number of allowed concurrent transfers from a given host for read requests
+
+           3 - Additional number of allowed concurrent transfers from a given host for write requests
+
+        :type host: :obj:`str`
+        :arg host: name of the host to check
+        :type max_permitted: :obj:`tuple`
+        :arg max_permitted: as described above for the  discipline configuration entry
+        :type rq_host: :obj:`str`
+        :arg rq_host: host requesting the work
+        :type work: :obj:`str`
+        :arg work: ``write_to_hsm`` or ``read_from_hsm``
+        :rtype: :obj:`bool`
+        """
+
         disciplineExceptionMounted = 0
         max_perm=max_permitted
         if type(max_permitted) == type(()) and len(max_permitted) == 3:
@@ -1257,6 +1626,18 @@ class LibraryManagerMethods:
 
 
     def restrict_version_access(self, storage_group, legal_version, ticket):
+        """
+        Restrict client access based on the version of the encp client.
+
+        :type storage_group: :obj:`str`
+        :arg storage_group: sturage group
+        :type legal_version: :obj:`str`
+        :arg legal_version: the oldest allowed client version
+        :type ticket: :obj:`disct`
+        :arg ticket: client request ticket
+        :rtype: :obj:`bool`
+        """
+
         rc = False
         Trace.trace(self.trace_level+3, "restrict_version_access %s %s %s"%(storage_group,
                                                             legal_version,
@@ -1278,6 +1659,15 @@ class LibraryManagerMethods:
     ## check if there are any additional restrictions
     ## from discipline
     def client_host_busy(self, w):
+        """
+        Check if there are any additional restrictions
+        from discipline.
+
+        :type w: :obj:`dict`
+        :arg w: ticket
+        :rtype: :obj:`bool`
+        """
+
         ret = False
         rc, fun, args, action = self.restrictor.match_found(w)
         if rc and fun and action:
@@ -1298,9 +1688,20 @@ class LibraryManagerMethods:
 
         return ret
 
-    ## check if there are any additional restrictions for mounted
-    ## volumes from discipline
     def client_host_busy_for_mounted(self, external_label, vol_family, w):
+        """
+        Check if there are any additional restrictions for mounted
+        volumes from discipline.
+
+        :type external_label: :obj:`str`
+        :arg external_label: volume name
+        :type vol_family: :obj:`str`
+        :arg vol_family: volume family
+        :type w: :obj:`dict`
+        :arg w: ticket
+        :rtype: :obj:`bool`
+        """
+
         Trace.trace(self.trace_level+3,"client_host_busy_for_mounted: %s"%(self.restrict_access_in_bound))
         ret = False
         if not self.restrict_access_in_bound:
@@ -1367,30 +1768,44 @@ class LibraryManagerMethods:
     # Request processing methods
     ############################################
 
-    # Check if request os for a packaged file
-    # @param - request
-    # @return - package_id or None
     def is_packaged(self, request):
+        """
+        Check if request is for a packaged file.
+
+        :type request: :obj:`dict`
+        :arg request: request ticket
+        :rtype: :obj:`str` - package id or :obj:`None`
+        """
+
         Trace.trace(self.trace_level+3, "is_packaged fc: %s"%(request['fc'],))
         package_id = request['fc'].get("package_id", None)
         if package_id and package_id == request['fc']['bfid']: # file is a package itself
             package_id = None
         return package_id
 
-    # Wrapper method for manage_queue.Request_Queue.get
-    # This method applies only for packaged disk files.
-    # It checks if request pulled from request queue
-    # has a package id identical with package id of
-    # any active request and, if yes, skips it to allow
-    # completion of staging the package.
-    # This allows to avoid submission of more than one
-    # requests belonging to the same package to movers
-    # until all files in the package are staged.
-    # @params - requestor - mover
-    # @params - method for exracting request from the queue
-    # others: same as for manage_queue.Request_Queue.get
-    # @return same as manage_queue.Request_Queue.get
     def _get_request(self, requestor, method, *args, **kwargs):
+        """
+        Wrapper method for manage_queue.Request_Queue.get.
+        This method applies only for packaged disk files.
+        It checks if request pulled from request queue
+        has a package id identical with package id of
+        any active request and, if yes, skips it to allow
+        completion of staging the package.
+        This allows to avoid submission of more than one
+        requests belonging to the same package to movers
+        until all files in the package are staged.
+
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :type method: :obj:`callable`
+        :arg method: method for extracting request from the queue
+        :type args: :obj:`tuple`
+        :arg args: arguments for method
+        :type kwargs: :obj:`tuple`
+        :arg kwargs: kw arguments for method
+        :rtype: :obj:`manage_queue.Request` - request ticket or :obj:`None`
+        """
+
         mover_type = requestor.get('mover_type', None)
         if mover_type and mover_type == 'DiskMover':
             if kwargs.has_key('active_volumes'):
@@ -1464,6 +1879,27 @@ class LibraryManagerMethods:
     # flag confirming whether HIPRI request could go
     # flag indicating that the request will preempt the mounted volume
     def allow_hipri(self, rq, external_label, vol_family, last_work, requestor, priority):
+        """
+        Allow High Piority request to be sent to the current mover.
+        This method is used with Admin Priority requests.
+
+        :type rq: :obj:`manage_queue.Request`
+        :arg rq: request to process
+        :type external_label: :obj:`str`
+        :arg external_label: label of volume mounted on requestor
+        :type vol_family: :obj:`str`
+        :arg vol_family: volume family of volume mounted on requestor
+        :type last_work: :obj:`str`
+        :arg last_work: last work performed on volume mounted on requestor
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :type priority: :obj:`tuple`
+        :arg priority: (:obj:`int` - current_priority, :obj:`int` - admin_priority) - priority of last completed request
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` or :obj:`None` - request,
+                             :obj:`bool` - flag confirming whether HIPRI request could go,
+                             :obj:`bool` - flag indicating that the request will preempt the mounted volume)
+        """
+
         Trace.trace(self.trace_level+3, "allow_hi_pri %s %s %s %s %s %s"%
                     (external_label, vol_family, last_work, requestor,priority, rq))
         if rq.adminpri < 0: # regular priority
@@ -1501,9 +1937,12 @@ class LibraryManagerMethods:
         Trace.trace(self.trace_level+3, "allow_hi_pri: returning %s %s %s"%(rq, ret, would_preempt))
         return rq, ret, would_preempt
 
-    # make all necessary resets
-    # before starting a new cycle of request selection
     def init_request_selection(self):
+        """"
+        Make all necessary resets
+        before starting a new cycle of request selection
+        """
+
         self.write_volumes = []
         self.write_vf_list = {}
         self.tmp_rq = None   # need this to temporarily store selected request
@@ -1520,10 +1959,17 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = None # if not None volume is bound
         self.disabled_hosts = [] # hosts exceeding the number of simult. transfers
 
-    # returns a request key
-    # for write request it is a file family
-    # for read request it is a volume label
     def request_key(self, request):
+        """
+        Returns a request key.
+        For write request it is a file family.
+        For read request it is a volume label
+
+        :type request: :obj:`manage_queue.Request`
+        :arg request: request to process
+        :rtype: :obj:`str` - request key
+        """
+
         storage_group = None
         key = None
         if request:
@@ -1539,6 +1985,15 @@ class LibraryManagerMethods:
 
 
     def fair_share(self, rq):
+        """
+        If request satisfies fair share of tape drives for its storage group
+        return the key, otherwise return None.
+
+        :type rq: :obj:`manage_queue.Request`
+        :arg rq: request to process
+        :rtype: :obj:`str` - request key or :obj:`None`
+        """
+
         self.sg_exceeded = None
         Trace.trace(self.trace_level+4, "fair_share: sg_exceeded %s"%(self.sg_exceeded,))
         if (rq.ticket.get('ignore_fair_share', None)):
@@ -1595,6 +2050,17 @@ class LibraryManagerMethods:
         return None
 
     def process_read_request(self, request, requestor):
+        """
+        Process read request.
+
+        :type request: :obj:`manage_queue.Request`
+        :arg request: request to process
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` - request or :obj:`None`,
+                              :obj:`str` - key to check next or :obj:`None`)
+        """
+
         self.continue_scan = 0 # disable "scan" of pending queue
         rq = request
         Trace.trace(self.trace_level+4,"process_read_request %s"%(rq))
@@ -1683,6 +2149,21 @@ class LibraryManagerMethods:
         return rq, key_to_check
 
     def process_write_request(self, request, requestor, last_work=None, would_preempt=False):
+        """
+        Process write request.
+
+        :type request: :obj:`manage_queue.Request`
+        :arg request: request to process
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :type last_work: :obj:`str`
+        :arg last_work: last work completed by requestor
+        :type would_preempt: :obj:`bool`
+        :arg would_preempt: may this request preempt mounted on requestor volume?
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` - request or :obj:`None`,
+                              :obj:`str` - key to check next or :obj:`None`)
+        """
+
         self.continue_scan = 0 # disable "scan" of pending queue
         rq = request
         Trace.trace(self.trace_level+4, "process_write_request: %s"%(rq,))
@@ -1922,6 +2403,16 @@ class LibraryManagerMethods:
 
     # is there any work for any volume?
     def next_work_any_volume(self, requestor):
+        """
+        Is there any work for any volume?
+
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` - request or :obj:`None`,
+                              :obj:`tuple` - (error, :obj:`str` or :obj:`None`) - status)
+        """
+
+
         Trace.trace(self.trace_level, "next_work_any_volume")
         self.init_request_selection() # start request selection cycle
         # The list of the active volumes.
@@ -2082,8 +2573,16 @@ class LibraryManagerMethods:
         return (None, (e_errors.NOWORK, None))
 
 
-    # what is next on our list of work?
     def schedule(self, mover):
+        """
+        What is next on our list of work?
+
+        :type mover: :obj:`dict`
+        :arg mover: mover ticket
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` - request or :obj:`None`,
+                              :obj:`tuple` - (error, :obj:`str` or :obj:`None`) - status)
+         """
+
         while 1:
             rq, status = self.next_work_any_volume(mover)
             if (status[0] == e_errors.OK or
@@ -2101,8 +2600,20 @@ class LibraryManagerMethods:
 
         return None, status
 
-    # check if write request can be sent to the mover
     def check_write_request(self, external_label, rq, requestor):
+        """
+        Check if write request can be sent to the mover.
+
+        :type external_label: :obj:`str`
+        :arg external_label: label of the volume to check
+        :type rq: :obj:`manage_queue.Request`
+        :arg rq: request to process
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` - request or :obj:`None`,
+                              :obj:`str` - key to check next or :obj:`None`)
+        """
+
         Trace.trace(self.trace_level, "check_write_request: label %s rq %s requestor %s"%
                     (external_label, rq, requestor))
         if self.mover_type(requestor) == 'DiskMover':
@@ -2168,8 +2679,19 @@ class LibraryManagerMethods:
                 return None, ret['status']
         return rq, ret['status']
 
-    # check if read request can be sent to the mover
     def check_read_request(self, external_label, rq, requestor):
+        """
+        Check if read request can be sent to the mover.
+
+        :type external_label: :obj:`str`
+        :arg external_label: label of the volume to check
+        :type rq: :obj:`manage_queue.Request`
+        :arg rq: request to process
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` - request or :obj:`None`,
+                              :obj:`str` - key to check next or :obj:`None`)
+        """
         Trace.trace(self.trace_level,"check_read_request %s %s %s"%(rq.work,external_label, requestor))
         if self.mover_type(requestor) == 'DiskMover':
             ret = self.is_disk_vol_available(rq.work,external_label, requestor)
@@ -2201,10 +2723,27 @@ class LibraryManagerMethods:
         return rq, rq.ticket['status']
 
 
-    # is there any work for this volume??
-    # last_work is a last work for this volume
-    # current location is a current position of the volume
     def next_work_this_volume(self, external_label, vol_family, last_work, requestor, current_location, priority=None):
+        """
+        Is there any work for this volume (mounted on requestor mover)?
+
+        :type external_label: :obj:`str`
+        :arg external_label: label of the volume to check
+        :type vol_family: :obj:`str`
+        :arg vol_family: volume family of current volume
+        :type last_work: :obj:`str`
+        :arg last_work: last work completed by requestor
+        :type requestor: :obj:`dict`
+        :arg requestor: mover ticket
+        :type current_location: :obj:`str`
+        :arg current_location: location cookie describing current position on tape
+        :type priority: :obj:`tuple`
+        :arg priority: (:obj:`int` - current_priority, :obj:`int` - admin_priority) - priority of last completed request
+        :rtype: :obj:`tuple` (:obj:`manage_queue.Request` or :obj:`None` - request,
+                             :obj:`bool` - flag confirming whether HIPRI request could go,
+                             :obj:`bool` - flag indicating that the request will preempt the mounted volume)
+
+        """
         Trace.trace(self.trace_level, "next_work_this_volume for %s %s %s %s %s %s" %
                     (external_label,vol_family, last_work, requestor, current_location, priority))
         status = None
@@ -2213,7 +2752,11 @@ class LibraryManagerMethods:
             label = external_label
         else:
             # For disk mover external label is package_id
-            label = requestor['volume']
+            if requestor['volume']:
+                label = requestor['volume']
+            else:
+                return  None, (e_errors.NOWORK, None)
+
         self.current_volume_info = self.inquire_vol(label)
 
         Trace.trace(self.trace_level, "next_work_this_volume: current volume info: %s"%(self.current_volume_info,))
@@ -2570,8 +3113,15 @@ class LibraryManagerMethods:
 
         return (None, (e_errors.NOWORK, None))
 
-    # check if volume is in the suspect volume list
     def is_volume_suspect(self, external_label):
+        """
+        Check if volume is in the suspect volume list.
+
+        :type external_label: :obj:`str`
+        :arg external_label: label of the volume
+        :rtype: :obj:`dict` - volume record or :obj:`None`
+        """
+
         # remove volumes time in the queue for wich has expired
         if self.suspect_vol_expiration_to:
             # create a list of expired volumes
@@ -2598,6 +3148,17 @@ class LibraryManagerMethods:
     # check if mover is in the suspect volume list
     # return tuple (suspect_volume, suspect_mover)
     def is_mover_suspect(self, mover, external_label):
+        """
+        Check if mover is in the suspect volume list.
+
+        :type mover: :obj:`str`
+        :arg mover: mover name
+        :type external_label: :obj:`str`
+        :arg external_label: label of the volume
+        :rtype: :obj:`tuple` (:obj:`str`- volume name or :obj:`None`,
+                              :obj:`str`- mover name or :obj:`None`)
+        """
+
         Trace.trace(self.trace_level+11, "is_mover_suspect: %s %s"%(mover, external_label))
         vol = self.is_volume_suspect(external_label)
         if vol:
@@ -2615,6 +3176,16 @@ class LibraryManagerMethods:
 
     # update suspect volumer list
     def update_suspect_vol_list(self, external_label, mover):
+        """
+        Update suspect volumer list.
+
+        :type external_label: :obj:`str`
+        :arg external_label: label of the volume
+        :type mover: :obj:`str`
+        :arg mover: mover name
+        :rtype: :obj:`dict` - suspect volume dictionary
+        """
+
         # update list of suspected volumes
         Trace.trace(self.trace_level+11,"update_suspect_vol_list: SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes.list,))
         if not external_label: return None
@@ -2651,8 +3222,19 @@ class LibraryManagerMethods:
 class LibraryManager(dispatching_worker.DispatchingWorker,
                      generic_server.GenericServer,
                      LibraryManagerMethods):
+    """
+    Library manager methods processing movers and enstore command-line requests.
+    """
 
     def __init__(self, libman, csc):
+        """
+        :type libman: :obj:`str`
+        :arg libman: unique library manager name
+        :type csc: :class:`configuration_client.ConfigurationClient`
+        :arg csc: configuration client instance. Also can be server address:
+                 :obj:`tuple` (:obj:`str`- IP address, :obj:`int` - port)
+        """
+
         self.name_ext = "LM"
         self.csc = csc
         generic_server.GenericServer.__init__(self, self.csc, libman,
@@ -2888,6 +3470,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.rcv_timeout = 10 # set receive timeout
 
     def access_granted(self, ticket):
+        """
+        Grant client access based on the list of allowed hosts
+        for a given storage group in configuration if such exists.
+        This controls read or write access for the specified client hosts.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: work request ticket
+
+        :rtype: :obj:`int` 1 - allowed, 0 - not allowed
+        """
         self.allow_access = self.keys.get('allow', None) # allow host access on a per storage group
         Trace.trace(self.my_trace_level+100, 'access_granted: allow_access %s'%(self.allow_access,))
         if self.allow_access == None:
@@ -2907,8 +3499,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 
     def verify_data_transfer_request(self, ticket):
-        # returns ticket (possibly modified)
-        # or None
+        """
+        Verify client work ticket.
+        It must contain specific keys and have specific structure
+
+        :type ticket: :obj:`dict`
+        :arg ticket: work request ticket
+        :rtype ticket: :obj:`dict` ticket or :obj:`None`
+        """
+
         saved_reply_address = ticket.get('r_a', None)
         work = ticket["work"]
         error_detected = False # no errors detected yet
@@ -2999,6 +3598,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     ########################################
 
     def write_to_hsm(self, ticket):
+        """
+        Process client write work request.
+        Check if it can be accepted and put into pending requests queue.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+
+        :type ticket: :obj:`dict`
+        :arg ticket: work request ticket
+        """
         Trace.trace(self.my_trace_level+100, "write_to_hsm: ticket %s"%(ticket))
         saved_reply_address = ticket.get('r_a', None)
 
@@ -3198,6 +3805,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.notify("client %s %s %s %s" % (host, work, ff, 'queued'))
 
     def read_from_hsm(self, ticket):
+        """
+        Process client read work request.
+        Check if it can be accepted and put into pending requests queue.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+
+        :type ticket: :obj:`dict`
+        :arg ticket: work request ticket
+        """
         Trace.trace(self.my_trace_level+100, "read_from_hsm: ticket %s"%(ticket))
 
         saved_reply_address = ticket.get('r_a', None)
@@ -3361,6 +3976,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # mover_idle wrapper for threaded implementation
     def mover_idle(self, mticket):
+        """
+        Mover_idle wrapper for threaded implementation.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+
+        :type mticket: :obj:`dict`
+        :arg mticket: mover request
+        """
+
         t=time.time()
         Trace.trace(5, "mover_idle: %s"%(mticket['mover'],))
         if self.lm_lock == e_errors.MOVERLOCKED:
@@ -3382,8 +4005,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(7, "mover_idle:timing mover_idle %s %s %s"%
                     (mticket['mover'], time.time()-t, self.pending_work.queue_length))
 
-    # mover is idle - see what we can do
     def _mover_idle(self, mticket):
+        """
+        Process mover_idle call.
+
+        :type mticket: :obj:`dict`
+        :arg mticket: mover request
+        """
+
         Trace.trace(self.my_trace_level,"_mover_idle:IDLE RQ %s"%(mticket,))
         Trace.trace(self.my_trace_level,"_mover_idle:idle movers %s"%(self.idle_movers,))
 
@@ -3646,9 +4275,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.postponed_rq:
             self.postponed_requests.update(self.postponed_sg, 1)
 
-    # mover busy wrapper for threaded implementation
     def mover_busy(self, mticket):
         """
+        Mover busy wrapper for threaded implementation.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+
+        :type mticket: :obj:`dict`
+        :arg mticket: mover request
+        """
+
+        """
+        Leave the following commnted
         if self.use_threads:
             if self.mover_request_in_progress == False:
                self.set_mover_request_in_progress(value=True)
@@ -3662,8 +4299,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         """
         self._mover_busy(mticket)
 
-    # mover is busy - update volumes_at_movers
     def _mover_busy(self, mticket):
+        """
+        Process mover_busy call.
+        Mover is busy - update :obj:`LibraryManagerMethods.volumes_at_movers`
+
+        :type mticket: :obj:`dict`
+        :arg mticket: mover request
+        """
+
         Trace.trace(self.my_trace_level,"_mover_busy: BUSY RQ %s"%(mticket,))
         library = mticket.get('library', None)
         if library and library != self.name.split(".")[0] and not self.share_movers:
@@ -3707,8 +4351,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # do not reply to mover as it does not
         # expect reply for "mover_busy" work
 
-    # mover_bound_volume wrapper for threaded implementation
     def mover_bound_volume(self, mticket):
+        """
+        Mover Bound Volume wrapper for threaded implementation
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+
+        :type mticket: :obj:`dict`
+        :arg mticket: mover request
+        """
+
         t=time.time()
         Trace.trace(5, "mover_bound_volume %s"%(mticket['mover'],))
         if self.use_threads:
@@ -3724,10 +4375,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(7, "mover_bound_volume: timing mover_bound_volume %s %s %s"%
                     (mticket['mover'], time.time()-t, self.pending_work.queue_length))
 
-
-
-   # we have a volume already bound - any more work??
     def _mover_bound_volume(self, mticket):
+        """
+        Process mover_bound_volume call.
+
+        :type mticket: :obj:`dict`
+        :arg mticket: mover request
+        """
+
         Trace.trace(self.my_trace_level, "mover_bound_volume for %s: request: %s"%(mticket['mover'],mticket))
         Trace.trace(self.my_trace_level,"_mover_bound_volume:idle movers %s"%(self.idle_movers,))
         # thread safe
@@ -3973,14 +4628,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         Trace.trace(self.my_trace_level, "mover_bound_volume: DONE")
 
-
-
-    # if the work is on the awaiting bind list, it is the library manager's
-    #  responsibility to retry
-    # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
-    # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
-    # this will be replaced with error handlers!!!!!!!!!!!!!!!!
     def mover_error(self, mticket):
+        """
+        Process mover_error call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+
+        :type mticket: :obj:`dict`
+        :arg mticket: mover request
+        """
+
         Trace.log(e_errors.ERROR,"MOVER ERROR RQ %s"%(mticket,))
         Trace.trace(self.my_trace_level, "mover_error: %s"%(mticket,))
         library = mticket.get('library', None)
@@ -4134,8 +4790,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return 1
 
 
-    # what is going on
     def getwork(self,ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Sends list of pending and active works to the caller.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'getwork'
+
+        """
+
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
@@ -4150,8 +4815,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             dispatching_worker.run_in_thread('GetWork', self.__getwork, args=(ticket,))
 
 
-    # print request queue
     def print_queue(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Sends list of pending requests to STDOUT.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'print_queue'
+
+        """
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         if self.do_fork:
@@ -4191,9 +4864,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         return rc
 
 
-     # return sorted queus as they appear in the pendung queue +
-    # work at movers
     def getworks_sorted(self,ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Sends sorted list of pending and active works to the caller.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'getworks_sorted'
+
+        """
+
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
@@ -4226,8 +4907,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rc = 1
         return rc
 
-   #Return sorted volume assert list of volumes.
     def get_asserts(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Sends sorted list of pending volume assert works to the caller.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'get_asserts'
+
+        """
+
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
@@ -4263,6 +4953,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # get list of suspected volumes
     def get_suspect_volumes(self,ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Sends list of suspect volume assert works to the caller.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'get_suspect_volumes'
+        """
+
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
@@ -4276,9 +4975,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             dispatching_worker.run_in_thread('Get_Suspect_Volumes', self.__get_suspect_volumes, args=(ticket,))
 
-    # get a port for the data transfer
-    # tell the user I'm your library manager and here's your ticket
     def get_user_sockets(self, ticket):
+        """
+        Get a port for the data transfer.
+        Tell the user I'm your library manager and here's your ticket.
+        Used for delivering replies over TCP (big messages).
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request
+        """
+
         library_manager_host, library_manager_port, listen_socket =\
                               callback.get_callback()
         listen_socket.listen(4)
@@ -4298,8 +5004,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         listen_socket.close()
         return control_socket, data_socket
 
-    # remove work from list of pending works
     def remove_work(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Remove work specified by its unique id from list of pending works
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'remove_work'
+        """
+
         rq = self.pending_work.find(ticket["unique_id"])
         if not rq:
             ticket["status"] = (e_errors.NOWORK,"No such work")
@@ -4311,8 +5025,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket["status"] = (e_errors.OK, "Work deleted")
             self.reply_to_caller(ticket)
 
-    # change priority
     def change_priority(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Change priority of work specified by its unique id in the list of pending works
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'change_priority'
+        """
+
         rq = self.pending_work.find(ticket["unique_id"])
         if not rq:
             ticket["status"] = (e_errors.NOWORK,"No such work")
@@ -4328,8 +5050,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket["status"] = (e_errors.OK, "Priority changed")
             self.reply_to_caller(ticket)
 
-    # change state of the library manager
     def change_lm_state(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Change state of the library manager.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'change_lm_state'
+        """
+
         if ticket.has_key('state'):
             if ticket['state'] in (e_errors.LOCKED, e_errors.IGNORE, e_errors.UNLOCKED, e_errors.PAUSE, e_errors.NOREAD, e_errors.NOWRITE, e_errors.MOVERLOCKED):
                 lock = ticket['state']
@@ -4355,29 +5085,61 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def return_state(self):
         return self.lm_lock
 
-    # get state of the library manager
     def get_lm_state(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Send library manager state to caller.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'get_lm_state'
+        """
+
         ticket['state'] = self.lm_lock
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-    # get pending queue length
     def get_pending_queue_length(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Send pending queue length to caller.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'get_pending_queue_length'
+        """
+
         ticket['queue_length'] = self.pending_work.queue_length
         ticket['put_delete'] = (self.pending_work.put_into_queue,
                            self.pending_work.deleted)
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-    # reset pending request queue counters
     def reset_pending_queue_counters(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Reset pending request queue counters.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'reset_pending_queue_counters'
+        """
+
         self.pending_work.put_into_queue = self.pending_work.queue_length
         self.pending_work.deleted = 0L
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-    # get active volume known to LM
     def get_active_volumes(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Send active volumes information to caller.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'get_active_volumes'
+        """
+
         saved_reply_address = ticket.get('r_a', None)
         movers = self.volumes_at_movers.get_active_movers()
         ticket['movers'] = []
@@ -4399,6 +5161,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
 
     def remove_active_volume(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Remove active volume from :obj:`LibraryManagerMethods.volumes_at_movers`
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'remove_active_volume'
+        """
+
         saved_reply_address = ticket.get('r_a', None)
         # find the mover to which volume is assigned
         movers = self.volumes_at_movers.get_active_movers()
@@ -4442,8 +5213,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlock
 
-    # remove volume from suspect volume list
     def remove_suspect_volume(self, ticket):
+        """
+        Process enstore client call.
+        This method is called within :class:`dispatching_worker.DispatchingWorker`
+        Remove suspect volume from suspect volumes list
+
+        :type ticket: :obj:`dict`
+        :arg ticket: enstore library manager client request containig ticket['work'] = 'remove_suspect_volume'
+        """
         saved_reply_address = ticket.get('r_a', None)
         if ticket['volume'] == 'all': # magic word
             self.init_suspect_volumes()
@@ -4464,8 +5242,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket["r_a"] = saved_reply_address
         self.reply_to_caller(ticket)
 
-    # overrides GenericServer reinit when received notification of new configuration file.
     def reinit(self):
+        """
+        Overrides GenericServer reinit when received notification of new configuration file.
+        """
+
         Trace.log(e_errors.INFO, "(Re)initializing server")
         self.keys = self.csc.get(self.name)
         Trace.trace(self.my_trace_level+2,"reinit:new keys %s"%(self.keys,))
@@ -4495,6 +5276,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 
 class LibraryManagerInterface(generic_server.GenericServerInterface):
+    """
+    Library manager interface.
+    Uses only generic commands, inherited from :class:`generic_server.GenericServerInterface`
+    """
 
     def __init__(self):
         # fill in the defaults for possible options
@@ -4521,9 +5306,11 @@ class LibraryManagerInterface(generic_server.GenericServerInterface):
         else:
             self.name = self.args[0]
 
-# old way of staring threads
-# leave as an examplle
+
 def do_work():
+    """
+    Run library manager
+    """
     # get an interface
     intf = LibraryManagerInterface()
 
