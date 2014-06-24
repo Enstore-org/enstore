@@ -386,10 +386,6 @@ except:
 	   #
 	   package_path=`pathfinder ${package_pnfsid}`
 	   #
-	   # start timer to measure transfer time
-	   #
-	   t0=`date +"%s"`
-	   #
 	   # strip leading slash from location cookie
 	   #
 	   file_path=`echo ${uri_location_cookie} | sed -e 's/^\///g'`
@@ -401,28 +397,28 @@ except:
 	   # extract file from tar
 	   #
 	   file_dir=`dirname ${filepath}`
-	   old_dir=`pwd`
-	   cd ${file_dir}
-	   output=$(tar --seek --strip-components 5 --force-local -b 400 -xf ${package_path} ${file_path}  2>&1 > /dev/null)
-	   rc=$?
-	   if [[ $rc -eq 0 || $rc -eq 2 && `echo $output | grep  "rmtlseek not stopped at a record boundary"` ]]; then
-	       chmod 0644 $filepath
-	       touch $filepath
-	       t1=`date +"%s"`
-	       dt=`echo "${t1}-${t0}"|bc`
-	       say SFA Completed untarring ${uri_size} bytes in ${dt} sec.
-	       exit 0
-	   else
-	       cd ${old_dir}
+	   #
+	   # start timer to measure transfer time
+	   #
+	   t0=`date +"%s"`
+           (cd ${file_dir} && tar --seek --record-size=512 --strip-components 5 --force-local -xf ${package_path} ${file_path}  2>&1 > /dev/null)
+           rc=$?
+           if [ $rc -eq 0 ]; then
+               chmod 0644 $filepath
+               touch $filepath
+               t1=`date +"%s"`
+               dt=$((t1-t0))
+               say SFA Completed untarring ${uri_size} bytes in ${dt} sec.
+               exit 0
+           else
 	       unset LD_PRELOAD
-	       rm -f ${file_path}
-	       say Failed to untar file ${pnfsid}, Proceed to encp it
-	   fi
+               rm -f ${filepath}
+               say Failed to untar file ${pnfsid}, Proceed to encp it
+           fi
        fi
        #
        # before encping file check if it is cached and scp it from aggregators:
        #
-       t0=`date +"%s"`
        cache_location=`python -c '
 import string
 import sys
@@ -460,6 +456,7 @@ except:
 	   #
 	   # TODO: in the future need to get names from configuration
 	   #
+	   t0=`date +"%s"`
 	   for node in pagg01 pagg02;
 	     do
 	     scp -o StrictHostKeyChecking=no -c blowfish root@${node}:${cache_location} $filepath
@@ -477,7 +474,7 @@ except:
 		   chown ${si_uid}.${si_gid} $filepath
 		   chmod 0644 $filepath
 		   t1=`date +"%s"`
-		   dt=`echo "${t1}-${t0}"|bc`
+		   dt=$((t1-t0))
 		   say SFA Completed transferring ${uri_size} bytes in ${dt} sec.
 		   exit 0
 	       fi
@@ -635,9 +632,6 @@ elif [ "$command" = "put" ] ; then
       sayE p31e put rc=$ENCP_EXIT
     fi
     exit $ENCP_EXIT
-
-  fi
-
 #------------------------------------------------------------------------------------------
 else
   say  $0 $args  Command not yet supported: $command
