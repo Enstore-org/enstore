@@ -8106,7 +8106,8 @@ class DiskMover(Mover):
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
 
-        r0 = self.vol_info['remaining_bytes']  #value prior to this write
+        r0 = self.vol_info.get('remaining_bytes', r2)  #value prior to this write
+        #vol_info['remaining_bytes'] may be not defined if the volume has just been added by another mover. 
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
         remaining = min(r1, r2)
         self.vol_info['remaining_bytes']=remaining
