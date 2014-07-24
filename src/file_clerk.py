@@ -7,15 +7,18 @@
 ##############################################################################
 
 # system import
-import sys
+
+import Queue
+import multiprocessing
 import os
-import time
-import string
-import socket
 import select
+import socket
+import string
+import sys
+import threading
+import time
 import types
 
-import threading
 
 # enstore imports
 import traceback
@@ -35,6 +38,10 @@ import udp_server
 import file_cache_status
 import enstore_files
 import enstore_functions2
+
+
+SEQUENTIAL_QUEUE_SIZE=100000
+PARALLEL_QUEUE_SIZE=100000
 
 isSFA=False
 
@@ -84,6 +91,19 @@ and f.cache_status='CACHED' and f.deleted='n'"
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
+class Worker(threading.Thread):
+    def __init__(self,queue,fc):
+        super(Worker,self).__init__()
+        self.queue = queue
+	self.file_clerk = fc
+
+    def run(self):
+        for name, args in iter(self.queue.get, None):
+		# execute file clerk function by name and with
+		# an argument
+		getattr(self.file_clerk,name)(args[0])
+		self.file_clerk._done_cleanup()
+
 class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of File Clerk methods should only be readonly operations.
     ### This class is inherited by Info Server (to increase code reuse)
@@ -119,9 +139,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
 
-        self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
-        self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
-                                   self.max_threads+1)
+        self.sequentialQueueSize     = dbInfo.get('sequential_queue_size',SEQUENTIAL_QUEUE_SIZE)
+	self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+	self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
+        self.max_connections         =  self.numberOfParallelWorkers+1
 
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
@@ -141,12 +162,13 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
 
+
     def invoke_function(self, function, args=()):
         if  function.__name__  in ("tape_list3",
 				   "set_cache_status",
 				   "get_children",
-				   "set_children",
 				   "alive",
+				   "set_children",
 				   "get_bfids",
 				   "get_bfids2",
 				   "show_state",
@@ -159,20 +181,16 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 				   "open_bitfile_for_package",
 				   "bfid_info") \
 				   or MY_NAME=="info_server":
-	    c = threading.activeCount()
-            Trace.trace(5, "threads %s"%(c,))
-            if c < self.max_threads:
-		    Trace.trace(5, "threads %s"%(c,))
-		    dispatching_worker.run_in_thread(thread_name=None,
-						     function=function,
-						     args=args,
-						     after_function=self._done_cleanup)
-            else:
-		    apply(function,args)
-		    self._done_cleanup()
-        else:
-            apply(function,args)
-            self._done_cleanup()
+		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
+		self.parallelThreadQueue.put([function.__name__, args])
+
+	elif  function.__name__ == "quit":
+		# needs to run on main thread
+		apply(function,args)
+	else:
+		Trace.trace(5, "Putting on sequential thread queue %d %s"%(self.sequentialThreadQueue.qsize(),function.__name__))
+		self.sequentialThreadQueue.put([function.__name__, args])
+
 
     ####################################################################
 
@@ -228,7 +246,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         if check_exists and return_record:
             #Make sure the bfid exists.   (getattr() keeps pychecker quite.)
-            record = getattr(self, 'filedb_dict', {})[bfid]
+	    record = getattr(self, 'filedb_dict', {})[bfid]
             if not record:
                 message = "%s: no such bfid %s" % (MY_NAME, bfid,)
                 ticket["status"] = (e_errors.NO_FILE, message)
@@ -1122,6 +1140,19 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         #Set the brand.
         self.set_brand(brand)
+
+	self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
+	self.sequentialWorker = Worker(self.sequentialThreadQueue,self)
+	self.sequentialWorker.start()
+
+	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
+
+	self.parallelThreads = []
+	for i in range(self.numberOfParallelWorkers):
+		worker = Worker(self.parallelThreadQueue,self)
+		self.parallelThreads.append(worker)
+		worker.start()
+
 
     ####################################################################
 
@@ -2317,6 +2348,13 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
     def quit(self, ticket):
 	self.filedb_dict.close()
+	# set sentinel
+	self.sequentialThreadQueue.put(None)
+	for process in self.parallelThreads:
+		self.parallelThreadQueue.put(None)
+	self.sequentialWorker.join(10.)
+	for process in self.parallelThreads:
+		process.join(10.)
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
 
 
