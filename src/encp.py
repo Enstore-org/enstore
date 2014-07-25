@@ -11794,13 +11794,13 @@ class EncpInterface(option.Interface):
                          "the first 'filename' is really the file's bfid.",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
-                         option.USER_LEVEL:option.ADMIN,},
+                         option.USER_LEVEL:option.USER2,},
         option.GET_BFIDS:{option.HELP_STRING:
                          "Specifies that dcache requested the file and that "
                          "the first 'filename' is really the file's bfid.",
                          option.VALUE_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
-                         option.USER_LEVEL:option.ADMIN,},
+                         option.USER_LEVEL:option.USER2,},
         option.GET_CACHE:{option.HELP_STRING:
                           "Specifies that dcache requested the file and that "
                           "the first 'filename' is really the file's pnfs id.",
@@ -11950,7 +11950,7 @@ class EncpInterface(option.Interface):
                                    "Used with --get-bfid",
                                    option.VALUE_USAGE:option.IGNORED,
                                    option.VALUE_TYPE:option.INTEGER,
-                                   option.USER_LEVEL:option.ADMIN,},
+                                   option.USER_LEVEL:option.USER2,},
         option.STORAGE_GROUP:{option.HELP_STRING:
                                "Specify an alternative storage group to "
                                "override the pnfs strorage group tag "
