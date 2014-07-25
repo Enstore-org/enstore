@@ -56,8 +56,8 @@ class Interface(generic_server.GenericServerInterface):
 	def valid_dictionary(self):
 		return (self.help_options)
 
-class Server(file_clerk.FileClerkInfoMethods,
-	     volume_clerk.VolumeClerkInfoMethods,
+class Server(volume_clerk.VolumeClerkInfoMethods,
+	     file_clerk.FileClerkInfoMethods,
 	     generic_server.GenericServer):
 
 	def __init__(self, csc):
