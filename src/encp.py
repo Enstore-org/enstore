@@ -7524,18 +7524,12 @@ def calculate_rate(done_ticket, tinfo):
         else:
             disk_time = transfer_time
 
-    """
-    #Note MWZ 9-19-2002: These lines are hacks.  They are evil.  Fix EXfer.c
-    # write time calculation bug.
-    if done_ticket['work'] == "read_from_hsm":
-        nsa = 0
-        dsa = 0 #intf_encp.buffer_size
-    else:
-        nsa = 0 #intf_encp.buffer_size
-        dsa = 0
-    """
-
     if e_errors.is_ok(done_ticket['status'][0]):
+
+        tinfo['%s_transfer_size'%(u_id,)] = MB_transfered
+        tinfo['%s_network_time'%(u_id,)] = network_time
+        tinfo['%s_drive_time'%(u_id,)] = drive_time
+        tinfo['%s_disk_time'%(u_id,)] = disk_time
 
         if transfer_time != 0:
             tinfo['%s_transfer_rate'%(u_id,)] = MB_transfered / transfer_time
@@ -7642,14 +7636,6 @@ def calculate_rate(done_ticket, tinfo):
                       done_ticket["mover"]["vendor_id"],
                       time.time() - tinfo["encp_start_time"],
                       log_dictionary)
-                      #done_ticket["mover"].get("media_changer",
-                      #                         e_errors.UNKNOWN),
-		      #done_ticket["mover"].get('data_ip',
-                      #                         done_ticket["mover"]['host']),
-                      #done_ticket["mover"]["driver"],
-                      #sg,
-                      #done_ticket["encp_ip"],
-                      #done_ticket['unique_id'])
 
         Trace.message(DONE_LEVEL, print_format % print_values)
 
@@ -7739,81 +7725,31 @@ def calculate_rate(done_ticket, tinfo):
 
 def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 
+
     calculate_final_statistics_start_time = time.time()
-
-    #Determine the average of each time (overall, transfer, network,
-    # tape and disk) of all transfers done for the encp.  If only one file
-    # was transfered, then these rates should equal the files rates.
-
     statistics = {}
-
-    #Calculate total running time from the begining.
     now = time.time()
     tinfo['total'] = now - tinfo['encp_start_time']
 
-    #calculate MB relatated stats
-    #bytes_per_MB = float(1024 * 1024)
-    #MB_transfered = float(bytes) / bytes_per_MB
+    for key,value in tinfo.iteritems():
+        index = string.find(key,'_transfer_size')
+        if index != -1:
+            id = key[:index]
+            statistics['transfer_size'] = statistics.get('transfer_size',0) + value
+            for k in ('overall_time',
+                      'transfer_time',
+                      'network_time',
+                      'drive_time',
+                      'disk_time'):
+                time_key = "%s_%s"%(id,k,)
+                statistics[k] = statistics.get(k,0) + tinfo[time_key]
 
-    #get all the overall rates from the dictionary.
-    overall_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "overall_rate") != -1:
-            count = count + 1
-            overall_rate = overall_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_overall'] = overall_rate / count
-    else:
-        statistics['MB_per_S_overall'] = 0.0
+    statistics['MB_per_S_overall'] = statistics['transfer_size']/statistics['overall_time'] if statistics.get('overall_time') else 0
+    statistics['MB_per_S_transfer'] = statistics['transfer_size']/statistics['transfer_time'] if statistics.get('transfer_time') else 0
+    statistics['MB_per_S_network'] = statistics['transfer_size']/statistics['network_time'] if statistics.get('network_time') else 0
+    statistics['MB_per_S_drive'] = statistics['transfer_size']/statistics['drive_time'] if statistics.get('drive_time') else 0
+    statistics['MB_per_S_disk'] = statistics['transfer_size']/statistics['disk_time'] if statistics.get('disk_time') else 0
 
-    #get all the transfer rates from the dictionary.
-    transfer_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "transfer_rate") != -1:
-            count = count + 1
-            transfer_rate = transfer_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_transfer'] = transfer_rate / count
-    else:
-        statistics['MB_per_S_transfer'] = 0.0
-
-    #get all the drive rates from the dictionary.
-    drive_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "drive_rate") != -1:
-            count = count + 1
-            drive_rate = drive_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_drive'] = drive_rate / count
-    else:
-        statistics['MB_per_S_drive'] = 0.0
-
-    #get all the network rates from the dictionary.
-    network_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "network_rate") != -1:
-            count = count + 1
-            network_rate = network_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_network'] = network_rate / count
-    else:
-        statistics['MB_per_S_network'] = 0.0
-
-    #get all the disk rates from the dictionary.
-    disk_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "disk_rate") != -1:
-            count = count + 1
-            disk_rate = disk_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_disk'] = disk_rate / count
-    else:
-        statistics['MB_per_S_disk'] = 0.0
 
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
           "\tOverall rate = %.3g MB/sec.  Transfer rate = %.3g MB/sec.\n" \
@@ -7836,7 +7772,6 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
                      statistics['MB_per_S_drive'],
                      statistics["MB_per_S_disk"],
                      exit_status)
-
     done_ticket = {}
     done_ticket['statistics'] = statistics
     #set the final status values
