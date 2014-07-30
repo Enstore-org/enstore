@@ -7857,6 +7857,7 @@ class DiskMover(Mover):
             if self.state != IDLE:
                 self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: filename is %s' %
                                      (filename,), error_source=DRIVE)
+                self.state = IDLE # to reset state ERROR
                 self.idle()
             return
 
