@@ -37,6 +37,26 @@ MAX_THREADS = 50
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
+class ThreadExecutor(threading.Thread):
+    """
+    Utility class that executes a server function from
+    queue of functions
+    """
+    def __init__(self,queue,server):
+        super(ThreadExecutor,self).__init__()
+        self.queue = queue
+	self.server = server
+
+    def run(self):
+        for name, args in iter(self.queue.get, None):
+            # execute server function by name and with
+            # an argument
+            try:
+                getattr(self.server,name)(args[0])
+                self.server._done_cleanup()
+            except Exception as e:
+                Trace.log(e_errors.INFO, "Failed to execute method %s %s"%(name,str(e)))
+
 def thread_wrapper(function, args=(), after_function=None):
     t = time.time()
     Trace.trace(5,"dispatching_worker.thread_wrapper: function %s "%(function.__name__,))

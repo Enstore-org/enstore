@@ -39,70 +39,72 @@ import file_cache_status
 import enstore_files
 import enstore_functions2
 
+SEQUENTIAL_QUEUE_SIZE=enstore_constants.SEQUENTIAL_QUEUE_SIZE
+PARALLEL_QUEUE_SIZE=enstore_constants.PARALLEL_QUEUE_SIZE
+MY_NAME = enstore_constants.FILE_CLERK
+MAX_CONNECTION_FAILURE = enstore_constants.MAX_CONNECTION_FAILURE
+MAX_THREADS = enstore_constants.MAX_THREADS
 
-SEQUENTIAL_QUEUE_SIZE=100000
-PARALLEL_QUEUE_SIZE=100000
-
-isSFA=False
-
-try:
-	import cache.messaging.client as qpid_client
-	try:
-		import cache.messaging.pe_client as pe_client
-		isSFA=True
-	except ImportError, msg:
-		Trace.log(e_errors.INFO,"Failed to import cache.messaging.pe_client: %s"%(str(msg),))
-		pass
-	try:
-		import cache.en_logging.en_logging
-	except ImportError, msg:
-		Trace.log(e_errors.INFO,"Failed to import cache.en_logging.en_logging: %s"%(str(msg),))
-		pass
-except ImportError, msg:
-	Trace.log(e_errors.INFO,"Failed to import cache.messaging.client: %s"%(str(msg),))
-	pass
-
-
-MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
-MAX_CONNECTION_FAILURE = 5
-
-MAX_THREADS = 50
 # we have run into issues with file_clerk locking up
 # when number of max threads was more than number of max
 # connections. Set it to max number of threads + 1 (counting
 # main thread)
+
 MAX_CONNECTIONS=MAX_THREADS+1
-
 AMQP_BROKER = "amqp_broker"
-FILES_IN_TRANSITION_CHECK_INTERVAL = 3600
+FILES_IN_TRANSITION_CHECK_INTERVAL = enstore_constants.FILES_IN_TRANSITION_CHECK_INTERVAL
 
-SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f, files_in_transition fit \
-where f.bfid=fit.bfid and \
-(f.archive_status is null or f.archive_status != 'ARCHIVED') \
-and f.cache_status='CACHED' and f.deleted='n' and \
-f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
-SELECT_ALL_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f, files_in_transition fit \
-where f.bfid=fit.bfid and \
-(f.archive_status is null or f.archive_status != 'ARCHIVED') \
-and f.cache_status='CACHED' and f.deleted='n'"
+SELECT_FILES_IN_TRANSITION="""
+SELECT f.bfid,
+       f.cache_status,
+       f.cache_mod_time
+FROM file f,
+files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND (f.archive_status IS NULL
+        OR f.archive_status != 'ARCHIVED')
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+   AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '1 day'
+"""
+
+SELECT_ALL_FILES_IN_TRANSITION="""
+SELECT f.bfid,
+       f.cache_status,
+       f.cache_mod_time
+FROM file f,
+     files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND (f.archive_status IS NULL
+        OR f.archive_status != 'ARCHIVED')
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+"""
+
+isSFA=False
+
+try:
+    import cache.messaging.client as qpid_client
+    try:
+        import cache.messaging.pe_client as pe_client
+        isSFA=True
+    except ImportError, msg:
+        Trace.log(e_errors.INFO,"Failed to import cache.messaging.pe_client: %s"%(str(msg),))
+	pass
+    try:
+        import cache.en_logging.en_logging
+    except ImportError, msg:
+        Trace.log(e_errors.INFO,"Failed to import cache.en_logging.en_logging: %s"%(str(msg),))
+	pass
+except ImportError, msg:
+    Trace.log(e_errors.INFO,"Failed to import cache.messaging.client: %s"%(str(msg),))
+    pass
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
-class Worker(threading.Thread):
-    def __init__(self,queue,fc):
-        super(Worker,self).__init__()
-        self.queue = queue
-	self.file_clerk = fc
-
-    def run(self):
-        for name, args in iter(self.queue.get, None):
-		# execute file clerk function by name and with
-		# an argument
-		getattr(self.file_clerk,name)(args[0])
-		self.file_clerk._done_cleanup()
 
 class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of File Clerk methods should only be readonly operations.
@@ -125,74 +127,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         dispatching_worker.DispatchingWorker.__init__(
             self, (self.keys['hostip'], self.keys['port']))
 
-        #Retrieve database information from the configuration.
-        Trace.log(e_errors.INFO,"determine dbHome and jouHome")
-
-        try:
-            dbInfo = self.csc.get('database')
-            dbHome = dbInfo['db_dir']
-            try:  # backward compatible
-                jouHome = dbInfo['jou_dir']
-            except:
-                jouHome = dbHome
-        except:
-            dbHome = os.environ['ENSTORE_DIR']
-            jouHome = dbHome
-
-        self.sequentialQueueSize     = dbInfo.get('sequential_queue_size',SEQUENTIAL_QUEUE_SIZE)
-	self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
-	self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
-        self.max_connections         =  self.numberOfParallelWorkers+1
-
-        #Open conection to the Enstore DB.
-        Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
-        try:
-		# proper default values are supplied by edb.FileDB constructor
-		self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
-					      port=dbInfo.get('db_port',None),
-					      user=dbInfo.get('dbuser',None),
-					      database=dbInfo.get('dbname',None),
-					      jou=jouHome,
-					      max_connections=self.max_connections)
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-            Trace.log(e_errors.ERROR, message)
-            Trace.alarm(e_errors.ERROR, message, {})
-            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
-            sys.exit(1)
-
-
-    def invoke_function(self, function, args=()):
-        if  function.__name__  in ("tape_list3",
-				   "set_cache_status",
-				   "get_children",
-				   "alive",
-				   "set_children",
-				   "get_bfids",
-				   "get_bfids2",
-				   "show_state",
-				   "find_copies",
-				   "replay",
-				   "get_brand",
-				   "get_crcs",
-				   "has_undeleted_file",
-				   "open_bitfile",
-				   "open_bitfile_for_package",
-				   "bfid_info") \
-				   or MY_NAME=="info_server":
-		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
-		self.parallelThreadQueue.put([function.__name__, args])
-
-	elif  function.__name__ == "quit":
-		# needs to run on main thread
-		apply(function,args)
-	else:
-		Trace.trace(5, "Putting on sequential thread queue %d %s"%(self.sequentialThreadQueue.qsize(),function.__name__))
-		self.sequentialThreadQueue.put([function.__name__, args])
-
-
     ####################################################################
+
 
     # These extract value functions are used to get a value from the ticket
     # and perform validity checks in a consistant fashion.  These functions
@@ -1141,24 +1077,86 @@ class FileClerkMethods(FileClerkInfoMethods):
         #Set the brand.
         self.set_brand(brand)
 
+        #Retrieve database information from the configuration.
+        Trace.log(e_errors.INFO,"determine dbHome and jouHome")
+
+        try:
+            dbInfo = self.csc.get('database')
+            dbHome = dbInfo['db_dir']
+            try:  # backward compatible
+                jouHome = dbInfo['jou_dir']
+            except:
+                jouHome = dbHome
+        except:
+            dbHome = os.environ['ENSTORE_DIR']
+            jouHome = dbHome
+
+        self.sequentialQueueSize     = dbInfo.get('sequential_queue_size',SEQUENTIAL_QUEUE_SIZE)
+	self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+	self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
+        self.max_connections         = self.numberOfParallelWorkers+1
+
+        #Open conection to the Enstore DB.
+        Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
+        try:
+		# proper default values are supplied by edb.FileDB constructor
+		self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
+					      port=dbInfo.get('db_port',None),
+					      user=dbInfo.get('dbuser',None),
+					      database=dbInfo.get('dbname',None),
+					      jou=jouHome,
+					      max_connections=self.max_connections)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+            Trace.log(e_errors.ERROR, message)
+            Trace.alarm(e_errors.ERROR, message, {})
+            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+            sys.exit(1)
+
 	self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
-	self.sequentialWorker = Worker(self.sequentialThreadQueue,self)
+	self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue,self)
 	self.sequentialWorker.start()
 
 	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
 
 	self.parallelThreads = []
 	for i in range(self.numberOfParallelWorkers):
-		worker = Worker(self.parallelThreadQueue,self)
+		worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue,self)
 		self.parallelThreads.append(worker)
 		worker.start()
 
 
-    ####################################################################
-
     ###
     ### These functions are internal file_clerk functions.
     ###
+
+    def invoke_function(self, function, args=()):
+        if  function.__name__  in ("tape_list3",
+				   "set_cache_status",
+				   "get_children",
+				   "alive",
+				   "set_children",
+				   "get_bfids",
+				   "get_bfids2",
+				   "show_state",
+				   "find_copies",
+				   "replay",
+				   "get_brand",
+				   "get_crcs",
+				   "has_undeleted_file",
+				   "open_bitfile",
+				   "open_bitfile_for_package",
+                                   "bfid_info") :
+		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
+		self.parallelThreadQueue.put([function.__name__, args])
+
+	elif  function.__name__ == "quit":
+		# needs to run on main thread
+		apply(function,args)
+	else:
+		Trace.trace(5, "Putting on sequential thread queue %d %s"%(self.sequentialThreadQueue.qsize(),function.__name__))
+		self.sequentialThreadQueue.put([function.__name__, args])
 
     # set_brand(brand) -- set brand
 
