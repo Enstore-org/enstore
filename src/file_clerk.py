@@ -712,7 +712,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 	   duplicate_cookies = [ cookie for cookie, count in location_cookies.iteritems() if count > 1 ]
 	   if duplicate_cookies :
 	      Trace.alarm(e_errors.WARNING, "Volume {} contains duplicate cookie(s) : {}".format(external_label,
-												 string.join(duplicate_cookies,",")))
+												 string.join(duplicate_cookies," ")))
         return file_list
 
     #### DONE
