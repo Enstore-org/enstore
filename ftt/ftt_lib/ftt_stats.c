@@ -1,4 +1,4 @@
-static char rcsid[] = "@(#)$Id$";
+static char rcsid[] = "@(#)$Id: ftt_stats.c,v 1.71 2010/12/29 16:23:39 moibenko Exp $";
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -571,8 +571,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 *         for STK T9940A/B it takes bytes 32-39
 */
 	    if (((d->prod_id[1] == '9') && (d->prod_id[3] == '4'))|
-		(strncmp(d->prod_id, "T10000C", 7) == 0)) {
-		set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
+		(strncmp(d->prod_id, "T10000", 6) == 0)) {
+	      set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
 	    } else {
 		set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
 	    }
@@ -884,24 +884,24 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			      if (d->prod_id[6] == 'A') {
 				  /* T10000A */
 				  data_length = 0x36 + 2;
-				  dens_offset = 16;
 			      }
 			      else if (d->prod_id[6] == 'B') {
 				  /* T10000B */
 				  data_length = 0x6a + 2;
-				  dens_offset = 77;
 			      }
 			      else if (d->prod_id[6] == 'C') {
 				  /* T10000C */
 				  data_length = 0x9e + 2;
-				  dens_offset = 120;
+			      }
+			      else if (d->prod_id[6] == 'D') {
+				  /* T10000D */
+				  data_length = 0xd2 + 2;
 			      }
 			      else {
 				  /* leave as for T10000C so far */
 				  data_length = 0x9e + 2;
-				  dens_offset = 120;
 			      }
-			      
+			      dens_offset = data_length-40; /* See Density Support Block Descriptor in manual */
 			      static unsigned char report_dens[]= {0x44, 0x00, 0x00, 0x00, 0x00, 
 								   0x00, 0x00, 0, 0xff, 0};
 			      res = ftt_do_scsi_command(d,"Report Density Support", report_dens, 10, 
