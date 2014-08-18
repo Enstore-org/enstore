@@ -604,6 +604,28 @@ LANGUAGE 'plpgsql';
 
 ALTER FUNCTION public.swap_package(varchar,varchar) OWNER TO enstore;
 
+
+
+--
+-- Name: volume_audit(); Type: FUNCTION; Schema: public; Owner: enstore
+--
+
+CREATE FUNCTION volume_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+IF (TG_OP='INSERT') THEN
+      INSERT into volume_audit_counter select 0,NEW.volume where not exists (select volume from volume_audit_counter where volume=NEW.volume);
+      UPDATE volume_audit_counter SET counter=counter+1 where volume=NEW.volume;
+END IF;
+RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.volume_audit() OWNER TO enstore;
+
+
 --
 -- Name: write_protect_status(character varying); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -628,6 +650,9 @@ $_$
 
 
 ALTER FUNCTION public.write_protect_status(character varying) OWNER TO enstore;
+
+
+
 
 INSERT into state_type (name) select 'system_inhibit_0' as name  where not exists (select state_type.name from state_type where state_type.name='system_inhibit_0');
 INSERT into state_type (name) select 'system_inhibit_1' as name  where not exists (select state_type.name from state_type where state_type.name='system_inhibit_1');

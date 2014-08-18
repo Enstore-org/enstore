@@ -11,11 +11,11 @@ Readonly access to file and volume database
 '''
 
 # system import
+import Queue
 import os
-import sys
 import string
+import sys
 import threading
-# import pprint
 
 # enstore import
 import dispatching_worker
@@ -23,7 +23,6 @@ import generic_server
 import Trace
 import e_errors
 import enstore_constants
-#import monitored_server
 import event_relay_messages
 import time
 import hostaddr
@@ -39,9 +38,10 @@ import volume_clerk
 import file_clerk
 
 MY_NAME = enstore_constants.INFO_SERVER   #"info_server"
-MAX_CONNECTION_FAILURE = 5
-MAX_THREADS = 50
-MAX_CONNECTIONS=20
+PARALLEL_QUEUE_SIZE=enstore_constants.PARALLEL_QUEUE_SIZE
+MAX_CONNECTION_FAILURE = enstore_constants.MAX_CONNECTION_FAILURE
+MAX_THREADS =  enstore_constants.MAX_THREADS
+MAX_CONNECTIONS=MAX_THREADS+1
 
 # err_msg(fucntion, ticket, exc, value) -- format error message from
 # exceptions
@@ -56,8 +56,8 @@ class Interface(generic_server.GenericServerInterface):
 	def valid_dictionary(self):
 		return (self.help_options)
 
-class Server(file_clerk.FileClerkInfoMethods,
-	     volume_clerk.VolumeClerkInfoMethods,
+class Server(volume_clerk.VolumeClerkInfoMethods,
+	     file_clerk.FileClerkInfoMethods,
 	     generic_server.GenericServer):
 
 	def __init__(self, csc):
@@ -87,9 +87,9 @@ class Server(file_clerk.FileClerkInfoMethods,
 		file_clerk.MY_NAME = MY_NAME
 		volume_clerk.MY_NAME = MY_NAME
 
-		self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
-		self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
-					   self.max_threads+1)
+		self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+		self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
+		self.max_connections         =  self.numberOfParallelWorkers+1
 
 		try:
 			self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host','localhost'),
@@ -115,13 +115,25 @@ class Server(file_clerk.FileClerkInfoMethods,
 			Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
 			sys.exit(1)
 
+		self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
+		self.parallelThreads = []
+		for i in range(self.numberOfParallelWorkers):
+			worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue,self)
+			self.parallelThreads.append(worker)
+			worker.start()
 
 
 		# setup the communications with the event relay task
 		self.event_relay_subscribe([event_relay_messages.NEWCONFIGFILE])
-
 		self.set_error_handler(self.info_error_handler)
-		return
+
+	def invoke_function(self, function, args=()):
+		if  function.__name__ == "quit":
+			apply(function,args)
+		else:
+			Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
+			self.parallelThreadQueue.put([function.__name__, args])
+
 
 	def reinit(self):
 		Trace.log(e_errors.INFO, "(Re)initializing server")
@@ -216,10 +228,12 @@ class Server(file_clerk.FileClerkInfoMethods,
 	# These need confirmation
 	def quit(self, ticket):
 		self.db.close()
+		for t in self.parallelThreads:
+			self.parallelThreadQueue.put(None)
+		for t in self.parallelThreads:
+			t.join(10.)
 		dispatching_worker.DispatchingWorker.quit(self, ticket)
-		# can't go this far
-		# self.reply_to_caller({'status':(e_errors.OK, None)})
-		# sys.exit(0)
+
 
 	def file_info(self, ticket):
 

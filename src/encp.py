@@ -1575,46 +1575,12 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
                                                 alarmc = __alarmc)
     if vcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
-    #Before checking other systems, check the current system.
     elif e_errors.is_ok(vcc.inquire_vol(volume)):
+        __vcc = vcc
+        __csc = csc
         return csc
 
-    #Get the list of all config servers and remove the 'status' element.
-    config_servers = csc.get('known_config_servers', {})
-    if e_errors.is_ok(config_servers['status']):
-        del config_servers['status']
-    else:
-        return csc
-
-    #Loop through systems for the tape that matches the one we're looking for.
-    for server in config_servers.keys():
-        try:
-            #Get the next configuration client.
-            csc_test = configuration_client.ConfigurationClient(
-                config_servers[server])
-
-            #Get the next volume clerk client and volume inquiry.
-            vcc_test = volume_clerk_client.VolumeClerkClient(
-                csc_test, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
-
-            if vcc_test.server_address != None:
-		#If the fcc has been initialized correctly; use it.
-
-		if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
-		    msg = "Using %s based on volume %s." % \
-			  (vcc_test.server_address, volume)
-		    Trace.log(e_errors.INFO, msg)
-
-		    __csc = csc_test  #Set global for performance reasons.
-		    return __csc
-
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
-
+    __csc = csc
     return csc
 
 def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
@@ -1661,43 +1627,11 @@ def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
         file_info = fcc.bfid_info(bfid, 5, 3)
         if e_errors.is_ok(file_info):
             __fcc = fcc
-            return __csc
-
-    #Get the list of all config servers and remove the 'status' element.
-    config_servers = csc.get('known_config_servers', {})
-    if e_errors.is_ok(config_servers['status']):
-        del config_servers['status']
-    else:
-        __csc = csc
-        return __csc
-
-    #Loop through systems for the brand that matches the one we're looking for.
-    for server in config_servers.keys():
-        try:
-            #Get the next configuration client.
-            csc_test = configuration_client.ConfigurationClient(
-                config_servers[server])
-
-            #Get the next file clerk client and its brand.
-            fcc_test = file_clerk_client.FileClient(
-                csc_test, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
-            if fcc_test.server_address != None:
-		#If the fcc has been initialized correctly; use it.
-                file_info = fcc.bfid_info(bfid, 5, 3)
-                if e_errors.is_ok(file_info):
-                    __csc = csc_test  #Set global for performance reasons.
-                    __fcc = fcc_test
-                    return __csc
-
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
+            __csc = csc
+            return csc
 
     __csc = csc
-    return __csc
+    return csc
 
 #Return the correct configuration server client based on the 'brand' (if
 # present) of the bfid or the volume name.
@@ -1729,6 +1663,7 @@ def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
 #
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string,
 #  or a volume name string.
+
 def __get_csc(parameter=None):
     global __csc  #For remembering.
     global __acc
@@ -7589,18 +7524,12 @@ def calculate_rate(done_ticket, tinfo):
         else:
             disk_time = transfer_time
 
-    """
-    #Note MWZ 9-19-2002: These lines are hacks.  They are evil.  Fix EXfer.c
-    # write time calculation bug.
-    if done_ticket['work'] == "read_from_hsm":
-        nsa = 0
-        dsa = 0 #intf_encp.buffer_size
-    else:
-        nsa = 0 #intf_encp.buffer_size
-        dsa = 0
-    """
-
     if e_errors.is_ok(done_ticket['status'][0]):
+
+        tinfo['%s_transfer_size'%(u_id,)] = MB_transfered
+        tinfo['%s_network_time'%(u_id,)] = network_time
+        tinfo['%s_drive_time'%(u_id,)] = drive_time
+        tinfo['%s_disk_time'%(u_id,)] = disk_time
 
         if transfer_time != 0:
             tinfo['%s_transfer_rate'%(u_id,)] = MB_transfered / transfer_time
@@ -7707,14 +7636,6 @@ def calculate_rate(done_ticket, tinfo):
                       done_ticket["mover"]["vendor_id"],
                       time.time() - tinfo["encp_start_time"],
                       log_dictionary)
-                      #done_ticket["mover"].get("media_changer",
-                      #                         e_errors.UNKNOWN),
-		      #done_ticket["mover"].get('data_ip',
-                      #                         done_ticket["mover"]['host']),
-                      #done_ticket["mover"]["driver"],
-                      #sg,
-                      #done_ticket["encp_ip"],
-                      #done_ticket['unique_id'])
 
         Trace.message(DONE_LEVEL, print_format % print_values)
 
@@ -7804,81 +7725,31 @@ def calculate_rate(done_ticket, tinfo):
 
 def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 
+
     calculate_final_statistics_start_time = time.time()
-
-    #Determine the average of each time (overall, transfer, network,
-    # tape and disk) of all transfers done for the encp.  If only one file
-    # was transfered, then these rates should equal the files rates.
-
     statistics = {}
-
-    #Calculate total running time from the begining.
     now = time.time()
     tinfo['total'] = now - tinfo['encp_start_time']
 
-    #calculate MB relatated stats
-    #bytes_per_MB = float(1024 * 1024)
-    #MB_transfered = float(bytes) / bytes_per_MB
+    for key,value in tinfo.iteritems():
+        index = string.find(key,'_transfer_size')
+        if index != -1:
+            id = key[:index]
+            statistics['transfer_size'] = statistics.get('transfer_size',0) + value
+            for k in ('overall_time',
+                      'transfer_time',
+                      'network_time',
+                      'drive_time',
+                      'disk_time'):
+                time_key = "%s_%s"%(id,k,)
+                statistics[k] = statistics.get(k,0) + tinfo[time_key]
 
-    #get all the overall rates from the dictionary.
-    overall_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "overall_rate") != -1:
-            count = count + 1
-            overall_rate = overall_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_overall'] = overall_rate / count
-    else:
-        statistics['MB_per_S_overall'] = 0.0
+    statistics['MB_per_S_overall'] = statistics['transfer_size']/statistics['overall_time'] if statistics.get('overall_time') else 0
+    statistics['MB_per_S_transfer'] = statistics['transfer_size']/statistics['transfer_time'] if statistics.get('transfer_time') else 0
+    statistics['MB_per_S_network'] = statistics['transfer_size']/statistics['network_time'] if statistics.get('network_time') else 0
+    statistics['MB_per_S_drive'] = statistics['transfer_size']/statistics['drive_time'] if statistics.get('drive_time') else 0
+    statistics['MB_per_S_disk'] = statistics['transfer_size']/statistics['disk_time'] if statistics.get('disk_time') else 0
 
-    #get all the transfer rates from the dictionary.
-    transfer_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "transfer_rate") != -1:
-            count = count + 1
-            transfer_rate = transfer_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_transfer'] = transfer_rate / count
-    else:
-        statistics['MB_per_S_transfer'] = 0.0
-
-    #get all the drive rates from the dictionary.
-    drive_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "drive_rate") != -1:
-            count = count + 1
-            drive_rate = drive_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_drive'] = drive_rate / count
-    else:
-        statistics['MB_per_S_drive'] = 0.0
-
-    #get all the network rates from the dictionary.
-    network_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "network_rate") != -1:
-            count = count + 1
-            network_rate = network_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_network'] = network_rate / count
-    else:
-        statistics['MB_per_S_network'] = 0.0
-
-    #get all the disk rates from the dictionary.
-    disk_rate  = 0L
-    count = 0
-    for value in tinfo.keys():
-        if string.find(value, "disk_rate") != -1:
-            count = count + 1
-            disk_rate = disk_rate + tinfo[value]
-    if count:
-        statistics['MB_per_S_disk'] = disk_rate / count
-    else:
-        statistics['MB_per_S_disk'] = 0.0
 
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
           "\tOverall rate = %.3g MB/sec.  Transfer rate = %.3g MB/sec.\n" \
@@ -7901,7 +7772,6 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
                      statistics['MB_per_S_drive'],
                      statistics["MB_per_S_disk"],
                      exit_status)
-
     done_ticket = {}
     done_ticket['statistics'] = statistics
     #set the final status values
@@ -10941,8 +10811,9 @@ def read_post_transfer_update(done_ticket, out_fd, e):
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    #Update the modification time.
-    update_modification_time(done_ticket['outfile'])
+    if not e.get_cache and not e.put_cache:
+        #Update the modification time only for direct encp files
+        update_modification_time(done_ticket['outfile'])
 
     #If this is a read of a deleted file, leave the outfile permissions
     # to the defaults.
@@ -11858,13 +11729,13 @@ class EncpInterface(option.Interface):
                          "the first 'filename' is really the file's bfid.",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
-                         option.USER_LEVEL:option.ADMIN,},
+                         option.USER_LEVEL:option.USER2,},
         option.GET_BFIDS:{option.HELP_STRING:
                          "Specifies that dcache requested the file and that "
                          "the first 'filename' is really the file's bfid.",
                          option.VALUE_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
-                         option.USER_LEVEL:option.ADMIN,},
+                         option.USER_LEVEL:option.USER2,},
         option.GET_CACHE:{option.HELP_STRING:
                           "Specifies that dcache requested the file and that "
                           "the first 'filename' is really the file's pnfs id.",
@@ -12014,7 +11885,7 @@ class EncpInterface(option.Interface):
                                    "Used with --get-bfid",
                                    option.VALUE_USAGE:option.IGNORED,
                                    option.VALUE_TYPE:option.INTEGER,
-                                   option.USER_LEVEL:option.ADMIN,},
+                                   option.USER_LEVEL:option.USER2,},
         option.STORAGE_GROUP:{option.HELP_STRING:
                                "Specify an alternative storage group to "
                                "override the pnfs strorage group tag "

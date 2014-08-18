@@ -3,6 +3,10 @@
 # $Id$
 #
 ###############################################################################
+"""
+Receive client UDP requests, convert them into dictionary (enstore ticket) and
+execute metod, specified by ticket['work'] in a loop.
+"""
 
 # system imports
 import errno
@@ -33,6 +37,26 @@ MAX_THREADS = 50
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
+class ThreadExecutor(threading.Thread):
+    """
+    Utility class that executes a server function from
+    queue of functions
+    """
+    def __init__(self,queue,server):
+        super(ThreadExecutor,self).__init__()
+        self.queue = queue
+	self.server = server
+
+    def run(self):
+        for name, args in iter(self.queue.get, None):
+            # execute server function by name and with
+            # an argument
+            try:
+                getattr(self.server,name)(args[0])
+                self.server._done_cleanup()
+            except Exception as e:
+                Trace.log(e_errors.INFO, "Failed to execute method %s %s"%(name,str(e)))
+
 def thread_wrapper(function, args=(), after_function=None):
     t = time.time()
     Trace.trace(5,"dispatching_worker.thread_wrapper: function %s "%(function.__name__,))
@@ -44,16 +68,23 @@ def thread_wrapper(function, args=(), after_function=None):
         after_function()
     Trace.trace(5,"dispatching_worker.thread_wrapper: function %s time %s"%(function.__name__,time.time()-t))
 
-# run_in_thread():
-# thread_name: A string containing the name of the thread to use, or None.
-#              If thread_name is given, a limit of one is allowed.  If
-#              None is given, then at most MAX_THREADS number of threads
-#              are allowed.
-# function: The function to run in the thread.  This is not the string
-#           name of the function.
-# args: Tuple of arguments.
-# after_function:
 def run_in_thread(thread_name, function, args=(), after_function=None):
+    """
+    Run function in a thread
+
+    :type thread_name: :obj:`str`
+    :arg thread_name: A string containing the name of the thread to use, or None.
+       If thread_name is given, a limit of one is allowed.  If
+       None is given, then at most MAX_THREADS number of threads
+       are allowed.
+
+    :type function: :obj:`callable`
+    :arg function: The function to run in the thread.
+    :type args: :obj:`tuple`
+    :arg args: arguments.
+    :type after_function: :obj:`callable`
+    :arg after_function: function to run after function completes
+    """
     # see what threads are running
     if thread_name:
         threads = threading.enumerate()
@@ -89,12 +120,21 @@ def run_in_thread(thread_name, function, args=(), after_function=None):
         Trace.log(e_errors.ERROR, "error starting thread %s: %s" % (thread_name, detail))
 
 
-# Generic request response server class, for multiple connections
-# Note that the get_request actually read the data from the socket
-
 class DispatchingWorker(udp_server.UDPServer):
-
+    """
+    Generic request response server class, for multiple connections
+    Note that the get_request actually read the data from the socket
+    """
     def __init__(self, server_address, use_raw=None):
+        """
+
+        :type server_address: :obj:`tuple`
+        :arg server_address: (:obj:`str`- IP address, :obj:`int` - port) server address
+        :type use_raw: :obj:`int`
+        :arg use_raw: 0 - do not use intermediate raw input, > 0 - use intermediate udp
+           buffering to avoid loss of incoming messages due to high rate of messages.
+        """
+
         self.allow_callback = False
         if use_raw:
             # enable to spawn callback processing thread
@@ -160,16 +200,46 @@ class DispatchingWorker(udp_server.UDPServer):
         self.interval_funcs[func] = [interval, last_called, one_shot]
 
     def set_interval_func(self, func,interval):
+        """
+        Set a function which will be executed periodically
+
+        :type func: :obj:`callable`
+        :arg func: function to execute periodically
+        :type interval: :obj:`int`
+        :arg interval: function execution interval
+        """
+
+
         #Backwards-compatibilty
         self.add_interval_func(func, interval)
 
     def remove_interval_func(self, func):
+        """
+        Remove interval function
+
+        :type func: :obj:`callable`
+        :arg func: function to remove
+        """
         del self.interval_funcs[func]
 
     def reset_interval_timer(self, func):
+        """
+        Reset interval timer function
+
+        :type func: :obj:`callable`
+        :arg func: interval timer restarts for this function
+        """
         self.interval_funcs[func][1] = time.time()
 
     def reset_interval(self, func, interval):
+        """
+        Reset interval for a periodic function
+
+        :type func: :obj:`callable`
+        :arg func: function to execute periodically
+        :type interval: :obj:`int`
+        :arg interval: function execution interval
+        """
         self.interval_funcs[func][0] = interval
         self.interval_funcs[func][1] = time.time()
 
@@ -255,6 +325,22 @@ class DispatchingWorker(udp_server.UDPServer):
     # Note: Python threads can't be killed.  Thus, there is no time-to-live
     #       aspect with threads like there is with processes.
     def run_in_thread(self, thread_name, function, args=(), after_function=None):
+        """
+        Run function in a thread
+
+        :type thread_name: :obj:`str`
+        :arg thread_name: A string containing the name of the thread to use, or None.
+           If thread_name is given, a limit of one is allowed.  If
+           None is given, then at most MAX_THREADS number of threads
+           are allowed.
+
+        :type function: :obj:`callable`
+        :arg function: The function to run in the thread.
+        :type args: :obj:`tuple`
+        :arg args: arguments.
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after function completes
+        """
         # see what threads are running
         if thread_name:
             threads = threading.enumerate()
@@ -303,6 +389,22 @@ class DispatchingWorker(udp_server.UDPServer):
     #      needs to fork a process that will live for a long time,
     #      look at the dispatching_work.fork() function instead.
     def run_in_process(self, process_name, function, args=(), after_function = None):
+        """
+        Run function in a process. This is implemented via fork.
+
+        :type process_name: :obj:`str`
+        :arg process_name: A string containing the name of the thread to use, or None.
+           If thread_name is given, a limit of one is allowed.  If
+           None is given, then at most MAX_THREADS number of threads
+           are allowed.
+
+        :type function: :obj:`callable`
+        :arg function: The function to run in the thread.
+        :type args: :obj:`tuple`
+        :arg args: arguments.
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after function completes
+        """
 
         Trace.trace(5, "create process: target %s name %s args %s" % (function, process_name, args))
         try:
@@ -377,6 +479,11 @@ class DispatchingWorker(udp_server.UDPServer):
             Trace.trace(6,"serve_forever, shouldn't get here")
 
     def get_request(self):
+        """
+        Get request, coming from the client.
+
+        :rtype: :obj:`tuple` (:obj:`str` - message, :obj:`tuple` (:obj:`str`- IP address, :obj:`int` - port) - client address)
+        """
         if self.use_raw:
             request, client_address = self._get_request_multi()
         else:
@@ -474,21 +581,24 @@ class DispatchingWorker(udp_server.UDPServer):
             addr = ()
             return (msg, addr)
 
-
-
-
-    # get request in single threaded environment
-    # when use_raw is set to 0
-    # hence rawUDP is not used
-    # this is a copy of the old get_request
     def _get_request_single(self):
-        # returns  (string, socket address)
-        #      string is a stringified ticket, after CRC is removed
-        # There are three cases:
-        #   read from socket where crc is stripped and return address is valid
-        #   read from pipe where there is no crc and no r.a.
-        #   time out where there is no string or r.a.
+        """
+        Get request in single threaded environment,
+        when use_raw is set to 0,
+        hence rawUDP is not used.
+        This is a copy of the old get_request.
 
+        :rtype: :obj:`tuple` (:obj:`str` - message, :obj:`tuple` (:obj:`str`- IP address, :obj:`int` - port) - client address)
+
+        Returned string is a stringified ticket, after CRC is removed.
+        There are three cases:
+
+           read from socket where crc is stripped and return address is valid
+
+           read from pipe where there is no crc and no r.a.
+
+           time out where there is no string or r.a.
+        """
         while True:
             r = self.read_fds + [self.server_socket]
             w = self.write_fds
@@ -561,12 +671,16 @@ class DispatchingWorker(udp_server.UDPServer):
 
         return (None, ())
 
-    # get request in multi threaded environment
-    # when use_raw is set to 1
-    # hence rawUDP is used
     def _get_request_multi(self):
-        # returns  (string, socket address)
-        #      string is a stringified ticket, after CRC is removed
+        """
+        Get request in multi threaded environment,
+        when use_raw is set to 1,
+        hence rawUDP is used.
+
+        :rtype: :obj:`tuple` (:obj:`str` - message, :obj:`tuple` (:obj:`str`- IP address, :obj:`int` - port) - client address)
+
+        Returned string is a stringified ticket, after CRC is removed.
+        """
 
         t0 = time.time()
 
@@ -621,14 +735,18 @@ class DispatchingWorker(udp_server.UDPServer):
         return (None, ())
 
 
-    # get and process read and write fds
-    # this method runs in a separate
-    # tread
     def get_fd_message(self):
-        # There are three cases:
-        #   read from socket where crc is stripped and return address is valid (event relay messages)
-        #   read from pipe where there is no crc and no r.a.
-        #   time out where there is no string or r.a.
+        """
+        Get and process read and write fds.
+        This method runs in a separate tread.
+
+        There are three cases:
+           read from socket where crc is stripped and return address is valid (event relay messages)
+
+           read from pipe where there is no crc and no reply address (r.a.)
+
+           time out where there is no string or r.a.
+        """
         while True:
             r = self.read_fds
             w = self.write_fds
@@ -649,13 +767,20 @@ class DispatchingWorker(udp_server.UDPServer):
 
     ####################################################################
 
-    # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
+        """
+        Process the  request that was (generally) sent from UDPClient.send.
+        Since get_request() gets requests from UDPServer.get_message()
+        and self.read_fd(fd).  Thusly, some care needs to be taken
+        from within UDPServer.process_request() to be tolerent of
+        requests not originally read with UDPServer.get_message().
 
-        #Since get_request() gets requests from UDPServer.get_message()
-        # and self.read_fd(fd).  Thusly, some care needs to be taken
-        # from within UDPServer.process_request() to be tolerent of
-        # requests not originally read with UDPServer.get_message().
+        :type request: :obj:`str`
+        :arg  request: message
+        :type client_address: :obj:`tuple`
+        :arg client_address: (:obj:`str`- IP address, :obj:`int` - port)
+        """
+
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
 
@@ -705,16 +830,35 @@ class DispatchingWorker(udp_server.UDPServer):
         Trace.trace(5, "invoke_function: function %s time %s" \
                     % (function.func_name, time.time() - t))
 
-    # This function has been introduced as convenience, so
-    # that subclasses can override it as they see fit w/o
-    # touching dispatching_worker.process_request().
-    #
-    #after_function is only used if overloaded version in a server uses it.
     def invoke_function(self, function, args=(), after_function = None):
+        """
+        This function has been introduced as convenience, so
+        that subclasses can override it as they see fit w/o
+        touching dispatching_worker.process_request().
+
+        :type function: :obj:`callable`
+        :arg function: The function to run in the thread.
+        :type args: :obj:`tuple`
+        :arg args: arguments.
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after function completes
+           after_function is only used if overloaded version in a server uses it.
+
+        """
         self.__invoke_function(function, args)
         self._done_cleanup()
 
     def handle_error(self, request, client_address):
+        """
+        Response to error occured during request processing.
+        This method logs an error and responds to the client
+
+        :type request: :obj:`str`
+        :arg  request: message
+        :type client_address: :obj:`tuple`
+        :arg client_address: (:obj:`str`- IP address, :obj:`int` - port)
+
+        """
         exc, msg, tb = sys.exc_info()
         Trace.trace(6,"handle_error %s %s"%(exc,msg))
         Trace.log(e_errors.INFO,'-'*40)
@@ -734,6 +878,12 @@ class DispatchingWorker(udp_server.UDPServer):
     ####################################################################
 
     def alive(self,ticket):
+        """
+        Work instance. Send echo to client.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'alive'
+        """
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
@@ -741,40 +891,88 @@ class DispatchingWorker(udp_server.UDPServer):
 
 
     def _do_print(self, ticket):
+        """
+        Work instance. Turn on debugging printing to STDO. Do not confirm to client.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = '_do_print'
+        """
         Trace.do_print(ticket['levels'])
 
     def do_print(self, ticket):
+        """
+        Work instance. Turn on debugging printing to STDO.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'do_print'
+        """
         Trace.do_print(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def dont_print(self, ticket):
+        """
+        Work instance. Turn off debugging printing to STDO.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'dont_print'
+        """
         Trace.dont_print(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def do_log(self, ticket):
+        """
+        Work instance. Turn on debugging logging.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'do_log'
+        """
         Trace.do_log(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def dont_log(self, ticket):
+        """
+        Work instance. Turn off debugging logging.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'dont_log'
+        """
         Trace.dont_log(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def do_alarm(self, ticket):
+        """
+        Work instance. Turn on debugging logging and alarming.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'do_alarm'
+        """
         Trace.do_alarm(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
     def dont_alarm(self, ticket):
+        """
+        Work instance. Turn off debugging logging and alarming.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'do_alarm'
+        """
         Trace.dont_alarm(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
 
 
     def quit(self,ticket):
+        """
+        Work instance. Quit server.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket from client with ticket['work'] = 'quit'
+        """
         if sys.version_info >= (2, 6):
             import multiprocessing
             children = multiprocessing.active_children()
@@ -817,8 +1015,13 @@ class DispatchingWorker(udp_server.UDPServer):
                 Trace.handle_error(exc, msg, sys.exc_info()[2])
                 return
 
-    #This functions uses an acitve protocol.  This function uses UDP and TCP.
     def send_reply_with_long_answer_part1(self, ticket):
+        """
+        This functions uses an acitve protocol.  This function uses UDP and TCP.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: client request ticket
+        """
 
         if not e_errors.is_ok(ticket):
             #If we have an error, then we only need to reply and skip the rest.
@@ -875,9 +1078,14 @@ class DispatchingWorker(udp_server.UDPServer):
 
         return control_socket
 
-    #Generalize the code to have a really large ticket be returned.
-    #This functions uses an acitve protocol.  This function uses UDP and TCP.
     def send_reply_with_long_answer_part2(self, control_socket, ticket):
+        """
+        Generalize the code to have a really large ticket be returned.
+        This functions uses an acitve protocol.  This function uses UDP and TCP.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: client request ticket
+        """
         try:
             #Write reply on control socket.
             callback.write_tcp_obj_new(control_socket, ticket)
@@ -888,13 +1096,18 @@ class DispatchingWorker(udp_server.UDPServer):
         #Socket cleanup.
         control_socket.close()
 
-    #Generalize the code to have a really large ticket be returned.
-    #This functions uses an acitve protocol.  This function uses UDP and TCP.
-    #
-    # The 'ticket' is sent over the network.
-    # 'long_items' is a list of elements that should be supressed in the
-    # initial UDP response.
     def send_reply_with_long_answer(self, ticket):
+        """
+        Generalize the code to have a really large ticket be returned.
+        This functions uses an acitve protocol.  This function uses UDP and TCP.
+
+        The 'ticket' is sent over the network.
+        'long_items' is a list of elements that should be supressed in the
+        initial UDP response.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: client request ticket
+        """
         control_socket = self.send_reply_with_long_answer_part1(ticket)
         if not control_socket:
             return

@@ -33,7 +33,7 @@ def get_environment():
             print "Unable to determine ENSTORE_CONFIG_PORT."
             sys.exit(1)
         pfile.close()
-        
+
 def setup(csc):
 
     #Determine the local inventory directory.
@@ -105,7 +105,7 @@ def get_volumes(csc):
 #
 #Cluster is the name of the current Enstore system.
 def print_html(catalog, special, cluster):
-    
+
     # in the beginning ...
 
     print "Content-type: text/html"
@@ -119,7 +119,7 @@ def print_html(catalog, special, cluster):
         use_title = "Enstore Tape Inventory Summary"
     if cluster:
         use_title = "%s on %s" % (use_title, cluster)
-        
+
     print '<html>'
     print '<head>'
     print '<title>' + use_title + '</title>'
@@ -150,14 +150,12 @@ def print_html(catalog, special, cluster):
     for fname in special:
         if fname == 'COMPLETE_FILE_LISTING':
             print '<a href="enstore_file_listing_cgi.py">', string.split(fname, '.')[0], '</a>&nbsp;&nbsp;'
-        elif fname.startswith("COMPLETE_FILE_LISTING"):
+        elif fname.startswith(("COMPLETE_FILE_LISTING","CHIMERA_DUMP","RECENT_FILES_ON_TAPE")):
             #We hide these behind the cgi that COMPLETE_FILE_LISTING points to.
-            continue
-        elif fname.startswith("RECENT_FILES_ON_TAPE"):
             continue
         else:
             print '<a href="' + os.path.join(inv_dir, fname) + '">', string.split(fname, '.')[0], '</a>&nbsp;&nbsp;'
-            
+
         if not catalog:
             #Only do for summary.
             print '<br>'
@@ -182,7 +180,7 @@ def print_html(catalog, special, cluster):
     # the end
     print '</body>'
     print '</html>'
-    
+
 
 
 def main():
@@ -194,7 +192,7 @@ def main():
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-   
+
     #Get information.
     (special, cluster) = setup(csc)
 
@@ -205,7 +203,7 @@ def main():
     #Print the html output.
     #
     print_html(catalog, special, cluster)
-    
+
 
 if __name__ == '__main__':
 

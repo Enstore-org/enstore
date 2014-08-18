@@ -298,13 +298,6 @@
         <relation name="$1" column="volume" table="volume" fk="id" ondelete="cascade"/>
     </relations>
   </table>
-  <table name="volume_audit_counter">
-    <column name="counter" type="integer"/>
-    <column name="volume" type="integer" null="no"/>
-    <relations>
-        <relation name="$1" column="volume" table="volume" fk="id" ondelete="cascade"/>
-    </relations>
-  </table>
   <view name="cms_volume_with_only_deleted_files">
     SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library FROM volume WHERE (((((volume.storage_group)::text = 'cms'::text) AND ((volume.system_inhibit_0)::text = 'none'::text)) AND ((volume.active_files + volume.unknown_files) = 0)) AND (volume.deleted_files &gt; 0));
   </view>

@@ -7,6 +7,7 @@
 ###############################################################################
 
 # system imports
+import Queue
 import sys
 import os
 import time
@@ -58,9 +59,10 @@ SAFETY_FACTOR=enstore_constants.SAFETY_FACTOR
 MIN_LEFT=enstore_constants.MIN_LEFT
 
 MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
-MAX_CONNECTION_FAILURE = 5
+MAX_CONNECTION_FAILURE = enstore_constants.MAX_CONNECTION_FAILURE
 
-MAX_THREADS = 20
+PARALLEL_QUEUE_SIZE=enstore_constants.PARALLEL_QUEUE_SIZE
+MAX_THREADS =  enstore_constants.MAX_THREADS
 # we have run into issues with volume_clerk locking up
 # when number of max threads was more than number of max
 # connections. Set it to max number of threads + 1 (counting
@@ -91,83 +93,6 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         dispatching_worker.DispatchingWorker.__init__(
             self, (self.keys['hostip'], self.keys['port']))
 
-        self.sgdb = None
-        self.paused_lms = {}
-        self.common_blank_low = {'warning':100, 'alarm':10}
-
-        #Retrieve database information from the configuration.
-        Trace.log(e_errors.INFO, "determine dbHome and jouHome")
-        try:
-            dbInfo = self.csc.get('database')
-            dbHome = dbInfo['db_dir']
-            try:  # backward compatible
-                jouHome = dbInfo['jou_dir']
-            except:
-                jouHome = dbHome
-        except:
-            dbHome = os.environ['ENSTORE_DIR']
-            jouHome = dbHome
-
-        self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
-        self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
-                                   self.max_threads+1)
-
-        #Open conection to the Enstore DB.
-        Trace.log(e_errors.INFO, "opening volume database using edb.VolumeDB")
-        try:
-            # proper default values are supplied by edb.FileDB constructor
-            self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host',None),
-                                              port=dbInfo.get('db_port',None),
-                                              user=dbInfo.get('dbuser',None),
-                                              database=dbInfo.get('dbname',None),
-                                              jou=jouHome,
-                                              max_connections=self.max_connections)
-            self.sgdb = esgdb.SGDb(self.volumedb_dict.db)
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-            Trace.log(e_errors.ERROR, message)
-            Trace.alarm(e_errors.ERROR, message, {})
-            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
-            sys.exit(1)
-
-        # load ignored sg
-        self.ignored_sg_file = os.path.join(dbHome, 'IGNORED_SG')
-        try:
-            f = open(self.ignored_sg_file)
-            self.ignored_sg = cPickle.load(f)
-            f.close()
-        except:
-            self.ignored_sg = []
-
-        # get common pool low water mark
-	# default to be 10
-        res = self.csc.get('common_blank_low')
-        if res['status'][0] == e_errors.OK:
-            self.common_blank_low = res
-
-        # rebuild it if it was not loaded
-        sg_lock.acquire()
-        try:
-            if len(self.sgdb) == 0:
-                self.sgdb.rebuild_sg_count()
-        finally:
-            sg_lock.release()
-
-        return
-
-    def invoke_function(self, function, args=()):
-        c = threading.activeCount()
-        Trace.trace(5, "threads %s"%(c,))
-        if c < self.max_threads:
-            dispatching_worker.run_in_thread(thread_name=None,
-                                             function=function,
-                                             args=args,
-                                             after_function=self._done_cleanup)
-        else:
-            Trace.log(e_errors.WARNING, "Run out of threads for %s"%(function.__name__,))
-            apply(function,args)
-            self._done_cleanup()
 
     ####################################################################
 
@@ -1118,6 +1043,83 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         self.noaccess_to = self.keys.get('noaccess_to', 300.)
         self.paused_lms = {}
         self.noaccess_time = time.time()
+
+        self.sgdb = None
+        self.paused_lms = {}
+        self.common_blank_low = {'warning':100, 'alarm':10}
+
+        #Retrieve database information from the configuration.
+        Trace.log(e_errors.INFO, "determine dbHome and jouHome")
+        try:
+            dbInfo = self.csc.get('database')
+            dbHome = dbInfo['db_dir']
+            try:  # backward compatible
+                jouHome = dbInfo['jou_dir']
+            except:
+                jouHome = dbHome
+        except:
+            dbHome = os.environ['ENSTORE_DIR']
+            jouHome = dbHome
+
+        self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+        self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
+        self.max_connections         =  self.numberOfParallelWorkers+1
+
+        #Open conection to the Enstore DB.
+        Trace.log(e_errors.INFO, "opening volume database using edb.VolumeDB")
+        try:
+            # proper default values are supplied by edb.FileDB constructor
+            self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host',None),
+                                              port=dbInfo.get('db_port',None),
+                                              user=dbInfo.get('dbuser',None),
+                                              database=dbInfo.get('dbname',None),
+                                              jou=jouHome,
+                                              max_connections=self.max_connections)
+            self.sgdb = esgdb.SGDb(self.volumedb_dict.db)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+            Trace.log(e_errors.ERROR, message)
+            Trace.alarm(e_errors.ERROR, message, {})
+            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+            sys.exit(1)
+
+	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
+	self.parallelThreads = []
+	for i in range(self.numberOfParallelWorkers):
+		worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue,self)
+		self.parallelThreads.append(worker)
+		worker.start()
+
+        # load ignored sg
+        self.ignored_sg_file = os.path.join(dbHome, 'IGNORED_SG')
+        try:
+            f = open(self.ignored_sg_file)
+            self.ignored_sg = cPickle.load(f)
+            f.close()
+        except:
+            self.ignored_sg = []
+
+        # get common pool low water mark
+	# default to be 10
+        res = self.csc.get('common_blank_low')
+        if res['status'][0] == e_errors.OK:
+            self.common_blank_low = res
+
+        # rebuild it if it was not loaded
+        sg_lock.acquire()
+        try:
+            if len(self.sgdb) == 0:
+                self.sgdb.rebuild_sg_count()
+        finally:
+            sg_lock.release()
+
+    def invoke_function(self, function, args=()):
+        if  function.__name__ == "quit":
+            apply(function,args)
+        else:
+		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
+		self.parallelThreadQueue.put([function.__name__, args])
 
     ####################################################################
 
@@ -3195,6 +3197,10 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
     #### DONE
     def quit(self, ticket):
 	self.volumedb_dict.close()
+	for t in self.parallelThreads:
+            self.parallelThreadQueue.put(None)
+	for t in self.parallelThreads:
+		t.join(10.)
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
 
 class VolumeClerkInterface(generic_server.GenericServerInterface):
