@@ -1,0 +1,130 @@
+commit 55b99cb17e3590838de3bc70038c81fcf39a10e4
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri May 2 10:55:11 2014 -0500
+
+        exploit "--seek" option of tar to for better random file access
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit c47d72dce0311e818230ba9d8f54394d51429e95
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu May 1 10:58:48 2014 -0500
+
+        Implement functionality for mover bound volume requests for write requests.
+        This will allow to continue processing write requests for the the same
+        volume family when all movers are busy with other requests enspecially
+        waiting in SETUP state for files being staged for read requests.
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1477
+        RB: http://srm.fnal.gov/reviews/r/145/
+
+M	src/library_manager.py
+M	src/mover.py
+
+commit c6099dd4634b702c05397fca8dff8f180f927488
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Apr 21 16:15:02 2014 -0500
+
+         - call direct database update from set_cache_status
+         - return answer before update completes
+         - optimize edb to not to update file.volume all the time
+
+M	src/edb.py
+M	src/file_clerk.py
+
+commit ad6c1fba1881bbe30301f731181daee586edac69
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Apr 18 16:21:57 2014 -0500
+
+        untar files on dcache pools
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit 0330262aba93997f8ad749223b94d34ce79cb002
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Apr 18 13:40:31 2014 -0500
+
+        Urgent fix for : INC000000410783. Bug was introduced in e74feca138c7d3e43805a43a19da169b492c0404
+
+M	src/dbaccess.py
+
+commit 10e46359271c6d2276511891928dd68894a1eabf
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Apr 16 20:26:47 2014 -0500
+
+         - add get_children to info server (and info_client)
+         - make enstore info --children user level option
+         - execute open_bitfile and open_bitfile_for_package on thread in file_clerk
+         - replace loop over children with two SQL queries
+         - reply to open_bitfile_for_package call immediately after changing package file cache status
+           w/o waiting for query on packaged files completed (and missing cache emitted)
+
+M	src/file_clerk.py
+M	src/info_client.py
+
+commit cc7d23aad83594a10309ec70c073a16d6e756642
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Apr 16 14:00:13 2014 -0500
+
+    Change timeout and the number of retries for info server calls.
+    RB: http://srm.fnal.gov/reviews/r/138/
+    BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1472
+
+M	src/cache/servers/migrator.py
+
+commit b1c479fdc14f2fefd0952a81f8748e8ffb7bc5ee
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Apr 15 12:46:10 2014 -0500
+
+    Set MAX_PROCESS to 70.
+    10 is too restrictive.
+    RB: http://srm.fnal.gov/reviews/r/137
+
+M	src/cache/servers/migrator.py
+
+commit 37cad6c701962c20f5a8bb80647baffe706c890e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Apr 15 10:13:11 2014 -0500
+
+        Fix is_file_available to return if bfid is None.
+        It was calling bfid_info with(None) which does not return.
+        RB: http://srm.fnal.gov/reviews/r/134/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1470
+
+M	src/library_manager.py
+
+commit 04b8323d8277e3960deafd575164fc00edc7e47e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Apr 14 16:30:00 2014 -0500
+
+        replace open with os.utime
+        RB: http://srm/reviews/r/122/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1458
+
+M	src/chimera.py
+
+commit 5955364b95225b8bacad83e4ba9cb7bf6cf95817
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Apr 14 09:44:37 2014 -0500
+
+        Fixed error: infoc was called instead of fcc.
+
+M	src/cache/servers/migrator.py
+
+commit f96409602b5f95a9be9bfe6550ef0a538557187b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Apr 11 16:38:04 2014 -0500
+
+        Set timeout for get_children request.
+        Default timeout is 10 s. It is not always enough especially for packages with large amount of children.
+        Timeout 20 min is quite large for request to get completed yet not too big assuming multiple migrator threads.
+        RB: http://srm.fnal.gov/reviews/r/133/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1469
+
+M	src/cache/servers/migrator.py
+
+commit fdfeb8e6e0bb0185df673cece96cba8ad4244ee2
+Merge: 42f553b e99f32c
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Apr 10 15:24:12 2014 -0500
+
+    Merge branch 'release/4.1.2-0' into develop
