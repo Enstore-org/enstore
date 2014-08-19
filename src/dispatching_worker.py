@@ -52,7 +52,10 @@ class ThreadExecutor(threading.Thread):
             # execute server function by name and with
             # an argument
             try:
+                t=time.time()
                 getattr(self.server,name)(args[0])
+                Trace.trace(5, "ThreadExecutor : function %s time %s" \
+                            % (name, time.time() - t))
                 self.server._done_cleanup()
             except Exception as e:
                 Trace.log(e_errors.INFO, "Failed to execute method %s %s"%(name,str(e)))
