@@ -742,6 +742,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.bfid = 0
         self.bfids = None
         self.children = None
+        self.field = None
         self.backup = 0
         self.deleted = 0
 	self.restore = ""
@@ -818,6 +819,10 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
+        option.FIELD:{option.HELP_STRING:"used with --children to extract only a particular file record field",
+                      option.DEFAULT_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.USER_LEVEL:option.ADMIN},
         option.REPLAY:{option.HELP_STRING:"replay cache written events. If REPLAY presents and is > 1, replay all",
                        option.VALUE_TYPE:option.INTEGER,
                        option.USER_LEVEL:option.ADMIN,
@@ -1024,12 +1029,12 @@ def do_work(intf):
             for i in ticket['active_list']:
                 print i
     elif intf.children:
-        ticket  = fcc.get_children(intf.children)
+        ticket  = fcc.get_children(intf.children, intf.field)
         if  ticket['status'][0] ==  e_errors.OK:
-            for i in ticket["children"]:
-                pprint.pprint(i)
+            printer = lambda x :  pprint.pprint(x) if type(x) == types.DictType else sys.stdout.write(str(x) + "\n")
+            map(printer,ticket["children"])
     elif intf.replay:
-        if intf.replay > 1: 
+        if intf.replay > 1:
             ticket  = fcc.replay(all=True)
         else:
             ticket  = fcc.replay()
