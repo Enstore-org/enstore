@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
+"""
+Enstore UDP client is used to communicate with Enstore UDP server.
+It is thread safe.
+"""
 
 # system imports
 import socket
@@ -49,7 +47,7 @@ def wait_rsp( sock, address, rcv_timeout ):
         raise e_errors.EnstoreError(None,
                                     "impossible to get these set w/out [r]",
                                     e_errors.NET_ERROR)
-    
+
     return reply, server, rcv_timeout
 
 
@@ -68,7 +66,7 @@ class UDPClient:
             tid = thread.get_ident() #Obtain unique identifier.
         else:
             tid = 1
-        
+
         #Build thread specific data.
         tsd = self.thread_specific_data  #local shortcut
         tsd.host = host
@@ -87,12 +85,12 @@ class UDPClient:
     #Return this thread's local data.  If it hasn't been initialized yet,
     # call reinit() to do so.
     def get_tsd(self):
-        
+
         if not hasattr(self.thread_specific_data, 'pid'):
             self.reinit()
 
         return self.thread_specific_data
-    
+
     #Return the IP address for the socket.
     def get_address(self):
         tsd = self.get_tsd()
@@ -131,14 +129,14 @@ class UDPClient:
 
         return message, tsd.txn_counter
 
-        
+
     def send(self, data, dst, rcv_timeout=0, max_send=0, send_done=1, exponential_to=False):
         """send msg to dst address, up to `max_send` times, each time
         waiting `rcv_timeout' seconds for reply
         A value of 0 for max_send means retry forever"""
 
         tsd = self.get_tsd()
-            
+
         if rcv_timeout:
             if max_send==0:
                 max_send = 1 # protect from nonsense inputs XXX should we do this?
@@ -153,7 +151,7 @@ class UDPClient:
                 max_exponent = MAX_EXPONENT
             else:
                 max_exponent = 0
-             
+
 
         msg, txn_id = self.protocolize(data)
         # keep track of whom we need to send a "done_cleanup" to
@@ -185,7 +183,7 @@ class UDPClient:
             while rcvd_txn_id != txn_id: #look for reply while rejecting "stale" responses
                 reply, server_addr, timeout_1 = \
                        wait_rsp( tsd.socket, dst, timeout)
-                
+
                 if not reply: # receive timed out
                     #print "TIMEOUT", time.time(), msg
                     Trace.trace(5, "TIMEOUT sending %s"%(msg,))
@@ -240,22 +238,26 @@ class UDPClient:
             # is this an error?  How does it get empty in the
             # first place?
             pass
-        
+
         #raise errno.errorcode[errno.ETIMEDOUT]
         raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
-        
+
     # send message without waiting for reply and resend
-    def send_no_wait(self, data, address) :
+    def send_no_wait(self, data, address, unique_id=False) :
         tsd = self.get_tsd()
+        if unique_id:
+            # Create unique id for each message.
+            tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
+
         message, txn_id = self.protocolize( data )
-        
+
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is address[0].
         if not host_config.is_route_in_table(address[0]):
             host_config.setup_interface(address[0], tsd.host)
 
         reply = tsd.socket.sendto( message, address )
-	
+
 	return reply
 
     ### send_deferred()
@@ -267,29 +269,29 @@ class UDPClient:
     ### The *_deferred() functions allow for asymetric processing of messages.
     ###
     ### There are two recv_deferred() functions.  recv_deferred() does
-    ### what it has always been done; only wait for the perscribed time
+    ### what it has always been done; only wait for the prescribed time
     ### without any automatic resending of messages where a response has not
     ### returned after too long of a time period.  This means that the caller
     ### of the recv_deferred() function needs to handle their own retrying
     ### with geometric timeout backoff.
-    ### 
+    ###
     ### The other recv_deffered function, recv_deferred_with_repeat_send(),
     ### performs automatic resending/retrying of messages.  This function
-    ### does gemotric backoff of retransmitted messages.
+    ### does geometric backoff of retransmitted messages.
 
     # send message, return an ID that can be used in the recv_deferred function
     def send_deferred(self, data, address):
         tsd = self.get_tsd()
         tsd.send_done[address] = 1
         message, txn_id = self.protocolize( data )
-        
+
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is address[0].
         if not host_config.is_route_in_table(address[0]):
             host_config.setup_interface(address[0], tsd.host)
-        
+
         bytes_sent = tsd.socket.sendto( message, address )
-	
+
         if bytes_sent < 0:
             return -1
 
@@ -303,11 +305,11 @@ class UDPClient:
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
-        
+
         tsd = self.get_tsd()
 
         TEN_MINUTES = 10 * 60  #Time limit.
-        
+
         for txn_id in txn_ids:
             try:
                 message, address, timestamp = tsd.send_queue[txn_id]
@@ -328,7 +330,7 @@ class UDPClient:
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
-            
+
         tsd = self.get_tsd()
         for txn_id in txn_ids:
             if tsd.reply_queue.has_key(txn_id):
@@ -378,7 +380,7 @@ class UDPClient:
                     # go right back to the top of the loop.
                     rcvd_txn_id=None
                     continue
-                
+
                 if rcvd_txn_id not in txn_ids:
                     #Queue it up, somebody else wants it
                     tsd.reply_queue[rcvd_txn_id] = out
@@ -411,7 +413,7 @@ class UDPClient:
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
-            
+
         tsd = self.get_tsd()
         for txn_id in txn_ids:
             if tsd.reply_queue.has_key(txn_id):
@@ -433,7 +435,7 @@ class UDPClient:
                 upper_limit = max(0,
                            loop_start_time + entire_timeout - time.time())
                 timeout = min(timeout, upper_limit)
-                
+
                 try:
                     return self.recv_deferred(txn_ids, timeout)
                 except (socket.error, e_errors.EnstoreError), msg:
@@ -444,8 +446,8 @@ class UDPClient:
                         continue
                     else:
                         raise sys.exc_info()
-                    
-    #If we are giving up on a reponse, we can remove it from the send and 
+
+    #If we are giving up on a response, we can remove it from the send and
     # receive lists explicitly.
     def drop_deferred(self, txn_ids):
         #Make the target a list of txn_id to consider.
@@ -462,8 +464,8 @@ class UDPClient:
                 del tsd.send_queue[txn_id]
             except KeyError:
                 pass
-    
-        
+
+
 if __name__ == "__main__" :
 
     status = 0
@@ -471,7 +473,7 @@ if __name__ == "__main__" :
         global status
 
         tsd = udp_c.get_tsd()
-        
+
         print "Sending message %s to %s in %s thread using callback %s." \
               % (msg, address, threading.current_thread().getName(), (tsd.host, tsd.port))
 
@@ -539,4 +541,4 @@ if __name__ == "__main__" :
     del u
 
     sys.exit(status)  #Note: status is global.
-    
+
