@@ -685,7 +685,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 # used for tape_list2()
                 value = file_info
 	    lc = value.get("location_cookie")
-	    location_cookies[lc] = location_cookies.get(lc,0)+1
+            if value.get("pnfsid") :
+                location_cookies[lc] = location_cookies.get(lc,0)+1
 	    if value['deleted'] == 'unknown' and skip_unknown :
 		    continue
             if not value.has_key('pnfs_name0'):
