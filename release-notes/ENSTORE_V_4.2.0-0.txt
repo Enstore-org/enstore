@@ -1,0 +1,333 @@
+commit bfcc65701f5185689f5e3601f2885439c5574d8f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Aug 18 11:13:00 2014 -0500
+
+    New enstore rpm ENSTORE_V_4.2.0-0
+    	new file:   release-notes/ENSTORE_V_4.1.2-1.txt
+    	modified:   spec/enstore.spec
+    	modified:   spec/enstore_RH6_python_2.7.6.spec
+    	modified:   spec/ftt.spec
+
+A	release-notes/ENSTORE_V_4.1.2-1.txt
+M	spec/enstore.spec
+M	spec/enstore_RH6_python_2.7.6.spec
+M	spec/ftt.spec
+
+commit 07c08f74b8b210f671952f0910d9642614199196
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Aug 13 13:25:59 2014 -0500
+
+        Added T10000D
+
+M	ftt/ftt_lib/ftt_stats.c
+M	ftt/ftt_lib/ftt_tables.c
+
+commit 023b33e1f158428b60387502c27c53fbc0b337df
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Aug 7 15:27:19 2014 -0500
+
+    commit 5de4122ebf3e68c5e6906ded3aa5c03f34ba6b02
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Aug 7 13:13:22 2014 -0500
+    
+        Create necessary qpid exchanges and queues defined in enstore configuration
+        to eliminate interdependencies between dispatcher, file clerk and migrators during
+        (re) starts.
+
+M	sbin/qpid_broker
+A	src/cache/messaging/enstore_qpid_config.py
+
+commit 6de20f88f5b0fe6f7a3093100782725d5ae4e288
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jul 31 11:17:31 2014 -0500
+
+        avoid long line in alarm page
+        The patch replaces commas with whitesspaces.
+        Such a string is expected to be broken into many lines automatically.
+        RB : http://srm.fnal.gov/reviews/r/168/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1507
+
+M	src/file_clerk.py
+
+commit da34c78b860743e0e42d0cf9ef80b03a3d4a1ab6
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 30 22:10:37 2014 -0500
+
+        rationalize clerks:
+        follow up of c8b5745454ff0c50566cd547875c58c4d8af2acb
+        which seem to have successfully addressed file_celrk timeouts
+        This patch modified info_server and volume_clerk in similar fashion -
+        by scheduling incoming requests to be processed by thread pool.
+        This patch refectord FileClerkInfoMethods and VolumeClerkInfoMethods
+        by moving DB initialization which is file or volume specific into
+        FileClerkMethods and VolumeClerkMethods constructors. invoke_function
+        is also moved into FileClerkMethods and VolumeClerkMethods.
+         RB : http://srm.fnal.gov/reviews/r/166/
+         BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1505
+
+M	src/dispatching_worker.py
+M	src/enstore_constants.py
+M	src/file_clerk.py
+M	src/info_server.py
+M	src/volume_clerk.py
+
+commit 949d77380c4d72ff47faca1462fbe8acd9ab659a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Jul 30 11:40:23 2014 -0500
+
+        BUG FIX: do not set disk mover to ERROR state.
+        The idea of setting disk mover to IDLE state using self.idle() does not work if stage_file() returns None because self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: filename is %s' %(filename,), error_source=DRIVE) call sets mover state to ERROR.
+        Force state IDLE before self.idle() to fix the problem.
+        http://srm.fnal.gov/reviews/r/158/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1495
+
+M	src/mover.py
+
+commit 15fff748b7a3e7c9cc2677216bc74cab7b6a506a
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Jul 28 17:30:10 2014 -0500
+
+        fix calculation of average transfer rates
+        http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1500
+        RB: http://srm.fnal.gov/reviews/r/167/
+
+M	src/encp.py
+
+commit 6b9806103a04b75aed78c427cb41ff79d1a18ee3
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Jul 25 15:26:29 2014 -0500
+
+        change order of baseclasses on Server class declaration
+        line so info_server continues to work after patch 161 was applied
+    	RB: http://srm.fnal.gov/reviews/r/163/
+            BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1503
+
+M	src/info_server.py
+
+commit 69589732e4420ba4fd78b4a5a459b6f1df18f76a
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Jul 25 14:06:04 2014 -0500
+
+        make --get-bfid, --get-bfids2, --skip-pnfs user2 level
+        option. User2 level means dCache. So these options can be
+        used on dCache pools
+    
+    	http://srm.fnal.gov/reviews/r/162/
+    	http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1502
+
+M	src/encp.py
+
+commit c8b5745454ff0c50566cd547875c58c4d8af2acb
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jul 24 09:27:54 2014 -0500
+
+        Do not execute file_clerk methods on main thread at all:
+        Create 1 thread and associated queueto process requests that
+        cannot be processed asynchronously. And multiple threads wih another
+        queue that process requests from the white list asynchronously.
+        As the result no requests are executed on main thread avoiding
+        blocking it on long running requests.
+        Instead all requests are scheduled.
+        We believe this addresses the issue of file_clerk timeouts.
+        It is still possible to time out when number of requests
+        accumulates on the queue and threads do not keep up
+        with processing them.
+    
+    	RB: http://srm.fnal.gov/reviews/r/161/
+    	BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1501
+
+M	src/file_clerk.py
+
+commit 8fc2d47ed94ab65e5265adda09c4df53cbbecbc0
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jul 10 15:55:53 2014 -0500
+
+    minor fix in release note file
+
+M	doc/WWW/encpReleaseNotes.html
+
+commit e1d217bbf6887406ce4f2a0424aa2498f372ac4d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jul 10 15:52:41 2014 -0500
+
+        add encp v3_11c release notes
+
+A	doc/WWW/REL_V3_11.html
+M	doc/WWW/encpReleaseNotes.html
+
+commit 48e535cb6e3ea48f83467ec5f858f22b70e37d3f
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 9 17:22:52 2014 -0500
+
+        do not nullify layer 2
+        removes nullifying layer2 as it is completely unnecessary.
+        http://srm.fnal.gov/reviews/r/157/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1493
+
+M	src/migrate.py
+M	src/migrate_chimera.py
+
+commit c661d3cf4dc59a4a7456a9af30c28c1920cda482
+Merge: c9ee2a2 e32477f
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 9 17:19:43 2014 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit c9ee2a28d4fc4f5b7b18f7ec06077647b73c869e
+Merge: afff82b 244094d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 9 17:10:50 2014 -0500
+
+    pass --record-size=512 to tar and drop -b 400 options. Now tar
+        --seek does not generate error.
+    
+        RB : http://srm.fnal.gov/reviews/r/143/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1478
+
+commit e32477f546470861ae285b90d7faf1e772eb0e7c
+Merge: afff82b 244094d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 9 17:10:50 2014 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 244094dcbca7fe7cc3fed9797e1fa1be68002b82
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Jul 1 15:21:30 2014 -0500
+
+    Removed f1.diff
+
+D	f1.diff
+
+commit 0205226d6f34a2a5b1849164b6fced9585b8b430
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Jul 1 15:19:42 2014 -0500
+
+        When new disk volume is used by the mover, which has just created it and another mover
+        it was observed that remaining_bytes does not always exist by the time it is requested by the second mover.
+        This patch fixes the problem.
+        http://srm.fnal.gov/reviews/r/156/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1492
+
+M	src/mover.py
+
+commit afff82b49602572cacd6dd52440a77583904d428
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Jun 23 21:14:56 2014 -0500
+
+    pass --record-size=512 to tar and drop -b 400 options. Now tar
+    --seek does not generate error.
+    
+    RB : http://srm.fnal.gov/reviews/r/143/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1478
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit f5283af3f974175345555a8c1122a00a9836257d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jun 23 15:48:52 2014 -0500
+
+    removed garbage file
+
+D	sphinx/source/modules/dispatching_worker.rst~
+
+commit a010b4480fecdeddc1eec84061d8413532b9a999
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jun 23 11:26:35 2014 -0500
+
+        Added changes to LM
+    
+        Added sphinx doc
+        	new file:   sphinx/source/modules/manage_queue.rst
+        	modified:   src/dispatching_worker.py
+        	modified:   src/library_manager.py
+        	modified:   src/manage_queue.py
+    
+        Adding sphinx docs
+    
+        Sphinx documentation for library_manager.py
+
+A	f1.diff
+A	sphinx/source/modules/dispatching_worker.rst
+A	sphinx/source/modules/dispatching_worker.rst~
+A	sphinx/source/modules/library_manager.rst
+A	sphinx/source/modules/manage_queue.rst
+M	src/dispatching_worker.py
+M	src/library_manager.py
+M	src/manage_queue.py
+
+commit 787720a28747b5b7c7b53aa567c5e205cea8dc1c
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Jun 17 20:00:05 2014 -0500
+
+        take into account postresql version, remove extra % sign
+        remove call to start pnfs_wrapper
+        remove dependency on log directory
+
+M	tools/pnfs_db_restore.py
+
+commit c750ebe48c0efa8eaed8f56a31a4680e526708fb
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Jun 10 15:07:19 2014 -0500
+
+    do not connect to other known systems, do not change modification time
+    for encp called with dCache options (addresses INC000000412632)
+    
+    Patch: http://srm.fnal.gov/reviews/r/151/
+
+M	src/encp.py
+
+commit b227c7a5d91a4bf3438c714080d2c9ed3588484a
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri May 30 16:31:17 2014 -0500
+
+        add chimera dump functionality to dump data in format
+        requested by LQCD
+
+A	crontabs/chimera_dump
+A	sbin/chimera_dump.py
+M	src/enstore_file_listing_cgi.py
+M	src/enstore_show_inventory_cgi.py
+
+commit 9a4494c414de629f67e4273dffeffee3d43ba34d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue May 27 15:41:16 2014 -0500
+
+        fix enstore db schema generation:
+            - move sequence and type creation statement ahead of
+              table creation statements
+            - create volume_audit function (it was missing for some reason)
+    	- remove duplicate table definition from xml
+
+M	databases/schemas/ddl/enstoredb/enstoredb_functions.sql
+M	databases/schemas/ddl/enstoredb/enstoredb_sequences.sql
+M	databases/schemas/xml/enstoredb.xml
+M	sbin/update_database_schema.py
+
+commit 4348aaaddb38581e1cc4d5a62aa515c059f612df
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri May 23 15:10:20 2014 -0500
+
+    changed d0en to stken for bytes transferred url
+
+M	doc/WWW/index-bottom.html
+
+commit 99aa29e9e7da3109b22839b6177c329e06369fe2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed May 21 15:16:06 2014 -0500
+
+        Allow to specify acrhiver program to pack files.
+        Now 2 types of archivers can be used (via configuration) - tar and zip.
+        RB: http://srm.fnal.gov/reviews/r/146/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1483
+
+M	etc/config_params.html
+M	src/cache/servers/migrator.py
+
+commit de1dcbbbcdbf1cdb2c5621c6896cc9c7841a8e5c
+Merge: 973ca64 ad9a330
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue May 6 14:44:58 2014 -0500
+
+    Merge branch 'release/4.1.2-1' into develop

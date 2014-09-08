@@ -1,6 +1,6 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 4.2.0
+Version: 4.2.1
 Release: 0
 License: GPL
 Group: System Environment/Base
@@ -228,7 +228,9 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
-* Thu Aug 14 2014  <moibenko@fnal.gov> -
+* Mon Sep 08 2014  <moibenko@fnal.gov> -
+- new release 4.2.1, release 0
+** Thu Aug 14 2014  <moibenko@fnal.gov> -
 - new version 4.2.0 release 0 ftt now is part of enstore rpm
 * Tue May 06 2014  <moibenko@fnal.gov> -
 - new release 4.1.2, release 1
