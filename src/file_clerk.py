@@ -685,7 +685,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 # used for tape_list2()
                 value = file_info
 	    lc = value.get("location_cookie")
-	    location_cookies[lc] = location_cookies.get(lc,0)+1
+            if value.get("pnfsid") :
+                location_cookies[lc] = location_cookies.get(lc,0)+1
 	    if value['deleted'] == 'unknown' and skip_unknown :
 		    continue
             if not value.has_key('pnfs_name0'):
@@ -1003,23 +1004,39 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
 	    #
-	    # check that this is indeed the package file. Package file
+	    # check that this is indeed the package file.
 	    #
 	    if bfid != record['package_id'] or \
 	       type(record['package_id']) == types.NoneType :
-		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    ticket["status"] = (e_errors.ERROR, "This is not a package file")
 		    self.reply_to_caller(ticket)
 		    return
-	    #
-	    # retrieve the children
-	    #
-	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
-	    res = self.filedb_dict.query_getresult(q)
-	    file_records = []
-	    for i in res:
-		    file_records.append(self.filedb_dict[i[0]])
+            field = ticket.get("field",None)
+	    file_records = None
+            if field :
+                try:
+                    colnames, res =  self.filedb_dict.dbaccess.query_with_columns("select * from file limit 1")
+                    if field not in colnames :
+                        ticket["status"] = (e_errors.WRONGPARAMETER, "No such field %s"%(field,))
+                        self.reply_to_caller(ticket)
+                        return
+                    res =  self.filedb_dict.query_getresult("select %s from file where package_id = '%s' and deleted='n' and bfid<>'%s'"%(field, bfid,bfid))
+                    file_records = [ r[0] for r in res ]
+                except Exception as e:
+                    ticket["status"] = (e_errors.DATABASE_ERROR, str(e))
+                    self.reply_to_caller(ticket)
+                    return
+            else :
+                #
+                # retrieve the children
+                #
+                q = "select bfid from file where package_id = '%s' and deleted='n' and bfid <> '%s' "%(bfid,bfid)
+                res = self.filedb_dict.query_getresult(q)
+                file_records = [ self.filedb_dict[r[0]] for r in res ]
+
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["children"] = file_records
+
 	    try:
 		    self.send_reply_with_long_answer(ticket)
 	    except (socket.error, select.error), msg:

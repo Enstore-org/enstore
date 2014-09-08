@@ -7,15 +7,16 @@
 ###############################################################################
 
 # system import
+import copy
+import errno
 import os
-import sys
-import string
 import pprint
 import pwd
-import socket
-import errno
-import copy
 import select
+import socket
+import string
+import sys
+import types
 
 # enstore import
 import generic_client
@@ -213,10 +214,11 @@ class fileInfoMethods(generic_client.GenericClient):
 
         return done_ticket
 
-    def get_children(self, bfid, timeout = generic_client.DEFAULT_TIMEOUT,
+    def get_children(self, bfid, field=None, timeout = generic_client.DEFAULT_TIMEOUT,
                      retry = generic_client.DEFAULT_TRIES):
         ticket = {"work"          : "get_children",
-                  "bfid"          : bfid}
+                  "bfid"          : bfid,
+                  "field"         : field }
         done_ticket = self.send(ticket, rcv_timeout = timeout,
                                 tries = retry, long_reply = 1)
 
@@ -1095,6 +1097,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
         self.bfids = None
         self.check = ""
         self.children = None
+        self.field = None
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.ls_active = None
@@ -1285,6 +1288,10 @@ class InfoClientInterface(generic_client.GenericClientInterface):
                                   option.VALUE_USAGE:option.REQUIRED,
                                   option.VALUE_LABEL:"bfid",
                                   option.USER_LEVEL:option.USER},
+             option.FIELD:{option.HELP_STRING:"used with --children to extract only a particular file record field",
+                        option.DEFAULT_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.USER_LEVEL:option.USER},
             }
 
 def do_work(intf):
@@ -1411,10 +1418,10 @@ def do_work(intf):
                                        ticket['system_inhibit'],
                                        ticket['user_inhibit'])
     elif intf.children:
-        ticket  = ifc.get_children(intf.children,timeout = 3600, retry=0)
+        ticket  = ifc.get_children(intf.children, intf.field, timeout = 3600, retry=0)
         if  ticket['status'][0] ==  e_errors.OK:
-            for i in ticket["children"]:
-                pprint.pprint(i)
+            printer = lambda x :  pprint.pprint(x) if type(x) == types.DictType else sys.stdout.write(str(x) + "\n")
+            map(printer,ticket["children"])
     elif intf.history:
         ticket = ifc.show_history(intf.history)
         if ticket['status'][0] == e_errors.OK and len(ticket['history']):

@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-#
+"""
 #########################################################################
 #                                                                       #
 # Log client.                                                           #
@@ -13,6 +8,7 @@
 # via port specified in the Log Server dictionary entry in the enstore  #
 # configuration file ( can be specified separately)                     #
 #########################################################################
+"""
 
 # system imports
 import sys
@@ -103,7 +99,7 @@ def genMsgType(msg, ln, severity):
         cKey = "encp"
     else:
         cKey = string.lower(tmpLine[msgStrt])
-         
+
     if string.find(lowLine, "unmount") >= 0:
         fKey = "unmount"
     elif string.find(lowLine, "write_to_hsm") >= 0:
@@ -180,7 +176,7 @@ def genMsgType(msg, ln, severity):
         fKey = "file "
     else:
         fKey = string.lower(tmpLine[msgStrt])
-    
+
     if string.find(lowLine, "tape stall") >= 0:
         sKey = "ts"
     elif string.find(lowLine, "tape_stall") >= 0:
@@ -259,21 +255,21 @@ def genMsgType(msg, ln, severity):
                 elif e_errors.stypedict.has_key(sKey):
                     sevMsg = e_errors.stypedict[sKey]
                     sevFlg = True
-                
+
             if not clientFlg:  #clientFlg == False
                 if e_errors.ctypedict.has_key(cKey):
                     clientMsg = e_errors.ctypedict[cKey]
                     clientFlg = True
                     listNum = listNum + 1
                     break
-                
+
             if not clientFlg:  #functFlg == False
                 if e_errors.ftypedict.has_key(fKey):
                     functMsg = e_errors.ftypedict[fKey]
                     functFlg = True
                     listNum = listNum + 1
                     break
-                
+
             if not sevFlg:  #sevFlg == False
                 if e_errors.stypedict.has_key(sKey):
                     sevMsg = e_errors.stypedict[sKey]
@@ -298,9 +294,9 @@ def genMsgType(msg, ln, severity):
         sevMsg = e_errors.stypedict[sKey]
     if functFlg:  #functFlg == True
         sevMsg = "_" + sevMsg
-        
+
     return  "%s%s%s%s" % (Trace.MSG_TYPE, functMsg, sevMsg, clientMsg)
-        
+
 class LoggerClient(generic_client.GenericClient):
 
     def __init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
@@ -315,7 +311,7 @@ class LoggerClient(generic_client.GenericClient):
                                               rcv_timeout=rcv_timeout,
                                               rcv_tries=rcv_tries,
                                               server_name = server_name)
-        
+
         self.log_name = name
         try:
             self.uname = pwd.getpwuid(os.getuid())[0]
@@ -332,7 +328,7 @@ class LoggerClient(generic_client.GenericClient):
         #Even though this implimentation of log_func() does not use the time
         # parameter, others will.
         __pychecker__ = "unusednames=time"
-        
+
 	severity = args[0]
 	msg      = args[1]
         #if self.log_name:
@@ -342,11 +338,11 @@ class LoggerClient(generic_client.GenericClient):
 	if severity > e_errors.MISC:
             msg = '%s %s' % (severity, msg)
             severity = e_errors.MISC
-            
+
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
 				       e_errors.sevdict[severity],name,msg)
 	ticket = {'work':'log_message', 'message':msg}
-	self.u.send_no_wait( ticket, self.logger_address )
+ 	self.u.send_no_wait( ticket, self.logger_address, unique_id=True)
 
 #    def send( self, severity, priority, format, *args ):
 #	if args != (): format = format%args
@@ -378,7 +374,7 @@ class LoggerClient(generic_client.GenericClient):
 
     # get the last n log file names
     def get_logfiles(self, period, rcv_timeout=0, tries=0):
-	x = self.u.send( {'work':'get_logfiles', 'period':period}, 
+	x = self.u.send( {'work':'get_logfiles', 'period':period},
 			 self.logger_address, rcv_timeout, tries )
         return x
 
@@ -404,7 +400,7 @@ def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
         LoggerClient(csc, logname, MY_SERVER)
     Trace.init(logname)
     Trace.log(sev_level, message)
-    
+
 # send a message to the logger
 def logit(logc, message="HELLO", logname="LOGIT"):
     # reset our log name

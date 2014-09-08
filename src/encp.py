@@ -2652,7 +2652,7 @@ def check_library(library, e):
             status_ticket['status'] = (e_errors.NOREAD,
                                     "%s is ignoring read requests." % lib)
         if state == "nowrite" and is_write(e):
-            status_ticket['status'] = (e_errors.NOREAD,
+            status_ticket['status'] = (e_errors.NOWRITE,
                                     "%s is ignoring write requests." % lib)
 
         if state == e_errors.UNKNOWN:
@@ -8827,8 +8827,9 @@ def write_post_transfer_update(done_ticket, e):
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    #Update the modification time.
-    update_modification_time(done_ticket['outfile'])
+    if not e.get_cache and not e.put_cache:
+        #Update the modification time only for direct encp files
+        update_modification_time(done_ticket['outfile'])
 
     #We know the file has hit some sort of media. When this occurs
     # create a file in the storage namespace with information about transfer.
@@ -10811,9 +10812,7 @@ def read_post_transfer_update(done_ticket, out_fd, e):
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    if not e.get_cache and not e.put_cache:
-        #Update the modification time only for direct encp files
-        update_modification_time(done_ticket['outfile'])
+    update_modification_time(done_ticket['outfile'])
 
     #If this is a read of a deleted file, leave the outfile permissions
     # to the defaults.
