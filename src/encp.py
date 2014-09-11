@@ -463,9 +463,12 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11c CVS $Revision$ "
+    version_string = "v3_11d CVS"
     encp_file = globals().get('__file__', "")
-    if encp_file: version_string = version_string + os.path.basename(encp_file)
+    if encp_file:
+        version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)
+    else:
+        version_string = version_string + " $Revision: 1.1008 $ <frozen>"
     #If we end up longer than the current version length supported by the
     # accounting server; truncate the string.
     if len(version_string) > MAX_VERSION_LENGTH:
