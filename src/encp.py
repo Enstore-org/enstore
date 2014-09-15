@@ -6572,8 +6572,9 @@ def set_outfile_permissions(ticket, encp_intf):
                 perms = in_stat_info[stat.ST_MODE]
                 #handle remote file case
                 if is_write(ticket):
-                    sfs = namespace.StorageFS(ticket['outfile'])
-                    sfs.chmod(perms, ticket['outfile'])
+                    if not encp_intf.put_cache:
+                        sfs = namespace.StorageFS(ticket['outfile'])
+                        sfs.chmod(perms, ticket['outfile'])
                 else:
                     file_utils.chmod(ticket['outfile'], perms)
 
@@ -8830,7 +8831,7 @@ def write_post_transfer_update(done_ticket, e):
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    if not e.get_cache and not e.put_cache:
+    if not e.put_cache:
         #Update the modification time only for direct encp files
         update_modification_time(done_ticket['outfile'])
 
