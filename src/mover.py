@@ -4036,7 +4036,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.bytes_written == self.bytes_to_write:
             # check crc
-            if do_crc:
+            if do_crc and self.file_info['size'] != 0: # we do not calculate crc for 0 length file.
                 Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
                             (self.buffer.complete_crc, self.file_info['complete_crc']))
                 if self.buffer.complete_crc != self.file_info['complete_crc']:
