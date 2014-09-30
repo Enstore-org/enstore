@@ -61,8 +61,7 @@ SELECT f.bfid,
 FROM file f,
 files_in_transition fit
 WHERE f.bfid=fit.bfid
-   AND (f.archive_status IS NULL
-        OR f.archive_status != 'ARCHIVED')
+   AND f.archive_status IS NULL
    AND f.cache_status='CACHED'
    AND f.deleted='n'
    AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '1 day'
@@ -75,8 +74,7 @@ SELECT f.bfid,
 FROM file f,
      files_in_transition fit
 WHERE f.bfid=fit.bfid
-   AND (f.archive_status IS NULL
-        OR f.archive_status != 'ARCHIVED')
+   AND f.archive_status IS NULL
    AND f.cache_status='CACHED'
    AND f.deleted='n'
 """
