@@ -12,6 +12,7 @@ import pwd
 import threading
 import time
 import select
+import Queue
 
 import cleanUDP
 import udp_common
@@ -360,9 +361,10 @@ def _receiver(RawUDP_obj):
                 try:
                     RawUDP_obj.queue.put_nowait(message)
                 except Queue.Full:
-                    Trace.log(5, "Intermediate queue is full")
-                except:
-                    pass
+                    # Send to stdout as enstore log service may not be available.
+                    print "Intermediate queue is full"
+                except Exception, detail:
+                    print "Exception putting into queue:", detail
 
         else:
             RawUDP_obj.arrived.set()

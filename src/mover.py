@@ -1762,8 +1762,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     print "Can not start: %s"%(detail,)
                     sys.exit(-1)
 
-                if self.config['product_id'] == "T10000C":
-                    # for T10000C set Allow Maximum Capacity (AMC)
+                if self.config['product_id'] in ("T10000C", "T10000D"):
+                    # for T10000C/D set Allow Maximum Capacity (AMC)
                     disable_AMC = self.config.get('disable_AMC', False)
                     if not disable_AMC:
                         # enable AMC
@@ -3008,7 +3008,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
         driver = self.tape_driver
-        if self.config['product_id'] == "T10000C" and self.compression:
+        if self.config['product_id'] in ("T10000C", "T10000D") and self.compression:
             # special code for setting compression for T10000C tape drives
             rc = scsi_mode_select.t10000_set_compression(driver, compression = True)
             if not rc:
@@ -4036,7 +4036,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.bytes_written == self.bytes_to_write:
             # check crc
-            if do_crc:
+            if do_crc and self.file_info['size'] != 0: # we do not calculate crc for 0 length file.
                 Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
                             (self.buffer.complete_crc, self.file_info['complete_crc']))
                 if self.buffer.complete_crc != self.file_info['complete_crc']:
@@ -8108,7 +8108,7 @@ class DiskMover(Mover):
         self.current_work_ticket['fc'] = fc_ticket
 
         r0 = self.vol_info.get('remaining_bytes', r2)  #value prior to this write
-        #vol_info['remaining_bytes'] may be not defined if the volume has just been added by another mover. 
+        #vol_info['remaining_bytes'] may be not defined if the volume has just been added by another mover.
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
         remaining = min(r1, r2)
         self.vol_info['remaining_bytes']=remaining

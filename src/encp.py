@@ -463,9 +463,12 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11c CVS $Revision$ "
+    version_string = "v3_11d CVS"
     encp_file = globals().get('__file__', "")
-    if encp_file: version_string = version_string + os.path.basename(encp_file)
+    if encp_file:
+        version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)
+    else:
+        version_string = version_string + " $Revision: 1.1008 $ <frozen>"
     #If we end up longer than the current version length supported by the
     # accounting server; truncate the string.
     if len(version_string) > MAX_VERSION_LENGTH:
@@ -6569,8 +6572,9 @@ def set_outfile_permissions(ticket, encp_intf):
                 perms = in_stat_info[stat.ST_MODE]
                 #handle remote file case
                 if is_write(ticket):
-                    sfs = namespace.StorageFS(ticket['outfile'])
-                    sfs.chmod(perms, ticket['outfile'])
+                    if not encp_intf.put_cache:
+                        sfs = namespace.StorageFS(ticket['outfile'])
+                        sfs.chmod(perms, ticket['outfile'])
                 else:
                     file_utils.chmod(ticket['outfile'], perms)
 
@@ -8827,7 +8831,7 @@ def write_post_transfer_update(done_ticket, e):
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    if not e.get_cache and not e.put_cache:
+    if not e.put_cache:
         #Update the modification time only for direct encp files
         update_modification_time(done_ticket['outfile'])
 
