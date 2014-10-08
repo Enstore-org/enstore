@@ -41,7 +41,6 @@ import types
 import configuration_client
 import setpath
 import generic_server
-import event_relay_client
 import monitored_server
 import inquisitor_client
 #import enstore_functions
@@ -104,6 +103,7 @@ READ, WRITE, ASSERT = range(3)
 #error sources
 TAPE, ROBOT, NETWORK, DRIVE, USER, MOVER, UNKNOWN = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE', 'USER','MOVER', 'UNKNOWN']
 
+MEDIA_VERIFY_FAILED = "media verify failed"
 def mode_name(mode):
     if mode is None:
         return None
@@ -4300,12 +4300,17 @@ class Mover(dispatching_worker.DispatchingWorker,
     def check_connection(self):
         """
         Check connection in ``ASSERT`` mode.
-
         Assert can run for a long period of time.
         The client initiated assert could be gone.
         This allows to check if the client is still connected and interrupt assert if it is gone.
         """
+
+        STOP_MEDIA_VALIDATION = 0x10
+        VLBPM = 0x20 # Verify Logical Block Protection Method
+
         Trace.trace(40, "check_connection started")
+        percent_completed = -1. # to have 1st notify sent when 0 bytes were transferred
+        self.bytes_read_last = 0
         while self.mode == ASSERT:
             Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
             try:
@@ -4315,6 +4320,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(40, "r= %s"%(r,))
                     if r:
                         # r - read socket appears when client connection gets closed
+                        Trace.trace(40, "media_validate= %s"%(self.media_validate,))
+                        if self.media_validate:
+                            # Stop media validation.
+                            # Effective only for T10000C and D drives
+                            # self.media_validate is set only for them
+                            scsi_mode_select.ftt_scsi_verify(self.tape_driver, VLBPM, STOP_MEDIA_VALIDATION)
+                            Trace.log(e_errors.INFO, "The assert client is gone %s" %
+                                      (self.current_work_ticket['callback_addr'],))
+                            self.transfer_failed(e_errors.ENCP_GONE,
+                                                 "The assert client is gone %s" %
+                                                 (self.current_work_ticket['callback_addr'],),
+                                                 error_source=NETWORK)
+
                         self.interrupt_assert = True
                         break
                     else:
@@ -4323,6 +4341,39 @@ class Mover(dispatching_worker.DispatchingWorker,
                     break
             except:
                 pass
+            if self.media_validate:
+                # Check percent completed
+                ret = scsi_mode_select.check_scsi_verify(self.tape_driver)
+                if ret[0]:
+                    Trace.log(DEBUG_LOG, "check_scsi_verify %s %s %s"%(ret[1], ret[2], percent_completed))
+                    if ret[1]:
+                        self.transfer_completed(e_errors.OK)
+                        Trace.log(e_errors.INFO, "The assert for %s is completed" %
+                                  (self.vol_info['external_label'],))
+                        self.transfer_completed(e_errors.OK)
+                        break
+                    if percent_completed != ret[2]:
+                        percent_completed = ret[2]
+                        self.bytes_read = int(self.vol_info['active_bytes']/100. * percent_completed)
+                        self.bytes_read_last = self.bytes_read-1 # hack to not alarm false transfer stuck
+
+                        Trace.log(DEBUG_LOG, "active %s written %s to write %s"%
+                                  (self.vol_info['active_bytes'],
+                                  self.bytes_read,
+                                  self.vol_info['active_bytes']-self.bytes_read))
+                        Trace.notify("transfer %s %s %s network %s %.3f" %
+                                     (self.shortname, -self.bytes_read,
+                                      self.vol_info['active_bytes'], 0,
+                                      time.time()))
+                    time.sleep(30)
+                else:
+                    self.transfer_failed(e_errors.DRIVEERROR,
+                                         "%s for %s. Last reported percent done %s" %
+                                         (MEDIA_VERIFY_FAILED, self.vol_info['external_label'], percent_completed),
+                                         error_source=TAPE)
+                    break
+
+
         Trace.trace(40, "check_connection exits %s" % (mode_name(self.mode),))
 
 
@@ -4332,8 +4383,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Performing volume assert.
 
         """
+        STANDARD_VERIFY = 0x04
+        COMPLETE_VERIFY = 0x01
         self.net_driver = null_driver.NullDriver()
         ticket = self.current_work_ticket
+        self.media_validate = False
         self.assert_ok.clear()
         self.t0 = time.time()
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
@@ -4401,7 +4455,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_work_ticket = ticket
             self.mode = ASSERT
             if (ticket['action'] == 'crc_check'):
-                read_whole_tape = True
                 ic_conf = self.csc.get("info_server")
                 info_c = info_client.infoClient(self.csc,
                                             server_address=(ic_conf['host'],
@@ -4411,7 +4464,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ticket['return_file_list'] = {}
                 Trace.trace(24, 'ticket %s'%(ticket,))
                 if ticket.has_key('parameters') and type(ticket['parameters']) == type([]) and ticket['parameters']:
-                    read_whole_tape = False
                     # Initialize return list
                     for lc in ticket['parameters']:
                        rec = info_c.find_file_by_location(ticket['vc']['external_label'], lc)
@@ -4460,7 +4512,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(24, 'keys %s'%(keys,))
                 stat = e_errors.OK
                 # start client network monitor to detect
-                # that clinet is gone and interruprt assert
+                # that client is gone and interruprt assert
                 self.interrupt_assert = False
                 self.run_in_thread('network_monitor', self.check_connection)
 
@@ -4516,6 +4568,25 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_completed(stat)
                     Trace.log(e_errors.INFO, "The assert for %s is completed" %
                               (ticket['vc']['external_label'],))
+            elif (ticket['action'] in ('media_validate_standard', 'media_validate_complete')):
+                if not self.config['product_id'] in ("T10000C", "T10000D"):
+                    self.transfer_failed(e_errors.WRONGPARAMETER,
+                                         "Media validation is not supported for this drive type %s" %
+                                         (self.current_work_ticket['callback_addr'],),
+                                         error_source=DRIVE)
+                else:
+                    self.state = ACTIVE
+                    verify_option = STANDARD_VERIFY
+                    if ticket['action'] == 'media_validate_complete':
+                        verify_option = COMPLETE_VERIFY
+                    Trace.log(e_errors.INFO, "Starting media validation for %s"%
+                              (ticket['vc']['external_label'],))
+                    scsi_mode_select.ftt_scsi_verify(self.tape_driver,  byte2 = verify_option)
+                    # the execition monitoring will be done in network_monitor
+                    # start client network monitor to detect
+                    # that client is gone and interruprt assert
+                    self.media_validate = True
+                    self.run_in_thread('network_monitor', self.check_connection)
 
         else:
             self.transfer_completed(e_errors.OK)
@@ -4524,8 +4595,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         #    # read tape and
         #    self.dismount_volume(after_function=self.idle)
-
-
 
     def finish_transfer_setup(self):
         """
@@ -5087,7 +5156,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.mode == ASSERT:
             return_here = False
-            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO"))
+            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", MEDIA_VERIFY_FAILED))
                 or exc == e_errors.ENCP_GONE):
                 # stop assert
                 pass
