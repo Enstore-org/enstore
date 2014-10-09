@@ -8190,6 +8190,7 @@ class DiskMover(Mover):
             self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
             return 0
         self.vol_info.update(reply)
+        self.current_work_ticket['vc'].update(self.vol_info)
 
         return 1
 
