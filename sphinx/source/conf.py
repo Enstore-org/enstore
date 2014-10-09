@@ -257,7 +257,7 @@ texinfo_documents = [
 
 todo_include_todos = True
 
-intersphinx_mapping = {'python': ('http://docs.python.org', None)}
+intersphinx_mapping = {'python': ('https://docs.python.org', None)}
 
 autodoc_default_flags = ['members', 'private-members', 'special-members',
                          #'undoc-members',  # Can be noisy.
