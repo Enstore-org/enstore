@@ -351,7 +351,7 @@ except:
 	   # getting list of children overloads info server, so only do it for smallish packages
 	   #
 	   if [ ${n_children} -lt 50 ]; then
-	       children=`enstore info --children ${package_id} | grep pnfsid | sed -e "s/[[:punct:]]//g" | awk '{ print $NF}'`
+	       children=`enstore info --children ${package_id} --field pnfs_id`
 	       #
 	       # loop over packaged files and pre-stage then with dccp -P
 	       #
