@@ -8079,7 +8079,8 @@ class DiskMover(Mover):
                 Trace.alarm(e_errors.ALARM, "error saving file %s to %s. Detail %s"%
                             (self.tmp_file, self.file, str(detail)))
                 self.transfer_failed(e_errors.OSERROR, 'transfer failure: %s' % (str(detail),), error_source=DRIVE)
-                self.idle()
+                self.offline()
+                return
 
         Trace.trace(10, "transfer complete mode %s"%(self.mode,))
         self.state = HAVE_BOUND
