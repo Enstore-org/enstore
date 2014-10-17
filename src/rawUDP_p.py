@@ -79,7 +79,6 @@ class RawUDP:
         self.f = None
         self.queue = multiprocessing.Queue(MAX_QUEUE_SIZE) # intermediate place for incoming messages
 
-
         # if self.replace_keyword is specified
         # replace a message with this keyword in the buffer
         # this is needed for processing
@@ -362,7 +361,8 @@ def _receiver(RawUDP_obj):
                     RawUDP_obj.queue.put_nowait(message)
                 except Queue.Full:
                     # Send to stdout as enstore log service may not be available.
-                    print "Intermediate queue is full"
+                    msg = " ".join((time.strftime("%Y-%m-%d %H:%M:%S"), str(message)))
+                    print "Intermediate queue is full", msg
                 except Exception, detail:
                     print "Exception putting into queue:", detail
 
