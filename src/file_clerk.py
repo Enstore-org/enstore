@@ -1162,7 +1162,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 				   "has_undeleted_file",
 				   "open_bitfile",
 				   "open_bitfile_for_package",
-                                   "bfid_info") :
+                                   "bfid_info",
+                                   "modify_file_records") :
 		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
 		self.parallelThreadQueue.put([function.__name__, args])
 
