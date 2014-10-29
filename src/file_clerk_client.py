@@ -375,18 +375,28 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             bad_file = path
         else:
             bad_file = os.path.join(dirname, ".bad." + filename)
-            # rename it
+            if os.path.exists(bad_file):
+                msg = "Refuse to set file bad because there is already .bad. file {} present ".format(bad_file)
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg) }
+
+
+        ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
+        ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
+        if ticket['status'][0] != e_errors.OK:
+            return ticket
+
+        if not is_multiple_copy:
             try:
                 os.rename(a_path, bad_file)
             except:
                 msg = "failed to rename %s to %s"%(a_path, bad_file)
-                return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
+                ticket = {'work': 'unmark_bad', 'bfid': bfid, 'path': bad_file};
+                ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
+                if ticket['status'][0] != e_errors.OK:
+                    msg += '(Failed to umark the file bad: '+ticket['status'][1]+')'
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg) }
 
-        # log it in the bad_file table of the database
-        ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
-        ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
-        if ticket['status'][0] == e_errors.OK:
-            print bfid, a_path, "->", bad_file
+        print bfid, a_path, "->", bad_file
         return ticket
 
     def unmark_bad(self, path, specified_bfid = None, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
