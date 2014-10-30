@@ -24,12 +24,12 @@ args = parser.parse_args()
 try:
     import sphinx
 except ImportError:
-    msg = """Sphinx could not be imported. To install it, run as user enstore:
-    wget --no-check-certificate https://raw.github.com/pypa/pip/master/contrib/get-pip.py
-    python ./get-pip.py
-    pip install sphinx"""
+    msg = """Sphinx could not be imported. To install it using pip, run as user enstore:
+    curl --insecure --silent https://bootstrap.pypa.io/get-pip.py | python
+    pip install --upgrade sphinx"""
     exit(msg)
-# Note: Sphinx version requirement is defined in conf.py.
+# Note: "--insecure" option for curl is necessary on SLF5 but not on SLF6.
+# Note: Minimal version requirement for Sphinx is defined in source/conf.py.
 
 # Test Graphviz dot for availability
 if distutils.spawn.find_executable('dot') is None:
@@ -52,8 +52,8 @@ if not build_dir:
         build_dir = os.path.join(build_dir, 'docs')
     except:
         msg = ('Error determining build directory automatically using the '
-               'configuration client. It can be specified as a command-line '
-               'option. (--builddir)')
+               'Enstore configuration client. It can be specified as a '
+               'command-line option. (--builddir)')
         print(msg, end='\n\n', file=sys.stderr)
         raise
 build_dir = os.path.abspath(build_dir)
@@ -63,10 +63,10 @@ os.environ['BUILDDIR'] = build_dir
 print("""The HTML directory path is printed after the build has finished.
 
 General troubleshooting steps:
-• If the HTML output fails to get generated for a Python module, ensure it can
-  be imported by Python, and that its .rst file exists in {}.
-• If the HTML output fails to get updated for a Python module, "touch" its .rst
-  file.
+• If the HTML output fails to get generated for a Python module, ensure the
+  module can be imported by Python, and that its .rst file exists in {}.
+• If the HTML output exists but fails to get updated for a Python module,
+  "touch" the module's .rst file.
 """.format(py_rst_dir))
 
 # GNU make
