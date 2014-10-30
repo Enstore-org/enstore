@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 4.2.2
-Release: 0
+Release: 2
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -209,6 +209,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Thu Oct 30 2014  <moibenko@fnal.gov> -
+- new release 4.2.2, release 2
 * Thu Oct 09 2014  <moibenko@fnal.gov> -
 - new version 4.2.2, release 0
 - added SCSI Media Verify for T10000C and higher drives
