@@ -99,6 +99,36 @@ corresponding server when generating the SAAG page, and will not use
 </tr>
 </table>
 
+<h2>Log Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="max_queue_size">max_queue_size</a></td><td>
+	      Maximum size of the incoming message buffering queue.</td>
+	      <td>Optional</td><td>200000</td>
+</tr>
+<tr><td><a NAME="log_file_path">log_file_path</a></td><td>
+	      Directory for log files.</td>
+	      <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a
+	   NAME="use_raw_input">use_raw_input</a></td><td>Use buffer to
+	      pull out requests from UDP buffer as fast as possible.
+	      </td>
+	   <td>Optional</td><td>False</td>
+
+</tr>
+
+</table>
+
 <h2>Library Manager Keys</h2>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
