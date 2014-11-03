@@ -183,15 +183,20 @@ class RawUDP:
     def get(self):
         _print(self.d_o, "GET")
         rc = None
-        #print "get use_q", self.use_queue
+
         if self.use_queue:
-            message = self.queue.get()
-            rc = self.process_enstore_message(message)
+            message = self.queue.get(True, self.rcv_timeout)
+            if message:
+                rc = self.process_enstore_message(message)
+            else:
+                if self.arrived.is_set():
+                    self.arrived.clear()
             return rc
 
         if self.queue_size_p.value == 0:
             self.arrived.wait()
             self.arrived.clear()
+
         if self.queue_size_p.value > 0:
             ret = None
             request_id = None
