@@ -6882,7 +6882,11 @@ def write_file(MY_TASK,
                        "--file-family-width", str(intf.file_family_width),
                        "--no-crc"]
 
-        argv = ["encp"] + use_verbose + encp_options + use_priority + \
+        sfa = []
+        if intf.sfa_repackage:
+            sfa += ['--enable-redirection']
+
+        argv = ["encp"] + use_verbose + encp_options + sfa + use_priority + \
                dst_options + use_threads + [tmp_path, mig_path]
 
         if debug:
@@ -9597,6 +9601,7 @@ class MigrateInterface(option.Interface):
         self.library__ = None
         self.infile = None
         self.file_family_width = 1
+        self.sfa_repackage = 1
 
         self.do_print = []
         self.dont_print = []
@@ -9828,6 +9833,9 @@ class MigrateInterface(option.Interface):
 					option.VALUE_USAGE:option.IGNORED,
 					option.VALUE_TYPE:option.INTEGER,
 					option.USER_LEVEL:option.USER,},
+        option.SFA_REPACKAGE:{option.HELP_STRING:
+                    "Enable SFA repackaging",
+                    option.VALUE_TYPE:option.INTEGER,},
 		}
 
 

@@ -425,6 +425,7 @@ SET_REQUESTED = "set-requested"              #quota
 SET_AUTHORIZED = "set-authorized"            #quota
 SET_QUOTA = "set-quota"                      #quota
 SEVERITY = "severity"                        #alarm
+SFA_REPACKAGE = "sfa_repackage"              #migrate
 SG = "sg"                                    #plotter
 SHORTCUT = "shortcut"                        #encp
 SHOW = "show"                                #configuration, inquisitor, media
@@ -582,6 +583,7 @@ valid_option_list = [
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
+    SFA_REPACKAGE,
     SPOOL_DIR, STORAGE_GROUP, SUBSCRIBE, SUMMARY, SYSTEM_HTML,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
     TEST, THREADED, THREADED_IMPL, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
