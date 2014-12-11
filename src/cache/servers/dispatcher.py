@@ -86,7 +86,7 @@ class Dispatcher(mw.MigrationWorker,
         except Exception, detail:
             Trace.log(e_errors.ALARM, "Can not create policy selector: %s" %(detail,))
             sys.exit(-1)
-        
+
         # get amqp broker configuration - common for all servers
         self.dispatcher_configuration['amqp'] = {}
         self.dispatcher_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
@@ -96,7 +96,7 @@ class Dispatcher(mw.MigrationWorker,
         # Cluster uses a dedicated cache system.
         # If no clustered configuration is defined
         # All disk movers and migrators use the same cache.
-        
+
         self.clustered_configuration = self.my_conf.get("clustered_configuration")
         self.max_time_in_cache = self.my_conf.get("max_time_in_cache", 3600)
         self.check_watermarks = True # this allows to purge files ignoring watermarks
@@ -163,7 +163,7 @@ class Dispatcher(mw.MigrationWorker,
 
 	self.erc = event_relay_client.EventRelayClient(self)
 	self.erc.start_heartbeat(self.name,  self.alive_interval)
-   
+
    ##############################################
    #### Configuration related methods
    ##############################################
@@ -177,7 +177,7 @@ class Dispatcher(mw.MigrationWorker,
          ticket['status'] = (e_errors.ERROR, "Error loading policy for PE Server: %s"%(detail,))
          Trace.log(e_errors.ERROR, "reload_policy: %s" % (detail,))
       self.reply_to_caller(ticket)
-         
+
 
    # send current policy to client
    def show_policy(self, ticket):
@@ -238,7 +238,7 @@ class Dispatcher(mw.MigrationWorker,
          ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
          Trace.log(e_errors.ERROR, "show_id: %s" % (detail,))
          self.reply_to_caller(ticket)
-      
+
    # delete migration pool entry
    def delete_list(self, ticket):
       if not self.migration_pool.has_key(ticket['id']):
@@ -249,11 +249,11 @@ class Dispatcher(mw.MigrationWorker,
       self._lock.acquire()
       try:
          del(self.migration_pool[ticket['id']])
-      
+
       except Exception, detail:
          ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
       self._lock.release()
-         
+
       self.reply_to_caller(ticket)
 
    # flush all pending writes to migrator queue
@@ -272,9 +272,9 @@ class Dispatcher(mw.MigrationWorker,
          ticket['draining'] = items
       else:
          ticket['status'] = (e_errors.OK, "Nothing to drain")
-         
+
       self.reply_to_caller(ticket)
-             
+
    # move list from a list pool to migration pool
    # @param - src - pool
    # @param - item_to_move item to move is a key in the pool
@@ -328,7 +328,7 @@ class Dispatcher(mw.MigrationWorker,
             for f in files_to_purge:
                self.cache_purge_pool[f.list_id] = f
          self.time_to_purge = time.time()
-         self.purge_pool_to = 11*60
+         self.purge_pool_to = 6*60
       for pool in (self.file_deleted_pool,
                    self.cache_missed_pool,
                    self.cache_written_pool,
@@ -363,7 +363,7 @@ class Dispatcher(mw.MigrationWorker,
 
             self.move_to_purge_pool(key)
             self.md.start_migration(self.purge_pool, id)
-         
+
    def check_pools_thread(self):
       self.purge_pool_to = 0 # to start purging right after the dispather starts
       self.time_to_purge = time.time()
@@ -380,7 +380,7 @@ class Dispatcher(mw.MigrationWorker,
                                              name="Check_Pools")
         self.check_thread.start()
         super(Dispatcher, self).start()
-      
+
 
    ########################################################
    ### Event Handlers
@@ -401,7 +401,7 @@ class Dispatcher(mw.MigrationWorker,
                                           list_type = message.properties["en_type"],
                                           list_name = l_name,
                                           disk_library = disk_library)
-       
+
        self.cache_missed_pool[l_name] = f_list
        list_element = file_list.FileListItemWithCRC(bfid = message.content['enstore']['bfid'],
                                                     nsid = message.content['file']['id'],
@@ -456,7 +456,7 @@ class Dispatcher(mw.MigrationWorker,
        Trace.trace(10, "handle_cache_written type: %s"%(type(message.content),))
 
        # convert key, value in content to ascii if they are strings
-       
+
        new_content = dict_u2a.convert_dict_u2a(message.content)
 
        # copy new_content['file'] to new_content['enstore'] to have all
@@ -490,7 +490,7 @@ class Dispatcher(mw.MigrationWorker,
                                                        path = new_content['enstore']['name'],
                                                        libraries = [new_content['enstore']['vc']['library']],
                                                        crc = new_content['enstore']['complete_crc'])
-          
+
           self.cache_written_pool[policy['policy']].append(list_element, new_content['enstore']['file_size'])
           if self.cache_written_pool[policy['policy']].full:
              # pass this list to Migration Dispatcher
@@ -498,13 +498,13 @@ class Dispatcher(mw.MigrationWorker,
              Trace.trace(10, "handle_cache_written passing to migration dispatcher")
              self.move_to_migration_pool(self.cache_written_pool, policy['policy'])
              self.md.start_migration(self.migration_pool, id)
-             
+
        else:
           Trace.alarm(e_errors.ALARM, "Potential data loss. No policy for %s"%(new_content,))
-          
+
        Trace.trace(10, "handle_cache_written: POLICY:%s"%(policy['policy'],))
        return True
-       
+
 
    def handle_cache_staged(self, message):
        Trace.trace(10, "handle_cache_staged reeceived: %s"%(message))
@@ -520,14 +520,14 @@ def do_work():
 
     # create  Migrator instance
     dispatcher = Dispatcher((intf.config_host, intf.config_port))
-    
+
     dispatcher.handle_generic_commands(intf)
 
     #dispatcher._do_print({'levels':range(5,20)})
     dispatcher.start()
     #dispatcher.logger.log(e_errors.ERROR, "DISP START")
     dispatcher.logger.info("DISP START") # jst to check if logger works
- 
+
     while True:
         t_n = 'dispatcher'
         if thread_is_running(t_n):
@@ -538,7 +538,7 @@ def do_work():
             dispatching_worker.run_in_thread(t_n, dispatcher.serve_forever)
 
         time.sleep(10)
-        
+
 
     Trace.alarm(e_errors.ALARM,"dispatcher %s finished (impossible)"%(intf.name,))
 

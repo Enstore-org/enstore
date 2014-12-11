@@ -552,7 +552,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
            shutil.rmtree(tmp_dir)
            return True
         except OSError, detail:
-           Trace.log(e_errors.ERROR, "check_packaged_files: error removind directory %s: %s"%(tmp_dir, detail,))
+           Trace.log(e_errors.ERROR, "check_packaged_files: error removing directory %s: %s"%(tmp_dir, detail,))
            return False
 
     # pack files into a single aggregated file
@@ -903,7 +903,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     try:
                         os.removedirs(os.path.dirname(src_file_path))
                     except OSError, detail:
-                        Trace.log(e_errors.ERROR, "write_to_tape: error removind directory: %s"%(detail,))
+                        Trace.log(e_errors.ERROR, "write_to_tape: error removing directory: %s"%(detail,))
                         pass
                     content = {"migrator_status":
                                mt.FAILED,
@@ -1191,12 +1191,16 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return False
 
         package_files_count = len(bfid_list)
-        bfid_list = bfid_list + dst_bfids
+        all_bfids = bfid_list + dst_bfids
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         records = []
         pack_records = []
+        files_to_purge = []
+        if self.data_area.path != self.archive_area.path: # purge if write cache and read cache are different
+            for bfid in bfid_list:
+                files_to_purge.append({'bfid': bfid})
 
-        for bfid in bfid_list:
+        for bfid in all_bfids:
             if bfid in dst_bfids:
                 rec = self.bfid_info(bfid)
             else:
@@ -1263,6 +1267,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                        if not e_errors.is_ok(rc['status']):
                            return False
 
+
+        if files_to_purge:
+            self._purge_files(files_to_purge)
+
         return True
 
     # check all conditions for purging the file
@@ -1271,7 +1279,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         try:
             if (f_info['status'][0] == e_errors.OK and
                 (f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
-                (f_info['cache_status'] == file_cache_status.CacheStatus.PURGING_REQUESTED)):
+                (f_info['cache_status'] in (file_cache_status.CacheStatus.PURGING_REQUESTED,
+                                            file_cache_status.CacheStatus.CACHED))):
                 # Enable to purge a file if it is in the write cache
                 # and it is a time to purge it.
                 # Do not consider watermarks
@@ -1304,11 +1313,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         return rc
 
     # purge files from disk
-    def purge_files(self, request, mq):
+    def _purge_files(self, request_list):
         # save request
-        rq = copy.copy(request)
-        Trace.trace(10, "purge_files: request %s"%(rq.content,))
-        request_list = rq.content['file_list']
+        Trace.trace(10, "_purge_files: request %s"%(request_list,))
         set_cache_params = []
         cur_package_id = -1
         for component in request_list:
@@ -1320,7 +1327,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             rec = self.bfid_info(bfid)
             if self.really_purge(rec):
                 rec['cache_status'] = file_cache_status.CacheStatus.PURGING
-                Trace.trace(10, "purge_files: purging %s"%(rec,))
+                Trace.trace(10, "_purge_files: purging %s"%(rec,))
                 set_cache_params.append({'bfid': bfid,
                                          'cache_status': file_cache_status.CacheStatus.PURGING,
                                          'archive_status': None,        # we are not changing this
@@ -1333,43 +1340,51 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                              'archive_status': None,        # we are not changing this
                                              'cache_location': rec['cache_location']})
 
+        if set_cache_params:
+            self.state = CHANGING_STATE
+            rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+            Trace.trace(10, "_purge_files: set_cache_status 1 returned %s"%(rc,))
+            Trace.trace(e_errors.INFO, "Will purge files in cache")
 
-        self.state = CHANGING_STATE
-        rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
-        Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
-        Trace.trace(e_errors.INFO, "Will purge files in cache")
-
-        for item in set_cache_params:
-            try:
-                Trace.trace(10, "purge_files: removing %s"%(item['cache_location'],))
-                os.remove(item['cache_location'])
-            except OSError, detail:
-                if detail.args[0] != errno.ENOENT:
-                    Trace.trace(10, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+            for item in set_cache_params:
+                try:
+                    Trace.trace(10, "_purge_files: removing %s"%(item['cache_location'],))
+                    os.remove(item['cache_location'])
+                except OSError, detail:
+                    if detail.args[0] != errno.ENOENT:
+                        Trace.trace(10, "_purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                        Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                except Exception, detail:
+                    Trace.trace(10, "_purge_files: can not remove %s: %s"%(item['cache_location'], detail))
                     Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
-            except Exception, detail:
-                Trace.trace(10, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
-                Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
 
-            try:
-                os.removedirs(os.path.dirname(item['cache_location']))
-                item['cache_status'] = file_cache_status.CacheStatus.PURGED
-                Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
-            except OSError, detail:
-                if detail.args[0] != errno.ENOENT:
-                    Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
-                    Trace.trace(10, "purge_files: error removind directory: %s"%(detail,))
-                else:
+                try:
+                    os.removedirs(os.path.dirname(item['cache_location']))
                     item['cache_status'] = file_cache_status.CacheStatus.PURGED
-                    Trace.log(DEBUGLOG, "purge_files: purged %s"%(item['cache_location'],))
+                    Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
+                except OSError, detail:
+                    if detail.args[0] != errno.ENOENT:
+                        Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
+                        Trace.trace(10, "_purge_files: error removing directory: %s"%(detail,))
+                    else:
+                        item['cache_status'] = file_cache_status.CacheStatus.PURGED
+                        Trace.log(DEBUGLOG, "_purge_files: purged %s"%(item['cache_location'],))
 
-            except Exception, detail:
-                Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
+                except Exception, detail:
+                    Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
 
-        self.state = CHANGING_STATE
-        rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
-        Trace.trace(10, "purge_files: set_cache_status 2 returned %s"%(rc,))
+            self.state = CHANGING_STATE
+            rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+            Trace.trace(10, "_purge_files: set_cache_status 2 returned %s"%(rc,))
+        else:
+            Trace.log(e_errors.ERROR, "purge_files: nothing to purge")
 
+    # purge files from disk
+    # method called by amqp request handler
+    def purge_files(self, request, mq):
+        # save request
+        rq = copy.copy(request)
+        self._purge_files(rq.content['file_list'])
         status_message = cache.messaging.mw_client.MWRPurged(orig_msg=rq)
         try:
             mq.put(status_message)
