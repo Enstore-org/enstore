@@ -220,11 +220,12 @@ def create_assert_list(check_requests, media_validate=None):
             elif isinstance(check_requests[vol], (tuple, list)):
                 ticket['action'] = "crc_check"
                 ticket['parameters'] = check_requests[vol]
-            if media_validate and vc['media_type'] == "T10000T2":
+            if (media_validate and
+                (vc['media_type'] in ("T10000T2", "T10000T2D"))):
                 ticket['action'] = media_validate
             #The following are for the inquisitor.
             ticket['vc']['file_family'] = ""
-	    ticket['fc'] = {}  #Easier to do this than modify the mover.
+            ticket['fc'] = {}  #Easier to do this than modify the mover.
             ticket['fc']['external_label'] = vc['external_label']
             ticket['fc']['location_cookie'] = "0000_000000000_0000000"
             ticket['fc']['address'] = fcc_list[i].server_address  #fcc instance
