@@ -1,4 +1,4 @@
 #Needs to run on the web server.
-30 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500F1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l CD-10KCF1,CD-LTO4F1 -a > /dev/null 2> /dev/null
+30 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500F1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l CD-10KCF1,CD-10KDF1,CD-LTO4F1 -a > /dev/null 2> /dev/null
 35 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500GS $ENSTORE_DIR/sbin/tab_flipping_nanny -l CD-10KCGS,CD-LTO4GS -a > /dev/null 2> /dev/null
 40 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500G1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l CD-10KCG1,CD-LTO4G1 -a > /dev/null 2> /dev/null
