@@ -576,6 +576,8 @@ AS $$
 DECLARE
 	old_record RECORD;
 	new_record RECORD;
+        total INTEGER;
+	active INTEGER;
 BEGIN
       IF ( new_bfid is NULL ) THEN
           RAISE EXCEPTION 'destination package bfid is not specified';
@@ -595,8 +597,15 @@ BEGIN
           RAISE EXCEPTION '% is not a package file',old_bfid;
 	  RETURN;
       END IF;
-      update file set package_id=new_bfid where package_id=old_bfid and package_id <> bfid;
-      update file set package_files_count=package_files_count+old_record.package_files_count, active_package_files_count=active_package_files_count+old_record.active_package_files_count,package_id=new_bfid where bfid=new_bfid;
+      IF ( new_record.package_files_count is not NULL and new_record.package_files_count <> 0 ) THEN
+          RAISE EXCEPTION '% has package_files_count=%',new_bfid, new_record.package_files_count;
+      END IF;
+      with updated_rows AS (
+      update file set package_id=new_bfid where package_id=old_bfid and package_id <> bfid RETURNING deleted)
+      select sum(case when deleted='n' then 1 else 0 end), count(*) into active, total from updated_rows;
+      update file set package_files_count=coalesce(total,0),
+                      active_package_files_count=coalesce(active,0),
+		      package_id=new_bfid where bfid=new_bfid;
       update file set package_files_count=0, active_package_files_count=0 where bfid=old_bfid;
 END;
 $$
