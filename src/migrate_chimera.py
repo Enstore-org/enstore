@@ -2725,7 +2725,6 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             migration_match = "dst_bfid"
         else:
             migration_match = "src_bfid"
-
         if all_files:
             use_deleted_sql = "or deleted in ('y', 'u')"
             use_empty_sql = ""
@@ -2736,9 +2735,8 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             use_deleted_sql = "or (deleted = 'y' and migration.dst_bfid is not NULL)"
             use_empty_sql = "and pnfs_path != ''"
         else:
-            use_deleted_sql = ""
+            use_deleted_sql = "or migration.dst_bfid is not NULL"
             use_empty_sql = "and pnfs_path != ''"
-
         if intf.skip_bad:
             use_skip_bad = "and bad_file.bfid is NULL"
         else:
