@@ -210,7 +210,7 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugsources.list
 %changelog
 * Mon Dec 22 2014  <moibenko@fnal.gov> -
-- new release 4.2.2, release 3
+- new release 4.2.2, release 3.
 * Thu Oct 30 2014  <moibenko@fnal.gov> -
 - new release 4.2.2, release 2
 * Thu Oct 09 2014  <moibenko@fnal.gov> -
