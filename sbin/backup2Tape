@@ -2,9 +2,6 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-# bin/$RCSfile$  $Revision$
-
-#Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
 #Override the default time allowed to wait for the mover.  This is used as
 # a workaround for cases where it takes longer than 15 minutes for a tape
@@ -145,36 +142,28 @@ fi
 
 PNFS_FILES=$VAULT/pnfs.files
 rm -f $PNFS_FILES
-###VP
+touch $PNFS_FILES
 # Here we create the xlogs tar files and put them in the corresponding
 # pnfs-backup directories.
 for xd in $PNFS
 do
         fn=`find ${xd}.xlogs $find_options -type f -name '*backup.Z' | sort | head -n1`
-#        echo Backup file=${fn}
         if [[ $fn != "" ]]
         then
-          tarfile=`zcat ${fn} | fgrep LABEL | cut -f8 -d/ | cut -f1,2 -d .`
-#          echo Tar file=\"$tarfile\"
+	  # extract name of the tarfile w/o 'tar.Z' suffix
+	  # FIXME: this relies on a name not having dots, revisit later
+          tarfile=`zcat ${fn} | fgrep LABEL |  awk '{ print $NF }' | xargs basename  | cut -f1,2 -d .`
+	  # find starting WAL file
 	  startwal=`zcat ${fn} | fgrep 'START WAL' | cut -f6 -d' ' | cut -f1 -d')'`.Z
 	  startwal=${xd}.xlogs/$startwal
-#	  echo Start WAL=\"$startwal\"
           fl=`find ${xd}.xlogs -follow -type f -newer $startwal`
           if [[ $fl != "" ]]
           then
             tar cfz ${xd}/xlogs-${tarfile}.tar.Z $startwal $fl
+            find ${xd}  -maxdepth 1  -name "*${tarfile}*Z"  >> $PNFS_FILES
           fi
         fi
 done
-###VP
-# Only backup latest copy on disk, not all of them since we are running out
-# of tape!
-find $PNFS $find_options -maxdepth 1 -type f  -print | sort -r | while read f; do
-    echo $f | cut -f1 -d.
-  done | uniq | while read g; do
-    ls -lt ${g}.*.Z | head -n1 | awk '{print $NF}'
-  done > $PNFS_FILES
-
 lines=`wc -l $PNFS_FILES | awk '{print $1}'`
 list ""
 list "PNFS databases backup: $lines files to backup to tape"

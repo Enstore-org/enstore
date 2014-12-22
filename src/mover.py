@@ -2003,6 +2003,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             e = self.last_error
         self.send_error_msg(e)
         time.sleep(5)
+        self.dont_update_lm = 0
         self.restart()
 
 
@@ -2218,6 +2219,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ALARM,
                                 "Net thread is running in the state %s. Will restart the mover"%
                                 (state_name(self.state),))
+                    self.dont_update_lm = 1
                     if self.state == HAVE_BOUND:
                         self.run_in_thread('media_thread', self.dismount_volume, after_function=self.send_error_and_restart)
                         #self.dismount_volume(after_function=self.restart)
@@ -5145,8 +5147,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         save_state = self.state
 
         if (cur_thread_name == 'net_thread' or
-            (cur_thread_name == 'media_thread' and exc == e_errors.DISMOUNTFAILED)):
-            #For the 2nd enrty in if ... If dismount fails close net_driver (data connection).
+            (cur_thread_name == 'media_thread' and exc == e_errors.DISMOUNTFAILED) or
+            encp_gone):
+            #For the 2nd entry in if ... If dismount fails close net_driver (data connection).
             # If there is a preemptive dismount and net_driver is not closed,
             # the client (encp) port does not get disconnected.
             #This resulted in 15 min timeout for encp retry.
@@ -5185,13 +5188,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dont_update_lm = 0
         if cur_thread_name:
             if cur_thread_name == 'net_thread':
+                act_thread_name = 'net_thread'
+                alt_thread_name = 'tape_thread'
+            elif cur_thread_name == 'tape_thread':
+                alt_thread_name = 'net_thread'
+                act_thread_name = 'tape_thread'
+            else:
+               act_thread_name = None
+            if act_thread_name:
                 self.dont_update_lm = 1
                 # check if tape_thread is active before allowing dismount
-                Trace.trace(26,"checking thread %s"%('tape_thread',))
-                thread = getattr(self, 'tape_thread', None)
+                Trace.trace(26,"checking thread %s"%(alt_thread_name,))
+                thread = getattr(self, alt_thread_name, None)
                 for wait in range(60):
                     if thread and thread.isAlive():
-                        Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
+                        Trace.trace(26, "thread %s is already running, waiting %s" % (alt_thread_name, wait))
                         time.sleep(1)
                     else:
                         break
@@ -5225,39 +5236,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 pass
             else:
                 self.state = HAVE_BOUND
-                #---------------
-                if self.mode == WRITE:
-                    ## AM: DO NOT REWIND TAPE
-
-
-                    ##if cur_thread_name != 'tape_thread':
-                    ##thread = getattr(self, 'tape_thread', None)
-                    ##    if thread and thread.isAlive():
-                    ##        # do actual rewind in a tape thread
-                    ##        self.rewind_tape = 1
-                    ##Trace.log(e_errors.INFO, "Waiting for tape get rewound")
-                    ##for wait in range(180):
-                    ##    if thread and thread.isAlive():
-                    ##               time.sleep(1)
-                    ##        if thread and thread.isAlive():
-                    ##            Trace.log(e_errors.ERROR, "Tape was not rewound in 3 minutes will set mover OFFLINE")
-                    ##            self.offline()
-                    ##            return
-
-                    ##    else:
-                    ##        # tape thread is gone: rewind here
-                    ##        Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape. Current thread: %s"%(cur_thread_name,));
-                    ##        self.tape_driver.rewind()
-                    ##        self.current_location = 0L
-                    ##    #return
-                    ##    pass
-                    pass
-
-                else:
-                    ## tape was rewound in the tape thread
-                    pass
-                #----------------
-
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
                     self.dont_update_lm = 0

@@ -734,7 +734,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(ticket))
 
     # swap parents for children
-    def swap_package(self, ticket, timeout=0, retry=0):
+    def swap_package(self, ticket, timeout=600, retry=1):
         ticket['work'] = 'swap_package'
         return self.send(ticket,rcv_timeout=timeout, tries=retry )
 

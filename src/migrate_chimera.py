@@ -300,6 +300,15 @@ dbname = None
 dbuser = "enstore"
 
 ###############################################################################
+# Parameterization of Constants for communication with File Clerk.
+# RCV_TIMEOUT, RCV_TRIES actually shall be used when instantiating file_clerk,
+# but these values are ignored in fcc.get_bfid() and invocation arguments are
+# used instead. Keep these constants in one place.
+
+# File Clerk timeout and Number of Retries
+FC_TO   = 60
+FC_RETRY = 1
+###############################################################################
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
@@ -2725,6 +2734,7 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             migration_match = "dst_bfid"
         else:
             migration_match = "src_bfid"
+
         if all_files:
             use_deleted_sql = "or deleted in ('y', 'u')"
             use_empty_sql = ""
@@ -2735,8 +2745,9 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             use_deleted_sql = "or (deleted = 'y' and migration.dst_bfid is not NULL)"
             use_empty_sql = "and pnfs_path != ''"
         else:
-            use_deleted_sql = "or migration.dst_bfid is not NULL"
+            use_deleted_sql = ""
             use_empty_sql = "and pnfs_path != ''"
+
         if intf.skip_bad:
             use_skip_bad = "and bad_file.bfid is NULL"
         else:
@@ -7006,7 +7017,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
             # We need to be this draconian if we had to restart the
             # migration processes.
             dst_file_record = fcc.bfid_info(dst_bfid,
-                                        timeout = 10, retry = 4)
+                                        timeout = FC_TO, retry = FC_RETRY)
             if not e_errors.is_ok(dst_file_record):
                 error_log(MY_TASK, "no file record found(%s)" % (dst_bfid,))
                 return
@@ -7193,7 +7204,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
             #Just written new files will get here.  Files already written
             # will just move on to getting the volume information.
             dst_file_record = fcc.bfid_info(dst_bfid,
-                                            timeout = 10, retry = 4)
+                                            timeout = FC_TO, retry = FC_RETRY)
             if not e_errors.is_ok(dst_file_record):
                 message = "no file record found(%s)" % (dst_bfid,)
                 error_log(MY_TASK2, message)
@@ -7255,7 +7266,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                    not is_expected_restore_type(cur_dst_bfid, db):
                 #Obtain new multiple copy volume information.
                 mc_dst_file_record = fcc.bfid_info(cur_dst_bfid,
-                                                   timeout = 10, retry = 4)
+                                        timeout = FC_TO, retry = FC_RETRY)
                 if not e_errors.is_ok(dst_file_record):
                     message = "no file record found(%s)" % (cur_dst_bfid,)
                     error_log(MY_TASK2, message)

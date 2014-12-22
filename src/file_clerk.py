@@ -1163,7 +1163,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 				   "open_bitfile",
 				   "open_bitfile_for_package",
                                    "bfid_info",
-                                   "modify_file_records") :
+                                   "modify_file_records",
+                                   "swap_package") :
 		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
 		self.parallelThreadQueue.put([function.__name__, args])
 
@@ -1707,7 +1708,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    return
 	    except:
 		    exc_type, exc_value = sys.exc_info()[:2]
-		    message = 'swap_parent(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+		    message = 'swap_package(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
 		    Trace.log(e_errors.ERROR, message)
 		    ticket["status"] = (e_errors.ERROR, message)
 		    self.reply_to_caller(ticket)

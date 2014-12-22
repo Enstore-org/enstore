@@ -95,15 +95,18 @@ host enstoredb enstore_reader 131.225.204.164/32               trust
 host enstoredb enstore        131.225.188.255/32               trust
 host enstoredb enstore        131.225.189.255/32               trust
 #migration nodes
-host enstoredb enstore        131.225.13.19/32                 trust
-host enstoredb enstore        131.225.13.18/32                 trust
 host enstoredb enstore        131.225.13.14/32                 trust
+host enstoredb enstore        131.225.13.18/32                 trust
+host enstoredb enstore        131.225.13.19/32                 trust
 host enstoredb enstore        131.225.13.22/32                 trust
-host enstoredb enstore        131.225.13.74/32                 trust
-host enstoredb enstore        131.225.13.29/32                 trust
-host enstoredb enstore        131.225.13.80/32                 trust
 host enstoredb enstore        131.225.13.23/32                 trust
+host enstoredb enstore        131.225.13.29/32                 trust
+host enstoredb enstore        131.225.13.40/32                 trust
+host enstoredb enstore        131.225.13.74/32                 trust
+host enstoredb enstore        131.225.13.80/32                 trust
 host enstoredb enstore        131.225.13.81/32                 trust
+host enstoredb enstore        131.225.13.87/32                 trust
+
 #request by Chih-Hao for cms migration
 host enstoredb enstore        131.225.206.255/32               trust
 host enstoredb enstore        131.225.207.8/32                 trust
@@ -116,4 +119,4 @@ host enstoredb enstore        131.225.13.132/32                 trust
 # added pmig03, 04
 host enstoredb enstore        131.225.13.98/32                 trust
 host enstoredb enstore        131.225.13.102/32                trust
-host enstoredb enstore_reader 131.225.13.97/32 		       trust
+host enstoredb enstore_reader 131.225.13.97/32                 trust
