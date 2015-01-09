@@ -71,9 +71,13 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         if db == None:
             return (None, None)
 
-        q = "select distinct library,media_type from volume " \
-            " where system_inhibit_0 != 'DELETED' and library = '%s';" \
+        q = "select library, media_type from volume " \
+            "where system_inhibit_0 != 'DELETED' and library = '%s' " \
+            "group by library, media_type " \
+            "order by count(*) desc;" \
             % (library,)
+            # If multiple rows are returned, the predominant media_type for the
+            # library is in the first row.
 
         edb_res = db.query(q).getresult() #Get the values from the DB.
 
