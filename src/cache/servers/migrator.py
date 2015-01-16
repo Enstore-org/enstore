@@ -2,7 +2,8 @@
 
 ##############################################################################
 #
-# $Id: migrator.py,v 1.19 2013/07/26 15:37:52 moibenko Exp $
+# Small Files Aggregation Migrator.
+# Description is in ../../../doc/small_files_hld.pdf
 #
 ##############################################################################
 
@@ -1363,7 +1364,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     item['cache_status'] = file_cache_status.CacheStatus.PURGED
                     Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
                 except OSError, detail:
-                    if detail.args[0] != errno.ENOENT:
+                    if detail.errno not in (errno.ENOENT, errno.ENOTEMPTY):
                         Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
                         Trace.trace(10, "_purge_files: error removing directory: %s"%(detail,))
                     else:
