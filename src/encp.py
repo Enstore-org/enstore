@@ -10301,8 +10301,6 @@ def create_read_request(request, file_number,
                 sfs = None
             elif e.skip_pnfs:
                 # When told to skip PNFS, we should avoid all PNFS information.
-                # Unfortuanately, NullMovers insist on verfifying the that
-                # the pnfs path contains the string "NULL" in it.
                 ifullname = fc_reply['pnfs_name0']
                 use_dir = ""
                 sfs = None
@@ -12596,6 +12594,8 @@ def main(intf):
     for x in xrange(1, intf.verbose + 1):
         Trace.do_message(x)
 
+    if intf.get_bfid or intf.get_bfids :
+        intf.skip_pnfs = True
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
     status_ticket = clients(intf)
