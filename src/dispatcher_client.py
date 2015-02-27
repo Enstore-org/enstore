@@ -23,7 +23,7 @@ MY_SERVER = enstore_constants.DISPATCHER
 RCV_TIMEOUT = 10
 RCV_TRIES = 5
 
-class DispatcherClient(generic_client.GenericClient): 
+class DispatcherClient(generic_client.GenericClient):
 
     def __init__(self, csc, name=MY_SERVER,
                  flags=0, logc=None, alarmc=None,
@@ -63,8 +63,11 @@ class DispatcherClient(generic_client.GenericClient):
 
 
     # flush all pending writes to migrator queue
-    def flush(self):
-        r = self.send({'work': 'flush'})
+    def flush(self, id=None):
+        t = {'work': 'flush'}
+        if id:
+            t['id'] = id
+        r = self.send(t)
         return r
 
     # show migration pool entry
@@ -72,7 +75,7 @@ class DispatcherClient(generic_client.GenericClient):
         r = self.send({'work': 'show_id',
                        'id': id})
         return r
-       
+
 class DispatcherClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
@@ -107,7 +110,7 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.USER_LEVEL:option.ADMIN
                           },
-        option.START_DRAINING:{option.HELP_STRING:"start draining write requests",
+        option.START_DRAINING:{option.HELP_STRING:"start draining write request(s)",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.USER_LEVEL:option.ADMIN,
                      },
@@ -120,7 +123,7 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_TYPE:option.INTEGER,
                         option.USER_LEVEL:option.ADMIN,
                         },
-        option.ID:{option.HELP_STRING:"get information about specific id in migration pool.",
+        option.ID:{option.HELP_STRING:"get information about specific id in migration pool. If combined with --start-draining - drain write request list with specified id",
                    option.VALUE_TYPE:option.STRING,
                    option.VALUE_USAGE:option.REQUIRED,
                    option.USER_LEVEL:option.ADMIN,
@@ -162,7 +165,7 @@ def do_work(intf):
             else:
                 print "Error reloading policy: %s"%(reply,)
                 return
-            
+
         else:
             print "Error reloading policy: %s"%(reply,)
     elif intf.show:
@@ -200,6 +203,12 @@ def do_work(intf):
                                    len(reply['pools'][pool][k]['list']),
                                    reply['pools'][pool][k]['type'],
                                    time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(reply['pools'][pool][k]['time_qd'])))
+    elif intf.delete_work:
+        r = dispatcher_client.delete_list(intf.delete_work)
+        print r['status']
+    elif intf.start_draining:
+        r = dispatcher_client.flush(intf.id)
+        print r
     elif intf.id:
         reply = dispatcher_client.show_id(intf.id)
         if reply.has_key('status') and reply['status'][0] == e_errors.OK:
@@ -207,16 +216,10 @@ def do_work(intf):
             pprint.pprint(reply['id_info'])
         else:
             print "Bad reply: %s"%(reply,)
-    elif intf.delete_work:
-        r = dispatcher_client.delete_list(intf.delete_work)
-        print r['status']
-    elif intf.start_draining:
-        r = dispatcher_client.flush()
-        print r
-        
+
     else:
 	intf.print_help()
-    
+
 
 
 

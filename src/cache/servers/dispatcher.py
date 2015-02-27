@@ -260,16 +260,23 @@ class Dispatcher(mw.MigrationWorker,
    def flush(self, ticket):
       items = self.cache_written_pool.keys()
       ticket['status'] = (e_errors.OK, None)
+      requested_id = ticket.get('id')
       if items:
+         ticket['draining'] = items
          for item in items:
             try:
-               self.cache_written_pool[item].full = True
                id = self.cache_written_pool[item].list_id
-               self.move_to_migration_pool(self.cache_written_pool, item)
-               self.md.start_migration(self.migration_pool, id)
+               if requested_id and requested_id!=id:
+                  pass
+               else:
+                  self.cache_written_pool[item].full = True
+                  self.move_to_migration_pool(self.cache_written_pool, item)
+                  self.md.start_migration(self.migration_pool, id)
+               if requested_id and requested_id == id:
+                  ticket['draining'] = [item]
+                  break
             except Exception, detail:
                ticket['status'] = (e_errors.ERROR, "%s"%(detail,))
-         ticket['draining'] = items
       else:
          ticket['status'] = (e_errors.OK, "Nothing to drain")
 
