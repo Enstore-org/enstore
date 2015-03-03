@@ -2519,10 +2519,12 @@ def __correct_db_file_info(file_record):
                                         file_record['sanity_crc'])
     except KeyError:
         pass
+
     try:
         del file_record['sanity_size']
     except KeyError:
         pass
+
     try:
         del file_record['sanity_crc']
     except KeyError:
@@ -2627,10 +2629,12 @@ def get_volume_info(MY_TASK, volume, vcc, db, use_cache=False):
                                              res[0]['system_inhibit_1']]
         except KeyError:
             pass
+
         try:
             del return_copy['system_inhibit_0']
         except KeyError:
             pass
+
         try:
             del return_copy['system_inhibit_1']
         except KeyError:
@@ -2642,10 +2646,12 @@ def get_volume_info(MY_TASK, volume, vcc, db, use_cache=False):
                                            res[0]['user_inhibit_1']]
         except KeyError:
             pass
+
         try:
             del return_copy['user_inhibit_0']
         except KeyError:
             pass
+
         try:
             del return_copy['user_inhibit_1']
         except KeyError:
@@ -2657,10 +2663,12 @@ def get_volume_info(MY_TASK, volume, vcc, db, use_cache=False):
                                       res[0]['si_time_1'])
         except KeyError:
             pass
+
         try:
             del return_copy['si_time_0']
         except KeyError:
             pass
+
         try:
             del return_copy['si_time_1']
         except KeyError:
@@ -2696,14 +2704,12 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             allowed_deleted_states = [NO]  #Don't allow deleted files.
 
         #Get the list of all bad files.
+        bad_files = []
         if intf.skip_bad:
             bad_ticket = fcc.show_bad()
             if e_errors.is_ok(bad_ticket):
                 bad_files = bad_ticket['bad_files'] #A list of dictionaries.
-            else:
-                bad_files = []
-        else:
-            bad_files = []
+
         #Get just the list of bad bfids for this volume.  If intf.skip_bad
         # was given bad_files will be empty at this point.
         bad_bfids = []
@@ -2730,6 +2736,7 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             migration_match = "dst_bfid"
         else:
             migration_match = "src_bfid"
+
         if all_files:
             use_deleted_sql = "or deleted in ('y', 'u')"
             use_empty_sql = ""
@@ -2742,6 +2749,7 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
         else:
             use_deleted_sql = "or migration.dst_bfid is not NULL"
             use_empty_sql = "and pnfs_path != ''"
+
         if intf.skip_bad:
             use_skip_bad = "and bad_file.bfid is NULL"
         else:
@@ -7873,7 +7881,7 @@ def final_scan_files(dst_bfids, intf):
             ##       reading of the file.
             rtn_code = final_scan_file(MY_TASK, job, fcc, encp, intf, db)
             if rtn_code:
-                local_error = local_error + 1
+                local_error += 1
                 continue
 
             # If we get here, then the file has been scaned.  Consider
@@ -7941,9 +7949,7 @@ def final_scan(thread_num, scan_list, intf, deleted_files = NO):
 # Is the file deleted due to copying error?
 # or was it deleted before migration?
 
-
-# final_scan_volume(vol) -- final scan on a volume when it is closed to
-#				write
+# final_scan_volume(vol) -- final scan on a volume when it is closed to write
 # This is run without any other threads
 #
 # deal with deleted file
@@ -7964,7 +7970,6 @@ def final_scan_volume(vol, intf):
     encp = encp_wrapper.Encp(tid='FINAL_SCAN')
     volume_assert = volume_assert_wrapper.VolumeAssert(tid='FINAL_SCAN')
 
-
     log(MY_TASK, "verifying volume", vol)
 
     dst_volume_record = vcc.inquire_vol(vol)
@@ -7973,6 +7978,7 @@ def final_scan_volume(vol, intf):
                   "failed to find volume %s: %s" % (vol,
                                       dst_volume_record['status'][1]))
         return 1
+
     if debug:
         log(MY_TASK, "volume_info:", str(dst_volume_record))
 
@@ -7982,19 +7988,22 @@ def final_scan_volume(vol, intf):
     # make sure this is a migration volume
     sg, ff, wp = string.split(dst_volume_record['volume_family'], '.')
     is_migration_closed = is_migration_history_closed(MY_TASK, vol, db)
+
     if is_migration_closed == None:
         #Confirm that the history does not return an error case.  If it did
         # we get here.
         error_log(MY_TASK, "Unable to continue, migration history error")
         db.close()  #Avoid resource leaks.
         return 1
+
     if not migrated_from(vol, db):
         #This volume is not a destination volume.
         error_log(MY_TASK, "%s is not a %s volume" %
                   (vol, MIGRATION_NAME.lower()))
         db.close()  #Avoid resource leaks.
         return 1
-    elif not is_migration_closed:
+
+    if not is_migration_closed:
         #If the scanning is not recorded as completed in the migration_history
         # table, let the scanning proceed regardless of the following
         # system_inhibit and file_family tests.
@@ -8048,7 +8057,7 @@ def final_scan_volume(vol, intf):
 #            import traceback
             traceback.print_tb(tb)
             print exc, msg
-            local_error = local_error + 1
+            local_error += 1
             db.close()  #Avoid resource leaks.
             return local_error
 
@@ -8059,7 +8068,7 @@ def final_scan_volume(vol, intf):
         else:
             message = "volume %s return information not found" % (vol,)
             error_log(MY_TASK, message)
-            local_error = local_error + 1
+            local_error += 1
             db.close()  #Avoid resource leaks.
             return local_error
 
@@ -8077,7 +8086,7 @@ def final_scan_volume(vol, intf):
             if len(assert_errors) == 0:
                 #If we had an error and didn't get anything in the file
                 # list, then give up.
-                local_error = local_error + 1
+                local_error += 1
                 db.close()  #Avoid resource leaks.
                 return local_error
             else:
@@ -8121,7 +8130,7 @@ def final_scan_volume(vol, intf):
         if not e_errors.is_ok(src_file_record):
             error_log(MY_TASK,
                       "unable to obtain file information for %s" % (src_bfid,))
-            local_error = local_error + 1
+            local_error += 1
             continue
         #Third, get the source file's volume record.
         src_volume_record = get_volume_info(MY_TASK,
@@ -8136,8 +8145,9 @@ def final_scan_volume(vol, intf):
             error_log(MY_TASK,
                       "%s %s has not been swapped" \
                       % (src_bfid, dst_bfid))
-            local_error = local_error + 1
+            local_error += 1
             continue
+
         ct = is_checked(dst_bfid, fcc, db)
 
         #If the user deleted the files, require --with-deleted be
@@ -8212,13 +8222,13 @@ def final_scan_volume(vol, intf):
                 error_log(MY_TASK,
                           "assert of %s was not found in returned assert list"
                           % (dst_bfid,))
-                local_error = local_error + 1
+                local_error += 1
                 continue
             if not e_errors.is_ok(assert_errors[dst_file_record['location_cookie']]):
                 error_log(MY_TASK,
                           "assert of %s %s:%s failed" % \
                           (dst_bfid, vol, dst_file_record['location_cookie']))
-                local_error = local_error + 1
+                local_error += 1
                 continue
             else:
                 log(MY_TASK,
@@ -8242,7 +8252,7 @@ def final_scan_volume(vol, intf):
         #			   fcc, encp, intf, db)
         rtn_code = final_scan_file(MY_TASK, job, fcc, encp, intf, db)
         if rtn_code:
-            local_error = local_error + 1
+            local_error += 1
 
             if not intf.use_volume_assert and \
                not USE_VOLUME_ASSERT:
@@ -8258,21 +8268,18 @@ def final_scan_volume(vol, intf):
                     break
             continue
 
-        # If we get here, then the file has been scaned.  Consider
-        # it closed too.
-        ct = is_closed(dst_bfid, fcc, db)
-        if not ct:
+        # If we got here, then the file has been scanned. 
+        # Consider it closed too.
+        cl_t = is_closed(dst_bfid, fcc, db)
+        if not cl_t:
             log_closed(src_bfid, dst_bfid, fcc, db)
             close_log('OK')
 
     # restore file family only if there is no error
     if not local_error and is_migrated_by_dst_vol(vol, intf, db):
-        rtn_code = set_dst_volume_migrated(
-            MY_TASK, vol, sg, ff, wp, vcc, db)
+        rtn_code = set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db)
         if rtn_code:
-            #Error occured.
-            local_error = local_error + 1
-
+            local_error += 1
     else:
         error_log(MY_TASK,
                   "skipping volume metadata update since not all files have been scanned")
@@ -10079,16 +10086,15 @@ def main(intf):
         elif intf.scan:
             bfid = bfid_list_queue.get(block=True)
             while bfid:
-                rtn = rtn + final_scan_files([bfid], intf)
+                rtn += final_scan_files([bfid], intf)
                 bfid = bfid_list_queue.get(block=True)
             volume = volume_list_queue.get(block=True)
             while volume:
-                rtn = rtn + final_scan_volume(volume, intf)
+                rtn += final_scan_volume(volume, intf)
                 volume = volume_list_queue.get(block=True)
 
-            """
-            The scan_remaining_volumes() function does not exist yet.
-            """
+            # The scan_remaining_volumes() function does not exist yet.
+
             ##if not bfid_list and not volume_list and intf.args:
             ##    # get a db connection
             ##    db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
