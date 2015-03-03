@@ -7436,6 +7436,7 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf,
 ## src_path doesn't need to be an actuall path in pnfs.  It could be
 ## "--get-bfid <bfid>" or --get
 def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
+
         (src_file_record, src_volume_record, src_path,
          dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
@@ -7449,11 +7450,13 @@ def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
 		use_priority = ["--priority", str(intf.priority)]
 	else:
 		use_priority = ["--priority", str(ENCP_PRIORITY)]
+
 	#if deleted == YES:
         if dst_file_record['deleted'] == YES:
 		use_override_deleted = ["--override-deleted"]
 	else:
 		use_override_deleted = []
+
 	if intf.use_volume_assert or USE_VOLUME_ASSERT:
 		use_check = ["--check"] #Use encp to check the metadata.
 	else:
@@ -7675,9 +7678,13 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
         is_multiple_copy = False
 
     ct = is_checked(dst_bfid, fcc, db)
-    if not ct:
-        #log(MY_TASK, "start checking %s %s"%(dst_bfid, src))
+    if ct:
+        ok_log(MY_TASK, dst_bfid, "is already checked at", ct)
+        # make sure the migration path has been removed
+        mig_path = migration_path(likely_path, src_file_record)
 
+    else:
+        #log(MY_TASK, "start checking %s %s"%(dst_bfid, src))
         try:
             (pnfs_path, use_path) = get_filenames(
                 MY_TASK, job, is_multiple_copy, fcc, db, intf)
@@ -7692,66 +7699,62 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
                 log(MY_TASK, "HINT: remount the PNFS filesystem and/or " \
                     "flush the PNFS file system buffer cache.")
                 return 1
-            else:
-                exc_type, exc_value, exc_tb = sys.exc_info()
-                Trace.handle_error(exc_type, exc_value, exc_tb)
-                del exc_tb #avoid resource leaks
-                error_log(MY_TASK, str(exc_type),
-                          str(exc_value),
-                          " %s %s %s %s is not a valid pnfs file" \
-                          % (
-                    dst_volume_record['external_label'],
-                    dst_bfid,
-                    dst_file_record['location_cookie'],
-                    dst_file_record['pnfsid']))
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            Trace.handle_error(exc_type, exc_value, exc_tb)
+            del exc_tb #avoid resource leaks
+            error_log(MY_TASK, str(exc_type),str(exc_value),
+                      " %s %s %s %s is not a valid pnfs file" \
+                      % (dst_volume_record['external_label'],
+                         dst_bfid,
+                         dst_file_record['location_cookie'],
+                         dst_file_record['pnfsid']))
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-        #Make sure the destination volume is found as the volume mentioned
-        # in layer 4.  (Obviously the file must be active.)
+        # Make sure the destination volume is found as the volume mentioned
+        # in layer 4. The file must be active.
+        # The Error message is reported by is_expected_volume().
         if dst_file_record['deleted'] == NO:
-            if not is_expected_volume(
-                MY_TASK, dst_volume_record['external_label'], pnfs_path, fcc, db):
-                #Error message reported from is_expected_volume().
+            ret = is_expected_volume(
+                    MY_TASK, 
+                    dst_volume_record['external_label'], pnfs_path, fcc, db)
+            if not ret:
                 return 1
 
         # make sure the path is NOT a migration path
         if pnfs_path == None:
-            error_log(MY_TASK,
-                      'none swapped file %s' % \
-                      (pnfs_path))
+            error_log(MY_TASK,'none swapped file %s' % (pnfs_path))
             return 1
-        elif is_migration_path(pnfs_path):
+
+        if is_migration_path(pnfs_path):
             #It has been found that write failures from previous migrations
             # leave files with "Migration' in the path.  The scan should allow
             # these failures.
             if not is_migration_path(src_file_record['pnfs_name0']) and \
                src_file_record['deleted'] == NO:
-                error_log(MY_TASK,
-                          'found Migration file %s' % \
-                          (pnfs_path))
+                error_log(MY_TASK,'found Migration file %s' % (pnfs_path))
                 return 1
 
         mig_path = migration_path(pnfs_path, src_file_record)
 
-        #Replace src_path with the source path to use, which may not even
+        # Replace src_path with the source path to use, which may not even
         # be a path in situations like scaning a deleted file.
         job = (src_file_record, src_volume_record, use_path,
                dst_file_record, dst_volume_record, tmp_path, mig_path)
 
-        #Read the destination file.
+        # Scan destination file by reading it to /dev/null
         rtn_code = scan_file(MY_TASK, job, use_path, "/dev/null", intf, encp)
         if rtn_code:
             return 1
-        else:
-            #Log the file as having been checked/scanned.
-            log_checked(src_bfid, dst_bfid, fcc, db)
 
-    else:
-        ok_log(MY_TASK, dst_bfid, "is already checked at", ct)
-        # make sure the migration path has been removed
-        mig_path = migration_path(likely_path, src_file_record)
+        #Log the file as having been checked/scanned.
+        log_checked(src_bfid, dst_bfid, fcc, db)
+
+    # end of: if ct
+
+    # Cleanup after scan if needed; otherwise we done.
 
     #Determine if this destination file is a multple copy or not.  Remove
     # the src_bfid from the list, so that we can tell the difference
@@ -7761,44 +7764,56 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
     for i in range(len(original_copy_list)):
         if original_copy_list[i] != src_bfid:
             scrubbed_copy_list.append(original_copy_list[i])
+
+    # There are two conditions when we do not want to cleanup.
+    #    We indicate it by setting remove_migration_path to False
+    # Those destination bfids are surrounded by asterisks (*) in diagram below.
+    #
+    # The M indicates an entry in the migration table.
+    # The D indicates an entry in the file_copies_map table.
+    #
+    # 1) src_bfid -MD-> dst_bfid          Duplication with multiple copies
+    #           |          |
+    #           |          D
+    #           |          |
+    #           |          v
+    #           |--MD--> *dst_bfid*
+    #
+    # 2) src_bfid -MD-> dst_bfid          Duplication to one copy
+    #
+    # 3) src_bfid -M--> dst_bfid          Migration with multiple copies
+    #           |          |
+    #           |          D
+    #           |          |
+    #           |          v
+    #           |--M--> *dst_bfid*
+    #
+    # 4) src_bfid -M--> dst_bfid          Migration to one copy
+    #
+    # For all other dst_bfids we want to cleanup (True).
+
     if len(scrubbed_copy_list) > 0:
-        #There are two conditions we want to get here.  Those destination
-        # bfids are surrounded by asterisks (*).
-        #The M indicates an entry in the migration table.
-        #The D indicates an entry in the file_copies_map table.
-        #
-        # 1) src_bfid -MD-> dst_bfid          Duplication with multiple copies
-        #           |          |
-        #           |          D
-        #           |          |
-        #           |          v
-        #           |--MD--> *dst_bfid*
-        #
-        # 2) src_bfid -MD-> dst_bfid          Duplication to one copy
-        #
-        # 3) src_bfid -M--> dst_bfid          Migration with multiple copies
-        #           |          |
-        #           |          D
-        #           |          |
-        #           |          v
-        #           |--M--> *dst_bfid*
-        #
-        # 4) src_bfid -M--> dst_bfid          Migration to one copy
         remove_mig_path = False
     else:
-        #For all other dst_bfids we want to cleanup.
         remove_mig_path = True
-    if remove_mig_path or getattr(intf, 'make_failed_copies', None) or \
-           getattr(intf, 'make_copies', None):
-        #cleanup_after_scan() reports its own errors.  Only do this
-        # for orignal destination copies, not any of its possible
-        # multplie copies.
-        #Duplication specific:  If --make-copies or --make-failed-copies
-        # were specified on the command line, call the duplication version
-        # to cleanup anyway, since the "original" in these cases already
-        # exists and won't be scanned.
-        #Duplication note: When scanning multple copies, the original
-        # or multiple copy
+
+    # cleanup_after_scan() reports its own errors.
+    #
+    # Only do this for orignal destination copies, not for any of its possible
+    # multplie copies.
+    #
+    # Duplication specific:
+    #    If --make-copies or --make-failed-copies
+    # were specified on the command line, call the duplication version
+    # to cleanup anyway, since the "original" in these cases already
+    # exists and won't be scanned.
+    #
+    # Duplication note: 
+    #    When scanning multple copies, the original or multiple copy
+
+    if (remove_mig_path 
+            or getattr(intf, 'make_failed_copies', None) 
+            or getattr(intf, 'make_copies', None)):
         return cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db)
 
 #If given a list of destination bfids, scan them.
