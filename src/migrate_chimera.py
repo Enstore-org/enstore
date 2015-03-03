@@ -4215,12 +4215,12 @@ def __show_status(MY_TASK, full_output_list, tape_list, fcc, vcc, db, intf,
             #print row['src_bfid']
             #print row['dst_bfid']
             if output_type[i] == DO_MC_SRC:
-               if row['src_bfid'] or row['dst_bfid']:
-                   #print "skipped [MC_SRC]:", row
-                   continue
-               if row['bfid'] != row['current_bfid']:
-                   #print "skipped [MC_SRC]:", row
-                   continue
+                if row['src_bfid'] or row['dst_bfid']:
+                    #print "skipped [MC_SRC]:", row
+                    continue
+                if row['bfid'] != row['current_bfid']:
+                    #print "skipped [MC_SRC]:", row
+                    continue
             elif output_type[i] == DO_MC_DST:
                 if row['src_bfid'] or row['dst_bfid']:
                     #print "skipped [MC_DST]:", row
@@ -5309,15 +5309,15 @@ def read_files(MY_TASK, read_jobs, encp, intf):
         src_path = read_jobs[i][2]
         tmp_path = read_jobs[i][5]
 
-	if src_file_record['deleted'] == NO \
+        if src_file_record['deleted'] == NO \
                and not os.access(src_path, os.R_OK):
             error_log(MY_TASK, "%s %s is not readable" \
                       % (src_file_record['bfid'], src_path))
             return 1
 
-	# make sure the tmp file is not there - need to match the euid/egid
+        # make sure the tmp file is not there - need to match the euid/egid
         # with the permissions of the directory and not the file itself.
-	if file_utils.e_access(tmp_path, os.F_OK):
+        if file_utils.e_access(tmp_path, os.F_OK):
             log(MY_TASK, "tmp file %s exists, removing it first" % (tmp_path,))
             try:
                 file_utils.remove(tmp_path)
@@ -5451,7 +5451,7 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
             or src_file_record['deleted'] == 'unknown':
                 # Can't migrate an empty/failed file.
                 error_log(MY_TASK, "can not copy failed file %s" % (src_bfid,))
-		return
+                return
 
         if debug:
             message = "Time to get volume info: %.4f sec." % \
@@ -5979,15 +5979,15 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
 
 # migration_file_family(ff) -- making up a file family for migration
 def migration_file_family_migration(bfid, ff, fcc, intf, deleted = NO):
-        __pychecker__ = "unusednames=bfid,fcc" #Reserved for duplication.
+    __pychecker__ = "unusednames=bfid,fcc" #Reserved for duplication.
 
-	if deleted == YES:
-		return DELETED_FILE_FAMILY + MIGRATION_FILE_FAMILY_KEY
-	else:
-		if intf.file_family:
-			return intf.file_family + MIGRATION_FILE_FAMILY_KEY
-		else:
-			return ff + MIGRATION_FILE_FAMILY_KEY
+    if deleted == YES:
+        return DELETED_FILE_FAMILY + MIGRATION_FILE_FAMILY_KEY
+    else:
+        if intf.file_family:
+            return intf.file_family + MIGRATION_FILE_FAMILY_KEY
+        else:
+            return ff + MIGRATION_FILE_FAMILY_KEY
 
 #Duplication may override this.
 migration_file_family = migration_file_family_migration
@@ -5995,7 +5995,7 @@ migration_file_family = migration_file_family_migration
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
 def normal_file_family_migration(ff):
-	return ff.replace(MIGRATION_FILE_FAMILY_KEY, '')
+    return ff.replace(MIGRATION_FILE_FAMILY_KEY, '')
 
 #Duplication may override this.
 normal_file_family = normal_file_family_migration
@@ -7825,20 +7825,19 @@ def final_scan_files(dst_bfids, intf):
         local_error = 0
 
         # get its own file & volume clerk client
-	config_host = enstore_functions2.default_host()
-	config_port = enstore_functions2.default_port()
-	csc = configuration_client.ConfigurationClient((config_host,
-							config_port))
-	fcc = file_clerk_client.FileClient(csc)
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        fcc = file_clerk_client.FileClient(csc)
         vcc = volume_clerk_client.VolumeClerkClient(csc)
 
         #get a database connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
         # get an encp
-	threading.currentThread().setName('FINAL_SCAN')
-	encp = encp_wrapper.Encp(tid='FINAL_SCAN')
-
+        threading.currentThread().setName('FINAL_SCAN')
+        encp = encp_wrapper.Encp(tid='FINAL_SCAN')
 
         for dst_bfid in dst_bfids:
             #Get the destination info.
@@ -10124,62 +10123,60 @@ def main(intf):
 
 def do_work(intf):
 
-	try:
-		exit_status = main(intf)
-	except (SystemExit, KeyboardInterrupt):
-		exc, msg = sys.exc_info()[:2]
-		exit_status = 1
-	except:
-		#Get the uncaught exception.
-		exc, msg, tb = sys.exc_info()
-		message = "Uncaught exception: %s, %s\n" % (exc, msg)
-		try:
-			error_log(message)
-		        #Send to the log server the traceback dump.  If
-			# unsuccessful, print the traceback to standard error.
-			Trace.handle_error(exc, msg, tb)
-		except (OSError, IOError):
-			if msg.errno == errno.EPIPE:
-				#User piped the output to another process, but
-				# didn't read all the data from the migrate
-				# process.
-				pass
-			else:
-				raise sys.exc_info()[0], sys.exc_info()[1], \
-				      sys.exc_info()[2]
-		del tb #No cyclic references.
-		exit_status = 1
+    try:
+        exit_status = main(intf)
+    except (SystemExit, KeyboardInterrupt):
+        exc, msg = sys.exc_info()[:2]
+        exit_status = 1
+    except:
+        exc, msg, tb = sys.exc_info()
+        message = "Uncaught exception: %s, %s\n" % (exc, msg)
+        try:
+            error_log(message)
+            # Send to the log server the traceback dump.
+            # If unsuccessful, print the traceback to standard error.
+            Trace.handle_error(exc, msg, tb)
+        except (OSError, IOError):
+            if msg.errno == errno.EPIPE:
+                #User piped the output to another process, but
+                # didn't read all the data from the migrate
+                # process.
+                pass
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        del tb #No cyclic references.
+        exit_status = 1
 
-	#We should try and kill our child processes.
-	if USE_THREADS:
-		wait_for_threads()
-	else:
-		wait_for_processes(kill = True)
+    #We should try and kill our child processes.
+    if USE_THREADS:
+        wait_for_threads()
+    else:
+        wait_for_processes(kill = True)
 
-	#With the possibility that exactly 256 failures could occur, the
-        # default sys.exit() behavior when passed 256 is to return an exit
-        # status to the caller.  Map all non-zero values to one.
-	sys.exit(bool(exit_status))
+    #With the possibility that exactly 256 failures could occur, the
+    # default sys.exit() behavior when passed 256 is to return an exit
+    # status to the caller.  Map all non-zero values to one.
+    # @FIXME: the other exit values have some meening too; set to small value
+    sys.exit(bool(exit_status))
 
 
 if __name__ == '__main__':
 
-	Trace.init(MIGRATION_NAME)
-        Trace.do_message(0)
+    Trace.init(MIGRATION_NAME)
+    Trace.do_message(0)
 
-        delete_at_exit.setup_signal_handling()
+    delete_at_exit.setup_signal_handling()
 
-	intf_of_migrate = MigrateInterface(sys.argv, 0) # zero means admin
+    intf_of_migrate = MigrateInterface(sys.argv, 0) # zero means admin
 
-	try:
-		do_work(intf_of_migrate)
-	except (OSError, IOError), msg:
-		if msg.errno == errno.EPIPE:
-			#User piped the output to another process, but
-			# didn't read all the data from the migrate process.
-			pass
-		else:
-			raise sys.exc_info()[0], sys.exc_info()[1], \
-			      sys.exc_info()[2]
-
+    try:
+        do_work(intf_of_migrate)
+    except (OSError, IOError), msg:
+        if msg.errno == errno.EPIPE:
+            #User piped the output to another process, but
+            # didn't read all the data from the migrate process.
+            pass
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], \
+                  sys.exc_info()[2]
 
