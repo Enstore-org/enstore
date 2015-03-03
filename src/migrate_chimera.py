@@ -3000,22 +3000,22 @@ class MigrateQueue:
                  low_watermark = 1):
         self.queue = Queue.Queue(maxsize)
 
-	self.finished = False  #Flag indicating the SENTINEL is in the queue.
-	self.received_count = 0
-	self.debug = debug
+        self.finished = False  #Flag indicating the SENTINEL is in the queue.
+        self.received_count = 0
+        self.debug = debug
         self.initial_wait = True #Wait until low_watermark items are queued.
         self.low_watermark = low_watermark
         self.maxsize = maxsize
 
-	self.r_pipe, self.w_pipe = os.pipe() #Used with processes.
+        self.r_pipe, self.w_pipe = os.pipe() #Used with processes.
 
         #Handle to the message-waiting-thread when processes are used.
-	self.cur_thread = None
+        self.cur_thread = None
 
-	try:
-	    self.lock = multiprocessing.Lock()
+        try:
+            self.lock = multiprocessing.Lock()
         except NameError:
-	    self.lock = threading.Lock()
+            self.lock = threading.Lock()
 
         #If notify_every_time is true, then use the condition variable to
         # tell the consuming thread/process to go.  If false, notify
@@ -3086,6 +3086,7 @@ class MigrateQueue:
             os.close(self.r_pipe)
         except:
             Trace.handle_error()
+
         try:
             os.close(self.w_pipe)
         except:
