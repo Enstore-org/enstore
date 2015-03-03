@@ -304,17 +304,17 @@ dbuser = "enstore"
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
-	if s == '1969-12-31 17:59:59':
-		return -1
-	else:
-		# take care of daylight saving time
-		tt = list(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
-		tt[-1] = -1
-		return time.mktime(tuple(tt))
+    if s == '1969-12-31 17:59:59':
+        return -1
+    else:
+        # take care of daylight saving time
+        tt = list(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
+        tt[-1] = -1
+        return time.mktime(tuple(tt))
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
-	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
 # return the average file size in bytes
 def average_size(volume_record):
@@ -789,12 +789,12 @@ def get_queue_numbers(src_bfids, intf, volume_record=None):
 #If the source and destination media_types are the same, set this to be
 # a cloning job rather than a migration.
 def setup_cloning_migration():
-	global IN_PROGRESS_STATE, INHIBIT_STATE
-	global set_system_migrated_func, set_system_migrating_func
-	IN_PROGRESS_STATE = "cloning"
-	INHIBIT_STATE = "cloned"
-	set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
-	set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
+    global IN_PROGRESS_STATE, INHIBIT_STATE
+    global set_system_migrated_func, set_system_migrating_func
+    IN_PROGRESS_STATE = "cloning"
+    INHIBIT_STATE = "cloned"
+    set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
+    set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
 
 #Duplication may override this.
 setup_cloning = setup_cloning_migration
@@ -1035,8 +1035,9 @@ def _change_pkg_name(file_old,file_new,volume):
 #my_task: overrides the default step name for logging errors
 #on_exception: 2-tuple consisting of function and arugument list to execute
 #          if function throws an exception.
+# @TODO: convert TABS
 def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
-		   on_exception = None):
+                   on_exception = None):
 	global pid_list
 	global errors
 	global log_f
@@ -1123,13 +1124,13 @@ def wait_for_process(kill = False):
 	return done_exit_status
 
 def wait_for_processes(kill = False):
-	global pid_list
+    global pid_list
 
-	rtn = 0
-	while len(pid_list) > 0:
-		rtn = rtn + wait_for_process(kill)
+    rtn = 0
+    while len(pid_list) > 0:
+        rtn = rtn + wait_for_process(kill)
 
-	return rtn
+    return rtn
 
 def __run_in_thread(function, on_exception, arg_list):
     try:
@@ -1259,6 +1260,7 @@ def wait_for_threads():
     return rtn
 
 #Run in either threads or processes depending on the value of USE_THREADS.
+# @TODO: convert TABS
 def run_in_parallel(function, arg_list, my_task = "RUN_IN_PARALLEL",
 		    on_exception = None):
 	if USE_THREADS:
@@ -1268,6 +1270,7 @@ def run_in_parallel(function, arg_list, my_task = "RUN_IN_PARALLEL",
 		run_in_process(function, arg_list, my_task = my_task,
 			       on_exception = on_exception)
 
+# @TODO: convert TABS
 def wait_for_parallel(kill = False):
 	global tid_list, pid_list
 
@@ -1280,7 +1283,7 @@ def wait_for_parallel(kill = False):
 		return wait_for_processes(kill = kill)
 
 ###############################################################################
-
+# @TODO: convert TABS
 def get_migration_db_path():
 	#This value of mig_path isn't the greatest.  First, it assumes that
 	# the values underneath the Migration DB path all reference this
@@ -1335,17 +1338,16 @@ def is_migration_path(filepath):
     return 0
 
 def is_library(library):
-	# get its own configuration server client
-	config_host = enstore_functions2.default_host()
-	config_port = enstore_functions2.default_port()
-	csc = configuration_client.ConfigurationClient((config_host,
-							config_port))
-	lm_list = csc.get_library_managers2()
-	for lm_conf_dict in lm_list:
-		if lm_conf_dict['library_manager'] == library:
-			return 1
+    # get its own configuration server client
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,config_port))
+    lm_list = csc.get_library_managers2()
+    for lm_conf_dict in lm_list:
+        if lm_conf_dict['library_manager'] == library:
+            return 1
 
-	return 0
+    return 0
 ###############################################################################
 
 #Use the Trace.py module for the underlying logging.  This way Trace output
@@ -2174,6 +2176,7 @@ def is_volume_allowed(volume, vcc, db):
 #Return the media_type that the bfid or volume refers to.  The first
 # argument may also be a file path in pnfs.  It may also be a (short) library
 # name now too.
+# @TODO: convert TABS
 def get_media_type(arguement, db):
 	if enstore_functions3.is_bfid(arguement):
 		q = "select media_type from volume,file where " \
@@ -2464,6 +2467,7 @@ def is_original_copy_bfid(bfid, db):
 
 
 #
+# @TODO: convert TABS
 def search_directory(original_path):
 	##
 	## Determine the deepest directory that exists.
@@ -2499,13 +2503,13 @@ def search_directory(original_path):
 
 #Look for the media type that the file would be written to.
 def search_media_type(original_path, db):
-	search_dir = search_directory(original_path)
-	if search_dir:
-		media_type = get_media_type(search_dir, db)
-	else:
-		media_type = None
+    search_dir = search_directory(original_path)
+    if search_dir:
+        media_type = get_media_type(search_dir, db)
+    else:
+        media_type = None
 
-	return media_type
+    return media_type
 
 #Modify the sql result to match fcc.bfid_info() format.
 def __correct_db_file_info(file_record):
@@ -2988,6 +2992,8 @@ def temp_file(file_record):
 ## This may be able to be replaced with the multiprocessing module in
 ## python 2.6.  For compatiblity with 2.4, this is what we need.
 
+# @TODO: refactor -  split out
+# @TODO: convert TABS
 class MigrateQueue:
 
     def __init__(self, maxsize, notify_every_time = True,
@@ -6755,6 +6761,7 @@ def swap_metadata(job, fcc, db):
         ok_log(MY_TASK, "%s %s %s %s have been swapped" % (src_bfid, src_path, dst_bfid, mig_path))
     return None
 
+# @TODO: convert TABS
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
 def write_file(MY_TASK,
@@ -6876,8 +6883,9 @@ def write_file(MY_TASK,
         # in the wrappers written with the file on tape, since this path
         # should match the original path not the temporary migration path
         # that the rest of the encp process will need to worry about.
-        dst_options = ["--storage-group", sg, "--file-family", ff,
-					   "--file-family-wrapper", wrapper,
+        dst_options = ["--storage-group", sg, 
+                       "--file-family", ff,
+                       "--file-family-wrapper", wrapper,
                        "--library", libraries,
                        "--override-path", src_path,
                        "--file-family-width", str(intf.file_family_width),
@@ -6887,8 +6895,10 @@ def write_file(MY_TASK,
         if intf.sfa_repackage:
             sfa += ['--enable-redirection']
 
-        argv = ["encp"] + use_verbose + encp_options + sfa + use_priority + \
-               dst_options + use_threads + [tmp_path, mig_path]
+        argv = ["encp"] + use_verbose + encp_options \
+                + sfa + use_priority \
+                + dst_options + use_threads \
+                + [tmp_path, mig_path]
 
         if debug:
             cmd = string.join(argv)
@@ -6922,6 +6932,7 @@ def write_file(MY_TASK,
                                           (mig_path, os.geteuid(), os.getegid(), str(msg)))
                                 return 1
 
+# @TODO: convert TABS
 		#Detect ghost files for better reporting.
 		if dst_basename in os.listdir(dst_directory):
 			message = "Tried to write to invalid directory entry."
@@ -6955,8 +6966,8 @@ def write_file(MY_TASK,
                         # correctly.
                         return 1
         elif res:
-		#Some unknown error occured.
-		error_log(MY_TASK, "failed to copy %s %s %s error = %s"
+                #Some unknown error occured.
+                error_log(MY_TASK, "failed to copy %s %s %s error = %s"
                     % (src_bfid, tmp_path, mig_path, encp.err_msg))
                 return 1
 
@@ -6965,14 +6976,13 @@ def write_file(MY_TASK,
                 ok_log(MY_TASK, "%s %s is copied to %s" % \
                        (src_bfid, tmp_path, mig_path))
 
-	if debug:
-		log(MY_TASK, "written to tape %s %s %s"
-		    % (src_bfid, tmp_path, mig_path))
+        if debug:
+                log(MY_TASK, "written to tape %s %s %s"
+                    % (src_bfid, tmp_path, mig_path))
 
-        #
         detect_uncleared_deletion_lists(MY_TASK)
 
-	return 0
+        return 0
 
 
 # write_new_file() - Write a file temporarily sitting on disk to a new tape.
@@ -8270,6 +8280,7 @@ def final_scan_volume(vol, intf):
 
     return local_error
 
+# @TODO: convert TABS
 def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 
 	## Prepare to set the file family back to that of the original.
@@ -8337,6 +8348,7 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 # intf - Instantiated MigrateInterface class
 # volume_record - If all of these files in the list belong on the same tape,
 #                 then this should be set to the volume information in the DB.
+# @TODO: convert TABS
 def migrate(file_records, intf, volume_record=None):
 	global errors
 
@@ -8535,7 +8547,7 @@ def migrate(file_records, intf, volume_record=None):
                                              (i, deleted_job_list, intf, YES),
                                                 my_task = "FINAL_SCAN")
 
-	        #If using volume_assert, we only want one call to final_scan():
+                #If using volume_assert, we only want one call to final_scan():
                 else:
                     # For active files...
                     run_in_parallel(final_scan,
@@ -8555,8 +8567,8 @@ def migrate(file_records, intf, volume_record=None):
         del scan_queue
         del deleted_scan_queue
 
-	errors = done_exit_status + errors
-	return errors
+        errors = done_exit_status + errors
+        return errors
 
 def migrate_files(bfids, intf):
     MY_TASK = "%s_FILES" % (IN_PROGRESS_STATE.upper(),)
@@ -8722,6 +8734,7 @@ def migrate_volume(vol, intf):
 
     return res
 
+# @TODO: convert TABS
 def set_src_volume_migrated(MY_TASK, vol, vcc, db):
 	# mark the volume as migrated
 	## Note: Don't use modify() here.  Doing so would prevent the
@@ -8778,6 +8791,7 @@ def handle_process_exception(queue, write_value):
 ##########################################################################
 
 # migrated_from(vol, db) -- list all volumes that have migrated to vol
+# @TODO: convert TABS
 def migrated_from(vol, db):
 	q = "select distinct va.label \
 		from volume va, volume vb, file fa, file fb, migration \
@@ -8803,39 +8817,40 @@ def migrated_from(vol, db):
 
 # migrated_to(vol, db) -- list all volumes that vol has migrated to
 def migrated_to(vol, db):
-	q = "select distinct vb.label \
-		from volume va, volume vb, file fa, file fb, migration \
-		 where fa.volume = va.id and fb.volume = vb.id \
-			and fa.bfid = migration.src_bfid \
-			and fb.bfid = migration.dst_bfid \
-			and va.label = '%s' order by vb.label;"%(vol)
-	res = db.query(q).getresult()
-	to_list = []
-	for i in res:
-		to_list.append(i[0])
+    q = "select distinct vb.label \
+        from volume va, volume vb, file fa, file fb, migration \
+         where fa.volume = va.id and fb.volume = vb.id \
+            and fa.bfid = migration.src_bfid \
+            and fb.bfid = migration.dst_bfid \
+            and va.label = '%s' order by vb.label;"%(vol)
+    res = db.query(q).getresult()
+    to_list = []
+    for i in res:
+        to_list.append(i[0])
 
-	return to_list
+    return to_list
 
 #for copied, swapped, checked and closed, if they are true, that part of
 # the migration table is checked.
 def is_migrated_by_src_vol(vol, intf, db, copied = 1, swapped = 1, checked = 1,
-			   closed = 1):
+                           closed = 1):
 
-	return is_migrated(vol, None, intf, db,
-			   copied = copied, swapped = swapped,
-			   checked = checked, closed = closed)
+    return is_migrated(vol, None, intf, db,
+                       copied = copied, swapped = swapped,
+                       checked = checked, closed = closed)
 
 #for copied, swapped, checked and closed, if they are true, that part of
 # the migration table is checked.
 def is_migrated_by_dst_vol(vol, intf, db, copied = 1, swapped = 1, checked = 1,
-			   closed = 1):
+                           closed = 1):
 
-	return is_migrated(None, vol, intf, db,
-			   copied = copied, swapped = swapped,
-			   checked = checked, closed = closed)
+    return is_migrated(None, vol, intf, db,
+                       copied = copied, swapped = swapped,
+                       checked = checked, closed = closed)
 
 #Only one of src_vol or dst_vol should be specifed, the other should be
 # set to None.
+# @TODO: convert TABS
 def is_migrated(src_vol, dst_vol, intf, db, copied = 1, swapped = 1, checked = 1, closed = 1):
 	check_copied = ""
 	check_swapped = ""
@@ -8908,6 +8923,7 @@ def is_migrated(src_vol, dst_vol, intf, db, copied = 1, swapped = 1, checked = 1
 
 #Report True if the bfid is a duplication bfid, False if not and None
 # if there is some type of error.
+# @TODO: convert TABS
 def is_migration(bfid, db):
 	q1 = "select * from migration " \
 	    "where src_bfid = '%s' or dst_bfid = '%s';" % (bfid, bfid)
@@ -8946,6 +8962,7 @@ def is_migration(bfid, db):
 
 #Report True if the bfid is a duplication bfid, False if not and None
 # if there is some type of error.
+# @TODO: convert TABS
 def is_duplication(bfid, db):
 	q1 = "select * from file_copies_map " \
 	    "where bfid = '%s' or alt_bfid = '%s';" % (bfid, bfid)
@@ -8990,16 +9007,16 @@ is_expected_restore_type = is_migration
 
 #Note: fcc used only for duplicate.py version of this function.
 def is_expected_volume_migration(MY_TASK, vol, likely_path, fcc, db):
-	__pychecker__ = "unusednames=fcc"
+        __pychecker__ = "unusednames=fcc"
 
-	# make sure the volume is the same
-	pf = chimera.File(likely_path)
-	pf_volume = getattr(pf, "volume", None)
+        # make sure the volume is the same
+        pf = chimera.File(likely_path)
+        pf_volume = getattr(pf, "volume", None)
         if pf_volume == None:
                 error_log(MY_TASK,
-			  'wrong volume %s (expecting %s)' \
-			  % (pf_volume, vol))
-		return False  #Match not found.
+                          'wrong volume %s (expecting %s)' \
+                          % (pf_volume, vol))
+                return False  #Match not found.
 
         elif pf_volume != vol:
                 #We don't have a match between pnfs layer 4 and the volume
@@ -9024,7 +9041,7 @@ def is_expected_volume_migration(MY_TASK, vol, likely_path, fcc, db):
                                   % (pf_volume, vol))
                         return False  #Match not found.
 
-	return True  #Match found.
+        return True  #Match found.
 
 #Duplication may override this.
 is_expected_volume = is_expected_volume_migration
