@@ -7473,16 +7473,19 @@ def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
     else:
         use_src_path = [src_path]
 
-    encp_options = ["--delayed-dismount", "1", "--ignore-fair-share",
-                    "--threaded", "--bypass-filesystem-max-filesize-check"]
-    argv = ["encp"] + encp_options + use_priority + use_override_deleted \
-           + use_check + use_src_path + [dst_path]
+    encp_options = ["--delayed-dismount", "1", 
+                    "--ignore-fair-share",
+                    "--threaded", 
+                    "--bypass-filesystem-max-filesize-check"]
+    argv = ["encp"] + encp_options \
+            + use_priority + use_override_deleted + use_check \
+            + use_src_path + [dst_path]
 
     if debug:
         cmd = string.join(argv)
         log(MY_TASK, "cmd =", cmd)
 
-    #Read the file.
+    # Read the file
     try:
         res = encp.encp(argv)
     except:
