@@ -112,6 +112,7 @@ import exceptions
 import re
 import stat
 import socket
+import traceback
 
 # enstore imports
 import file_clerk_client
@@ -5883,7 +5884,7 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
             #We failed spectacularly!
 
             print "HERE WE ARE ",  sys.exc_info()
-            import traceback
+#            import traceback
             traceback.print_tb(sys.exc_info()[2])
 
             pass_along_jobs = None #Set this so we can continue.
@@ -7437,73 +7438,72 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf,
 ## "--get-bfid <bfid>" or --get
 def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
 
-        (src_file_record, src_volume_record, src_path,
-         dst_file_record, dst_volume_record, tmp_path, mig_path) = job
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
-        #src_bfid = src_file_record['bfid']  #shortcuts
-        dst_bfid = dst_file_record['bfid']
+    #src_bfid = src_file_record['bfid']  #shortcuts
+    dst_bfid = dst_file_record['bfid']
 
-	open_log(MY_TASK, "verifying", dst_bfid, src_path, '...')
+    open_log(MY_TASK, "verifying", dst_bfid, src_path, '...')
 
-	## Build the encp command line.
-	if intf.priority:
-		use_priority = ["--priority", str(intf.priority)]
-	else:
-		use_priority = ["--priority", str(ENCP_PRIORITY)]
+    ## Build the encp command line.
+    if intf.priority:
+        use_priority = ["--priority", str(intf.priority)]
+    else:
+        use_priority = ["--priority", str(ENCP_PRIORITY)]
 
-	#if deleted == YES:
-        if dst_file_record['deleted'] == YES:
-		use_override_deleted = ["--override-deleted"]
-	else:
-		use_override_deleted = []
+    if dst_file_record['deleted'] == YES:
+        use_override_deleted = ["--override-deleted"]
+    else:
+        use_override_deleted = []
 
-	if intf.use_volume_assert or USE_VOLUME_ASSERT:
-		use_check = ["--check"] #Use encp to check the metadata.
-	else:
-		use_check = []
-        if src_path[0:2] == "--":
-                #If the src file path begins with two dashes (--) it is
-                # really switches specifiying alternate reading methods to
-                # encp.  The most likely are --get-bfid or --override-deleted.
-                #
-                # Deleted files are the most likely, but scaning a multiple
-                # copy is also possible.
-                use_src_path = src_path.split()
-        else:
-                use_src_path = [src_path]
+    if intf.use_volume_assert or USE_VOLUME_ASSERT:
+        use_check = ["--check"] #Use encp to check the metadata.
+    else:
+        use_check = []
 
-	encp_options = ["--delayed-dismount", "1", "--ignore-fair-share",
-			"--threaded", "--bypass-filesystem-max-filesize-check"]
-	argv = ["encp"] + encp_options + use_priority + use_override_deleted \
-	       + use_check + use_src_path + [dst_path]
+#     If the src file path begins with two dashes (--) 
+#     it really switches specifying alternate reading methods to encp
+#     The most likely are --get-bfid or --override-deleted.
+#     
+#     Deleted files are the most likely, but scaning a multiple
+#     copy is also possible.
+    if src_path[0:2] == "--":
+        use_src_path = src_path.split()
+    else:
+        use_src_path = [src_path]
 
-        if debug:
-		cmd = string.join(argv)
-		log(MY_TASK, "cmd =", cmd)
+    encp_options = ["--delayed-dismount", "1", "--ignore-fair-share",
+                    "--threaded", "--bypass-filesystem-max-filesize-check"]
+    argv = ["encp"] + encp_options + use_priority + use_override_deleted \
+           + use_check + use_src_path + [dst_path]
 
-	#Read the file.
-	try:
-		res = encp.encp(argv)
-	except:
-		exc, msg, tb = sys.exc_info()
-		import traceback
-		traceback.print_tb(tb)
-		print exc, msg
-		res = 1
+    if debug:
+        cmd = string.join(argv)
+        log(MY_TASK, "cmd =", cmd)
 
-	if res == 0:
-		close_log("OK")
-		ok_log(MY_TASK, dst_bfid, src_path)
-	else: # error
-		close_log("ERROR")
-		error_log(MY_TASK, "failed on %s %s error = %s"
-			  % (dst_bfid, src_path, encp.err_msg))
-		return 1
+    #Read the file.
+    try:
+        res = encp.encp(argv)
+    except:
+        exc, msg, tb = sys.exc_info()
+        traceback.print_tb(tb)
+        print exc, msg
+        res = 1
 
-        #
-        detect_uncleared_deletion_lists(MY_TASK)
+    if res != 0:
+        close_log("ERROR")
+        error_log(MY_TASK, 
+                  "failed on %s %s error = %s"
+                        % (dst_bfid, src_path, encp.err_msg))
+        return 1
 
-	return 0
+    close_log("OK")
+    ok_log(MY_TASK, dst_bfid, src_path)
+
+    detect_uncleared_deletion_lists(MY_TASK)
+
+    return 0
 
 
 # Return the actual filename and the filename for encp.  The filename for
@@ -8032,7 +8032,7 @@ def final_scan_volume(vol, intf):
             res = volume_assert.volume_assert(cmd)
         except:
             exc, msg, tb = sys.exc_info()
-            import traceback
+#            import traceback
             traceback.print_tb(tb)
             print exc, msg
             local_error = local_error + 1
