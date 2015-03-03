@@ -2513,23 +2513,9 @@ def search_media_type(original_path, db):
 
 #Modify the sql result to match fcc.bfid_info() format.
 def __correct_db_file_info(file_record):
-    try:
-        #First is the sanity cookie.
-        file_record['sanity_cookie'] = (file_record['sanity_size'],
-                                        file_record['sanity_crc'])
-    except KeyError:
-        pass
-
-    try:
-        del file_record['sanity_size']
-    except KeyError:
-        pass
-
-    try:
-        del file_record['sanity_crc']
-    except KeyError:
-        pass
-
+    # get and delete key,val from file_record dictionary
+    file_record['sanity_cookie'] = (file_record.pop('sanity_size',None),
+                                    file_record.pop('sanity_crc',None) )
     return file_record
 
 #Obtain information for the bfid.
@@ -2585,9 +2571,9 @@ def get_volume_info(MY_TASK, volume, vcc, db, use_cache=False):
 
     #First see if we should use the cache.
     if use_cache:
-        return_copy = volume_info_cache.get(volume)
-        if return_copy:
-            return return_copy
+        vinfo = volume_info_cache.get(volume)
+        if vinfo:
+            return vinfo
 
     if USE_CLERKS:
         reply_ticket = vcc.inquire_vol(volume)
@@ -2612,83 +2598,36 @@ def get_volume_info(MY_TASK, volume, vcc, db, use_cache=False):
 
         if debug:
             log(MY_TASK, q)
-        res = db.query(q).dictresult()
 
-        # does it exist?
+        res = db.query(q).dictresult()
         if not len(res):
             error_log(MY_TASK, "%s does not exist in db" % (volume,))
             return None
 
-        return_copy = copy.copy(res[0])
+        # Modify the sql result to match vcc.inquire_vol() format.
+        # remove key,val from vinfo dictionary
+        vinfo = copy.copy(res[0])
 
-        #Modify the sql result to match vcc.inquire_vol() format.
+        vinfo['system_inhibit'] = [vinfo.pop('system_inhibit_0',None),
+                                   vinfo.pop('system_inhibit_1',None)]
+        vinfo['user_inhibit'] = [vinfo.pop('user_inhibit_0',None),
+                                   vinfo.pop('user_inhibit_1',None)]
+        vinfo['si_time'] = [vinfo.pop('si_time_0',None),
+                            vinfo.pop('si_time_1',None)]
+        vinfo['status'] = (e_errors.OK, None)
+    # end if USE_CLERKS or run sql query
 
-        try:
-            #First is the system inhibit.
-            return_copy['system_inhibit'] = [res[0]['system_inhibit_0'],
-                                             res[0]['system_inhibit_1']]
-        except KeyError:
-            pass
+    # update cache
+    volume_info_cache[volume] = vinfo
 
-        try:
-            del return_copy['system_inhibit_0']
-        except KeyError:
-            pass
-
-        try:
-            del return_copy['system_inhibit_1']
-        except KeyError:
-            pass
-
-        try:
-            #Second is the user inhibit.
-            return_copy['user_inhibit'] = [res[0]['user_inhibit_0'],
-                                           res[0]['user_inhibit_1']]
-        except KeyError:
-            pass
-
-        try:
-            del return_copy['user_inhibit_0']
-        except KeyError:
-            pass
-
-        try:
-            del return_copy['user_inhibit_1']
-        except KeyError:
-            pass
-
-        try:
-            # Third is the si_time.
-            return_copy['si_time'] = (res[0]['si_time_0'],
-                                      res[0]['si_time_1'])
-        except KeyError:
-            pass
-
-        try:
-            del return_copy['si_time_0']
-        except KeyError:
-            pass
-
-        try:
-            del return_copy['si_time_1']
-        except KeyError:
-            pass
-
-        return_copy['status'] = (e_errors.OK, None)
-
-    volume_info_cache[volume] = return_copy
-    return return_copy
+    return vinfo
 
 def get_volume_info_for_bfid(MY_TASK, bfid, vcc, fcc, db):
+    volume_dict = None
     bfid_dict = get_file_info(MY_TASK, bfid, fcc, db)
-    if bfid_dict == None:
-        return None
-
-    volume_dict = get_volume_info(MY_TASK, bfid_dict['external_label'],
-                                  vcc, db)
-    if volume_dict == None:
-        return None
-
+    if bfid_dict is not None:
+        volume_dict = get_volume_info(MY_TASK, bfid_dict['external_label'],
+                                      vcc, db)
     return volume_dict
 
 #Return the list of files to migrate for the volume.
