@@ -182,11 +182,10 @@ GRANT SELECT ON TABLE remaining_blanks TO enstore_reader;
 -- Name: sg_count; Type: ACL; Schema: public; Owner: enstore
 --
 
-REVOKE ALL ON TABLE sg_count FROM PUBLIC;
-REVOKE ALL ON TABLE sg_count FROM enstore;
-GRANT ALL ON TABLE sg_count TO enstore;
-GRANT SELECT ON TABLE sg_count TO enstore_reader;
-
+REVOKE ALL ON sg_count FROM PUBLIC;
+REVOKE ALL ON sg_count FROM enstore;
+GRANT ALL ON sg_count TO enstore;
+GRANT SELECT ON sg_count TO  enstore_reader;
 
 --
 -- Name: state; Type: ACL; Schema: public; Owner: enstore

@@ -1221,14 +1221,15 @@ def do_work(intf):
 	    ticket = vcc.list_sg_count()
 	else:
 	    ticket = ifc.list_sg_count()
-        sgcnt = ticket['sgcnt']
-        sk = sgcnt.keys()
-        sk.sort()
-        print "%12s %16s %10s"%('library', 'storage group', 'allocated')
-        print '='*40
-        for i in sk:
-            lib, sg = string.split(i, ".")
-            print "%12s %16s %10d"%(lib, sg, sgcnt[i])
+	if ticket['status'][0] == e_errors.OK:
+	    sgcnt = ticket['sgcnt']
+	    sk = sgcnt.keys()
+	    sk.sort()
+	    print "%12s %16s %10s"%('library', 'storage group', 'allocated')
+	    print '='*40
+	    for i in sk:
+	        lib, sg = string.split(i, ".")
+		print "%12s %16s %10d"%(lib, sg, sgcnt[i])
     elif intf.get_sg_count:
         if intf.force:
 	    ticket = vcc.get_sg_count(intf.get_sg_count, intf.storage_group)
@@ -1237,7 +1238,8 @@ def do_work(intf):
         print "%12s %16s %10d"%(ticket['library'], ticket['storage_group'], ticket['count'])
     elif intf.set_sg_count:
         ticket = vcc.set_sg_count(intf.set_sg_count, intf.storage_group, intf.count)
-        print "%12s %16s %10d"%(ticket['library'], ticket['storage_group'], ticket['count'])
+	if ticket['status'][0] == e_errors.OK:
+	    print "%12s %16s %10d"%(ticket['library'], ticket['storage_group'], ticket['count'])
 
     elif intf.touch:
         ticket = vcc.touch(intf.touch)
