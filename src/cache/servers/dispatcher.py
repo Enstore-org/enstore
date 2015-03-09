@@ -138,6 +138,8 @@ class Dispatcher(mw.MigrationWorker,
                                                            self._lock,
                                                            self.migration_pool,
                                                            self.purge_pool,
+                                                           self.cache_written_pool,
+                                                           self.fcc,
                                                            self.clustered_configuration)
         # set event handlers
         self.handlers = {mt.FILE_DELETED:  self.handle_file_deleted,
