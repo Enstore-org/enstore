@@ -53,6 +53,7 @@ MAX_THREADS = enstore_constants.MAX_THREADS
 MAX_CONNECTIONS=MAX_THREADS+1
 AMQP_BROKER = "amqp_broker"
 FILES_IN_TRANSITION_CHECK_INTERVAL = enstore_constants.FILES_IN_TRANSITION_CHECK_INTERVAL
+ARCHIVING_FILES_IN_TRANSITION_CHECK_INTERVAL = enstore_constants.FILES_IN_TRANSITION_CHECK_INTERVAL
 
 SELECT_FILES_IN_TRANSITION="""
 SELECT f.bfid,
@@ -77,6 +78,17 @@ WHERE f.bfid=fit.bfid
    AND f.archive_status IS NULL
    AND f.cache_status='CACHED'
    AND f.deleted='n'
+"""
+
+SELECT_ARCHIVING_FILES_IN_TRANSITION="""
+SELECT f.bfid
+FROM file f,
+     files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND f.archive_status='ARCHIVING'
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+   AND f.archive_mod_time < CURRENT_TIMESTAMP - interval '2 day'
 """
 
 isSFA=False
@@ -2251,8 +2263,13 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                  self.alive_interval)
 
 	threading.Thread(target=self.replay_cache_written_events).start()
-	self.file_check_thread = threading.Thread(target=self.check_files_in_transition)
-	self.file_check_thread.start()
+
+	self.check_files_in_transiion_thread = threading.Thread(target=self.check_files_in_transition)
+	self.check_files_in_transiion_thread.start()
+
+	self.check_archiving_files_in_transition_thread = threading.Thread(target=self.check_archiving_files_in_transition)
+	self.check_archiving_files_in_transition_thread.start()
+
 
     def get_files_in_transition(self, all=None):
         if all:
@@ -2296,37 +2313,70 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
             ticket["status"] = (e_errors.ERROR, "No qpid client defined, check configuration")
         self.reply_to_caller(ticket)
 
+    def __check_files_in_transition(self, query, filename):
+        """
+        Takes as input a query and a file name to save the output
+        to. Sends alarm if files stuck in transition are found.
+        Also copies the list to enstore web host.
+
+        :type query: :obj:`str`
+        :arg query: SQL query
+
+        :type filename: :obj:`str`
+        :arg filename: file containing BFID list
+
+        """
+        try:
+            res = self.filedb_dict.query_getresult(query)
+            path = os.path.join("/tmp",filename)
+            if len(res)>0:
+                txt=""
+                f=open(path,"w")
+                for row in res :
+                    txt += "%s\n"%(row[0])
+                f.write("%s"%(txt,))
+                f.close();
+                inq_d = self.csc.get(enstore_constants.INQUISITOR, {})
+                html_dir=inq_d.get("html_file",enstore_files.default_dir)
+                html_host=inq_d.get("host","localhost")
+                cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
+                rc = enstore_functions2.shell_command2(cmd)
+                failed=False
+                if rc :
+                    if rc[0] !=0 :
+                        failed=True
+                        txt = "Failed to execute command %s\n. Output was %s\n. List of files: %s\n"%(cmd, rc[2], txt,)
+                else :
+                    failed=True
+                    txt = "Failed to execute command %s\n. List of files: %s\n"%(cmd, txt,)
+                if not failed :
+                    txt = 'See <A HREF="{0}">{0}</A>'.format(filename)
+                Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transition table"%len(res), txt )
+        except Exception as e:
+            Trace.alarm(e_errors.INFO, "Failed to execute file in transition check %s"%(str(e)))
+
 
     def check_files_in_transition(self) :
-	    q=SELECT_FILES_IN_TRANSITION
-	    while True:
-		    res = self.filedb_dict.query_getresult(q)
-		    if len(res)>0:
-			    txt=""
-			    f=open("/tmp/FILES_IN_TRANSITION","w")
-			    for row in res :
-				    txt += "%s\n"%(row[0])
-			    f.write("%s"%(txt,))
-			    f.close();
-			    inq_d = self.csc.get(enstore_constants.INQUISITOR, {})
-			    html_dir=inq_d.get("html_file",enstore_files.default_dir)
-			    html_host=inq_d.get("host","localhost")
-			    cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
-			    rc = enstore_functions2.shell_command2(cmd)
-			    failed=False
-			    if rc :
-				    if rc[0] !=0 :
-					    failed=True
-					    txt = "Failed to execute command %s\n. Output was %s\n. List of files: %s\n"%(cmd, rc[2], txt,)
+        """
+        This function is executed periodically on a separate thread. It checks
+        for files in transition.
+        """
+        while True:
+            self.__check_files_in_transition(SELECT_FILES_IN_TRANSITION,
+                                             "FILES_IN_TRANSITION")
 
-			    else :
-				    failed=True
-				    txt = "Failed to execute command %s\n. List of files: %s\n"%(cmd, txt,)
-			    if not failed :
-				    txt = 'See <A HREF="FILES_IN_TRANSITION">FILES_IN_TRANSITION</A>'
-			    Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transition table"%len(res), txt )
-		    time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
+            time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
 
+
+    def check_archiving_files_in_transition(self) :
+        """
+        This function is executed periodically on as separate thread. It checks
+        for files in transition in 'ARCHIVING' state.
+        """
+        while True:
+            self.__check_files_in_transition(SELECT_ARCHIVING_FILES_IN_TRANSITION,
+                                             "ARCHIVING_FILES_IN_TRANSITION")
+            time.sleep(ARCHIVING_FILES_IN_TRANSITION_CHECK_INTERVAL)
 
 
     def file_error_handler(self, exc, msg, tb):
@@ -2371,6 +2421,9 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 	for process in self.parallelThreads:
 		process.join(10.)
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
+	self.check_files_in_transiion_thread.join(10)
+	self.check_archiving_files_in_transition_thread.join(10)
+
 
 
 class FileClerkInterface(generic_server.GenericServerInterface):
