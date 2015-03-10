@@ -30,7 +30,6 @@ import callback
 import socket
 import select
 import edb
-import esgdb
 import enstore_functions2
 import enstore_functions3
 import configuration_client
@@ -106,7 +105,6 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 						       max_connections=self.max_connections,
 						       rdb=self.volumedb_dict.db)
 			self.db = self.volumedb_dict.db
-			self.sgdb = esgdb.SGDb(self.db)
 		except:
 			exc_type, exc_value = sys.exc_info()[:2]
 			message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
@@ -171,7 +169,6 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 			self.connection_failure = 0
 			self.db = self.volumedb_dict.db
 			self.filedb_dict.db = self.db
-			self.sgdb.db = self.db
 		except:
 			Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
 				"Is database server running on %s:%d?"%(self.filedb_dict.host,
