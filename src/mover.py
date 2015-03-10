@@ -6084,7 +6084,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                              self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             volume_family = self.vol_info.get('volume_family', volume_family)
             volume_label = self.vol_info.get('external_label', volume_label)
-
+        state = self.state
+        if state == DRAINING:
+            state = ACTIVE
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -6094,7 +6096,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             'mover_type': self.mover_type,
             "ip_map":self.ip_map,
             "returned_work": returned_work,
-            "state": state_name(self.state),
+            "state": state_name(state),
             "status": status,
             "volume_family": volume_family,
             "volume_status": volume_status,
