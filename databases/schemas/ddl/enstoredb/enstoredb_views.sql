@@ -68,6 +68,10 @@ CREATE VIEW remaining_blanks AS
 
 ALTER TABLE public.remaining_blanks OWNER TO enstore;
 
+CREATE OR REPLACE VIEW  sg_count AS SELECT library, storage_group, count(*) from volume where not label LIKE '%.deleted' GROUP BY library, storage_group;
+
+ALTER TABLE public.sg_count OWNER TO enstore;
+
 --
 -- Name: volume_summary; Type: VIEW; Schema: public; Owner: enstore
 --

@@ -103,11 +103,6 @@
     <column name="authorized" type="integer"/>
     <column name="quota" type="integer"/>
   </table>
-  <table name="sg_count">
-    <column name="library" type="varchar" null="no" key="1"/>
-    <column name="storage_group" type="varchar" null="no" key="2"/>
-    <column name="count" type="integer"/>
-  </table>
   <table name="migration">
     <column name="src_bfid" type="varchar" null="no" key="1"/>
     <column name="dst_bfid" type="varchar" null="no" key="2"/>
@@ -312,6 +307,14 @@
   </view>
   <view name="remaining_blanks">
     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE ((((volume.storage_group)::text = 'none'::text) AND ((volume.file_family)::text = 'none'::text)) AND ((volume.wrapper)::text = 'none'::text)) GROUP BY volume.media_type;
+  </view>
+    <view name="sg_count">
+     SELECT volume.library,
+    volume.storage_group,
+    count(*) AS count
+   FROM volume
+  WHERE (NOT ((volume.label)::text ~~ '%.deleted'::text))
+  GROUP BY volume.library, volume.storage_group;
   </view>
   <view name="volume_summary">
     SELECT volume.label, volume.capacity_bytes, sum(file2.size) AS used, sum(file2.n_active) AS n_active, sum(file2.size_active) AS active, sum(file2.n_deleted) AS n_deleted, sum(file2.size_deleted) AS deleted, sum(file2.n_unknown) AS n_unknown, sum(file2.size_unknown) AS unknown, volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file2.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment FROM file2, volume WHERE (file2.volume = volume.id) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment;

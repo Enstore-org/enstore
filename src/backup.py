@@ -204,7 +204,7 @@ def do_work(intf):
 	dbInfo = configuration_client.ConfigurationClient(
 			(enstore_functions2.default_host(),
 			 enstore_functions2.default_port())).get('database')
-        dbHome = dbInfo['db_dir']
+        dbHome = dbInfo.get('db_backup_dir',dbInfo.get('db_dir'))
 	jouHome = dbInfo['jou_dir']
     except:
 	dbHome=os.environ['ENSTORE_DIR']
