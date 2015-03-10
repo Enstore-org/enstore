@@ -1,0 +1,231 @@
+commit b0318a18cad4630f7d1a09c244ac53fb20dfd43c
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Dec 22 13:34:33 2014 -0600
+
+    release 4.2.2-3
+
+M	spec/enstore.spec
+
+commit 3eeb6f3089e5e8f5561999d37639ca4bc1bb1435
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Dec 22 13:26:18 2014 -0600
+
+    enstore rpm 4.2.2-3
+
+A	release-notes/ENSTORE_V_4.2.2-2.txt
+M	spec/enstore.spec
+M	spec/enstore_RH6_python_2.7.6.spec
+
+commit 97474016732ec9ade53c1ca9d1786399bd624620
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Dec 19 11:21:59 2014 -0600
+
+        Remove rpm queries from setup function.
+        These queries are obsolete as the only rpm left is enstore and it does not need to be queried.
+        http://srm.fnal.gov/reviews/r/225/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1587
+
+M	external_distr/setups.sh
+
+commit 7db1af23736eba3f7dfb67ad00b86e127ec01303
+Author: Alexander Kulyavtsev <aik@fnal.gov>
+Date:   Thu Dec 18 23:58:16 2014 -0600
+
+    rb 217 / bz 1578: [obsolete] rename sbin/nodeinfo to sbin/nodeinfo.old to avoid name conflict with sbin/Nodeinfo
+
+D	sbin/nodeinfo
+A	sbin/nodeinfo.old
+
+commit 19c9ede51bb93bbb68787f600860e485d34336f6
+Author: Alexander Kulyavtsev <aik@fnal.gov>
+Date:   Thu Dec 18 23:37:58 2014 -0600
+
+    rb 216 / bz 1577: [migration] Longer default file clerk timeout value for migrate_chimera.py
+
+M	src/migrate_chimera.py
+
+commit 657b75695e27ca0dc4c16d85f9a169b1edec8df5
+Author: Alexander Kulyavtsev <aik@dmsen04.fnal.gov>
+Date:   Thu Dec 18 23:10:07 2014 -0600
+
+    rb 218 / bz 1515: [migration] do not migrate deleted files until it forced on command line: get_tape_list()
+
+M	src/migrate_chimera.py
+
+commit a332b7d9d94fdf43a77326c92aa6b128768db9a1
+Author: Alexander Kulyavtsev <aik@dmsen04.fnal.gov>
+Date:   Thu Dec 18 18:34:46 2014 -0600
+
+    rb 218 / bz 1515: [migration] do not migrate deleted files until it forced on command line: get_tape_list()
+
+M	src/migrate_chimera.py
+
+commit 55ebe17329b63174a33ae09d6fd1c5844c1f3305
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Thu Dec 18 13:46:45 2014 -0600
+
+    Corrected the value of CAP_T10000T2 from 5400 GB to 5401 GB. The variable is used by various plots.
+
+    BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1579
+    RB: http://srm.fnal.gov/reviews/r/219/
+
+M	src/enstore_constants.py
+
+commit 364edf364aae7a1e6623c00261b474b64a63695b
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Thu Dec 18 13:01:36 2014 -0600
+
+    Added link to the ALL_T10000T2D plot to the index-bottom page.
+
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1580
+    http://srm.fnal.gov/reviews/r/220/
+
+M	doc/WWW/index-bottom.html
+
+commit 089bbdfade75add7e7cefa5ec6f2b7133e3beb70
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Dec 18 12:00:28 2014 -0600
+
+        set package_files_count and active_package_files counts to the
+        result of update query
+
+        handle NULL values in swap_package
+
+        RB: http://srm/reviews/r/224/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1586
+
+M	databases/schemas/ddl/enstoredb/enstoredb_functions.sql
+M	databases/schemas/xml/enstoredb.xml
+
+commit 2d6e6d0a229264069817c6e48a5d8c529836534c
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Dec 17 17:26:59 2014 -0600
+
+        set default timeout for swap_package to 10 minutes
+        It was observed that execution of swap_package may take
+        a lot of time. Set default timeout for this call to 10 minutes
+        RB : http://srm.fnal.gov/reviews/r/223/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1584
+
+M	src/file_clerk_client.py
+
+commit ec9c15e52c0c9232c380ee195ceadb4c25b5b57e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Dec 17 12:59:40 2014 -0600
+
+        change swap_parent -> swap_package in the exception message
+        put swap_package call on parallel thread queue
+
+        RB: http://srm.fnal.gov/reviews/r/221/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1583
+
+M	src/file_clerk.py
+
+commit 63b8c98287a084564bc9b89a6657675e6ea44582
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Dec 17 12:48:14 2014 -0600
+
+        handle T10000D in operation.py and tab-flipping
+        RB: http://srm.fnal.gov/reviews/r/222/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1533
+
+M	crontabs/tab_flip_watch_stken
+M	src/operation.py
+
+commit 5133cad0ca8cc735aac5721e651ec93f9f94e85b
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Thu Dec 11 19:15:24 2014 -0600
+
+    Added various entries for T10000T2D media type similar to those for T10000T2.
+
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1575
+    http://srm.fnal.gov/reviews/r/212/
+
+M	databases/schemas/ddl/enstoredb/enstoredb_functions.sql
+M	databases/schemas/enstoredb.schema
+M	src/enstore_constants.py
+M	src/volume_assert.py
+
+commit e7284c208c41b151bce30a360c08fbdf9806bd79
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Dec 11 13:13:50 2014 -0600
+
+        Enhancement: purge files if they arrived in purge request.
+        Due to race conditions files arrived in purge request may have cache_status='CACHED' instead of 'PURGING_REQUESTED'.
+        The fact that file is in the list of files in purge request means that it is time to purge files. This is why: purge files if their cache_status is in ('PURGING_REQUESTED', 'CACHED').
+        Second: If write cache and read cache have different location purge files from cache right after they were written to tape. This reduces the load on dispatcher and purge migrators.
+        Third: Purge files more often (change purge_pool_to in dispatcher to 6 min).
+
+M	src/cache/servers/dispatcher.py
+M	src/cache/servers/migrator.py
+
+commit 2990edf01baa664137c74213a20fbaea0b07435b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Dec 8 14:43:20 2014 -0600
+
+        make sure xlog files correspond to base backup.
+        backup only one latest base backup and its xlog files.
+
+M	sbin/backup2Tape
+
+commit ac6a076a3fb431c795fa119027cffc2ec9fc112b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Dec 4 11:50:08 2014 -0600
+
+        added stkendm14a and stkendm13a migration nodes
+
+M	databases/control_files/pg_hba.conf-stken-enstoredb
+
+commit dd7ba2d7778bc1b5caa70a75aa2507fc14a2c46c
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Nov 24 15:12:58 2014 -0600
+
+        handle case if database directory name != 'psql-data'
+
+M	tools/pnfs_db_restore.py
+
+commit fddd48d05e8b5ec1f3e7e3c132cea467293dfa5f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 24 14:19:02 2014 -0600
+
+        BUG FIX: fix Log Server description.
+        Log server had 2 entries. Leave just one.
+        http://srm.fnal.gov/reviews/r/208/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1569
+
+M	etc/config_params.html
+
+commit 9d8f69ebfa7e51a743963b6565c09b65330718ba
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Nov 13 14:53:07 2014 -0600
+
+        Process ENCP_STUCK and network_thread running in HAVE_BOUND better.
+        It has been observed that tape_thread and network_thread come out of synchronization when ENCP_STUCK occurs.
+        This results in attempt to restart mover by one thread and process encp request with another and mover failure.
+        This patch makes the following:
+        1. If error (ENCP_STUCK) happens in tape_thread wait 60s for networ_thread to finish (receive TO is 60 s).
+        2. When mover tries to exit (restart itself) do not send LM update message.
+        http://srm.fnal.gov/reviews/r/207/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1564
+
+M	src/mover.py
+
+commit ff5449c183dd32db6b0f7b68768cf501eec668d6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 3 09:27:07 2014 -0600
+
+        get() waits forever if self.use_queue is set.
+        This causes interval functions not being called by DispatchingWorker caller
+        class, which results, in particular, not sending heartbeat.
+        This patch fixes this problem.
+        RB: http://srm.fnal.gov/reviews/r/206/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1560
+
+M	src/rawUDP_p.py
+
+commit 70600e0e35793af0963d5a7bf513ef3769a5211c
+Merge: d35e734 be77fbd
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Oct 30 12:08:23 2014 -0500
+
+    Merge branch 'release/4.2.2-2' into develop
