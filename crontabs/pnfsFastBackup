@@ -1,0 +1,1 @@
+15 0,12 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfsFastBackup nice -n 20 $ENSTORE_DIR/tools/psqlBackupV8  >/dev/null 2>&1
