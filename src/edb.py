@@ -268,6 +268,26 @@ class DbTable:
                 # print cmd
                 res = self.dbaccess.update(cmd)
 
+
+    def insert_new_record(self,key,value):
+        """
+        Insert new record into database, provided a key
+        and record dictionary. A better alternative to  __setitem__
+
+        :type key: :obj: `str`
+        :arg key: record key (label or bfid)
+
+        :type value: :obj: `dict`
+        :arg value: record corresonding to the key
+
+        """
+        v1 = self.import_format(value)
+        query = self.insert_query%get_fields_and_values(v1)
+        self.dbaccess.insert(query)
+        if self.auto_journal:
+            self.jou[key] = value
+
+
     def __delitem__(self, key):
         if self.auto_journal:
             if not self.jou.has_key(key):

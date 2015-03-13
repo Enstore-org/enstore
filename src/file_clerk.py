@@ -1147,6 +1147,10 @@ class FileClerkMethods(FileClerkInfoMethods):
 
 	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
 
+        self.bfid_lock = threading.Lock()
+        self.bfid_counter = 0
+        self.last_bfid_timestamp = int(time.time())
+
 	self.parallelThreads = []
 	for i in range(self.numberOfParallelWorkers):
 		worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue,self)
@@ -1176,7 +1180,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 				   "open_bitfile_for_package",
                                    "bfid_info",
                                    "modify_file_records",
-                                   "swap_package") :
+                                   "swap_package",
+                                   "new_bit_file") :
 		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
 		self.parallelThreadQueue.put([function.__name__, args])
 
@@ -1205,10 +1210,18 @@ class FileClerkMethods(FileClerkInfoMethods):
     # to make it unique
 
     def unique_bit_file_id(self):
-        bfid = long(time.time()*100000)
-        while self.filedb_dict.has_key(self.brand+str(bfid)):
-            bfid = bfid + 1
-        return self.brand+str(bfid)
+        try:
+            self.bfid_lock.acquire()
+            bfid = int(time.time())
+            if bfid > self.last_bfid_timestamp :
+                self.bfid_counter = 0
+                self.last_bfid_timestamp=bfid
+            else:
+                self.bfid_counter += 1
+            bfid = self.last_bfid_timestamp*100000+self.bfid_counter%100000
+            return self.brand+str(bfid)
+        finally:
+            self.bfid_lock.release()
 
     # register_copy(original, copy) -- register copy of original
     def register_copy(self, original, copy):
@@ -1353,9 +1366,23 @@ class FileClerkMethods(FileClerkInfoMethods):
 		record["cache_status"] = file_cache_status.CacheStatus.CREATED
 		record["cache_mod_time"] = time2timestamp(now)
 
-        # record it to the database
-        self.filedb_dict[bfid] = record
-
+        # insert record
+        is_inserted=False
+        retries=10
+        while not is_inserted and retries:
+            try:
+                self.filedb_dict.insert_new_record(bfid,record)
+                is_inserted=True
+            except Exception as e:
+                retries -= 1
+                bfid = self.unique_bit_file_id()
+                record["bfid"] = bfid
+                # last try failed, report
+                if not retries :
+                    Trace.alarm(e_errors.ERROR, "Failed to insert new file record with bfid {} : {}".format(bfid, str(e)))
+                    ticket["status"] = (e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
+                    self.reply_to_caller(ticket)
+                    return
         # if it is a copy, register it
         if original_bfid:
             if self.register_copy(original_bfid, bfid):
