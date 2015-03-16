@@ -511,13 +511,15 @@ class FileDB(DbTable):
         for key in ('package_files_count', 'active_package_files_count'):
             if s.has_key(key):
                 record[key] = s.get(key,0)
-            for key in ('bfid','drive','location_cookie','size','uid','gid',
-                        'package_id','cache_status','archive_status',
-                        'cache_mod_time','archive_mod_time',
-                        'storage_group','file_family','library','wrapper','cache_location',
-                        'original_library','file_family_width','tape_label'):
-                if s.has_key(key):
-                    record[key] = s.get(key,None)
+
+        for key in ('bfid','drive','location_cookie','size','uid','gid',
+                    'package_id','cache_status','archive_status',
+                    'cache_mod_time','archive_mod_time',
+                    'cache_location',
+                    'original_library','file_family_width'):
+            if s.has_key(key):
+                record[key] = s.get(key,None)
+
         return record
 
     def __getitem__(self, key):
