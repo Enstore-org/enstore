@@ -2404,6 +2404,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # "get record, change it, update in DB" does not work
         #
         if record["media_type"] == "disk" :
+            record['r_a'] = saved_reply_address
             record["status"] = (e_errors.OK, None)
             self.reply_to_caller(record)
 
