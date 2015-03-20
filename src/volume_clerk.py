@@ -382,7 +382,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         """
         try:
             res = self.volumedb_dict.query(q.format(library,storage_group))
-            return int(res[0][0]) if len(res) > 0 else 0 
+            return int(res[0][0]) if len(res) > 0 else 0
         except Exception as e:
             raise e_errors.EnstoreError(None,
                                         "Failed to get volume count for library={}, storage_group={} : {}\n".format(library,storage_group,str(e)),
@@ -2536,7 +2536,9 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         #
         if record["media_type"] == "disk" :
             record["status"] = (e_errors.OK, None)
+            record['r_a'] = saved_reply_address
             self.reply_to_caller(record)
+            return
 
         # update the fields that have changed
         if ticket['wr_access'] == 1:
