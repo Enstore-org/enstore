@@ -476,10 +476,8 @@ def init(intf):
     csc = configuration_client.ConfigurationClient((intf.config_host,intf.config_port))
 
     db_info = csc.get('database')
-    if socket.gethostname() == "gccenmvr2a.fnal.gov":
-        dbhost = "gccenmvr2a.fnal.gov"
-    else:
-        dbhost = db_info['dbhost']
+
+    dbhost = db_info['dbhost']
     dbport = db_info['dbport']
     dbname = db_info['dbname']
     dbuser = db_info['dbuser']
@@ -2735,8 +2733,7 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
 ##########################################################################
 
 def mark_deleted(MY_TASK, bfid, fcc, db):
-    """
-    mark bfid deleted in the file table
+    """mark bfid deleted in the file table
     """
     q = "select deleted from file where bfid = '%s';" % (bfid)
     res = db.query(q).getresult()
@@ -2762,8 +2759,7 @@ def mark_deleted(MY_TASK, bfid, fcc, db):
     return 0
 
 def mark_undeleted(MY_TASK, bfid, fcc, db):
-    """
-    mark bfid undeleted in the file table
+    """mark bfid undeleted in the file table
     """
     q = "select deleted from file where bfid = '%s';" % (bfid)
     res = db.query(q).getresult()
@@ -6087,6 +6083,11 @@ def compare_metadata(p, f, pnfsid = None, tag=None):
         p.show()
 #        p_show(p,tag)
         sys.stdout.flush()
+
+    # @FIXME: if file or file layer 4 does not exist, p.bfid is None,
+    # and the "bfid" is returned. 
+    # Do not rush for change: the caller may depend on this behaviour.
+
     if p.bfid != f['bfid']:
         return "bfid"
     if p.volume != f['external_label']:
@@ -6121,6 +6122,7 @@ def find_original_migration(bfid, fcc):
     if e_errors.is_ok(original_reply) \
            and original_reply['original'] != None \
            and original_reply['original'] != bfid:
+#        @FIXME: the code below does not check for the error returned by fcc
         f0 = fcc.bfid_info(original_reply['original'])
 
     return f0
@@ -6153,6 +6155,7 @@ def _verify_metadata(MY_TASK, job, fcc, db):
     # to check dst_bfid for this possibility.
     for mc_check_bfid in (src_bfid, dst_bfid):
         f0 = find_original(mc_check_bfid, fcc)
+        # @TODO: bug? not e_errors.is_ok(f0):
         if f0 and not e_errors.is_ok(dst_file_record):
             return_error = "original bfid: %s: %s" % \
                            (src_file_record['status'][0],
@@ -6162,7 +6165,6 @@ def _verify_metadata(MY_TASK, job, fcc, db):
         if f0:
             break #found our original.
 
-    """
     #For trusted pnfs systems, there isn't a problem,
     # but for untrusted we need to set the effective
     # IDs to the owner of the file.
@@ -6170,7 +6172,6 @@ def _verify_metadata(MY_TASK, job, fcc, db):
     # If the source PNFS file has been deleted only do the
     # chimera.File() instantiation; skip the euid/egid stuff to
     # avoid tracebacks.
-    """
 
     # get all pnfs metadata - first the source file
     if src_file_record['deleted'] == "no":
@@ -6201,6 +6202,7 @@ def _verify_metadata(MY_TASK, job, fcc, db):
 
     ##################################################################
     #Handle deleted files specially.
+    # @TODO: how unknown files are handled? src file record shall not point there
     if src_file_record['deleted'] == YES:
         # We can skip the checking that is performed in the rest of
         # this function.
@@ -7475,7 +7477,7 @@ def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
 #       the need for a duplicate.get_filenames() version of this function.
 def get_filenames(MY_TASK, job,
                   is_multiple_copy, fcc, db, intf):
-    __pychecker__ = "unusednames=MY_TASK"
+#    __pychecker__ = "unusednames=MY_TASK"
 
     (src_file_record, src_volume_record, src_path,
      dst_file_record, dst_volume_record, tmp_path, mig_path) = job
@@ -7608,16 +7610,15 @@ def cleanup_after_scan_migration(MY_TASK, mig_path, src_bfid, fcc, db):
     if cas_exit_status:
         return cas_exit_status
 
-    # Make sure the original is marked deleted.  It could be argued, that
-    # if we have deleted the file that we don't need to explicitly mark
-    # the bfid deleted, but there is the delay between delfile running for
-    # that to happen.  It's cleaner to do both.
+    # Make sure the original is marked deleted.
+    # It can be argued, that if we have deleted the file
+    # that we don't need to explicitly mark the bfid deleted,
+    # but there is the delay between delfile running for that to happen.
+    # It's cleaner to do both.
     f = fcc.bfid_info(src_bfid)
     if e_errors.is_ok(f['status']) and f['deleted'] != YES:
-        rtn_code = mark_deleted(MY_TASK, src_bfid, fcc, db)
-        if rtn_code:
-            #Error occured.
-            return 1
+        if mark_deleted(MY_TASK, src_bfid, fcc, db):
+            return 1 # Error
 
 #Duplication may override this.
 cleanup_after_scan = cleanup_after_scan_migration
@@ -7627,7 +7628,7 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
     (src_file_record, src_volume_record, src_path,
      dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
-    src_bfid = src_file_record['bfid']  #shortcuts
+    src_bfid = src_file_record['bfid']
     dst_bfid = dst_file_record['bfid']
     likely_path = dst_file_record['pnfs_name0']
 
@@ -7657,13 +7658,14 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
                 # .(access)() pathname.  Remounting the filesystem usually
                 # clears this situation.
                 error_log(MY_TASK, msg.args[1])
-                log(MY_TASK, "HINT: remount the PNFS filesystem and/or " \
+                log(MY_TASK, "HINT: remount the PNFS filesystem and/or "
                     "flush the PNFS file system buffer cache.")
                 return 1
 
             exc_type, exc_value, exc_tb = sys.exc_info()
             Trace.handle_error(exc_type, exc_value, exc_tb)
             del exc_tb #avoid resource leaks
+
             error_log(MY_TASK, str(exc_type),str(exc_value),
                       " %s %s %s %s is not a valid pnfs file" \
                       % (dst_volume_record['external_label'],
@@ -7779,37 +7781,38 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
 
 #If given a list of destination bfids, scan them.
 def final_scan_files(dst_bfids, intf):
-        MY_TASK = "FINAL_SCAN"
-        local_error = 0
+    MY_TASK = "FINAL_SCAN"
+    local_error = 0
 
-        # get its own file & volume clerk client
-        config_host = enstore_functions2.default_host()
-        config_port = enstore_functions2.default_port()
-        csc = configuration_client.ConfigurationClient((config_host,
-                                                        config_port))
-        fcc = file_clerk_client.FileClient(csc)
-        vcc = volume_clerk_client.VolumeClerkClient(csc)
+    # get its own file & volume clerk client
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,
+                                                    config_port))
+    fcc = file_clerk_client.FileClient(csc)
+    vcc = volume_clerk_client.VolumeClerkClient(csc)
 
-        #get a database connection
-        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+    # get an encp
+    threading.currentThread().setName('FINAL_SCAN')
+    encp = encp_wrapper.Encp(tid='FINAL_SCAN')
 
-        # get an encp
-        threading.currentThread().setName('FINAL_SCAN')
-        encp = encp_wrapper.Encp(tid='FINAL_SCAN')
-
+    # get a database connection
+    # try/finally to close DB connection in case of errors
+    db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+    try:
         for dst_bfid in dst_bfids:
-            #Get the destination info.
+            # Get the destination info.
             dst_file_record = get_file_info(MY_TASK, dst_bfid, fcc, db)
-            dst_volume_record = get_volume_info(MY_TASK,
-                                            dst_file_record['external_label'],
-                                                vcc, db)
+            dst_volume_record = get_volume_info(
+                                    MY_TASK, dst_file_record['external_label'],
+                                    vcc, db)
 
-            #Get the source info.
+            # Get the source info.
             src_bfid = get_bfids(dst_bfid, fcc, db)[0]
             src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
-            src_volume_record = get_volume_info(MY_TASK,
-                                            src_file_record['external_label'],
-                                                vcc, db)
+            src_volume_record = get_volume_info(
+                                    MY_TASK,src_file_record['external_label'],
+                                    vcc, db)
 
             job = (src_file_record, src_volume_record, None,
                    dst_file_record, dst_volume_record, None, None)
@@ -7818,21 +7821,19 @@ def final_scan_files(dst_bfids, intf):
             ## Note: if we are using volume assert, then final_scan_file()
             ##       uses --check with the encp to avoid redundant
             ##       reading of the file.
-            rtn_code = final_scan_file(MY_TASK, job, fcc, encp, intf, db)
-            if rtn_code:
+            if final_scan_file(MY_TASK, job, fcc, encp, intf, db):
                 local_error += 1
                 continue
 
-            # If we get here, then the file has been scaned.  Consider
-            # it closed too.
-            ct = is_closed(dst_bfid, fcc, db)
-            if not ct:
+            # If we get here, then the file has been scaned.
+            # Consider it closed too.
+            if not is_closed(dst_bfid, fcc, db):
                 log_closed(src_bfid, dst_bfid, fcc, db)
                 close_log('OK')
+    finally: 
+        db.close()  
 
-        db.close()  #Avoid resource leaks.
-
-        return local_error
+    return local_error
 
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
