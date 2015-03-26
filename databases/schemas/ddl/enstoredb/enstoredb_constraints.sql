@@ -155,3 +155,8 @@ ALTER TABLE ONLY file_copies_map
 
 ALTER TABLE ONLY file_copies_map
     ADD CONSTRAINT file_copies_map_bfid_fkey FOREIGN KEY (bfid) REFERENCES file(bfid) ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY file
+    ADD CONSTRAINT file_bfid_key UNIQUE (bfid);
+

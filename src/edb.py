@@ -268,6 +268,26 @@ class DbTable:
                 # print cmd
                 res = self.dbaccess.update(cmd)
 
+
+    def insert_new_record(self,key,value):
+        """
+        Insert new record into database, provided a key
+        and record dictionary. A better alternative to  __setitem__
+
+        :type key: :obj: `str`
+        :arg key: record key (label or bfid)
+
+        :type value: :obj: `dict`
+        :arg value: record corresonding to the key
+
+        """
+        v1 = self.import_format(value)
+        query = self.insert_query%get_fields_and_values(v1)
+        self.dbaccess.insert(query)
+        if self.auto_journal:
+            self.jou[key] = value
+
+
     def __delitem__(self, key):
         if self.auto_journal:
             if not self.jou.has_key(key):
@@ -491,13 +511,15 @@ class FileDB(DbTable):
         for key in ('package_files_count', 'active_package_files_count'):
             if s.has_key(key):
                 record[key] = s.get(key,0)
-            for key in ('bfid','drive','location_cookie','size','uid','gid',
-                        'package_id','cache_status','archive_status',
-                        'cache_mod_time','archive_mod_time',
-                        'storage_group','file_family','library','wrapper','cache_location',
-                        'original_library','file_family_width','tape_label'):
-                if s.has_key(key):
-                    record[key] = s.get(key,None)
+
+        for key in ('bfid','drive','location_cookie','size','uid','gid',
+                    'package_id','cache_status','archive_status',
+                    'cache_mod_time','archive_mod_time',
+                    'cache_location',
+                    'original_library','file_family_width'):
+            if s.has_key(key):
+                record[key] = s.get(key,None)
+
         return record
 
     def __getitem__(self, key):
