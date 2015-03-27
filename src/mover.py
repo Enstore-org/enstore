@@ -2260,7 +2260,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(88, "time in state %s %s %s %s state %s"%
                         (time_in_state,self.time_in_state,self.max_time_in_state, self.state_change_time, state_name(self.state)))
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and
-                (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
+                (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, ERROR, FINISH_WRITE, ACTIVE))):
                 send_alarm = True
                 if self.state == ACTIVE:
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
@@ -2627,7 +2627,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                      (self.shortname, self.bytes_read,
                       self.bytes_to_read, self.buffer.nbytes(), time.time()))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+        while self.state in (ACTIVE,) and self.bytes_read < self.bytes_to_read:
             if self.tr_failed:
                 break
             if self.buffer.full():
@@ -3129,7 +3129,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                      (self.shortname, self.bytes_written,
                       self.bytes_to_write, self.buffer.nbytes(), time.time()))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+        while self.state in (ACTIVE, ) and self.bytes_written<self.bytes_to_write:
             loop_start = time.time()
 
             Trace.trace(133,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
@@ -3499,7 +3499,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         break_here = 0
         network_slow = False
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+        while self.state in (ACTIVE, ) and self.bytes_read < self.bytes_to_read:
             loop_start = time.time()
             Trace.trace(133,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
             Trace.trace(127,"read_tape: tr_failed %s"%(self.tr_failed,))
@@ -3927,7 +3927,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.net_driver
         #be careful about 0-length files
         if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper and self.wrapper.__name__ != "null_wrapper": #Skip over cpio or other headers
-            while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
+            while self.buffer.header_size is None and self.state in (ACTIVE, ):
                 Trace.trace(8, "write_client: waiting for read_tape to set header info")
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
@@ -3948,7 +3948,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while 1:
             Trace.trace(133, "state %s cnt %s"%(state_name(self.state),cnt))
             Trace.trace(133, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
-            if self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
+            if self.state in (ACTIVE, ) and self.bytes_written < self.bytes_to_write:
                 #Trace.trace(33, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
                 if self.tr_failed:
                     break
@@ -3989,16 +3989,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     break
                 except:
                     exc, detail, tb = sys.exc_info()
-                    #Trace.handle_error(exc, detail, tb)
-                    #if self.state is not DRAINING: self.state = HAVE_BOUND
-                    # if state is DRAINING transfer_failed will set it to OFFLINE
                     msg="exc %s detail %s"%(exc, detail)
                     self.transfer_failed(e_errors.ENCP_GONE, msg)
                     failed = 1
                     break
                 if bytes_written < 0:
-                    #if self.state is not DRAINING: self.state = HAVE_BOUND
-                    # if state is DRAINING transfer_failed will set it to OFFLINE
                     self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
                     failed = 1
                     break
@@ -4519,7 +4514,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.run_in_thread('network_monitor', self.check_connection)
 
                 for loc_cookie in keys:
-                    if self.state == DRAINING or self.interrupt_assert:
+                    if self.draining or self.interrupt_assert:
                         break
                     location = cookie_to_long(loc_cookie)
                     self.file_info =  file_info[loc_cookie]
@@ -5264,7 +5259,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.log_state(logit=1)
                 self.dump_vars()
                 self.run_in_thread('media_thread', self.dismount_volume, after_function=self.restart)
-            if save_state == DRAINING:
+            if self.draining:
                 self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
 
                 #self.dismount_volume(after_function=self.offline)
@@ -5365,7 +5360,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
-        if self.state == DRAINING or (self.state == FINISH_WRITE and self.draining):
+        if self.state == FINISH_WRITE and self.draining:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
             #self.dismount_volume(after_function=self.offline)
             self.log_state()
@@ -6026,7 +6021,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
+        elif state in (ACTIVE, SETUP, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
             work = "mover_busy"
             if state == SETUP:
                 try:
@@ -6085,8 +6080,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             volume_family = self.vol_info.get('volume_family', volume_family)
             volume_label = self.vol_info.get('external_label', volume_label)
         state = self.state
-        if state == DRAINING:
-            state = ACTIVE
+        #if state == DRAINING:
+        #    state = ACTIVE
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -6815,8 +6810,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "State ERROR, can not proceed")
 
         self.state = ACTIVE
-        if self.draining:
-            self.state = DRAINING
+
         if self.mode == WRITE:
             self.run_in_thread('net_thread', self.read_client)
             self.run_in_thread('tape_thread', self.write_tape)
@@ -6951,17 +6945,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         x = ticket # to trick pychecker
         save_state = self.state
         self.draining = 1
-        if self.state in (ACTIVE, FINISH_WRITE):
-            self.state = DRAINING
-        elif self.state in (IDLE, ERROR):
+        if self.state in (IDLE, ERROR):
             self.state = OFFLINE
-        elif self.state is HAVE_BOUND:
-            self.state = DRAINING # XXX CGW should dismount here. fix this
+
+        ##elif self.state is HAVE_BOUND:
+        ##    self.state = DRAINING # XXX CGW should dismount here. fix this
         Trace.trace(e_errors.INFO, "The mover is set to state %s"%(state_name(self.state),))
         self.create_lockfile()
         out_ticket = {'status':(e_errors.OK,None),'state':state_name(self.state), 'pid': os.getpid()}
         self.reply_to_caller(out_ticket)
-        if save_state is HAVE_BOUND and self.state is DRAINING:
+        if save_state is HAVE_BOUND:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
 
             #self.dismount_volume()
@@ -7170,7 +7163,7 @@ class DiskMover(Mover):
                      (self.shortname, self.bytes_written,
                       self.bytes_to_write, self.buffer.nbytes(), time.time()))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+        while self.state in (ACTIVE,) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
                 break
@@ -7368,7 +7361,7 @@ class DiskMover(Mover):
                      (self.shortname, -self.bytes_read,
                       self.bytes_to_read, self.buffer.nbytes(), time.time()))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+        while self.state in (ACTIVE,) and self.bytes_read < self.bytes_to_read:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
                 break
@@ -8005,8 +7998,7 @@ class DiskMover(Mover):
             cur_thread_name = None
 
         Trace.trace(26,"current thread %s"%(cur_thread_name,))
-        if save_state == DRAINING:
-
+        if self.draining:
             self.offline()
         else:
             if self.mode == READ:
@@ -8204,7 +8196,7 @@ class DiskMover(Mover):
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
+        elif state in (ACTIVE, SETUP, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
             work = "mover_busy"
             if state == SETUP:
                 try:
