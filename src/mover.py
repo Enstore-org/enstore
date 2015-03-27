@@ -5360,7 +5360,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
-        if self.state == FINISH_WRITE and self.draining:
+        if self.draining:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
             #self.dismount_volume(after_function=self.offline)
             self.log_state()
