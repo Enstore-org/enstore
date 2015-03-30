@@ -851,7 +851,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
-        self.draining = 0 # draining flag. Draining is not 0
+        self.draining = 0  # draining flag. Draining is not 0
         self.log_mover_state = None # allow logging additional mover information (configurable)
         self.override_ro_mount = None # if set override readonly mount MC option
         self.just_mounted = 0 # to indicate that the volume was just mounted
@@ -2623,9 +2623,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s network %s %.3f" %
+        Trace.notify("transfer %s %s %s network %s %.3f %s" %
                      (self.shortname, self.bytes_read,
-                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
         while self.state in (ACTIVE,) and self.bytes_read < self.bytes_to_read:
             if self.tr_failed:
@@ -2675,10 +2675,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    self.bytes_to_read, last_notify_time):
                 bytes_notified = self.bytes_read
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s network %s %.3f" %
+                Trace.notify("transfer %s %s %s network %s %.3f %s" %
                              (self.shortname, self.bytes_read,
                               self.bytes_to_read, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
         if self.tr_failed:
             driver.close()
@@ -2909,9 +2909,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             if block_counter == 2000:
                 percent_done = int(self.bytes_read*100 / self.bytes_to_write)
                 if percent_done - last_percent_done >= 5:
-                    Trace.notify("transfer %s %s %s media %s %.3f" %
+                    Trace.notify("transfer %s %s %s media %s %.3f %s" %
                                  (self.shortname, -self.bytes_read,
-                                  bytes_to_read, self.buffer.nbytes(), time.time()))
+                                  bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
                     last_percent_done = percent_done
                 now = time.time()
@@ -3125,9 +3125,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, self.bytes_written,
-                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_write, self.buffer.nbytes(), time.time(), self.draining))
 
         while self.state in (ACTIVE, ) and self.bytes_written<self.bytes_to_write:
             loop_start = time.time()
@@ -3262,10 +3262,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    self.bytes_to_write, last_notify_time):
                 bytes_notified = self.bytes_written
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, self.bytes_written,
                               self.bytes_to_write, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
@@ -3489,9 +3489,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, -self.bytes_read,
-                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
         Trace.trace(24, "state %s read %s to_read %s"%(state_name(self.state),self.bytes_read, self.bytes_to_read))
         t_started = time.time()
@@ -3685,10 +3685,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    self.bytes_to_read, last_notify_time):
                 bytes_notified = self.bytes_read
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, -self.bytes_read,
                               self.bytes_to_read, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.empty():
                 Trace.trace(199, "write_ok_set")
@@ -3940,10 +3940,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s network %s %.3f" %
+        Trace.notify("transfer %s %s %s network %s %.3f %s" %
                      (self.shortname, -self.bytes_written,
                       self.bytes_to_write, self.buffer.nbytes(),
-                      time.time()))
+                      time.time(), self.draining))
         cnt = 0
         while 1:
             Trace.trace(133, "state %s cnt %s"%(state_name(self.state),cnt))
@@ -4015,10 +4015,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     bytes_notified = self.bytes_written
                     last_notify_time = time.time()
                     #negative byte-count to indicate direction
-                    Trace.notify("transfer %s %s %s network %s %.3f" %
+                    Trace.notify("transfer %s %s %s network %s %.3f %s" %
                                  (self.shortname, -self.bytes_written,
                                   self.bytes_to_write, self.buffer.nbytes(),
-                                  last_notify_time))
+                                  last_notify_time, self.draining))
             else:
                 break
 
@@ -4358,10 +4358,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   (self.vol_info['active_bytes'],
                                   self.bytes_read,
                                   self.vol_info['active_bytes']-self.bytes_read))
-                        Trace.notify("transfer %s %s %s network %s %.3f" %
+                        Trace.notify("transfer %s %s %s network %s %.3f %s" %
                                      (self.shortname, -self.bytes_read,
                                       self.vol_info['active_bytes'], 0,
-                                      time.time()))
+                                      time.time(), self.draining))
                     time.sleep(30)
                 else:
                     self.transfer_failed(e_errors.DRIVEERROR,
@@ -7159,9 +7159,9 @@ class DiskMover(Mover):
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, self.bytes_written,
-                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_write, self.buffer.nbytes(), time.time(), self.draining))
 
         while self.state in (ACTIVE,) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
@@ -7227,10 +7227,10 @@ class DiskMover(Mover):
                                    self.bytes_to_write, last_notify_time):
                 bytes_notified = self.bytes_written
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, self.bytes_written,
                               self.bytes_to_write, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
@@ -7357,9 +7357,9 @@ class DiskMover(Mover):
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, -self.bytes_read,
-                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
         while self.state in (ACTIVE,) and self.bytes_read < self.bytes_to_read:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
@@ -7441,10 +7441,10 @@ class DiskMover(Mover):
                                    self.bytes_to_read, last_notify_time):
                 bytes_notified = self.bytes_read
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, -self.bytes_read,
                               self.bytes_to_read, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()

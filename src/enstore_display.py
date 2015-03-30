@@ -30,7 +30,6 @@ import enstore_constants
 import enstore_functions2
 import e_errors
 
-
 #Set up paths to find our private copy of tcl/tk 8.3
 
 #Get the environmental variables.
@@ -164,7 +163,7 @@ def release(lock, lock_name="<generic_lock>"):
     do_print = 0
     if Trace.print_levels.has_key(LOCK_LEVEL):
         do_print = 1
-    
+
     if do_print:
         Trace.trace(LOCK_LEVEL,
                     "%s releasing %s" % (threading.current_thread().getName(),
@@ -176,7 +175,7 @@ def release(lock, lock_name="<generic_lock>"):
                     "%s released %s" % (threading.current_thread().getName(),
                                         lock_name))
     return rtn
-    
+
 #########################################################################
 
 CIRCULAR, LINEAR = range(2)
@@ -279,11 +278,11 @@ class Queue:
         self.lock.release()
 
         return get_time
-                     
+
 
     def clear_queue(self, tid = None):
         self.lock.acquire()
-        
+
         try:
             del self.queue[tid][:]
         except KeyError:
@@ -322,16 +321,16 @@ class Queue:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.lock.release()
-    
+
     def put_queue(self, queue_item, tid=None):
         self.lock.acquire()
 
         try:
             if self.queue.get(tid, None) == None:
                 self.queue[tid] = []
-        
+
             self.queue[tid].append({'item' : queue_item, 'tid' : tid})
-        
+
         except (KeyboardInterrupt, SystemExit):
             self.lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -350,9 +349,9 @@ class Queue:
         try:
             if self.queue.get(tid, None) == None:
                 self.queue[tid] = []
-        
+
             self.queue[tid].insert(0, {'item' : queue_item, 'tid' : tid})
-        
+
         except (KeyboardInterrupt, SystemExit):
             self.lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -361,7 +360,7 @@ class Queue:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.put_time = time.time()  #Update the time this was done.
-        
+
         self.lock.release()
 
     #Wait for an inserted queue item, at the beginning of the queue, to be
@@ -415,7 +414,7 @@ class Queue:
              else:
                  #The item is done getting processed, this thread can continue.
                  return
-        
+
     def get_queue(self, tid=None):
         self.lock.acquire()
 
@@ -432,7 +431,7 @@ class Queue:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.get_time = time.time()  #Update the time this was done.
-        
+
         self.lock.release()
 
         return temp['item']
@@ -517,7 +516,7 @@ def fit_string(font, the_string, width_wanted):
             return the_string[:i]
 
     return ""
-    
+
 
 def rgbtohex(r,g,b):
     r=hex(r)[2:]
@@ -534,7 +533,7 @@ def rgbtohex(r,g,b):
 def hextorgb(hexcolor):
     if type(hexcolor) != types.StringType:
         return 0, 0, 0
-    
+
     #make sure the string is long enough
     if len(hexcolor) < 7:
         hexcolor = hexcolor + "0"*(7-len(hexcolor))
@@ -542,7 +541,7 @@ def hextorgb(hexcolor):
     red = int("0x" + hexcolor[1:3], 16)
     green = int("0x" + hexcolor[3:5], 16)
     blue = int("0x" + hexcolor[5:7], 16)
-    
+
     return red, green, blue
 
 def invert_color(hexcolor):
@@ -581,7 +580,7 @@ color_dict = {
     'label_stable_color':   rgbtohex(255, 255, 255), # white (tape)
 }
 
-    
+
 def colors(what_color): # function that controls colors
     return color_dict.get(what_color, rgbtohex(0,0,0))
 
@@ -690,9 +689,9 @@ def process_time():
     #Taking just fractional part, determine how many milliseconds it is
     # to the next multiple of MESSAGES_TIME.
     rtn = max(1, int((MESSAGES_TIME - (part * MESSAGES_TIME))))
-    
+
     last_process = now
-    
+
     return rtn
 
 #########################################################################
@@ -754,7 +753,7 @@ def get_all_systems(csc=None):
                 new_csc = configuration_client.ConfigurationClient(address)
                 new_csc.new_config_obj.enable_caching()
                 config_servers[short_name] = new_csc
-               
+
                 break
             except socket.error:
                 if csc:
@@ -781,7 +780,7 @@ def get_all_systems(csc=None):
             break
     else:
         config_servers[csc.server_address[0]] = csc
-        
+
     return config_servers
 
 #Get the ConfigurationClient object for the default enstore system.
@@ -789,7 +788,7 @@ def get_csc(system_name = None, timeout = 3, retry = 3):
     #Normally, system name is an Enstore system name key from the
     # known_config_servers section of the configuration file.  It also can
     # be a hostname of the configuration server.
-    
+
     global __csc
     global __cscs
 
@@ -842,7 +841,7 @@ def get_csc(system_name = None, timeout = 3, retry = 3):
                     # that many and we may need to know this at some point
                     # in the future.
                     __cscs[sys_name] = current_csc
-                    
+
                 #Return the one we are looking for.
                 for sys_name, current_csc in config_servers.items():
                     if sys_name == system_name:
@@ -898,7 +897,7 @@ class Mover:
         self.display       = display
         self.name          = name
         self.state         = None
-
+        self.draining = False
         self.index         = index  #Used for CIRCULAR display.
         self.column        = column #Movers may be laid out in multiple columns
         self.row           = row    #Row for column display.
@@ -911,7 +910,7 @@ class Mover:
         #Set geometry of mover.
         self.resize() #Even though this is the initial size, still works.
         self.x, self.y  = self.position(movers)
-        
+
         #These 4 pieces make up the progress gauge display
         self.progress_bar             = None
         self.progress_alt_bar         = None
@@ -935,7 +934,7 @@ class Mover:
         self.volume_bg_display  = None
         self.rate_display       = None
         self.offline_reason_display = None
-        
+
         # Anything that deals with time
         self.b0                 = 0
         now                     = time.time()
@@ -982,7 +981,7 @@ class Mover:
                 #By passing the empty string, we will change the client
                 # color without scheduling an inquisitor request.
                 self.update_offline_reason("")
-        
+
         #Carefull.  As long as draw_timer() gets called after animate_timer
         # in __init__() we are okay.
         #if self.timer_id:
@@ -1058,7 +1057,7 @@ class Mover:
             if self.state_display_2:
                 self.display.delete(self.state_display_2)
                 self.state_display_2 = None
-                    
+
             self.state_display = self.display.create_line(
                 path, width=1, smooth=0, joinstyle = 'miter',
                 fill=color_dict['state_active_color'])
@@ -1066,6 +1065,7 @@ class Mover:
             self.state_display_2 = self.display.create_line(
                 path2, width=1, smooth=0, joinstyle = 'miter',
                 fill=color_dict['state_active_color'])
+
 
     #Used by draw_state().
     def draw_active_icon(self):
@@ -1079,7 +1079,7 @@ class Mover:
         else:
             #placeholder for someday having different icons for writes.
         """
-        
+
         x, y = self.x + self.img_offset.x, self.y + self.img_offset.y
 
         #Circle bounding box.
@@ -1115,7 +1115,60 @@ class Mover:
             if self.state_display_2:
                 self.display.delete(self.state_display_2)
                 self.state_display_2 = None
-                    
+
+            self.state_display = self.display.create_oval(
+                coords, fill=color_dict['state_active_color'])
+
+            self.state_display_2 = self.display.create_polygon(
+                coords2, fill=color_dict['state_active_color'])
+
+    #Used by draw_state().
+    def draw_drain_icon(self):
+
+        """
+        if self.rate < 0:
+            #Placeholder for someday having different icons for reads.
+            pass
+        else:
+            #placeholder for someday having different icons for writes.
+        """
+
+        x, y = self.x + self.img_offset.x, self.y + self.img_offset.y
+
+        #Circle bounding box.
+        coords = (
+            #Upper left.
+            x,
+            y + (self.vol_height * 0.25),
+            #Lower right.
+            x + (self.vol_height * 0.5),
+            y+ (self.vol_height * 0.75)
+            )
+
+        #Triangle points.
+        coords2 = (
+            #Rigth point.
+            x + (self.vol_height * 0.75),
+            y + (self.vol_height * 0.75),
+            #Middle point.
+            x + (self.vol_height * 0.25),
+            y + (self.vol_height * 1.25),
+            #Bottom point.
+            x - (self.vol_height * 0.25),
+            y + (self.vol_height * 0.75)
+            )
+
+        if self.state == self.old_state:
+            self.display.coords(self.state_display, coords)
+            self.display.coords(self.state_display_2, coords2)
+        else:
+            if self.state_display:
+                self.display.delete(self.state_display)
+                self.state_display = None
+            if self.state_display_2:
+                self.display.delete(self.state_display_2)
+                self.state_display_2 = None
+
             self.state_display = self.display.create_oval(
                 coords, fill=color_dict['state_active_color'])
 
@@ -1141,12 +1194,11 @@ class Mover:
         #img          = find_image(self.state + '.gif')
         #img = None
         if self.state_display:
-            
             if self.state in ("SEEK"):
                 self.draw_positioning_icon()
             elif self.state in ("ACTIVE"):
                 self.draw_active_icon()
-                    
+
             #if current state is in text and the new state is in text.
             else:
                 if self.display.type(self.state_display) == "text":
@@ -1166,8 +1218,8 @@ class Mover:
                         font = self.font,
                         text=fit_string(self.font, self.state, self.state_width),
                         fill=self.state_color, anchor=Tkinter.CENTER)
-            
-        #No currect state display.
+
+        #No current state display.
         else:
             if self.state in ("SEEK"):
                 self.draw_positioning_icon()
@@ -1196,9 +1248,9 @@ class Mover:
     def draw_volume(self):
         x, y = self.x + self.volume_offset.x, self.y + self.volume_offset.y
 
-        #Diaplay the volume.
+        #Display the volume.
         if self.volume:
-            
+
             #If necessary define the font to use.
             if not self.volume_font:
                 self.volume_font = get_font(self.vol_height, 'arial',
@@ -1214,7 +1266,7 @@ class Mover:
                 self.volume_bg_display = self.display.create_rectangle(
                     x, y, x + self.vol_width, y + self.vol_height,
                     fill = self.volume_bg_color,)
-            
+
             #Draw the volume label.
             if self.volume_display:
                 self.display.coords(self.volume_display,
@@ -1296,9 +1348,8 @@ class Mover:
                 new_location[0], new_location[1],
                 new_location[2], new_location[3],
                 fill = colors('progress_alt_bar_color'), outline = "")
-        
-    def draw_progress(self): #, percent_done, alt_percent_done):
 
+    def draw_progress(self): #, percent_done, alt_percent_done):
         #(Re)draw the old progress bg gauge.
         self.draw_background_progress()  #percent_done, alt_percent_done)
         #(Re)draw the two progress bars if necessary.
@@ -1354,7 +1405,7 @@ class Mover:
             self.buffer_bar = self.display.create_rectangle(
                 self.get_buffer_position(self.buffer_size),
                 fill = colors('progress_bar_color'), outline = "")
-    
+
     def draw_buffer(self):  #, buffer_size):
         self.draw_background_buffer()
         self.draw_bar_buffer()
@@ -1366,9 +1417,9 @@ class Mover:
                self.y + self.buffer_bar_offset1.y,
                self.x + self.buffer_bar_offset2.x + offset,
                self.y + self.buffer_bar_offset2.y)
-        
+
         return bar
-    
+
     def draw_buffer_bar(self, percent, color):
         offset = (self.bar_width*percent/100.0)
         bar = self.display.create_rectangle(
@@ -1381,19 +1432,19 @@ class Mover:
         return bar
 
     def draw_rate(self):
-
         #On the off chance that the state still exists on the display
         # when it should not.
         if self.rate_string and self.state != "ACTIVE":
             self.undraw_state()
 
+        if self.draining:
+            self.draw_drain_icon()
         #The rate is usualy draw when the mover is in active state.
         # However, it can go into draining state while a transfer is in
         # progress.  The display of the draining state and rate can not
         # occur at the same time.  Give precdence to the state.
-        if self.state == "DRAINING":
-            self.undraw_rate()
-        elif self.rate_display:
+
+        if self.rate_display:
             self.display.itemconfigure(
                 self.rate_display,
                 text=fit_string(self.font, self.rate_string, self.state_width))
@@ -1418,7 +1469,7 @@ class Mover:
         offline_reason_width = \
                 max(0, self.width - self.font.measure(self.timer_string + "W"))
         text = fit_string(self.font, self.offline_reason, offline_reason_width)
-        
+
         if self.offline_reason_display:
             self.display.itemconfigure(
                 self.offline_reason_display,
@@ -1431,7 +1482,7 @@ class Mover:
                 fill = self.state_color,
                 anchor = Tkinter.SW, font = self.font)
 
-        
+
 
     def draw(self):
 
@@ -1442,7 +1493,7 @@ class Mover:
         self.draw_timer()
 
         self.draw_progress() #Display the progress bar and percent done.
-        
+
         self.draw_buffer()
 
         self.draw_volume()
@@ -1454,7 +1505,7 @@ class Mover:
     #########################################################################
 
     def undraw_mover(self):
-        try:        
+        try:
             self.display.delete(self.label)
             self.label = None
         except Tkinter.TclError:
@@ -1470,7 +1521,7 @@ class Mover:
         if self.timer_id:
             self.display.after_cancel(self.timer_id)
             self.timer_id = None
-        
+
         try:
             self.display.delete(self.timer_display)
             self.timer_display = None
@@ -1509,14 +1560,14 @@ class Mover:
         except Tkinter.TclError:
             pass
 
-        try:        
+        try:
             self.display.delete(self.progress_bar_bg)
             self.progress_bar_bg = None
         except Tkinter.TclError:
             pass
 
     def undraw_buffer(self):
-        try:        
+        try:
             self.display.delete(self.buffer_bar_bg)
             self.buffer_bar_bg = None
         except Tkinter.TclError:
@@ -1567,10 +1618,11 @@ class Mover:
         self.undraw_offline_reason()
 
     #########################################################################
-        
+
     def update_state(self, state, time_in_state=0):
         if state == self.state:
             return
+
         self.old_state = self.state  #Remember what state we currently are.
         self.state = state
 
@@ -1604,6 +1656,7 @@ class Mover:
             self.mover_color = colors('mover_offline_color')
             self.state_color = colors('state_offline_color')
             self.label_color = colors('state_offline_color')
+            self.draining = False
         else:
             self.mover_color = colors('mover_stable_color')
             if self.state in ['Unknown', 'IDLE']:
@@ -1611,7 +1664,7 @@ class Mover:
             else:
                 self.state_color = colors('state_stable_color')
             self.label_color = colors('mover_label_color')
-        
+
         #Update the time in state counter for the mover.
         now = time.time()
         self.timer_started = now - time_in_state
@@ -1644,7 +1697,7 @@ class Mover:
                 queue_item = "mover %s %s" % (self.name, state)
                 message_queue.insert_queue(queue_item,
                                            self.display.system_name)
-             
+
         #Undraw these objects that correlate only to the ACTIVE/DRAINING
         # state.
         if state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND',
@@ -1675,7 +1728,7 @@ class Mover:
         if self.timer_display:
             self.display.itemconfigure(self.timer_display,
                                        fill = self.timer_color)
-        
+
     def update_timer(self, now):
         seconds = int(now - self.timer_started)
         if seconds == self.timer_seconds:
@@ -1687,7 +1740,7 @@ class Mover:
         if self.timer_display:
             self.display.itemconfigure(self.timer_display,
                                        text = self.timer_string)
-            
+
             #Only worry if this for "too long" situation.  When the state
             # changes this will be set back to normal color in update_state().
             if (self.timer_seconds > 3600) and \
@@ -1704,7 +1757,7 @@ class Mover:
             return
 
         old_rate = self.rate
-            
+
         self.rate = rate
 
         if rate != None:
@@ -1743,7 +1796,7 @@ class Mover:
             self.alt_percent_done = alt_percent_done
             self.draw_progress()
             return
-        
+
         if percent_done != self.percent_done:
             self.percent_done = percent_done
             self.draw_network_progress()
@@ -1753,7 +1806,7 @@ class Mover:
             self.draw_media_progress()
 
     def update_buffer(self, buffer_size):  #buffer_size in bytes
-        
+
         if buffer_size == None:
             buffer_size = None
             self.undraw_buffer()
@@ -1864,7 +1917,7 @@ class Mover:
 
     def position_circular(self, N, position=None):
         #N = number of movers
-        
+
         #k is the sequence number of this mover in the display.
         if not position:
             k = self.display.get_mover_index(self.name)
@@ -1883,7 +1936,7 @@ class Mover:
         x_ratio = float(mcc) / float(tcc)
         #x_offset is used to slide the "circle" of movers to the right.
         x_offset = (float(ccc) - 1) / float(tcc)
-        
+
         if N == 1: ## special positioning for a single mover.
             k = 1
             angle = math.pi / 2
@@ -1898,7 +1951,7 @@ class Mover:
 
         #mcc = Total Column Count
         mcc = self.display.get_mover_column_count()
-        
+
         return scaled_x, scaled_y
 
     def position_linear(self, N, position=None):
@@ -1908,11 +1961,11 @@ class Mover:
         if not position:
             #position is a two-tuple; the column number and the row number
             position = self.display.get_mover_position(self.name)
-        
+
         #k = self.index  # k = number of this mover
         mmpc = float(MMPC) #Maximum movers per column
 
-        #total number of columns 
+        #total number of columns
         num_cols = self.display.get_total_column_count()
         #total number of rows in the largest column
         num_rows = self.display.get_mover_maximum_column_count()
@@ -1951,7 +2004,7 @@ class Mover:
         #These calculation start in the middle of the window, subtract the
         # first half of them, then add the position that the current mover
         # is in.
-        
+
         if num_rows % 2: #odd
             y = (self.display.height / 2.0) - \
                 ((num_rows - 1) / 2.0 * (space + self.height)) - \
@@ -1962,7 +2015,7 @@ class Mover:
                 ((num_rows / 2.0) * (space + self.height)) + \
                 (row * (space + self.height)) + \
                 y_offset
-        
+
         #Adding 1 to the column values in the following line,
         # mathematically gives the clients their own column
         column_width = (self.display.width / float(num_cols))
@@ -1970,7 +2023,7 @@ class Mover:
                              self.display.get_client_column_count())
 
         return int(x), int(y)
-        
+
     def position(self, N, position=None):
         layout = self.display.master.layout.get()
         if layout == CIRCULAR:
@@ -2041,7 +2094,7 @@ class Mover:
         return (self.width - self.width/3.0) - 10
 
     def max_label_font_width(self):
-        #total number of columns 
+        #total number of columns
         num_cols = self.display.get_total_column_count()
         #size of column in pixels
         column_width = (self.display.width / float(num_cols + 1))
@@ -2099,7 +2152,7 @@ class Client:
         self.display            = display
         self.mover_names        = {}
         self.last_activity_time = time.time()
-        self.waiting            = None   #1 = wait, 0 = connected, None = init 
+        self.waiting            = None   #1 = wait, 0 = connected, None = init
         self.label              = None
         self.outline            = None
         self.font_color         = colors('client_font_color')
@@ -2110,9 +2163,9 @@ class Client:
         self.position()
         self.update_state(CONNECTED)  #Sets self.waiting.
         self.draw()
-        
+
     #########################################################################
-        
+
     def draw(self):
         x, y = self.x, self.y
 
@@ -2223,11 +2276,11 @@ class Connection:
         if self.mover != mover or self.client != client:
             self.mover = mover
             self.client = client
-    
+
             self.reposition()
-        
+
     #########################################################################
-        
+
     def draw(self):
         if self.line:
             self.display.coords(self.line, tuple(self.path))
@@ -2250,7 +2303,7 @@ class Connection:
         if self.rate == None:
             #The transfer is complete don't update in this case.
             return
-        
+
         if now == None:
             now = time.time()
         if now >= self.segment_stop_time:
@@ -2271,9 +2324,9 @@ class Connection:
                 # is a real performace killer.
                 self.display.itemconfigure(self.line,
                                            dashoffset = self.dashoffset)
-                
+
     #########################################################################
-                
+
     def update_rate(self, rate):
         now                     = time.time()
         # starting time at this rate
@@ -2343,7 +2396,7 @@ class Connection:
 
                 mx = pos[0]
                 self.path.extend([mx,my])
-            
+
                 if i - 1 >= 1: #Skip this step on the last (leftmost) column.
                     pos_1 = self.display.get_mover_coordinates((i - 1, row))
                     mx = (pos_1[0] + self.mover.width + pos[0]) / 2.0
@@ -2390,7 +2443,7 @@ class Connection:
                 Trace.trace(0, pprint.pformat(self.display.client_positions[i + 1].item_positions))
 
             return
-        
+
         column = position[0]
         row = position[1]
 
@@ -2424,7 +2477,7 @@ class Connection:
                 cx = column_width * (i + 1)
                 cy = self.client.y + self.client.height + 2
                 client_path.extend([cx, cy])
-                
+
         #Add in the two points that make the pretty spline curve between
         # clients and movers.
         x_distance = mx - cx
@@ -2436,7 +2489,7 @@ class Connection:
         while len(client_path):
             self.path.extend(client_path[-2:])
             del client_path[-2:]
-            
+
     def reposition(self):
         self.undraw()
         self.position()
@@ -2494,7 +2547,7 @@ class MoverDisplay(Tkinter.Toplevel):
             self.configure(attributes)
             #Font geometry.
             self.font = get_font(12)  #, 'arial')
-        
+
         self.init_common(mover)
 
         self.state_display = None
@@ -2519,7 +2572,6 @@ class MoverDisplay(Tkinter.Toplevel):
     def init_common(self, mover=None):
         # The mover class values that are copied are done with copy.copy()
         # to avoid cyclic references.
-        
         if mover:
             self.mover_name = copy.copy(mover.name)  # mover31@stken
             self.title(self.mover_name) #Update the title with mover name
@@ -2532,7 +2584,7 @@ class MoverDisplay(Tkinter.Toplevel):
             self.mc = mover_client.MoverClient(self.csc, mover_name)
 
             self.transaction_ids = []
-            
+
     def window_killed(self, event):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
@@ -2556,7 +2608,7 @@ class MoverDisplay(Tkinter.Toplevel):
         except AttributeError:
             pass
         self.mc = None
-        
+
 
     def draw(self):
 
@@ -2603,11 +2655,11 @@ class MoverDisplay(Tkinter.Toplevel):
                     status = {'status' : (e_errors.NET_ERROR, str(msg))}
                 except (e_errors.EnstoreError), msg:
                     status = {'status' : (msg.type, str(msg))}
-                                          
+
                 #In case of timeout, set the state to Unknown.
                 if status.get('state', None) == None:
                     status['state'] = "Unknown"
-                    
+
                 return status
 
             #Will get here the first time called from update_status().
@@ -2632,7 +2684,7 @@ class MoverDisplay(Tkinter.Toplevel):
         ## We want to separate the sending and receiving of these requests
         ## and answers.  Otherwise, while waiting for the response, the
         ## display is not updating, which we want it to continue doing.
-        
+
         #Get any pending status updates.
         status = self.receive_mover_status_request(0.0)
         if status:
@@ -2664,7 +2716,7 @@ class MoverDisplay(Tkinter.Toplevel):
         #Send another status update request.
         self.transactions_ids = []
         self.send_mover_status_request()
-        
+
         #Reset the time for 5 seconds.
         self.after_mover_display_id = self.after(MOVER_DISPLAY_TIME,
                                                  self.update_status)
@@ -2709,13 +2761,13 @@ class Column:
 
     def get_max_index(self):
         return self.max_index
-            
+
     def add_item(self, item_name):
-        
+
         if len(self.item_positions.keys()) >= self.get_max_limit():
             #Column is full.
             return True
-        
+
         if self.type == CLIENTS:
             return self.add_alt_item(item_name)
         elif self.type == MOVERS:
@@ -2737,9 +2789,9 @@ class Column:
 
         if i < -(MIPC / 2) or i > (MIPC / 2):
             return True
-        
+
         self.item_positions[i] = item_name
-        
+
         return False
 
     def add_seq_item(self, item_name):
@@ -2800,7 +2852,7 @@ class Display(Tkinter.Canvas):
             if master:
                 self.master_geometry = self.master.geometry()
                 Tkinter.Canvas.__init__(self, master = master)
-                
+
             else:
                 Tkinter.Canvas.__init__(self)
 
@@ -2814,7 +2866,7 @@ class Display(Tkinter.Canvas):
 ##        Tkinter.Canvas.__init__(self, master, width=window_width,
 ##                                height=window_height,
 ##                               scrollregion=(0,0,canvas_width,canvas_height))
-                                
+
 ##        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
 ##        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
 
@@ -2867,7 +2919,7 @@ class Display(Tkinter.Canvas):
         self.after_reposition_id = None
 
         #Set this to the current time so that the alarm signal doesn't
-        # get raised to hastily.  
+        # get raised to hastily.
         self.last_message_processed = time.time()
 
         #Clear the window for drawing to the screen.
@@ -2886,7 +2938,7 @@ class Display(Tkinter.Canvas):
     def reinit_display(self):
         self._reinit = 0
         self.stopped = 0
-        
+
     def clear_display(self):
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
@@ -2900,9 +2952,9 @@ class Display(Tkinter.Canvas):
 
     def attempt_reinit(self):
         return self._reinit
-        
+
     #########################################################################
-    
+
     def undraw(self):
         for connection in self.connections.values():
             connection.undraw()
@@ -2912,11 +2964,11 @@ class Display(Tkinter.Canvas):
             client.undraw()
 
     #########################################################################
-        
+
     def action(self, event):
 
         Trace.trace(6, "Starting action()")
-        
+
         x, y = self.canvasx(event.x), self.canvasy(event.y)
         overlapping = self.find_overlapping(x-1, y-1, x+1, y+1)
         Trace.trace(1, "%s %s" % (overlapping, (x, y)))
@@ -2941,15 +2993,15 @@ class Display(Tkinter.Canvas):
                     self.itemconfigure(connection.line, fill=connection.color)
 
         Trace.trace(6, "Finishing action()")
-                                                 
+
     def resize(self, event=None):
 
         Trace.trace(6, "Starting resize()")
-        
+
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
-        
+
         Trace.trace(1, "New dimensions: %s" % self.master.wm_geometry())
         self.master_geometry = self.master.geometry()
 
@@ -2966,7 +3018,7 @@ class Display(Tkinter.Canvas):
                 self.after_cancel(self.after_reposition_id)
         except AttributeError:
             pass  #Will get here when resize is called during __init__.
-        
+
         #If the user changed the window size, schedule an update.  We don't
         # want to do this every time the window changes sizes.  When a user
         # changes the size using the mouse MANY window change events are
@@ -2990,10 +3042,10 @@ class Display(Tkinter.Canvas):
     def reinitialize(self, event=None):
 
         Trace.trace(6, "Starting reinitialize()")
-        
+
         ### Keep in mind this function can be called from a Tk callback or
         ### from a SIGALRM signal being recieved.
-        
+
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
@@ -3015,13 +3067,13 @@ class Display(Tkinter.Canvas):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
-        
+
         self.postscript(file="/home/zalokar/entv.ps", pagewidth="8.25i")
 
     def window_killed(self, event):
 
         Trace.trace(6, "Starting window_killed()")
-        
+
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
@@ -3057,7 +3109,7 @@ class Display(Tkinter.Canvas):
     def visibility (self, event):
 
         Trace.trace(6, "Starting visibility()")
-        
+
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
@@ -3065,13 +3117,13 @@ class Display(Tkinter.Canvas):
         self.master_geometry = self.master.geometry()
 
         Trace.trace(6, "Finishing visibility()")
-        
+
     #########################################################################
 
     def reposition_canvas(self, force = None):
 
         Trace.trace(5, "Starting reposition_canvas()")
-        
+
         try:
             size = self.winfo_width(), self.winfo_height()
         except Tkinter.TclError:
@@ -3090,11 +3142,11 @@ class Display(Tkinter.Canvas):
             self.after_reposition_id = None
 
         Trace.trace(5, "Finishing reposition_canvas()")
-        
+
     def reposition_movers(self, number_of_movers=None):
 
         Trace.trace(7, "Starting reposition_movers()")
-        
+
         items = self.movers.values()
         if number_of_movers:
             N = number_of_movers
@@ -3102,14 +3154,14 @@ class Display(Tkinter.Canvas):
             N = len(items) #need this to determine positioning
         self.mover_label_width = None
         for mover in items:
-            mover.reposition(N)            
+            mover.reposition(N)
 
         Trace.trace(7, "Finishing reposition_movers()")
-         
+
     def reposition_clients(self):
 
         Trace.trace(7, "Starting reposition_clients()")
-        
+
         for client in self.clients.values():
             client.reposition()
 
@@ -3118,7 +3170,7 @@ class Display(Tkinter.Canvas):
     def reposition_connections(self):
 
         Trace.trace(7, "Starting reposition_connections()")
-        
+
         for connection in self.connections.values():
             connection.reposition()
 
@@ -3134,12 +3186,12 @@ class Display(Tkinter.Canvas):
         #If the user turned off animation, don't do it.
         #if not self.animate:
         try:
-            if self.master and self.master.entv_do_animation.get() == STILL: 
+            if self.master and self.master.entv_do_animation.get() == STILL:
                 return
         except AttributeError:
             #Deal with starting enstore_display.py directly.
             return
-        
+
         now = time.time()
         #### Update all connections.
         for connection in self.connections.values():
@@ -3166,7 +3218,7 @@ class Display(Tkinter.Canvas):
                  and words[2] in ["ACTIVE", "DRAINING", "SEEK", "MOUNT_WAIT"]:
 
                 return 0 #Not up-to-date.
-            
+
         return 1  #Up to date.
 
     #Called from join_thread().
@@ -3175,7 +3227,7 @@ class Display(Tkinter.Canvas):
         global status_request_threads
 
         Trace.trace(15, "Starting _join_thread()")
-        
+
         thread_lock.acquire()
 
         alive_list = []
@@ -3206,27 +3258,27 @@ class Display(Tkinter.Canvas):
     #These functions are all called from Tkinter callbacks.  Because they
     # can happen asynchronously to normal execution protect them with
     # display_lock (process_messages is slightly different).
-        
+
     #Called from self.after().
     def process_messages(self):
         t0 = time.time()
 
         Trace.trace(10, "Starting process_messages()")
-        
+
         if self.stopped: #If we should stop, then stop.
             Trace.trace(10, "Finishing process_messages() early")
             return
 
         #Only process the messages in the queue at this time.
         number = min(message_queue.len_queue(self.system_name), 1000)
-        
+
         #Try and only take a small time to do this.
         remember_number = number
         display_count = len(self.master.enstore_systems_enabled)
         wait_time = (MESSAGES_TIME * 0.001 / display_count + 1)
 
         while (number > 0 and (time.time() - t0) < (wait_time)):
-            
+
             #Words is a list of the split string command.
             command = self.get_valid_command()
             if command == "":
@@ -3271,7 +3323,7 @@ class Display(Tkinter.Canvas):
 
         Trace.trace(10, "Finishing process_messages() (%f sec/%d messages)" %
                     (time.time() - t0, remember_number - number))
-        
+
     #Called from self.after().
     def smooth_animation(self):
 
@@ -3301,11 +3353,11 @@ class Display(Tkinter.Canvas):
     #Called from self.after().
     def disconnect_clients(self):
         global request_queue
-        
+
         Trace.trace(5, "Starting disconnect_clients()")
 
         acquire(clients_lock, "clients_lock")
-        
+
         try:
             now = time.time()
             #### Check for unconnected clients
@@ -3325,7 +3377,7 @@ class Display(Tkinter.Canvas):
                         else:
                             #When we have a connection, but it is incorrect.
                             connection_client_name = connection.client.name
-                            
+
                         Trace.trace(2,
                                     "Found client discrepancy (%s != %s) " \
                                     "for %s" \
@@ -3337,7 +3389,7 @@ class Display(Tkinter.Canvas):
                         # reqest queue to find out what its state is and
                         # the client it might be talking to.
                         request_queue.put_queue(mover_name, self.system_name)
-                
+
                 if len(client.mover_names) > 0:
                     #If the mover has active connections, don't remove it
                     # from the display.
@@ -3376,7 +3428,7 @@ class Display(Tkinter.Canvas):
                         self.del_client_position(client_name)
                     except KeyError:
                         pass
-                    
+
                     #If the number of columns has changed, redraw so that
                     # everything gets located and sized correctly.
                     new_number = self.get_client_column_count()
@@ -3384,7 +3436,7 @@ class Display(Tkinter.Canvas):
                         display_lock.acquire()
                         self.reposition_canvas(force=1)
                         display_lock.release()
-                    
+
                     Trace.trace(2, "Client %s has been deleted" \
                                 % (client_name,))
         except (KeyboardInterrupt, SystemExit):
@@ -3414,7 +3466,7 @@ class Display(Tkinter.Canvas):
 
         try:
             self._join_thread()
-        
+
             self.after_join_id = self.after(JOIN_TIME, self.join_thread)
         except (KeyboardInterrupt, SystemExit):
             display_lock.release()
@@ -3452,7 +3504,7 @@ class Display(Tkinter.Canvas):
                         #We've already asked this Enstore system's inquisitor.
                         pass
                     elif not mover.offline_reason:
-                        
+
                         request_queue.put_queue('inquisitor', system_name)
                         already_requested.append(system_name)
         except (KeyboardInterrupt, SystemExit):
@@ -3479,7 +3531,7 @@ class Display(Tkinter.Canvas):
         display_lock.release()
 
         Trace.trace(5, "Finishing check_offline_reason()")
-        
+
     #Called from entv.handle_periodic_actions().
     #def handle_titling(self):
     #
@@ -3507,7 +3559,7 @@ class Display(Tkinter.Canvas):
     #    display_lock.release()
 
     #########################################################################
-    
+
     def create_movers(self, mover_names):
 
         Trace.trace(6, "Starting create_movers()")
@@ -3517,7 +3569,7 @@ class Display(Tkinter.Canvas):
         for mover_name in mover_names:
             if not self.get_mover_position(mover_name):
                 new_mover_names.append(mover_name)
-        
+
         #Shorten the number of new movers.
         N = len(new_mover_names)
 
@@ -3651,19 +3703,19 @@ class Display(Tkinter.Canvas):
         for i in range(len(self.client_positions) + 1)[1:]:
             i2 = self.client_positions[i].get_index(client_name)
             if i2 != None:
-                return (i, i2) #Tuple of the column number and row index. 
+                return (i, i2) #Tuple of the column number and row index.
 
         return None
 
     def get_client_name(self, position):
         return self.client_positions[position[0]].get_name(position[1])
-    
+
     def get_client_count(self, column = None):
         if column == None:
             columns_search = range(len(self.client_positions) + 1)[1:]
         else:
             columns_search = [column]
-        
+
         sum_value = 0
         for i in columns_search:
             sum_value = sum_value + self.client_positions[i].count()
@@ -3709,7 +3761,7 @@ class Display(Tkinter.Canvas):
         for i in range(len(self.mover_positions) + 1)[1:]:
             i2 = self.mover_positions[i].get_index(mover_name)
             if i2 != None:
-                return (i, i2) #Tuple of the column number and row index. 
+                return (i, i2) #Tuple of the column number and row index.
 
         return None
 
@@ -3731,13 +3783,13 @@ class Display(Tkinter.Canvas):
 
     def get_mover_name(self, position):
         return self.mover_positions[position[0]].get_name(position[1])
-    
+
     def get_mover_count(self, column = None):
         if column == None:
             columns_search = range(len(self.mover_positions) + 1)[1:]
         else:
             columns_search = [column]
-        
+
         sum_value = 0
         for i in columns_search:
             sum_value = sum_value + self.mover_positions[i].count()
@@ -3780,7 +3832,7 @@ class Display(Tkinter.Canvas):
             #Adjust the counter to the next limit.
             i2 = ((i2 + 1) % columns)
             if i2 > columns:
-                columns = 1 
+                columns = 1
 
         #Create the nessecary columns and set the limit on the number of
         # movers allowed in each of them.
@@ -3812,7 +3864,7 @@ class Display(Tkinter.Canvas):
         first_mover = self.movers.keys()[0]
         return self.movers[first_mover].position(len(self.movers),
                                                  position=position)
-        
+
     #########################################################################
 
     def toggle_library_managers_enabled(self):
@@ -3860,7 +3912,7 @@ class Display(Tkinter.Canvas):
         # as the others, even tough command_list is not used.  Thus,
         # suppress the unused args pychecker test.
         __pychecker__ = "no-argsused"
-        
+
         self.stopped = 1
         self.quit()
 
@@ -3871,7 +3923,7 @@ class Display(Tkinter.Canvas):
 
     def menu_command(self, command_list):
         menu_name = command_list[1]  #options, systems or library managers
-        
+
         if menu_name == "library_managers":
 
             acquire(clients_lock, "clients_lock")
@@ -3924,7 +3976,7 @@ class Display(Tkinter.Canvas):
                 exc, msg, tb = sys.exc_info()
                 traceback.print_exception(exc, msg, tb)
                 del tb  #Avoid resource leak.
-        
+
             release(clients_lock, "clients_lock")
 
     def client_command(self, command_list):
@@ -3936,7 +3988,7 @@ class Display(Tkinter.Canvas):
 
         try:
             client_name = normalize_name(command_list[1])
-            client = self.clients.get(client_name) 
+            client = self.clients.get(client_name)
             if client is None: #it's a new client
                 old_number = self.get_client_column_count()
 
@@ -3958,7 +4010,7 @@ class Display(Tkinter.Canvas):
             exc, msg, tb = sys.exc_info()
             traceback.print_exception(exc, msg, tb)
             del tb  #Avoid resource leak.
-        
+
         release(clients_lock, "clients_lock")
 
     def connect_command(self, command_list):
@@ -3994,11 +4046,11 @@ class Display(Tkinter.Canvas):
             del tb  #Avoid resource leak.
 
             release(clients_lock, "clients_lock")
-            return 
+            return
 
         try:
             #Draw the client.
-            
+
             client_name = normalize_name(command_list[2])
             client = self.clients.get(client_name)
             if not client: ## New client, we must add it
@@ -4016,7 +4068,7 @@ class Display(Tkinter.Canvas):
                 new_number = self.get_client_column_count()
                 if old_number != new_number:
                     self.reposition_canvas(force = 1)
-                                    
+
                 if client_name not in self.clients.keys():
                     print "ERROR: Newly added client not found in client list."
             else:
@@ -4033,7 +4085,7 @@ class Display(Tkinter.Canvas):
             del tb  #Avoid resource leak.
 
             release(clients_lock, "clients_lock")
-            return 
+            return
 
         try:
             #Draw the connection.
@@ -4116,22 +4168,22 @@ class Display(Tkinter.Canvas):
             exc, msg, tb = sys.exc_info()
             traceback.print_exception(exc, msg, tb)
             del tb  #Avoid resource leak.
-            
+
         release(clients_lock, "clients_lock")
-    
+
     def loaded_command(self, command_list):
 
         mover = self.movers.get(command_list[1])
-        
+
         if mover.state in ['IDLE']:
             Trace.trace(2, "An idle mover cannot have tape...ignore")
             return
         load_state = command_list[0] #=='loaded'
         what_volume = command_list[2]
         mover.load_tape(what_volume, load_state)
-        
+
     def state_command(self, command_list):
-        
+
         mover = self.movers.get(command_list[1])
 
         what_state = command_list[2]
@@ -4144,7 +4196,7 @@ class Display(Tkinter.Canvas):
     def error_command(self, command_list):
         #In this case "error" is from the point of view of the
         # inquisitor/schedular.  In entv it is the offline_reason.
-        
+
         mover = self.movers.get(command_list[1])
 
         what_error = string.join(command_list[2:])
@@ -4153,7 +4205,7 @@ class Display(Tkinter.Canvas):
     def unload_command(self, command_list):
 
         mover = self.movers.get(command_list[1])
-        
+
         # Ignore the passed-in volume name, unload
         ## any currently loaded volume
         mover.unload_tape()
@@ -4169,7 +4221,8 @@ class Display(Tkinter.Canvas):
         # command_list[4] = media or network
         # command_list[5] = BUFFER_SIZE
         # command_list[6] = CURRENT_TIME
-        
+        # command_list[7] = DRAINING
+
         #Get local handles for the objects that we will be using.
         mover = self.movers.get(command_list[1])
         try:
@@ -4198,11 +4251,18 @@ class Display(Tkinter.Canvas):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
+        try:
+            # set draining
+            mover.draining = bool(int(command_list[7]))
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            pass
 
         #Skip media transfers from the network connection update.
         connection = self.connections.get(mover.name, None)
         if connection and command_list[4] == "network":
-            #Calculate the new instantanious rate.
+            #Calculate the new instantaneous rate.
             try:
                 rate = mover.transfer_rate(command_list[2], command_list[6])
             except IndexError:
@@ -4225,8 +4285,8 @@ class Display(Tkinter.Canvas):
         self.create_movers(command_list[1:])
 
     def newconfig_command(self, command_list):
-        __pychecker__ = "no-argsused"  #Supress pychecker warning.
-        
+        __pychecker__ = "no-argsused"  # Suppress pychecker warning.
+
         self.reinitialize()
 
     #########################################################################
@@ -4262,17 +4322,17 @@ class Display(Tkinter.Canvas):
                  'disconnect' : {'function':disconnect_command, 'length':3,
                               'mover_check':1},
                  'loaded' : {'function':loaded_command, 'length':3,
-                              'mover_check':1},                             
+                              'mover_check':1},
                  'loading' : {'function':loaded_command, 'length':3,
-                              'mover_check':1},                              
+                              'mover_check':1},
                  'state' : {'function':state_command, 'length':3,
                               'mover_check':1},
                  'error' : {'function':error_command, 'length':3,
                             'mover_check': 1},
                  'unload': {'function':unload_command, 'length':3,
-                              'mover_check':1},                            
+                              'mover_check':1},
                  'transfer' : {'function':transfer_command, 'length':3,
-                              'mover_check':1},                               
+                              'mover_check':1},
                  'movers' : {'function':movers_command, 'length':2},
                  'newconfigfile' : {'function':newconfig_command, 'length':1}}
 
@@ -4440,7 +4500,7 @@ class Display(Tkinter.Canvas):
         _font_cache = {}
         #_image_cache = {}
 
-    #overloaded 
+    #overloaded
     def update(self):
         try:
             if self.winfo_exists():
@@ -4461,7 +4521,7 @@ class Display(Tkinter.Canvas):
         # reinitializations this should not happen.
         if self.master.state() == "withdrawn":
             self.reposition_canvas(force = True)
-        
+
         self.after_smooth_animation_id = self.after(ANIMATE_TIME,
                                                     self.smooth_animation)
         self.after_clients_id = self.after(UPDATE_TIME,
@@ -4494,7 +4554,7 @@ class Display(Tkinter.Canvas):
                 exc, msg, tb = sys.exc_info()
                 traceback.print_exception(exc, msg, tb)
                 del tb  #Avoid resource leak.
-            thread_lock.release()        
+            thread_lock.release()
 
 #########################################################################
 
