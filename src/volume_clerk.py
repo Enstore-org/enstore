@@ -1100,6 +1100,8 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                           jou=jouHome,
                                           max_connections=self.max_connections)
 
+        self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
+
 	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
 	self.parallelThreads = []
 	for i in range(self.numberOfParallelWorkers):
@@ -1267,9 +1269,9 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         required_bytes = max(long(min_remaining_bytes*SAFETY_FACTOR), MIN_LEFT)
 
         # build vito list into where clause
-        vito_q = ""
+        veto_q = ""
         for i in vol_veto_list:
-            vito_q = vito_q+" and label != '%s'"%(i)
+            veto_q = veto_q+" and label != '%s'"%(i)
 
         type_of_mover = mover.get('mover_type','Mover')
 
@@ -1284,36 +1286,106 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if type_of_mover == 'DiskMover':
             mover_ip_map = mover.get('ip_map', '')
 
-            q = "select * from volume \
-                where \
-                    label like '%s:%%' and \
-                    library = '%s' and \
-                    storage_group = '%s' and \
-                    file_family = '%s' and \
-                    wrapper = '%s' and \
-                    system_inhibit_0 = 'none' and \
-                    system_inhibit_1 = 'none' and \
-                    user_inhibit_0 = 'none' and \
-                    user_inhibit_1 = 'none' and \
-                    write_protected = 'n' \
-                    %s\
-                order by declared,label limit 10"%(mover_ip_map, library,
-                    storage_group, file_family, wrapper, vito_q)
+            q = """
+            SELECT block_size,
+                   capacity_bytes,
+                   declared,
+                   eod_cookie,
+                   label,
+                   first_access,
+                   last_access,
+                   library,
+                   media_type,
+                   non_del_files,
+                   remaining_bytes,
+                   sum_mounts,
+                   sum_rd_access,
+                   sum_rd_err,
+                   sum_wr_access,
+                   sum_wr_err,
+                   system_inhibit_0,
+                   system_inhibit_1,
+                   si_time_0,
+                   si_time_1,
+                   user_inhibit_0,
+                   user_inhibit_1,
+                   storage_group,
+                   file_family,
+                   wrapper,
+                   comment,
+                   write_protected,
+                   modification_time,
+                   COALESCE(active_files,0) AS active_files,
+                   COALESCE(deleted_files,0) AS deleted_files,
+                   COALESCE(unknown_files,0) AS unknown_files,
+                   COALESCE(active_bytes,0) AS active_bytes,
+                   COALESCE(deleted_bytes,0) AS deleted_bytes,
+                   COALESCE(unknown_bytes,0) AS unknown_bytes
+            FROM volume
+            WHERE label like '{}:%'
+              AND library = '{}'
+              AND storage_group = '{}'
+              AND file_family = '{}'
+              AND wrapper = '{}'
+              AND system_inhibit_0 = 'none'
+              AND system_inhibit_1 = 'none'
+              AND user_inhibit_0 = 'none'
+              AND user_inhibit_1 = 'none'
+              AND write_protected = 'n'
+              {}
+            ORDER BY declared,label limit 10
+            """.format(mover_ip_map, library,
+                       storage_group, file_family, wrapper, veto_q)
         else: # normal case
-            q = "select * from volume \
-                where \
-                    library = '%s' and \
-                    storage_group = '%s' and \
-                    file_family = '%s' and \
-                    wrapper = '%s' and \
-                    system_inhibit_0 = 'none' and \
-                    system_inhibit_1 = 'none' and \
-                    user_inhibit_0 = 'none' and \
-                    user_inhibit_1 = 'none' and \
-                    write_protected = 'n' \
-                    %s\
-                order by declared, label limit 10"%(library, storage_group,
-                    file_family, wrapper, vito_q)
+            q = """
+            SELECT block_size,
+                   capacity_bytes,
+                   declared,
+                   eod_cookie,
+                   label,
+                   first_access,
+                   last_access,
+                   library,
+                   media_type,
+                   non_del_files,
+                   remaining_bytes,
+                   sum_mounts,
+                   sum_rd_access,
+                   sum_rd_err,
+                   sum_wr_access,
+                   sum_wr_err,
+                   system_inhibit_0,
+                   system_inhibit_1,
+                   si_time_0,
+                   si_time_1,
+                   user_inhibit_0,
+                   user_inhibit_1,
+                   storage_group,
+                   file_family,
+                   wrapper,
+                   comment,
+                   write_protected,
+                   modification_time,
+                   COALESCE(active_files,0) AS active_files,
+                   COALESCE(deleted_files,0) AS deleted_files,
+                   COALESCE(unknown_files,0) AS unknown_files,
+                   COALESCE(active_bytes,0) AS active_bytes,
+                   COALESCE(deleted_bytes,0) AS deleted_bytes,
+                   COALESCE(unknown_bytes,0) AS unknown_bytes
+             FROM volume
+             WHERE library = '{}'
+               AND storage_group = '{}'
+               AND file_family = '{}'
+               AND wrapper = '{}'
+               AND system_inhibit_0 = 'none'
+               AND system_inhibit_1 = 'none'
+               AND user_inhibit_0 = 'none'
+               AND user_inhibit_1 = 'none'
+               AND write_protected = 'n'
+               {}
+             ORDER BY declared, label limit 10
+             """.format(library, storage_group,
+                        file_family, wrapper, veto_q)
         Trace.trace(20, "start query: %s"%(q))
         try:
             res = self.volumedb_dict.query_dictresult(q)
@@ -3129,8 +3201,6 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
 								  MY_NAME,
 								  self.keys)
 
-        #Setup the error handling to reconnect to the database if the
-        # connection is broken.
         self.set_error_handler(self.vol_error_handler)
         self.connection_failure = 0
 
@@ -3145,24 +3215,9 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
 
     def vol_error_handler(self, exc, msg, tb):
         __pychecker__ = "unusednames=tb"
-        self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg), 'traceback':str(tb)} )
 
-
-    # reconnect() -- re-establish connection to database
-    def reconnect(self, msg="unknown reason"):
-        try:
-            self.volumedb_dict.reconnect()
-            Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
-            self.connection_failure = 0
-        except:
-            Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
-                "Is database server running on %s:%d?"%(self.volumedb_dict.host,
-                self.volumedb_dict.port))
-            self.connection_failure = self.connection_failure + 1
-            if self.connection_failure > MAX_CONNECTION_FAILURE:
-                pass	# place holder for future RED BALL
 
     #### DONE
     def quit(self, ticket):
@@ -3192,14 +3247,12 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO,'Volume Clerk (re)starting')
             vc.serve_forever()
-        except e_errors.EnstoreError as exp:
-            vc.reconnect(exp)
+        except e_errors.EnstoreError:
             continue
         except SystemExit, exit_code:
-            vc.dict.close()
+            vc.volumedb_dict.close()
             sys.exit(exit_code)
         except:
             vc.serve_forever_error(vc.log_name)
-            vc.reconnect("paranoid")
             continue
     Trace.log(e_errors.ERROR,"Volume Clerk finished (impossible)")
