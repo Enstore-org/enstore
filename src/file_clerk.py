@@ -17,27 +17,28 @@ import string
 import sys
 import threading
 import time
+import traceback
 import types
 
 
 # enstore imports
-import traceback
-import callback
-import dispatching_worker
-import generic_server
-import monitored_server
-import enstore_constants
-import edb
 import Trace
-import e_errors
+import bfid_util
+import callback
 import configuration_client
-import hostaddr
-import event_relay_messages
-import enstore_functions3
-import udp_server
-import file_cache_status
+import dispatching_worker
+import edb
+import enstore_constants
 import enstore_files
 import enstore_functions2
+import enstore_functions3
+import event_relay_messages
+import e_errors
+import file_cache_status
+import generic_server
+import hostaddr
+import monitored_server
+import udp_server
 
 SEQUENTIAL_QUEUE_SIZE=enstore_constants.SEQUENTIAL_QUEUE_SIZE
 PARALLEL_QUEUE_SIZE=enstore_constants.PARALLEL_QUEUE_SIZE
@@ -180,7 +181,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 return None
 
         #Check bfid format.
-        if not enstore_functions3.is_bfid(bfid):
+        if not bfid_util.is_bfid(bfid):
             message = "%s: bfid %s not valid" % (MY_NAME, bfid,)
             ticket["status"] = (e_errors.WRONG_FORMAT, message)
             Trace.log(e_errors.ERROR, message)
@@ -1084,6 +1085,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         global isSFA
         FileClerkInfoMethods.__init__(self, csc)
 
+
         # find the brand
         Trace.log(e_errors.INFO, "find the brand")
         try:
@@ -1123,9 +1125,6 @@ class FileClerkMethods(FileClerkInfoMethods):
 			else:
 				Trace.log(e_errors.INFO,  "Failed to extract '%s' from configuration"%(AMQP_BROKER,))
 
-        #Set the brand.
-        self.set_brand(brand)
-
         #Retrieve database information from the configuration.
         Trace.log(e_errors.INFO,"determine dbHome and jouHome")
 
@@ -1159,10 +1158,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 	self.sequentialWorker.start()
 
 	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
-
-        self.bfid_lock = threading.Lock()
-        self.bfid_counter = 0
-        self.last_bfid_timestamp = int(time.time())
+        self.bfid_generator = bfid_util.BfidGenerator(brand)
 
 	self.parallelThreads = []
 	for i in range(self.numberOfParallelWorkers):
@@ -1208,14 +1204,12 @@ class FileClerkMethods(FileClerkInfoMethods):
     # set_brand(brand) -- set brand
 
     def set_brand(self, brand):
-        self.brand = brand
-        return
+        self.bfid_generator.set_brand(brand)
 
     def get_brand(self, ticket):
-        ticket['brand'] = self.brand
+        ticket['brand'] = self.bfid_generator.get_brand()
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        return
 
     #### DONE
     # A bit file id is defined to be a 64-bit number whose most significant
@@ -1223,18 +1217,7 @@ class FileClerkMethods(FileClerkInfoMethods):
     # to make it unique
 
     def unique_bit_file_id(self):
-        try:
-            self.bfid_lock.acquire()
-            bfid = int(time.time())
-            if bfid > self.last_bfid_timestamp :
-                self.bfid_counter = 0
-                self.last_bfid_timestamp=bfid
-            else:
-                self.bfid_counter += 1
-            bfid = self.last_bfid_timestamp*100000+self.bfid_counter%100000
-            return self.brand+str(bfid)
-        finally:
-            self.bfid_lock.release()
+        return self.bfid_generator.create()
 
     # register_copy(original, copy) -- register copy of original
     def register_copy(self, original, copy):
@@ -1311,18 +1294,10 @@ class FileClerkMethods(FileClerkInfoMethods):
         # does it have bfid?
         if ticket["fc"].has_key("bfid"):
             bfid = ticket["fc"]["bfid"]
-            # make sure the brand is right
-            if bfid[:len(self.brand)] != self.brand:
-                msg = "new_bit_file(): wrong brand %s (%s)"%(bfid, self.brand)
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
-            # make sure the bfid is right
-            if bfid[len(self.brand):].isdigit():
-                msg = "new_bit_file(): invalid bfid %s"%(bfid,)
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.ERROR, msg)
+            rc, reason = self.bfid_generator.check(bfid)
+            if not rc:
+                Trace.log(e_errors.ERROR, reason)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, reason)
                 self.reply_to_caller(ticket)
                 return
             # make sure the bfid does not exist
@@ -1447,9 +1422,9 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         if bfid[0] in string.letters:
             sequence = long(bfid[4:]+'L')
-            while self.filedb_dict.has_key(self.brand+str(sequence)):
+            while self.filedb_dict.has_key(self.bfid_generator.get_brand()+str(sequence)):
                 sequence = sequence + 1
-            bfid = self.brand+str(sequence)
+            bfid =self.bfid_generator.get_brand()+str(sequence)
 
         # extracting the values
         try:

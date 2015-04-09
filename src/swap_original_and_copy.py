@@ -8,6 +8,7 @@ import sys
 import os
 
 # enstore imports
+import bfid_util
 import duplication_util
 import enstore_functions3
 import pnfs
@@ -38,21 +39,21 @@ def get_normal_file_family(file_family):
 		return file_family
 
 	return  file_family[:copy_index]
-	
+
 def get_copy_file_family(file_family, count):
 	copy_index = file_family.find("_copy_")
 	if copy_index == -1:
 		#This was a normal file family.  Returning the new copy
 		# file family.
 		return "%s%s%s" % (file_family, "_copy_", count)
-	
+
 	#The file_family contains a copy value.  We are just going to
 	# reset it.  It may have been correct or incorrect, either way
 	# to work to find out which case it is, is more work than just
 	# setting it correct here.
 	normal = get_normal_file_family(file_family)
 	return "%s%s%s" % (normal, "_copy_", count)
-		
+
 
 #Internal swap, that does not do any verification or checking itself.
 def __swap_bfid(bfid):
@@ -71,7 +72,7 @@ def swap_bfid(bfid):
 	else:
 		print "%s is not a primary file" % (bfid,)
 		return 1
-	
+
 def swap_volume(vol):
 	# check if all files are primary
 	q = "select bfid from file, volume where file.volume = volume.id and label = '%s' and deleted = 'n';"%(vol)
@@ -129,7 +130,7 @@ def swap_volume(vol):
 		storage_group = volume_family.extract_storage_group(vol_info['volume_family'])
 		file_family = volume_family.extract_file_family(vol_info['volume_family'])
 		wrapper = volume_family.extract_wrapper(vol_info['volume_family'])
-		
+
 		if is_normal_file_family(file_family):
 			new_file_family = get_copy_file_family(file_family, highest_copy_count)
 			print "Volume %s will have file_family: %s" % \
@@ -149,14 +150,14 @@ def swap_volume(vol):
 			print "Volume %s already has %s file_family." % \
 			      (vol, file_family)
 
-	
+
 	#Now swap the volumes that just became primary volumes so they
 	# don't contain the _copy_# in the file family.
 	for label, volume_family_dict in labels.items():
 		storage_group = volume_family_dict['storage_group']
 		file_family = volume_family_dict['file_family']
 		wrapper = volume_family_dict['wrapper']
-		
+
 		if is_normal_file_family(file_family):
 			print "Volume %s already has %s file_family." % \
 			      (label, file_family,)
@@ -181,7 +182,7 @@ def main():
 	bfid_list = []
 	volume_list = []
 	for target in sys.argv[1:]:
-		if enstore_functions3.is_bfid(target):
+		if bfid_util.is_bfid(target):
 			bfid_list.append(target)
 		elif enstore_functions3.is_volume(target):
 			volume_list.append(target)
@@ -207,7 +208,7 @@ def main():
 		rtn2 = swap_volume(volume)
 
 	return rtn1 + rtn2
-	
+
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
 		usage()

@@ -19,6 +19,7 @@ import sys
 import types
 
 # enstore import
+import bfid_util
 import generic_client
 import option
 import time
@@ -1321,7 +1322,7 @@ def do_work(intf):
             # length of bfids change over time it is harder to
             # use length in regular expressions.
             ticket = ifc.find_file_by_pnfsid(intf.file)
-        elif enstore_functions3.is_bfid(intf.file):
+        elif bfid_util.is_bfid(intf.file):
             ticket = ifc.bfid_info(intf.file)
         else:
             ticket = ifc.find_file_by_path(intf.file)
