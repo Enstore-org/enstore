@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
+"""
+Keeps the system configuration information and provides it to the rest of the system.
+"""
 
 # system imports
 import sys
@@ -38,6 +36,9 @@ import udp_client
 MY_NAME = enstore_constants.CONFIGURATION_SERVER   #"CONFIG_SERVER"
 
 class ConfigurationDict:
+    """
+    Loads, updates configuration dictionary and provides configuration helper methods.
+    """
 
     def __init__(self):
         self.serverlist = {}
@@ -67,6 +68,13 @@ class ConfigurationDict:
     ### are the three functions used to read in the configuration file.
 
     def read_config(self, configfile):
+        """
+        Read configuration from the configuration file.
+
+        :type configfile: :obj:`str`
+        :arg configfile: configuration file name
+        :rtype: :obj:`tuple` (:obj:`str` - error code, :obj:`str` - details)
+        """
         self.configdict={}
         try:
             f = open(configfile,'r')
@@ -85,7 +93,7 @@ class ConfigurationDict:
 
         # Lint hack, otherwise lint can't see where configdict is defined.
         configdict = {}
-        del configdict 
+        del configdict
         configdict = {}
 
         try:
@@ -106,6 +114,13 @@ class ConfigurationDict:
         return (e_errors.OK, None)
 
     def verify_and_update_config(self):
+        """
+        Verifies that configuration file is syntactically correct and has no conflicts.
+        If no errors were detected updates current configuration.
+
+        :rtype: :obj:`tuple` (:obj:`str` - error code, :obj:`str` - details)
+        """
+
         self.serverlist={}
         conflict = 0
         for key in self.configdict.keys():
@@ -121,9 +136,9 @@ class ConfigurationDict:
                         self.configdict[key]['port'] = -1
                     # check if server is already configured
                     for configured_key in self.serverlist.keys():
-                        if (self.serverlist[configured_key][1] == 
-                            self.configdict[key]['hostip'] and 
-                            self.serverlist[configured_key][2] == 
+                        if (self.serverlist[configured_key][1] ==
+                            self.configdict[key]['hostip'] and
+                            self.serverlist[configured_key][2] ==
                             self.configdict[key]['port'] and
                             self.configdict[key]['port'] !=-1):
                             message = "Configuration Conflict detected "\
@@ -145,22 +160,28 @@ class ConfigurationDict:
             return(e_errors.CONFLICT, "Configuration conflict detected. "
                    "Check configuration file")
 
-        
+
 
         return (e_errors.OK, None)
 
-    # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile):
-        
+        """
+        Load configuration file.
+
+        :type configfile: :obj:`str`
+        :arg configfile: configuration file name
+        :rtype: :obj:`tuple` (:obj:`str` - error code, :obj:`str` - details)
+        """
+
         try:
             self.config_lock.acquire()
-            
+
             #Since we are loading a new configuration file,
             # 'known_config_servers' could change.  Set, system_name to None
             # so the next call to _get_system_name() resets this value.
             self.system_name = None
             self.cached_domains = None
-            
+
             status = self.read_config(configfile)
             if not e_errors.is_ok(status):
                 self.config_lock.release()   #Avoid deadlocks!
@@ -213,7 +234,7 @@ class ConfigurationDict:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         return copied_value
-        
+
     def get_dict_entry(self, skeyValue):
         copy_level = self.get_copy_level()  #Avoid holding both locks at once.
         self.config_lock.acquire()
@@ -264,7 +285,7 @@ class ConfigurationDict:
         return slist
 
     ## The following use member_lock instead of config_lock.
-    
+
     def get_config_load_timestamp(self):
         copy_level = self.get_copy_level()  #Avoid holding both locks at once.
         self.member_lock.acquire()
@@ -320,7 +341,7 @@ class ConfigurationDict:
         return
 
     ####################################################################
-    
+
     def get_movers_internal(self, ticket):
         ret = []
 	if ticket.has_key('library'):
@@ -332,7 +353,7 @@ class ConfigurationDict:
                     if not ticket['library']:
                         #If no library was specified, return all movers.
                         mv = {'mover' : srv,
-                              'address' : (item['hostip'], 
+                              'address' : (item['hostip'],
                                            item['port'])
                               }
                         ret.append(mv)
@@ -343,14 +364,14 @@ class ConfigurationDict:
                                 for i in item[key]:
                                     if i == ticket['library']:
                                         mv = {'mover' : srv,
-                                              'address' : (item['hostip'], 
+                                              'address' : (item['hostip'],
                                                           item['port'])
                                               }
                                         ret.append(mv)
                             else:
                                 if item[key] == ticket['library']:
                                     mv = {'mover' : srv,
-                                          'address' : (item['hostip'], 
+                                          'address' : (item['hostip'],
                                                        item['port'])
                                           }
                                     ret.append(mv)
@@ -366,6 +387,7 @@ class ConfigurationDict:
     # This function should only be called from _get_domain(), where the
     # thread safe locking is done.
     def __get_system_name(self):
+
         if self.system_name == None:
             try:
                 kcs = self.get_dict_entry('known_config_servers')
@@ -383,7 +405,7 @@ class ConfigurationDict:
         return self.system_name
 
     #Return the domains information in the configuration dictionary.
-    # Append to the valid_domains 
+    # Append to the valid_domains
     def _get_domains(self):
 
         self.member_lock.acquire()
@@ -394,7 +416,7 @@ class ConfigurationDict:
         #Release member_lock to prevent another thread from locking
         # config_lock and allowing for the possibility of a deadlock.
         self.member_lock.release()
-            
+
         if should_set_now:
             t0 = time.time()
             try:
@@ -402,12 +424,12 @@ class ConfigurationDict:
             except:
                 #domains = None # Some error.
                 domains = {}
-                
+
             if type(domains) == types.DictType:
                 #Add an empty list where we expect it if there isn't one.
                 if not domains.has_key('valid_domains'):
                     domains['valid_domains'] = []
-                
+
                 cached_domains = {}
                 #Put the domains into the reply ticket.
                 cached_domains['domains'] = domains
@@ -423,7 +445,7 @@ class ConfigurationDict:
                 # It calls get_dict_entry() which locks config_lock and
                 # could cause a deadlock between threads.
                 cached_domains['domains']['system_name'] = self.__get_system_name()
-                
+
                 self.member_lock.acquire()
                 self.cached_domains = cached_domains
                 self.member_lock.release()
@@ -433,16 +455,26 @@ class ConfigurationDict:
                 message = "excpected 'domains' in the configuration to be" \
                           " a dictionary not %s" % (type(domains),)
                 Trace.log(e_errors.ERROR, message)
-                
+
             Trace.trace(25, "_get_domains: extract time: %f" % (time.time() - t0,))
 
         return self.cached_domains
 
 class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
 			  generic_server.GenericServer):
+    """
+    Implements configuration server.
+    """
 
     def __init__(self, server_address, configfile = None):
-        
+        """
+
+        :type server_address: :obj:`tuple`
+        :arg server_address: (:obj:`str` - hostname or host IP, :obj:`int` - port number)
+        :type configfile: :obj:`str`
+        :arg configfile: configuration file
+        """
+
         # make a configuration dictionary
         ConfigurationDict.__init__(self)
         # load the config file user requested
@@ -455,12 +487,12 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         # does not use the generic_server __init__() function, so this must be
         # done expliticly (after the configfile is loaded).
         self.update_domains()
-        
+
         # default socket initialization - ConfigurationDict handles requests
         dispatching_worker.DispatchingWorker.__init__(self, server_address)
         self.request_dict_ttl = 10 # Config server is stateless,
                                    # duplicate requests don't hurt us.
-        
+
 	# set up for sending an event relay message whenever we get a
         # new config loaded
 	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(
@@ -470,24 +502,39 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 
 	# start our heartbeat to the event relay process
 	self.erc = event_relay_client.EventRelayClient(self)
-	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
+	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER,
 				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
 
-    #Called whenever a new configuration is loaded.
     def update_domains(self):
+        """
+        Called whenever a new configuration is loaded.
+        """
+
         # The other servers call the generic_server.__init__() function
         # to get hostaddr.update_domains function called.  The configuration
         # server does not use the generic_server.__init__() function, so
-        # this must be done expliticly (after the configfile is loaded).
+        # this must be done explicitely (after the configfile is loaded).
         domains = self._get_domains()
         if domains == None:
             domains = {}
         domains = domains.get('domains', {})
         hostaddr.update_domains(domains)
 
-    # Overridden dispatching_worker function.  This allows us to control
-    # which functions are started in parallel or not.
     def invoke_function(self, function, args=(), after_function = None):
+        """
+        Overridden dispatching_worker function.  This allows us to control
+        which functions are started in parallel or not.
+
+        :type function: :obj:`callable`
+        :arg function: The function to run in the thread.
+        :type args: :obj:`tuple`
+        :arg args: arguments.
+        :type after_function: :obj:`callable`
+        :arg after_function: function to run after function completes
+           after_function is only used if overloaded version in a server uses it.
+
+        """
+
         if function.func_name in ['dump', 'dump2']:
             if self.get_threaded_imp():
                 self.run_in_thread(None, function, args, after_function)
@@ -496,11 +543,16 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         else:
             dispatching_worker.DispatchingWorker.invoke_function(
                 self, function, args)
-        
+
     ####################################################################
-        
-    # just return the current value for the item the user wants to know about
+
     def lookup(self, ticket):
+        """
+        Send back to client the current value for the item the user wants to know about.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "lookup" work
+        """
         # everything is based on lookup - make sure we have this
         try:
             key="lookup"
@@ -527,15 +579,21 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 ticket = self.get_dict_entry(lookup)
             ticket['status'] = (e_errors.OK, None)
         except KeyError:
-            ticket = {"status": (e_errors.KEYERROR,
-                                     "Configuration Server: no such name: "
-                                     +repr(lookup))}
+            ticket['status'] = (e_errors.KEYERROR,
+                                "Configuration Server: no such name: "
+                                +repr(lookup))
 
         self.send_reply(ticket)
 
 
-    # return a list of the dictionary keys back to the user
     def get_keys(self, ticket):
+        """
+        Reply with a list of the dictionary keys.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "get_keys" work
+        """
+
         __pychecker__ = "unusednames=ticket"
 
         skeys = self.get_config_keys()
@@ -545,8 +603,8 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         self.send_reply(ticket)
 
 
-    # return a dump of the dictionary back to the user
     def __make_dump(self, ticket):
+
         Trace.trace(15, 'DUMP: \n' + str(ticket))
 
         ticket['status'] = (e_errors.OK, None)
@@ -559,15 +617,22 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         reply['dump'] = self.get_config_dict()
         #The following section places into the udp reply ticket information
         # to prevent the configuration_client from having to pull it
-        # down seperatly.
+        # down separately.
         reply['config_load_timestamp'] = self.get_config_load_timestamp()
         domains = self._get_domains()['domains']
         if domains != None:
             reply['domains'] = domains
-        
+
         return reply
 
     def dump(self, ticket):
+        """
+        Reply with a dump of the configuration dictionary
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "dump" work
+        """
+
         if not hostaddr.allow(ticket['callback_addr']):
             return None
 
@@ -583,26 +648,33 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             sock.close()
             if r:
                Trace.log(e_errors.ERROR,"Error calling write_tcp_obj. Callback addr. %s"%(addr,))
-            
+
         except:
             Trace.handle_error()
-            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,))
         return
 
     def dump2(self, ticket):
+        """
+        Reply with a dump of the configuration dictionary.
+        Another implementation.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "dump2" work
+        """
         reply = self.__make_dump(ticket)
         if reply == None:
             return
         self.send_reply_with_long_answer(reply)
-            
+
     # This was stolen from alarm client and modified to send alarm to alarm server.
     # Alarms do not work in configuration server as in any other enstore server.
     # Instead of being sent to log or alarm server they just get written to stdout.
-    def _alarm_func(self, alarm_server, log_server, pid, name, root_error, 
+    def _alarm_func(self, alarm_server, log_server, pid, name, root_error,
 		   severity, condition, remedy_type, args):
-        
+
 	if type(severity) == types.IntType:
-	    severity = e_errors.sevdict.get(severity, 
+	    severity = e_errors.sevdict.get(severity,
 					    e_errors.sevdict[e_errors.ERROR])
         ticket = {}
         ticket['work'] = "post_alarm"
@@ -617,7 +689,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 	log_msg = "%s, %s (severity : %s)"%(root_error, args, severity)
 
         u = udp_client.UDPClient()
-        
+
         #u.send(ticket, alarm_server, rcv_timeout=10)
         u.send_no_wait(ticket, alarm_server)
 
@@ -635,13 +707,19 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 root_error,
                 "%s"%(args,)
                 ]
-	smtplib.SMTP('localhost').sendmail(from_addr, [to_addr], "\n".join(msg)) 
-        
+	smtplib.SMTP('localhost').sendmail(from_addr, [to_addr], "\n".join(msg))
+
         # log it for posterity
         Trace.log(e_errors.ALARM, log_msg, Trace.MSG_ALARM)
 
-    # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
+        """
+        Reload the configuration dictionary, possibly from a new file.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "load" work
+        """
+
         my_alarm_server = self.configdict['alarm_server']
         reply_address = ticket['r_a'] # save reply address
 	try:
@@ -679,43 +757,68 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                                "configfile": ticket.get("configfile", "")
                                }
                               )
-                              
+
         else:
             Trace.log(e_errors.ERROR, "Configuration reload failed: %s" %
                       (ticket['status'],))
 
     def config_timestamp(self, ticket):
+        """
+        Reply with timestap of the time when the configuratiuon file was (re)loaded
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "config_timestamp" work
+        """
+
         ticket['config_load_timestamp'] = self.get_config_load_timestamp()
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-    # get list of the Library manager movers
-    ## XXX this function is misleadingly named - it gives movers for a
-    ## particular library as specified in ticket['library']
     def get_movers(self, ticket):
+        """
+        Reply with list of the Library manager movers.
+
+        !!! This function is misleadingly named - it gives movers for a
+        particular library as specified in ticket['library']
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "get_movers" work
+        """
+
 	ret = self.get_movers_internal(ticket)
-	self.reply_to_caller(ret)
+        ticket['movers'] = ret
+        ticket['status'] = (e_errors.OK, None)
+	self.reply_to_caller(ticket)
 
     def get_media_changer(self, ticket):
+        """
+        Reply with media changer configuration.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "get_media_changer" work
+        """
         #__pychecker__ = "unusednames=ticket"
-        
+
         movers = self.get_movers_internal(ticket)
-        ##print "get_movers_internal %s returns %s" % (ticket, movers)
         ret = ''
         for m in movers:
             mv_name = m['mover']
             ret =  self.get_dict_entry(mv_name).get('media_changer','')
             if ret:
                 break
-        self.reply_to_caller(ret)
-        
-    #get list of library managers
-    ### Not thread safe.  The ticket['r_a'] value isn't passed to
-    ### reply_to_caller() via ret, so the reply the client asked for may
-    ### not be what they get.
+        ticket['media_changer'] = ret
+	self.reply_to_caller(ticket)
+
     def get_library_managers(self, ticket):
+        """
+        Reply with list of library managers in configuration.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "get_library_managers" work
+        """
+
         __pychecker__ = "unusednames=ticket"
-        
+
         ret = {}
         for key in self.get_config_keys():
             index = string.find (key, ".library_manager")
@@ -724,15 +827,20 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 item = self.get_dict_entry(key)
                 ret[library_name] = {'address':(item['host'],item['port']),
 				     'name': key}
-        self.reply_to_caller(ret)
+        ticket['library_managers'] = ret
+        ticket['status'] = (e_errors.OK, None)
+	self.reply_to_caller(ticket)
 
-    #get list of media changers
-    ### Not thread safe.  The ticket['r_a'] value isn't passed to
-    ### reply_to_caller() via ret, so the reply the client asked for may
-    ### not be what they get.
     def get_media_changers(self, ticket):
+        """
+        Reply with list of media changers in configuration.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "get_media_changers" work
+        """
+
         __pychecker__ = "unusednames=ticket"
-        
+
         ret = {}
         for key in self.get_config_keys():
             index = string.find (key, ".media_changer")
@@ -742,15 +850,20 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 ret[media_changer_name] = {'address':(item['host'],
                                                       item['port']),
                                            'name': key}
-        self.reply_to_caller(ret)
+        ticket['media_changers'] = ret
+        ticket['status'] = (e_errors.OK, None)
+	self.reply_to_caller(ticket)
 
-    #get list of migrators
-    ### Not thread safe.  The ticket['r_a'] value isn't passed to
-    ### reply_to_caller() via ret, so the reply the client asked for may
-    ### not be what they get.
     def get_migrators(self, ticket):
+        """
+        Reply with list of migrators in configuration.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "get_migrators" work
+        """
+
         __pychecker__ = "unusednames=ticket"
-        
+
         ret = {}
         for key in self.get_config_keys():
             index = string.find (key, ".migrator")
@@ -759,8 +872,18 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 item = self.get_dict_entry(key)
                 ret[migrator] = {'address':(item['host'],item['port']),
 				     'name': key}
-        self.reply_to_caller(ret)
+        ticket['migrators'] = ret
+        ticket['status'] = (e_errors.OK, None)
+	self.reply_to_caller(ticket)
+
     def reply_serverlist( self, ticket):
+        """
+        Reply with list of servers in configuration.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "reply_serverlist" work
+        """
+
         __pychecker__ = "unusednames=ticket"
 
         try:
@@ -768,31 +891,47 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             ticket['status'] = (e_errors.OK, None)
         except:
             ticket['status'] = (e_errors.UNKNOWN, str(sys.exc_info()[1]))
-        
+
         self.reply_to_caller(ticket)
- 
+
     def get_dict_element(self, ticket):
+        """
+        Reply with configuration element defined by key "value" in request ticket.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "get_dict_element" work
+        """
         try:
             ticket['value'] = self.get_dict_entry(ticket['keyValue'])
             ticket['status'] = (e_errors.OK, None)
         except:
             ticket['status'] = (e_errors.UNKNOWN, str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
-    
-    # turn on / off threaded implementation
+
     def thread_on(self, ticket):
+        """
+        Turn on / off threaded implementation.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "thread_on" work
+        """
         key = ticket.get('on', 0)
         if key:
             key=int(key)
             if key != 0:
                 key = 1
         self.set_threaded_imp(key)
-        ret = {"status" : (e_errors.OK,
-                           "thread is set to %s" % (self.get_threaded_imp()))}
-        self.reply_to_caller(ret)
+        ticket['status'] = (e_errors.OK,
+                            "thread is set to %s" % (self.get_threaded_imp()))
+        self.reply_to_caller(ticket)
 
-    # change the copy level: 2 = deepcopy, 1 = copy, 0 = direct reference
     def copy_level(self, ticket):
+        """
+        Turn on / off threaded implementation.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: request containing "copy_level" work
+        """
         key = ticket.get('copy_level', 2)
         if key:
             key=int(key)
@@ -801,16 +940,19 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             elif key <= 0:
                 key = 0
         self.set_copy_level(key)
-        ret = {"status" : (e_errors.OK,
-                           "copy level set to %s" % (self.get_copy_level()))}
-        self.reply_to_caller(ret)
-        
+        ticket['status'] = (e_errors.OK,
+                            "copy level set to %s" % (self.get_copy_level()))
+        self.reply_to_caller(ticket)
 
 
-        
+
+
 
 class ConfigurationServerInterface(generic_server.GenericServerInterface):
-
+    """
+    Implements command interface to configuration server.
+    Defines legal commands.
+    """
     def __init__(self):
         # fill in the defaults for possible options
         self.config_file = ""
@@ -820,7 +962,7 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
     def valid_dictionaries(self):
         return generic_server.GenericServerInterface.valid_dictionaries(self) \
                + (self.configuration_options,)
-    
+
     configuration_options = {
         option.CONFIG_FILE:{option.HELP_STRING:"specify the config file",
                             option.VALUE_TYPE:option.STRING,
@@ -829,17 +971,19 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
                             }
         }
 
-# Call this function to enable trace output at start.
-# This is useful for debugging when traces can not be
-# enabled otherwise
-# I know this is not an elegant way.
-# 
 def enable_trace_at_start(levels):
+    """
+    Call this function to enable trace output at start.
+    This is useful for debugging when traces can not be
+    enabled otherwise.
+    I know this is not an elegant way.
+    """
+
     # levels - list of levels to enable
     for level in levels:
         Trace.print_levels[level]=1
 
-    
+
 if __name__ == "__main__":
     Trace.init(MY_NAME)
     # uncomment the line below to enable trace output at start
@@ -859,7 +1003,7 @@ if __name__ == "__main__":
     cs.handle_generic_commands(intf)
     # bomb out if we can't find the file
     statinfo = os.stat(intf.config_file)
-    
+
 
     while 1:
         try:
