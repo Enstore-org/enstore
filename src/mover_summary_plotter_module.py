@@ -188,9 +188,9 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             gnu_cmd.write(long_string)
             gnu_cmd.close()
             os.system("gnuplot %s"%(gnu_file_name))
-            os.system("convert -rotate 90 -modulate 80 %s %s"
+            os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                       % (ps_file_name, jpg_file_name))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(ps_file_name, stamp_jpg_file_name))
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(ps_file_name, stamp_jpg_file_name))
             os.unlink(gnu_file_name)
 
 

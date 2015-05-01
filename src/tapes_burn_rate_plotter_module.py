@@ -732,9 +732,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             #Make the plot and convert it to jpg.
             os.system("gnuplot < %s" % plot_filename)
-            os.system("convert -rotate 90  %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                       % (ps_filename, jpg_filename))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                       % (ps_filename, jpg_stamp_filename))
 
             #Cleanup the temporary files for this loop.

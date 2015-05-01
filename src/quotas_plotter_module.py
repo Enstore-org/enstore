@@ -47,9 +47,9 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         time_val = time.localtime(time.time() + (DAYS_AHEAD * DAY_IN_SECONDS))
         next_month = time.strftime("%Y-%m-%d %H:%M:%S", time_val)
-        
+
         plot_fp = open(plot_filename, "w")
-        
+
         plot_fp.write("set terminal postscript color solid\n")
         plot_fp.write("set output \"%s\"\n" % (ps_filename,))
         plot_fp.write("set title \"%s %s     Authorized=%s Quota=%s " \
@@ -102,7 +102,7 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
     def fill(self, frame):
 
-        #  here we create data points 
+        #  here we create data points
 
         edb = frame.get_configuration_client().get("database", {})
         db = pg.DB(host   = edb.get('dbhost', "localhost"),
@@ -191,7 +191,7 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             #Get the data from the database.
             res = acc_db.query(sql_cmd).getresult()
-            
+
             #Write out the datafile.
             pts_filename = os.path.join(self.temp_dir,
                                         "quotas_%s_%s.pts" % tuple(lib_sg))
@@ -210,12 +210,12 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 pts_fp.write(line + "\n")
 
             pts_fp.close()
-            
+
     def plot(self):
 
         for row in self.db_result:
             lib_sg = (row[0], row[1]) #(library, storage group)
-            
+
             plot_filename = os.path.join(self.temp_dir,
                                          "quotas_%s_%s.plot" % lib_sg)
             pts_filename = os.path.join(self.temp_dir,
@@ -257,7 +257,7 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 if blank == 0:
                     alarm = "NO BLANKS LEFT"
                 elif blank == 1:
-                    alarm = "1 BLANK LEFT" 
+                    alarm = "1 BLANK LEFT"
                 elif blank == 2:
                     alarm = "2 BLANKS LEFT"
                 elif written == 0:
@@ -280,14 +280,14 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             if rtn:
 		sys.stderr.write("gnuplot failed\n")
 		sys.exit(1)
-            
+
             # convert to jpeg
-            rtn = os.system("convert -rotate 90 -modulate 80 %s %s" %
+            rtn = os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s" %
                       (ps_filename, jpg_filename))
             if rtn:
                     sys.stderr.write("convert failed\n")
                     sys.exit(1)
-            rtn = os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
+            rtn = os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
                       (ps_filename, jpg_filename_stamp))
             if rtn:
                     sys.stderr.write("convert failed\n")
@@ -305,4 +305,4 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             except:
                 pass
 
-    
+

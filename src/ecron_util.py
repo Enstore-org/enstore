@@ -68,7 +68,7 @@ def last_weekday(d):
 	if d > 6:
 		d = 6
 	t = time.localtime(time.time())
-	tt = t[6] - d 
+	tt = t[6] - d
 	if tt <= 0:
 		tt = tt + 7
 	return time.strftime("%Y-%m-%d:%H:%M:%S", time.localtime(time.mktime((t[0], t[1], t[2] - tt, 0, 0, 0, 0, 0, 1))))
@@ -136,7 +136,7 @@ class EcronData:
 		# get a gnuplot
 		# need to put convert together here to make sure the files
 		# are ready before the conversion
-		(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(file,file,file,file))
+		(out, gp) = popen2.popen2("gnuplot; convert -flatten -background lightgray -rotate 90 %s.ps %s.jpg; convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(file,file,file,file))
 		if not start:
 			start = self.get_duration(name)
 		gp.write(gscript%(file, start, tomorrow(), name))

@@ -266,9 +266,9 @@ class Ntuple(BasicHistogram):
 
         #Make the plot and convert it to jpg.
         os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                   % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.
@@ -384,9 +384,9 @@ class Plotter:
 
         #Make the plot and convert it to jpg.
         os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                   % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.
@@ -964,9 +964,9 @@ class Histogram1D(BasicHistogram):
 
         #Make the plot and convert it to jpg.
         os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                   % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.
@@ -1041,9 +1041,9 @@ class Histogram1D(BasicHistogram):
 
         #Make the plot and convert it to jpg.
         os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                   % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.
@@ -1109,9 +1109,9 @@ class Histogram1D(BasicHistogram):
 
         #Make the plot and convert it to jpg.
         os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                   % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.
@@ -1322,9 +1322,9 @@ class Histogram2D(Histogram1D):
 
         #Make the plot and convert it to jpg.
         os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                   % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.
@@ -1398,9 +1398,9 @@ class Histogram2D(Histogram1D):
 
         #Make the plot and convert it to jpg.
         os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
                   % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.

@@ -71,8 +71,8 @@ set format x \"%m-%d\"
 set nokey
 plot \"$busy\" using 1:$ord t \"$drv in use\" w impulses" >$pltcmd
 	gnuplot $pltcmd
-	convert -rotate 90 $plt.ps $plt.jpg
-	convert -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
+	convert -flatten -background lightgray -rotate 90 $plt.ps $plt.jpg
+	convert -flatten -background lightgray -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
 	     }
 
 # function to generate utilization plots for a specific ADIC drive type
@@ -97,8 +97,8 @@ set format x \"%m-%d\"
 set nokey
 plot \"$busy\" using 1:$ord t \"$drv in use\" " >$pltcmd
 	gnuplot $pltcmd
-	convert -rotate 90 $plt.ps $plt.jpg
-	convert -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
+	convert -flatten -background lightgray -rotate 90 $plt.ps $plt.jpg
+	convert -flatten -background lightgray -geometry 120x120 -modulate 80 $plt.jpg ${plt}_stamp.jpg
 		}
 
 case $command in

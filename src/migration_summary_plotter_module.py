@@ -244,7 +244,7 @@ where ( /* We obviously need to include un-migrated tapes in the robot. */
         and
         library not like '%shelf%')
        or
-       (( /* Include migrated tapes without any entries in the 
+       (( /* Include migrated tapes without any entries in the
               migration_history table. */
           (select count(*)
               from migration_history mh2
@@ -373,7 +373,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                  #Don't set yrange if total_volumes is zero, otherwise the
                  # plot will fail from the error:
                  # "line 0: Can't plot with an empty y range!"
-                 
+
                  if plot_type != ACCUMULATED_NG:
                     plot_fp.write('set yrange [ %f : %f ]\n' % (miny,total_volumes * 1.1))
             else:
@@ -410,7 +410,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
         #Write out the plot line.
         plot_fp.write(plot_line)
-        
+
         plot_fp.close()
 
     #######################################################################
@@ -437,7 +437,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
     def fill(self, frame):
 
-        #  here we create data points 
+        #  here we create data points
 
         edb = frame.get_configuration_client().get("database", {})
         db = pg.DB(host   = edb.get('dbhost', "localhost"),
@@ -506,7 +506,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 today_closed = 0L
             else:
                 today_closed = row[4]
-            
+
             # Here we write the contents to the file.
             self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
                 row[0], today_started, today_completed, today_closed,
@@ -557,7 +557,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             print "Plotting %s accumulated_ng" % (key,)
             self._plot(key,ACCUMULATED_NG)
             print "Plotting %s accumulated_lg" % (key,)
-            self._plot(key,ACCUMULATED_LG)                      
+            self._plot(key,ACCUMULATED_LG)
             print "Plotting %s daily" % (key,)
             self._plot(key, DAILY)
 
@@ -588,16 +588,16 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 columns = [2, 3, 4]
             else:
                 columns = [0]  #What happens when we get here?
-            
+
             #Write the gnuplot command file(s).
             self.write_plot_file(plot_filename, self.pts_files[key].name,
                                  ps_filename, key, plot_type, columns, titles)
 
             #Make the plot and convert it to jpg.
             os.system("gnuplot < %s" % plot_filename)
-            os.system("convert -rotate 90  %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                       % (ps_filename, jpeg_filename))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                       % (ps_filename, jpeg_filename_stamp))
 
             #Cleanup the temporary files for this loop.

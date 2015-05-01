@@ -35,7 +35,7 @@ if __name__ == '__main__':
       print "configuration_server is not responding: %s"%(config_dict,)
       print "will use the old data"
    else:
-         
+
       inq = config_dict.get(enstore_constants.INQUISITOR, None)
 
       if inq:
@@ -53,10 +53,10 @@ if __name__ == '__main__':
                pnfs_host = None
          else:
             pnfs_host = None
-            
+
       else:
          pnfs_host = None
-      
+
    if pnfs_host:
       # copy data from pnfs host
       # this is hardcoded so far
@@ -73,7 +73,7 @@ if __name__ == '__main__':
    f = open(data)
    l = f.readline()
    started=finished=0
-   
+
    while l:
       #the line format is as YYYY-MM-DD:hh:mm:ss code
       t0,code = l.split()
@@ -81,7 +81,7 @@ if __name__ == '__main__':
       t1 = t0.split('-')
       t2 = t1[2].split(':')
       tm = []
-      
+
       for i in (t1[0],t1[1]):
          tm.append(int(i))
       for i in t2:
@@ -101,10 +101,10 @@ if __name__ == '__main__':
 	 dt = ft - st
 	 started = finished = 0
 	 d.append((st,dt, code))
-	 
+
       l = f.readline()
 
-   
+
    for i in d:
       if i[2] != 10:
          # data should not contain a beginnig code
@@ -149,5 +149,5 @@ if __name__ == '__main__':
    cmd.write("plot '%s' using 1:2 t '' with impulses lw 10\n"%(plot_data_file,))
    cmd.close()
    os.system("gnuplot %s"%(tmp_gnuplot_cmd))
-   os.system("convert -rotate 90 -modulate 80 %s %s"%(postscript_output, jpeg_output))
-   os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))
+   os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"%(postscript_output, jpeg_output))
+   os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))

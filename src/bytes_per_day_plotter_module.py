@@ -107,7 +107,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         if writes_only:
             for key in keys:
                 write_aggregates = self.total_values.get(key, {}).get('w', EMPTY_AGGREGATES)
-                
+
                 total_bytes = total_bytes + write_aggregates['sum']
                 #meansize = write_aggregates['average']
                 transfers = transfers + write_aggregates['count']
@@ -116,13 +116,13 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 meansize = total_bytes / transfers
             except ZeroDivisionError:
                 meansize = 0
-            
+
             title_label = "Written"
         else:
             for key in keys:
                 write_aggregates = self.total_values.get(key, {}).get('w', EMPTY_AGGREGATES)
                 read_aggregates = self.total_values.get(key, {}).get('r', EMPTY_AGGREGATES)
-                
+
                 total_bytes = total_bytes + read_aggregates['sum'] + write_aggregates['sum']
                 #meansize = read_aggregates['average'] + write_aggregates['average']
                 transfers = transfers + read_aggregates['count'] + write_aggregates['count']
@@ -131,7 +131,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 meansize = total_bytes / transfers
             except ZeroDivisionError:
                 meansize = 0
-        
+
             title_label = "Transfered"
 
         #Need the current time to add to the plot.
@@ -142,7 +142,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             title_target = str(key) #Should be a string already.
         #if hasattr(self, "extra_title_info"):
         #    title_target = "%s %s" % (title_target, self.extra_title_info)
-        
+
         plot_fp = open(plot_filename, "w+")
 
         plot_fp.write('set terminal postscript color solid\n')
@@ -201,14 +201,14 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.write('plot %s\n' % (plot_line,))
 
         plot_fp.close()
-        
+
 
     #Get the daily information from the DB and write it to a data file.
     def _fill(self, sql_cmd, adb):
         adb_res = adb.query(sql_cmd).getresult() #Get the values from the DB.
 
         self.store_dict = {}
-        
+
         for row in adb_res:
 
             #row[0] is the day
@@ -229,7 +229,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 self.store_dict[row[1]][row[0]] = {}
             self.store_dict[row[1]][row[0]][row[2]] = int(row[3])
 
-            
+
         #Key is either a mover, drive type or the literal "enstore".
         for key in self.store_dict.keys():
             #day is YYYY-mm-dd
@@ -249,7 +249,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                      read_sum
                 self.day_dict_w[day] = self.day_dict_w.get(day, 0L) + \
                                      write_sum
-                
+
                 self.store_dict[key][day]['c'] = self.day_dict[day]
                 self.store_dict[key][day]['cr'] = self.day_dict_r[day]
                 self.store_dict[key][day]['cw'] = self.day_dict_w[day]
@@ -268,7 +268,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     self.store_dict[key][day]['c'],
                     self.store_dict[key][day]['cw'],
                     self.store_dict[key][day]['cr'])
-                
+
                 #Write the information to the correct file.
                 self.pts_files_dict[key].write(line)
 
@@ -279,7 +279,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     #Get the summary information for the entire time period.
     def _fill2(self, sql_cmd, adb):
         adb_res = adb.query(sql_cmd).getresult() #Get the values from the DB.
-        
+
         for row in adb_res:
             #row[0] is either the mover, drive type or the literal "enstore"
             #row[1] is r for read or w for write
@@ -293,12 +293,12 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             self.total_values[row[0]][row[1]] = {'sum' : row[2],
                                                  'average' : row[3],
                                                  'count' : row[4]}
-            
+
 
     #######################################################################
     # The following functions must be defined by all plotting modules.
     #######################################################################
-        
+
     def book(self, frame):
         #Get cron directory information.
         cron_dict = frame.get_configuration_client().get("crons", {})
@@ -343,7 +343,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #
         #Get the bytes per day for each mover. ######################
         #
-        
+
         sql_cmd = "select date(encp_xfer.date) as day,mover,rw,sum(size) " \
                   "from encp_xfer " \
                   "where date(CURRENT_TIMESTAMP - interval '30 days') < date "\
@@ -363,7 +363,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #
         #Get the bytes per day for each media_type. ######################
         #
-        
+
         sql_cmd = "select date(encp_xfer.date) as day,drive_id,rw,sum(size) " \
                   "from encp_xfer " \
                   "where date(CURRENT_TIMESTAMP - interval '30 days') < date "\
@@ -379,7 +379,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                    "group by drive_id,rw " \
                    "order by drive_id,rw;"
         self._fill2(sql_cmd2, adb)
-        
+
         #
         #Get the bytes per day for the system. ######################
         #
@@ -454,9 +454,9 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             #Make the plot and convert it to jpg.
             os.system("gnuplot < %s" % plot_filename)
-            os.system("convert -rotate 90  %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                       % (ps_filename, jpg_filename))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                       % (ps_filename, jpg_stamp_filename))
 
 
@@ -472,7 +472,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         jpg_filename = os.path.join(self.plot_dir,
                                     "%senplot_bpd_w_month.jpg" % (self.output_fname_prefix))
         jpg_stamp_filename = os.path.join(self.plot_dir,
-                                          "%senplot_bpd_w_month_stamp.jpg" % (self.output_fname_prefix))        
+                                          "%senplot_bpd_w_month_stamp.jpg" % (self.output_fname_prefix))
 
         try:
             pts_filename = self.pts_files_dict["enstore"].name
@@ -486,17 +486,17 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                                   "enstore",
                                                   0, 0, 0, 0))
             self.pts_files_dict["enstore"].close()
-            
+
         #Write the gnuplot command file(s).
         self.write_plot_file(plot_filename, pts_filename, ps_filename,
                              "enstore", writes_only = True,
                              title_target = "Enstore")
-        
+
         #Make the plot and convert it to jpg.
         os.system("gnuplot < %s" % plot_filename)
-        os.system("convert -rotate 90  %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                   % (ps_filename, jpg_filename))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                   % (ps_filename, jpg_stamp_filename))
 
 
@@ -508,7 +508,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         jpg_filename = os.path.join(self.plot_dir,
                                     "%senplot_bpd_w.jpg" % (self.output_fname_prefix))
         jpg_stamp_filename = os.path.join(self.plot_dir,
-                                          "%senplot_bpd_w_stamp.jpg" % (self.output_fname_prefix))        
+                                          "%senplot_bpd_w_stamp.jpg" % (self.output_fname_prefix))
 
         try:
             pts_filename = self.pts_files_dict["enstore_all"].name
@@ -522,24 +522,24 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                                   "enstore",
                                                   0, 0, 0, 0))
             self.pts_files_dict["enstore_all"].close()
-            
+
         #Write the gnuplot command file(s).
         self.write_plot_file(plot_filename, pts_filename, ps_filename,
                              "enstore_all", writes_only = True,
                              title_target = "Enstore")
-        
+
         #Make the plot and convert it to jpg.
         os.system("gnuplot < %s" % plot_filename)
-        os.system("convert -rotate 90  %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                   % (ps_filename, jpg_filename))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                   % (ps_filename, jpg_stamp_filename))
 
 
 
         #Cleanup the temporary files.
         for key in self.pts_files_dict.keys():
-            
+
             try:
                 os.remove(plot_filename)
             except:
