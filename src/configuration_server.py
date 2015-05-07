@@ -75,7 +75,6 @@ class ConfigurationDict:
         :arg configfile: configuration file name
         :rtype: :obj:`tuple` (:obj:`str` - error code, :obj:`str` - details)
         """
-        self.configdict={}
         try:
             f = open(configfile,'r')
         except (OSError, IOError), msg:
