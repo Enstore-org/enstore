@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 4.2.2
-Release: 6
+Version: 5.0.0
+Release: 0
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -228,6 +228,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Thu May 07 2015  <moibenko@fnal.gov> -
+- new version 5.0.0, release 0.
 * Mon Mar 30 2015  <moibenko@fnal.gov> -
 - new release 4.2.2, release 6.
 * Thu Mar 26 2015  <moibenko@fnal.gov> -
