@@ -392,10 +392,10 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         """
         Returns list of library.storage_group counts.
         Throws exception in case of DB access issue.
+        :rtype: :obj:`dict` dictionary of volume counts keyed on sg.library
         """
         q = """
         select library || '.' || storage_group, count from sg_count
-        :rtype: :obj:`dict` dictionary of volume counts keyed on sg.library
         """
         result = {}
         try:
