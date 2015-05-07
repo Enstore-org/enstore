@@ -75,7 +75,7 @@ class RateKeeperPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     #######################################################################
     # The following functions must be defined by all plotting modueles.
     #######################################################################
-        
+
     def book(self, frame):
 
         #Get cron directory information.
@@ -99,11 +99,11 @@ class RateKeeperPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             self.smooth_num=self.get_parameter("smooth_num")
         if self.get_parameter("time_in_days"):
             self.time_in_days=self.get_parameter("time_in_days")
-            
+
     def fill(self, frame):
-        
-       #  here we create data points 
-        
+
+       #  here we create data points
+
         acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, {})
         db = pg.DB(host  = acc.get('dbhost', "localhost"),
                    dbname= acc.get('dbname', "accounting"),
@@ -138,7 +138,7 @@ class RateKeeperPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                           tr / n * BP15S_TO_TBPD,
                                           tw / n * BP15S_TO_TBPD,
                                           (tr+tw) / n * BP15S_TO_TBPD,
-                                          tnr / n * BP15S_TO_TBPD, 
+                                          tnr / n * BP15S_TO_TBPD,
                                           tnw / n * BP15S_TO_TBPD,
                                           (tnw+tnr) / n * BP15S_TO_TBPD))
                     tr, tw = 0.0, 0.0
@@ -151,7 +151,7 @@ class RateKeeperPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         db.close()
         self.data_file.close()
-        
+
     def plot(self):
 
         #The order of groups is important, because the indexes of this list
@@ -167,7 +167,7 @@ class RateKeeperPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                         "%s_rates.jpg" % (group,))
             jpg_stamp_filename = os.path.join(self.web_dir,
                                               "%s_rates_stamp.jpg" % (group,))
-        
+
             plot_filename = "%s/%s_ratekeeper_plot.plot" \
                             % (self.temp_dir, group)
 
@@ -178,9 +178,9 @@ class RateKeeperPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             #Make the plot and convert it to jpg.
             os.system("gnuplot < %s" % plot_filename)
-            os.system("convert -rotate 90  %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                       % (ps_filename, jpg_filename))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                       % (ps_filename, jpg_stamp_filename))
 
             #Cleanup the temporary files for this loop.
@@ -188,7 +188,7 @@ class RateKeeperPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 os.remove(plot_filename)
             except:
                 pass
-            
+
         #Cleanup the temporary files shared by all loops.
         try:
             os.remove(self.data_file.name)

@@ -17,54 +17,6 @@ import charset
 
 #######################################################################
 
-def is_bfid(bfid):
-
-    if type(bfid) == types.StringType:
-
-        #Older files that do not have bfid brands should only be digits.
-        result = re.search("^[0-9]{11,16}$", bfid)
-        if result != None:
-            return 1
-
-        #The only part of the bfid that is of constant form is that the last
-        # n characters are all digits.  There are no restrictions on what
-        # is in a brand or how long it can be (though there should be).
-        # Since, the bfid is based on its creation time, as time passes the
-        # number of digits in a bfid will grow.  (Assume 12 as minumum).
-        result = re.search("^[a-zA-Z0-9]*[0-9]{11,16}$", bfid)
-        if result != None:
-            return 1
-
-        #Allow for bfids of file copies.
-        #result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
-        #if result != None:
-        #    return 1
-
-        #Some older files (year 2000) have a long() "L" appended to
-        # the bfid.  This seems to be consistant between the file
-        # database and layers one & four.  So, return true in these cases.
-        result = re.search("^[0-9]{11,16}L{1}$", bfid)
-        if result != None:
-            return 1
-
-        #6 files on D0en have brands and the "L" appended to them.  They
-        # belong to PRF355, PRF532 and PRF545.
-        ## This part of the function should go away when those bfids go.
-        result = re.search("^[a-zA-Z0-9]*[0-9]{11,16}L{1}$", bfid)
-        if result != None:
-            return 1
-
-
-    return 0
-
-#def is_copy_bfid(bfid):
-#    if type(bfid) == types.StringType:
-#        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
-#        if result != None:
-#            return 1
-#
-#    return 0
-
 def is_volume(volume):
     #The format for ANSI labeled volumes should be 6 characters long:
     # characters 1 & 2: uppercase letters
@@ -170,59 +122,6 @@ def is_ip_addr(address):
             return 1
 
     return 0
-
-############################################################################
-
-def extract_brand(bfid):
-
-    if is_bfid(bfid):
-        #Older files that do not have bfid brands should only be digits.
-        #
-        #Some older files (year 2000) have a long() "L" appended to
-        # the bfid.  This seems to be consistant between the file
-        # database and layers one & four.  So, return true in these cases.
-        result = re.search("^[0-9]{13,15}L{0,1}$", bfid)
-        if result != None:
-            return ""
-
-        #The only part of the bfid that is of constant form is that the last
-        # n characters are all digits.  There are no restrictions on what
-        # is in a brand or how long it can be (though there should be).
-        # Since, the bfid is based on its creation time, as time passes the
-        # number of digits in a bfid will grow.  (Assume 14 as minumum).
-        result = re.search("[0-9]{13,15}$", bfid)
-        if result != None:
-            brand = bfid[:-(len(result.group()))]
-            if brand.isalnum():
-                return brand
-
-    return None
-
-def strip_brand(bfid):
-
-    if is_bfid(bfid):
-        #Older files that do not have bfid brands should only be digits.
-        #
-        #Some older files (year 2000) have a long() "L" appended to
-        # the bfid.  This seems to be consistant between the file
-        # database and layers one & four.  So, return true in these cases.
-        result = re.search("^[0-9]{13,15}L{0,1}$", bfid)
-        if result != None:
-            return bfid
-
-        #The only part of the bfid that is of constant form is that the last
-        # n characters are all digits.  There are no restrictions on what
-        # is in a brand or how long it can be (though there should be).
-        # Since, the bfid is based on its creation time, as time passes the
-        # number of digits in a bfid will grow.  (Assume 14 as minumum).
-        result = re.search("[0-9]{13,15}$", bfid)
-        if result != None:
-            brand = bfid[:-(len(result.group()))]
-            if brand.isalnum():
-                return bfid[-(len(result.group())):]
-
-    return None
-
 
 def extract_file_number(location_cookie):
 

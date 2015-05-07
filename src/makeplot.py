@@ -59,7 +59,7 @@ def get_rate_info():
     #Get the configuration from the configuration server.
     csc = configuration_client.ConfigurationClient()
     ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
-    
+
     dname= ratekeep.get('dir', 'MISSING')
     tmp_dir  = ratekeep.get('tmp', 'MISSING')
     ratekeeper_name = ratekeep.get('name','MISSING')
@@ -68,7 +68,7 @@ def get_rate_info():
     ps_filename = ratekeep.get('ps','MISSING')
     jpg_filename = ratekeep.get('jpg','MISSING')
     jpg_stamp_filename = ratekeep.get('stamp','MISSING')
-    
+
     if dname == 'MISSING':
         print "Unable to determine the log directory."
         sys.exit(1)
@@ -82,7 +82,7 @@ def get_rate_info():
             ratekeeper_name = enstore_functions2.strip_node(ratekeeper_host)
     if rate_nodes == 'MISSING':
         rate_nodes = ''
-        
+
     if ps_filename == 'MISSING':
         print "Unable to determine the ps output filename."
         sys.exit(1)
@@ -238,7 +238,7 @@ if __name__ == "__main__":
         except IOError:
             pass
         sys.exit(1)
-    
+
     log_dir, tmp_dir, sys_name, rate_nodes, ps_filename_template, \
           jpg_filename_template, jpg_stamp_filename_template = get_rate_info()
     if not os.path.exists(log_dir):
@@ -255,7 +255,7 @@ if __name__ == "__main__":
         time_in_days = int(sys.argv[sys.argv.index("-t") + 1])
     else:
         time_in_days = 2
-    
+
     rate_log_files = filter_out_files(sys_name, log_dir, time_in_days)
 
     if not rate_log_files:
@@ -333,12 +333,12 @@ if __name__ == "__main__":
             except IOError:
                 pass
             sys.exit()
-            
+
         os.system("gnuplot < %s" % plot_filename[group])
-        
-        os.system("convert -rotate 90  %s %s\n" % (ps_filename[group],
+
+        os.system("convert -flatten -background lightgray -rotate 90  %s %s\n" % (ps_filename[group],
                                                    jpg_filename[group]))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                   % (ps_filename[group], jpg_stamp_filename[group]))
 
     #Close the files.

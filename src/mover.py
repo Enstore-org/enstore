@@ -999,8 +999,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         """
         x = ticket
-        out_ticket = {'status':(e_errors.OK,None)}
-        self.reply_to_caller(out_ticket)
+        ticket['status'] = (e_errors.OK,None)
+        self.reply_to_caller(ticket)
         self.dump_vars()
 
     def dump_vars(self, header=None):
@@ -1991,6 +1991,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         sys.exit(0)
         Trace.alarm(e_errors.ALARM, "Could not exit! Sys.exit did not work")
 
+
+    def _reinit(self):
+        """
+        Overridden from generic server
+        to set variables if configuration was reloaded
+        """
+
+        encp_dict = self.csc.get('encp')
+        if encp_dict:
+            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
+
+
     def send_error_and_restart(self, err = (None, None), do_restart=1):
         """
         Send error message and restart.
@@ -2028,8 +2040,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             res = self.device_dump(sendto)	# take default notify
 
-        t = {"status":(e_errors.OK, res)}
-        self.reply_to_caller(t)
+        ticket['status'] = (e_errors.OK, res)
+        self.reply_to_caller(ticket)
 	return
 
     def device_dump(self, sendto=None, notify=['enstore-admin@fnal.gov']):
@@ -4615,10 +4627,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.t0 = time.time()
         self.crc_seed = self.initial_crc_seed
-        encp_dict = self.csc.get('encp', None)
-        if encp_dict:
-            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
-        if ticket.has_key('crc_seed'):
+        if 'crc_seed' in ticket:
             crc_seed = int(ticket['crc_seed'])
             if crc_seed == 1 or crc_seed == 0:
                 self.crc_seed = crc_seed
@@ -6899,8 +6908,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
-
-        self.reply_to_caller(tick)
+        ticket.update(tick)
+        self.reply_to_caller(ticket)
         #self.log_processes(logit=1)
         return
 
@@ -6953,7 +6962,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(e_errors.INFO, "The mover is set to state %s"%(state_name(self.state),))
         self.create_lockfile()
         out_ticket = {'status':(e_errors.OK,None),'state':state_name(self.state), 'pid': os.getpid()}
-        self.reply_to_caller(out_ticket)
+        ticket.update(out_ticket)
+        self.reply_to_caller(ticket)
         if save_state is HAVE_BOUND:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
 
@@ -6967,11 +6977,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
         x = ticket # to trick pychecker
         if self.state != OFFLINE:
-            out_ticket = {'status':("EPROTO","Not OFFLINE")}
-            self.reply_to_caller(out_ticket)
+            ticket['status'] =("EPROTO","Not OFFLINE")
+            self.reply_to_caller(ticket)
             return
-        out_ticket = {'status':(e_errors.OK,None)}
-        self.reply_to_caller(out_ticket)
+        ticket['status'] = (e_errors.OK,None)
+        self.reply_to_caller(ticket)
         ## XXX here we need to check if tape is mounted
         ## if yes go to have bound, NOT idle AM
         Trace.trace(11,"check lockfile %s"%(self.check_lockfile(),))
@@ -6989,7 +6999,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
         self.start_draining(ticket)
         out_ticket = {'status':(e_errors.OK,None),'state':self.state}
-        self.reply_to_caller(out_ticket)
+        ticket.update(out_ticket)
+        self.reply_to_caller(ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket)
@@ -7011,8 +7022,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         Trace.log(e_errors.INFO, "Mover has received a quit command")
         self.start_draining(ticket)
-        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
-        self.reply_to_caller(out_ticket)
+        ticket['status'] = (e_errors.OK,None)
+        ticket['state'] = self.state
+
+        self.reply_to_caller(ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket, do_restart=0)
@@ -7044,7 +7057,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if ret['status'][0] != e_errors.OK:
                 Trace.alarm(e_errors.WARNING,"clean request returned %s"%(ret['status'],))
             self.state = save_state
-        self.reply_to_caller(ret)
+        ticket.update(ret)
+        self.reply_to_caller(ticket)
 
 
 class MoverInterface(generic_server.GenericServerInterface):
@@ -7085,8 +7099,8 @@ class DiskMover(Mover):
 
         """
         x =ticket # to trick pychecker
-        t = {"status":(e_errors.ERROR, "not implemented")}
-        self.reply_to_caller(t)
+        ticket['status'] = (e_errors.ERROR, "not implemented")
+        self.reply_to_caller(ticket)
 	return
 
     def __idle(self):
@@ -7575,11 +7589,8 @@ class DiskMover(Mover):
 
         self.t0 = time.time()
         self.crc_seed = self.initial_crc_seed
-        encp_dict = self.csc.get('encp', None)
-        if encp_dict:
-            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
 
-        if ticket.has_key('crc_seed'):
+        if 'crc_seed' in ticket:
             crc_seed = int(ticket['crc_seed'])
             if crc_seed == 1 or crc_seed == 0:
                 self.crc_seed = crc_seed
@@ -8356,7 +8367,8 @@ class DiskMover(Mover):
                  'client': self.client_ip,
                  }
 
-        self.reply_to_caller(tick)
+        ticket.update(tick)
+        self.reply_to_caller(ticket)
         return
 
 if __name__ == '__main__':

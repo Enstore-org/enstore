@@ -82,7 +82,6 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 			Trace.log(e_errors.ERROR, "can not find database key in configuration")
 			sys.exit(1)
 
-		self.connection_failure = 0
 		file_clerk.MY_NAME = MY_NAME
 		volume_clerk.MY_NAME = MY_NAME
 
@@ -90,28 +89,21 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 		self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
 		self.max_connections         =  self.numberOfParallelWorkers+1
 
-		try:
-			self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host','localhost'),
-							  port=dbInfo.get('db_port',8888),
-							  user=dbInfo.get('dbuser_reader','enstore_reader'),
-							  database=dbInfo.get('dbname','enstoredb'),
-							  auto_journal=0,
-							  max_connections=self.max_connections)
-			self.filedb_dict  = edb.FileDB(host=dbInfo.get('db_host','localhost'),
-						       port=dbInfo.get('db_port',8888),
-						       user=dbInfo.get('dbuser_reader','enstore_reader'),
-						       database=dbInfo.get('dbname','enstoredb'),
-						       auto_journal=0,
-						       max_connections=self.max_connections,
-						       rdb=self.volumedb_dict.db)
-			self.db = self.volumedb_dict.db
-		except:
-			exc_type, exc_value = sys.exc_info()[:2]
-			message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-			Trace.log(e_errors.ERROR, message)
-			Trace.alarm(e_errors.ERROR, message, {})
-			Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
-			sys.exit(1)
+		self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host','localhost'),
+						  port=dbInfo.get('db_port',8888),
+						  user=dbInfo.get('dbuser_reader','enstore_reader'),
+						  database=dbInfo.get('dbname','enstoredb'),
+						  auto_journal=0,
+						  max_connections=self.max_connections)
+		self.filedb_dict  = edb.FileDB(host=dbInfo.get('db_host','localhost'),
+					       port=dbInfo.get('db_port',8888),
+					       user=dbInfo.get('dbuser_reader','enstore_reader'),
+					       database=dbInfo.get('dbname','enstoredb'),
+					       auto_journal=0,
+					       max_connections=self.max_connections)
+
+		self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
+		self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
 		self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
 		self.parallelThreads = []
@@ -132,6 +124,10 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 			Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
 			self.parallelThreadQueue.put([function.__name__, args])
 
+	def close(self):
+	    self.filedb_dict.close()
+	    self.volume_dict.close()
+
 
 	def reinit(self):
 		Trace.log(e_errors.INFO, "(Re)initializing server")
@@ -146,36 +142,8 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 
 	def info_error_handler(self, exc, msg, tb):
 		__pychecker__ = "unusednames=tb"
-		# is it PostgreSQL connection error?
-		#
-		# This is indeed a OR condition implemented in if-elif-elif-...
-		# so that each one can be specified individually
-		if exc == edb.pg.ProgrammingError and str(msg)[:13] == 'server closed':
-			self.reconnect(msg)
-		elif exc == ValueError and str(msg)[:13] == 'server closed':
-			self.reconnect(msg)
-		elif exc == TypeError and str(msg)[:10] == 'Connection':
-			self.reconnect(msg)
-		elif exc == ValueError and str(msg)[:13] == 'no connection':
-			self.reconnect(msg)
 		self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
 			'exc_type':str(exc), 'exc_value':str(msg)} )
-
-	# reconnect() -- re-establish connection to database
-	def reconnect(self, msg="unknown reason"):
-		try:
-			self.volumedb_dict.reconnect()
-			Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
-			self.connection_failure = 0
-			self.db = self.volumedb_dict.db
-			self.filedb_dict.db = self.db
-		except:
-			Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
-				"Is database server running on %s:%d?"%(self.filedb_dict.host,
-				self.filedb_dict.port))
-			self.connection_failure = self.connection_failure + 1
-			if self.connection_failure > MAX_CONNECTION_FAILURE:
-				pass	# place holder for future RED BALL
 
 	# The following are local methods
 	# get a port for the data transfer
@@ -210,10 +178,6 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 			return 0
 		return 1
 
-	# close the database connection
-	def close(self):
-		self.db.close()
-		return
 
 	####################################################################
 
@@ -224,7 +188,6 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 
 	# These need confirmation
 	def quit(self, ticket):
-		self.db.close()
 		for t in self.parallelThreads:
 			self.parallelThreadQueue.put(None)
 		for t in self.parallelThreads:
@@ -610,24 +573,12 @@ if __name__ == '__main__':
 		try:
 			Trace.log(e_errors.INFO, "Info Server (re)starting")
 			infoServer.serve_forever()
-		except edb.pg.Error, exp:	# does it work?
-			infoServer.reconnect(exp)
-			continue
-		except edb.pg.ProgrammingError, exp:
-			infoServer.reconnect(exp)
-			continue
-		except edb.pg.InternalError, exp:
-			infoServer.reconnect(exp)
-			continue
-		except ValueError, exp:
-			infoServer.reconnect(exp)
+		except (e_errors.EnstoreError, ValueError):
 			continue
 		except SystemExit, exit_code:
-			infoServer.db.close()
+			infoServer.close()
 			sys.exit(exit_code)
 		except:
-			#infoServer.serve_forever_error(infoServer.log_name)
-			Trace.handle_error()
-			infoServer.reconnect("paranoid")
+			infoServer.serve_forever_error(string.upper(MY_NAME))
 			continue
 

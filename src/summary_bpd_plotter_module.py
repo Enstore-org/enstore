@@ -51,7 +51,7 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
     #######################################################################
     # The following functions must be defined by all plotting modules.
     #######################################################################
-    
+
     def book(self, frame):
 
         #Get cron directory information.
@@ -78,7 +78,7 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
         self.web_dir = os.path.join(self.html_dir, WEB_SUB_DIRECTORY)
         if not os.path.exists(self.web_dir):
             os.makedirs(self.web_dir)
-            
+
 
     def fill(self, frame):
 
@@ -104,7 +104,7 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
         for name in go_list:
             values = config_servers_dict[name]
             csc = configuration_client.ConfigurationClient(values)
-            
+
             ###
             ### Get information from the Accounting Database.
             ###
@@ -172,7 +172,7 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
                                                 0, 0, 0, 0))
                 self.pts_files_dict[key].close()
                 pts_filenames.append(pts_filename) #Don't forget to add this!
-            
+
 
         #Need to reverse the order after the reverse in fill() so that they
         # are plotted correctly.
@@ -186,12 +186,12 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
                              self.extra_title_info,
                              title_target = self.extra_title_info,
                              total_only = True)
-        
+
         #Make the plot and convert it to jpg.
         os.system("gnuplot < %s" % plot_filename)
-        os.system("convert -rotate 90  %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                   % (ps_filename, jpg_filename))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                   % (ps_filename, jpg_stamp_filename))
 
 
@@ -223,7 +223,7 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
                                                 0, 0, 0, 0))
                 self.pts_files_dict[key].close()
                 pts_filenames.append(pts_filename) #Don't forget to add this!
-            
+
 
         #Need to reverse the order after the reverse in fill() so that they
         # are plotted correctly.  We don't need to reverse these here.
@@ -239,10 +239,10 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
                              writes_only = True,
                              title_target = self.extra_title_info,
                              total_only = True)
-        
+
         #Make the plot and convert it to jpg.
         os.system("gnuplot < %s" % plot_filename)
-        os.system("convert -rotate 90  %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
                   % (ps_filename, jpg_filename))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                   % (ps_filename, jpg_stamp_filename))

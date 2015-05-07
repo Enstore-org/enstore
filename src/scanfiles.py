@@ -23,6 +23,7 @@ import re
 
 
 # enstore modules
+import bfid_util
 import info_client
 import configuration_client
 import option
@@ -66,7 +67,7 @@ class ThreadWithResult(threading.Thread):
 
         #Tell the main thread that this thread is done.
         self.is_joinable = True
-        
+
         # and now the thread exits
 
     #The threading.Thread.join() function doesn't handle singals while waiting.
@@ -147,7 +148,7 @@ def cleanup_objects():
     new_list = gc.get_objects()
     new_len = len(new_list)
     del new_list[:]
-    
+
     #Force garbage collection while the display is off while awaiting
     # initialization.
     gc.collect()
@@ -180,7 +181,7 @@ def cleanup_objects():
                     i = i + 1
             """
         if new_len - old_len >= 100:
-            #Only return true if 
+            #Only return true if
             return True
 
     return None
@@ -307,7 +308,7 @@ def layer_file(f, n):
         return os.path.join(pn, ".(use)(%d)(%s)" % (n, fn))
 
 def id_file(f):
-    #We need to be careful that a .(access)() file does not get passed here. 
+    #We need to be careful that a .(access)() file does not get passed here.
     pn, fn = os.path.split(f)
     return os.path.join(pn, ".(id)(%s)" % (fn, ))
 
@@ -337,7 +338,7 @@ def get_database(f):
     #err = []
     #warn = []
     #info = []
-    
+
     db_a_dirpath = namespace.get_directory_name(f)
     database_path = database_file(db_a_dirpath)
 
@@ -498,7 +499,7 @@ def get_layer_4(f):
     err = []
     warn = []
     info = []
-    
+
     # get xref from layer 4 (?)
     try:
         layer4 = get_layer(layer_file(f, 4))
@@ -554,7 +555,7 @@ def get_layer_4(f):
 
 	MAX_L4_LINES = 11
         if len(layer4) > MAX_L4_LINES:
-            err.append("extra layer 4 lines detected")            
+            err.append("extra layer 4 lines detected")
 
     return l4, (err, warn, info)
 
@@ -593,18 +594,18 @@ def verify_filedb_info(fr):
         err.append('not in db')
     else:  #elif not e_errors.is_ok(fr):
         err.append('file db error (%s)' % (fr['status'],))
-    
+
     return (err, warn, info)
-    
+
 def get_filedb_info(bfid):
-    
+
     err = []
     warn = []
     info = []
 
     if not bfid:
         return None, (err, warn, info)
-    
+
     # Get file database information.
     fr = infc.bfid_info(bfid)
     (err, warn, info) = verify_filedb_info(fr)
@@ -629,7 +630,7 @@ def verify_volumedb_info(vr):
         err.append('volume not in db')
     else:  #elif not e_errors.is_ok(fr):
         err.append('volume db error (%s)' % (vr['status'],))
-    
+
     return (err, warn, info)
 
 def get_volumedb_info(volume):
@@ -640,7 +641,7 @@ def get_volumedb_info(volume):
 
     if not volume:
         return None, (err, warn, info)
-    
+
     # file_family and library
     try:
         #Get the volume specific information.
@@ -684,10 +685,10 @@ def get_volumedb_info(volume):
                     del vol_info[volume]['eod_cookie']
                 except KeyError:
                     pass
-                
+
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted volume')
-        
+
     return vr, (err, warn, info)
 
 def get_stat(f):
@@ -714,7 +715,7 @@ def get_stat(f):
     ### is busy and the lack of responce looks like a 'does not exist' responce.
     ### This can lead 'invalid directory entry' situation, but in reality
     ### it is a false negative.
-    
+
     #Do one stat() for each file instead of one for each os.path.isxxx() call.
     for i in range(2):
         try:
@@ -722,7 +723,7 @@ def get_stat(f):
 
             ##signal.alarm(0)
             ##alarm_lock.release()
-            
+
             #On success return immediatly.
             return f_stats, (err, warn, info)
         except OSError, msg:
@@ -733,7 +734,7 @@ def get_stat(f):
 
     ##signal.alarm(0)
     ##alarm_lock.release()
-    
+
     if msg.errno == errno.ENOENT:
 
         #Before blindly returning this error, first check the directory
@@ -771,7 +772,7 @@ def get_sfsid(f):
     if is_access_name(f):
         sfsid = os.path.basename(f)[10:-1]
         return sfsid, (err, warn, info)
-    
+
     #Get the id of the file or directory.
     try:
         fname = id_file(f)
@@ -790,7 +791,7 @@ def get_parent_id(f):
     err = []
     warn = []
     info = []
-    
+
     #Get the parent id.
     try:
         dname = parent_file(f)
@@ -809,7 +810,7 @@ def get_parent_dir_id(f):
     err = []
     warn = []
     info = []
-    
+
     #Get the id of the parent directory.
     try:
         dname = id_file(os.path.dirname(f))
@@ -826,7 +827,7 @@ def get_parent_dir_id(f):
     return parent_dir_id, (err, warn, info)
 
 def get_parent_ids(f):
-    
+
     parent_id, (err, warn, info) = get_parent_id(f)
     parent_dir_id, (err1, warn1, info1) = get_parent_dir_id(f)
 
@@ -888,7 +889,7 @@ def check(f, f_stats = None):
                   % (str(sys.exc_info()[1]),)
         sys.stderr.write(message)
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        
+
     file_utils.release_lock_euid_egid()
 
     file_info = {"f_stats"       : f_stats}
@@ -905,7 +906,7 @@ def check(f, f_stats = None):
     if stat.S_ISREG(f_stats[stat.ST_MODE]):
         err_f, warn_f, info_f = check_file(f, file_info)
         errors_and_warnings(f, err + err_f, warn + warn_f, info + info_f)
-        
+
     # if f is a directory, recursively check its files
     elif stat.S_ISDIR(f_stats[stat.ST_MODE]):
 
@@ -925,7 +926,7 @@ def check(f, f_stats = None):
     elif stat.S_ISLNK(f_stats[stat.ST_MODE]):
         err_l, warn_l, info_l = check_link(f, file_info)
         errors_and_warnings(f, err + err_l, warn + warn_l, info + info_l)
-        
+
     else:
         err.append("unrecognized type")
         errors_and_warnings(f, err, warn, info)
@@ -941,9 +942,9 @@ def check_link(l, file_info):
     err, warn, info = check_parent(l)
     if err or warn:
         return err, warn, info
-    
+
     if not os.path.exists(l):
-        
+
         warn.append("missing the original of link")
 
     return err, warn, info
@@ -1005,7 +1006,7 @@ def check_dir(d, dir_info):
             # duplicate entries in the directory.
             if file_list[i] in file_list[i + 1:]:
                 err.append("duplicate entry(%s)" % file_list[i])
-                
+
             f = os.path.join(d, file_list[i])
 
             check(f)
@@ -1023,7 +1024,7 @@ def check_vol(vol):
         stop_threads_lock.release()
         thread.exit()
     stop_threads_lock.release()
-    
+
     err = []
     warn = []
     info = []
@@ -1036,7 +1037,7 @@ def check_vol(vol):
     if err1 or warn1:
         errors_and_warnings(vol, ['can not get inquire_vol info'], [], [])
         return
-    
+
     tape_list = tape_ticket['tape_list']
     for i in range(len(tape_list)):
         #First check if there are files with matching locations on this tape.
@@ -1180,7 +1181,7 @@ def check_bit_file(bfid, bfid_info = None):
         if err1 or warn1:
             errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
             return
-        
+
     prefix = string.join([prefix, "...", file_record['external_label'],
                           file_record['location_cookie']], " ")
 
@@ -1210,7 +1211,7 @@ def check_bit_file(bfid, bfid_info = None):
             is_primary_copy = True
     else:
         is_primary_copy = False
-        
+
     #Determine if this file has been migrated/duplicated.  (Some early,
     # volumes were set to readonly instead of 'migrating', so include those
     # volumes.)  Just because the variable name is is_migrated_copy,
@@ -1322,14 +1323,14 @@ def check_bit_file(bfid, bfid_info = None):
         sfs_path = getattr(msg, 'filename', "")
         if sfs_path == None:
             sfs_path = ""
-        
+
         #The following list contains responses that we need to handle special.
         # These will accompany an errno of EEXIST.
         EXISTS_LIST = ["replaced with newer file",
                        "replaced with another file",
                        "found original of copy",
                        "reused pnfsid"]
-        
+
         ### Note: msg.args[0] will be returned as ENOENT if a file is found
         ### to match the sfsid, but not the bfid.
 
@@ -1355,7 +1356,7 @@ def check_bit_file(bfid, bfid_info = None):
             err.append("primary copy(%s)" % (msg.args[1],))
 
         ### Now plain source migration files can be handled.
-            
+
         elif is_migrated_copy and file_record['deleted'] == "no":
             if msg.args[0] in [errno.ENOENT] or \
                (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST):
@@ -1378,7 +1379,7 @@ def check_bit_file(bfid, bfid_info = None):
             err.append("failed (unknown) file found as migration source")
 
         ### Now the plain destination migration files can be handled.
-            
+
         elif is_migrated_to_copy and file_record['deleted'] == "no":
             if msg.args[0] in [errno.ENOENT] or \
                (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST):
@@ -1433,7 +1434,7 @@ def check_bit_file(bfid, bfid_info = None):
             err.append("failed (unknown) file found as migration destination")
 
         ###
-            
+
         elif file_record['deleted'] in ['yes', 'unknown'] and \
                  msg.errno in [errno.EEXIST] and msg.args[1] in EXISTS_LIST:
             # The bfid is not active, and it is not active in the storage
@@ -1500,7 +1501,7 @@ def check_bit_file(bfid, bfid_info = None):
                   % (str(sys.exc_info()[1]),)
         sys.stderr.write(message)
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    
+
     file_utils.release_lock_euid_egid()
 
     file_info = {'f_stats'             : f_stats,
@@ -1710,7 +1711,7 @@ def check_file(f, file_info):
     	age = time.time() - f_stats[stat.ST_MTIME]
         if age < ONE_DAY:
             warn.append('younger than 1 day (%d)' % (age))
-        else:            
+        else:
             #If the size from stat(1) and layer 2 are both zero, then the
             # file really is zero length and the dCache did not forward
             # the file to tape/Enstore.
@@ -1748,7 +1749,7 @@ def check_file(f, file_info):
                     if file_record['pnfsid'] in ["", None, "None"]:
                         #err.append('no pnfs id in db')
                         break
-                
+
                     try:
                         sfs = namespace.StorageFS(f)
                         cur_sfsid = sfs.get_id(f) #sfs of current searched file
@@ -1791,7 +1792,7 @@ def check_file(f, file_info):
                     description = "active file"
                 else:
                     description = "file"
-                    
+
                 #This block of code will modifiy the description
                 # to confirm that the "file" found in the enstore
                 # db is an older file.  Give a 1 hour buffer.
@@ -1807,16 +1808,16 @@ def check_file(f, file_info):
                 if found_time and \
                        found_time + 600 < f_stats[stat.ST_MTIME]:
                     description = "older " + description
-                    
+
                 #Include this additional information in the error.
                 info.append("found %s with same name (%s)" % \
                             (description, ffbp['bfid'],))
-                info.append("this file (%s, %s)  found file (%s, %s)" % 
+                info.append("this file (%s, %s)  found file (%s, %s)" %
                             (time.ctime(f_stats[stat.ST_MTIME]),
                              ffbp['pnfsid'],
                              found_time_string,
                              cur_sfsid))
-                
+
                 break
 
     if err or warn:
@@ -1831,7 +1832,7 @@ def check_file(f, file_info):
                                               filedb['external_label']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted external_label')
-        
+
     # location cookie
     try:
         if not is_multiple_copy and not is_migrated_copy:
@@ -1992,7 +1993,7 @@ def check_file(f, file_info):
     try:
         parent_id = get_parent_id(f)[0]
         parent_dir_id = get_parent_dir_id(f)[0]
-        
+
         #Actually perform this check that is common to all types of files.
         if parent_id != parent_dir_id:
             if parent_id != None and parent_dir_id != None:
@@ -2053,10 +2054,10 @@ def check_parent(f):
     return err, warn, info
 
 ###############################################################################
-    
+
 def start_check(line):
     global sfs
-    
+
     line = os.path.abspath(line.strip())
 
     #Sanity check incase of user error specifying a non-storage file
@@ -2079,7 +2080,7 @@ def start_check(line):
     cleanup_threads()
 
 ###############################################################################
-    
+
 class ScanfilesInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
 
@@ -2098,9 +2099,9 @@ class ScanfilesInterface(option.Interface):
 
     def valid_dictionaries(self):
         return (self.help_options, self.scanfile_options)
-    
+
     #  define our specific parameters
-    parameters = ["[target_path [target_path_2 ...]] | [bfid [bfid2 ...]]"] 
+    parameters = ["[target_path [target_path_2 ...]] | [bfid [bfid2 ...]]"]
 
     scanfile_options = {
         #--bfid is considered obsolete
@@ -2170,20 +2171,20 @@ def main(intf_of_scanfiles, file_object, file_list):
         if file_list:
             for line in file_list:
                 if line[:2] != '--':
-                    if enstore_functions3.is_bfid(line):
+                    if bfid_util.is_bfid(line):
                         check_bit_file(line)
                     elif enstore_functions3.is_volume(line):
                         check_vol(line)
                     else:
                         start_check(line)
-                    
+
         #When the list of files/directories is of an unknown size from a file
         # object; read the filenames in one at a time for resource efficiency.
         elif file_object:
             line = file_object.readline()
             while line:
                 line = line.split(" ... ")[0].strip()
-                if enstore_functions3.is_bfid(line):
+                if bfid_util.is_bfid(line):
                     check_bit_file(line)
                 elif enstore_functions3.is_volume(line):
                     check_vol(line)
@@ -2195,7 +2196,7 @@ def main(intf_of_scanfiles, file_object, file_list):
         #If the user does Control-C don't traceback.
         pass
 
-    
+
 def do_work(intf):
     global infc
     global lm

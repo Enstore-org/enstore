@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ###############################################################################
 #
-# $Id$ 
+# $Id$
 #
 ###############################################################################
 
@@ -67,15 +67,15 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             except IOError:
                 pass
             sys.exit(1)
-            
+
     #######################################################################
     # The following functions must be defined by all plotting modueles.
     #######################################################################
-            
+
     def book(self, frame):
         if self.get_parameter("time_in_days"):
             self.time_in_days=self.get_parameter("time_in_days")
-        
+
         cron_dict = frame.get_configuration_client().get("crons", {})
 
         #Pull out just the information we want.
@@ -91,7 +91,7 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         if not os.path.exists(self.web_dir):
             os.makedirs(self.web_dir)
 
-        
+
         self.dest_dir = self.web_dir
 
     def fill(self, frame):
@@ -158,11 +158,11 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             #Make the plot and convert it to jpg.
             os.system("gnuplot < %s" % (plot_filename,))
-            os.system("convert -rotate 90 %s %s\n" %
+            os.system("convert -flatten -background lightgray -rotate 90 %s %s\n" %
                       (ps_filename, jpg_filename))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                       % (ps_filename, stamp_jpg_filename))
-           
+
             #Cleanup the temporary files.
             try:
                 os.remove(plot_filename)

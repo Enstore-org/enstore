@@ -148,18 +148,13 @@ if __name__ == "__main__":
         sys.exit(1)
     update_file="%s_update.sql"%(dbname,)
     # take care of sequences, types, triggers and functions
-    cmd="cat %s/%s_header.sql  %s/%s_types.sql %s/%s_sequences.sql %s %s/%s_functions.sql %s/%s_triggers.sql > %s "%(ddl_directory_path,
-                                                                                                                     dbname,
-                                                                                                                     ddl_directory_path,
-                                                                                                                     dbname,
-                                                                                                                     ddl_directory_path,
-                                                                                                                     dbname,
-                                                                                                                     diff_file,
-                                                                                                                     ddl_directory_path,
-                                                                                                                     dbname,
-                                                                                                                     ddl_directory_path,
-                                                                                                                     dbname,
-                                                                                                                     update_file,)
+    cmd = """
+    cat {0}/{1}_header.sql {0}/{1}_types.sql {0}/{1}_sequences.sql {2} {0}/{1}_views.sql {0}/{1}_functions.sql {0}/{1}_triggers.sql > {3}
+    """.format(ddl_directory_path,
+               dbname,
+               diff_file,
+               update_file)
+
     os.system(cmd)
     os.unlink(alter_file)
     os.unlink(create_no_index)

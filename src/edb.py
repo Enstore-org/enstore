@@ -18,9 +18,7 @@ class to specify the schema related information.
 
 Each derived class has to provide the following:
 
-    self.retrive_query   -- string of select statement template
-    self.insert_query    -- string of insert statement template
-    self.update_query    -- string of update statement template
+    self.retrieve_query   -- string of select statement template
     self.delete_query    -- string of delete statement template
     (see the code for examples)
 
@@ -38,7 +36,6 @@ import ejournal
 import os
 import Trace
 import e_errors
-import pg
 import dbaccess
 
 
@@ -182,25 +179,9 @@ class DbTable:
         else:
             self.jou = None
 
-        self.retrieve_query = "select * from "+self.table+" where "+self.pkey+" = '%s';"
-        self.insert_query = "insert into "+self.table+" (%s) values (%s);"
-        self.update_query = "update "+self.table+" set %s where "+self.pkey+" = '%s';"
-        self.delete_query = "delete from "+self.table+" where "+self.pkey+" = '%s';"
+        self.retrieve_query = "select * from "+self.table+" where "+self.pkey+" = %s"
+        self.delete_query = "delete from "+self.table+" where "+self.pkey+" = %s"
 
-        if rdb:
-            self.db = rdb
-        else:
-            try:
-                self.db = pg.DB(host=self.host,
-                                port=self.port,
-                                dbname=self.database,
-                                user=self.user)
-            except:        # wait for 30 seconds and retry
-                time.sleep(30)
-                self.db = pg.DB(host=self.host,
-                                port=self.port,
-                                dbname=self.database,
-                                user=self.user)
         self.dbaccess =  dbaccess.DatabaseAccess(maxconnections=max_connections,
                                                  maxcached=max_idle,
                                                  blocking=True,
@@ -209,29 +190,29 @@ class DbTable:
                                                  user=self.user,
                                                  database=self.database)
 
-    def query(self,s,cursor_factory=None) :
-        return self.dbaccess.query(s,cursor_factory)
+    def query(self,s,values=None,cursor_factory=None) :
+        return self.dbaccess.query(s,values,cursor_factory)
 
-    def update(self,s):
-        self.dbaccess.update(s)
+    def update(self,s,values=None):
+        self.dbaccess.update(s,values)
 
-    def insert(self,s):
-        self.dbaccess.insert(s)
+    def insert(self,s,record=None):
+        self.dbaccess.insert(s,record)
 
-    def remove(self,s):
-        self.dbaccess.remove(s)
+    def remove(self,s,values=None):
+        self.dbaccess.remove(s,values)
 
-    def delete(self,s):
-        return self.remove(s)
+    def delete(self,s,values=None):
+        return self.remove(s,values)
 
-    def query_dictresult(self,s):
-        return self.dbaccess.query_dictresult(s)
+    def query_dictresult(self,s,values=None):
+        return self.dbaccess.query_dictresult(s,values)
 
-    def query_getresult(self,s):
-        return self.dbaccess.query_getresult(s)
+    def query_getresult(self,s,values=None):
+        return self.dbaccess.query_getresult(s,values)
 
-    def query_tuple(self,s):
-        return self.dbaccess.query_tuple(s)
+    def query_tuple(self,s,values=None):
+        return self.dbaccess.query_tuple(s,values)
 
     # translate database output to external format
     def export_format(self, s):
@@ -242,7 +223,7 @@ class DbTable:
         return s
 
     def __getitem__(self, key):
-        res=self.dbaccess.query_dictresult(self.retrieve_query%(key))
+        res=self.dbaccess.query_dictresult(self.retrieve_query,(key,))
         if len(res) == 0:
             return None
         else:
@@ -252,21 +233,17 @@ class DbTable:
         if self.auto_journal:
             self.jou[key] = value
         v1 = self.import_format(value)
-        res = self.dbaccess.query_dictresult(self.retrieve_query%(key))
+        res = self.dbaccess.query_dictresult(self.retrieve_query,(key,))
         if len(res) == 0:        # insert
-            cmd = self.insert_query%get_fields_and_values(v1)
-            self.dbaccess.insert(cmd)
+            self.dbaccess.insert(self.table,v1)
         else:                        # update
             d = diff_fields_and_values(res[0], v1)
             if d:        # only if there is any difference
-                setstmt = ''
-                for i in d.keys():
-                    setstmt = setstmt + i + ' = ' + str_value(d[i]) + ', '
-                setstmt = setstmt[:-2]        # get rid of last ', '
-                cmd = self.update_query%(setstmt, key)
-                Trace.log(e_errors.MISC, "Updating  "+cmd)
-                # print cmd
-                res = self.dbaccess.update(cmd)
+                query = dbaccess.generate_update_query(self.table,d.keys())
+                query += " WHERE {}=%s".format(self.pkey)
+                v=d.values()
+                v.append(key)
+                res = self.dbaccess.update(query,tuple(v))
 
 
     def insert_new_record(self,key,value):
@@ -282,8 +259,7 @@ class DbTable:
 
         """
         v1 = self.import_format(value)
-        query = self.insert_query%get_fields_and_values(v1)
-        self.dbaccess.insert(query)
+        self.dbaccess.insert(self.table,v1)
         if self.auto_journal:
             self.jou[key] = value
 
@@ -293,7 +269,7 @@ class DbTable:
             if not self.jou.has_key(key):
                 self.jou[key] = self.__getitem__(key)
             del self.jou[key]
-        res = self.dbaccess.delete(self.delete_query%(key))
+        res = self.dbaccess.delete(self.delete_query,(key,))
 
 
     def keys(self):
@@ -343,20 +319,8 @@ class DbTable:
 
         return
 
-    def reconnect(self):
-        # close existing connection
-        try:
-            self.close()
-        except:
-            pass
-        self.db = pg.DB(host=self.host,
-                        port=self.port,
-                        user=self.user,
-                        dbname=self.database)
-
-    def close(self):        # don't know what to do
-        self.db.close()
-        pass
+    def close(self):
+        self.dbaccess.close()
 
 class FileDB(DbTable):
 
@@ -384,24 +348,82 @@ class FileDB(DbTable):
                          max_connections = max_connections,
                          max_idle=max_idle)
 
-        self.retrieve_query = "\
-            select file.*, volume.label, volume.file_family, \
-                    volume.storage_group, volume.library, \
-                    volume.wrapper \
-            from file, volume \
-            where \
-                    file.volume = volume.id and \
-                    bfid = '%s';"
-        self.insert_query = "\
-            insert into file (%s) values (%s);"
+        #
+        # This query is used in __getitem__
+        # Typically is invoked by bfid_info
+        #
+        self.retrieve_query = """
+        SELECT f.*,
+               v.label,
+               v.file_family,
+               v.storage_group,
+               v.library,
+               v.wrapper
+        FROM file f
+        INNER JOIN volume v ON f.volume = v.id
+        AND bfid = %s
+        """
 
-        self.update_query = "\
-            update file set %s where bfid = '%s';"
+    def __setitem__(self, key, value):
+        res = self.dbaccess.query_dictresult(self.retrieve_query,(key,))
+        if len(res) == 0:        # insert
+            self.insert_new_record(key,value)
+        else:                        # update
+            v1 = self.import_format(value)
+            d = diff_fields_and_values(res[0], v1)
+            if d:        # only if there is any difference
+                if not d.has_key("volume"):
+                    query = dbaccess.generate_update_query(self.table,d.keys())
+                    query += " WHERE {}=%s".format(self.pkey)
+                    v=d.values()
+                    v.append(key)
+                    res = self.dbaccess.update(query,tuple(v))
+                else:
+                    query="""
+                    UPDATE file SET
+                    """
+                    for k in d.keys():
+                        if k != "volume":
+                            query += "{}=%s,".format(k)
+                        else:
+                            query += "{}=(SELECT id FROM volume WHERE label=%s),".format(k)
+                    query = query[:-1] + " WHERE {}=%s".format(self.pkey)
+                    v=d.values()
+                    v.append(key)
+                    res = self.dbaccess.update(query,tuple(v))
+        if self.auto_journal:
+            self.jou[key] = value
 
-        self.delete_query = "\
-            delete from file where bfid = '%s';"
 
+    def insert_new_record(self,key,value):
+        """
+        Insert new record into database, provided a key
+        and record dictionary. A better alternative to  __setitem__
 
+        :type key: :obj: `str`
+        :arg key: record key (label or bfid)
+
+        :type value: :obj: `dict`
+        :arg value: record corresonding to the key
+
+        """
+        if not value.has_key("external_label"):
+            DbTable.insert_new_record(key,value)
+            return
+        v1 = self.import_format(value)
+        query = """
+        INSERT INTO {} ({}) VALUES (
+        """
+        query=query.format(self.table,string.join(v1.keys(), ","))
+        for k in v1.keys():
+            if k != "volume":
+                query += "%s,"
+            else:
+                query += "(SELECT id FROM volume where label=%s),"
+        query=query[:-1]+")"
+        self.dbaccess.update(query,v1.values())
+        if self.auto_journal:
+            self.jou[key] = value
 
     def export_format(self, s):
         # take care of deleted
@@ -477,23 +499,12 @@ class FileDB(DbTable):
         if s.has_key('complete_crc'):
             crc = s['complete_crc'] if s['complete_crc'] != None else -1
 
-        escape_string = getattr(pg, "escape_string", None)
-        pnfs_path = None
-        if escape_string:
-            #For pg.py 3.8.1 and later.  This escapes the SQL
-            # special characters.s
-            if s.has_key('pnfs_name0') and s['pnfs_name0'] :
-                pnfs_path = escape_string(s['pnfs_name0'])
-        else:
-            #At least handle this one character if using too old
-            # of a version of pg.py.
-            if s.has_key('pnfs_name0') and  s['pnfs_name0'] :
-                pnfs_path = s['pnfs_name0'].replace("'", "''")
+        pnfs_path = s.get("pnfs_name0")
 
         record={}
 
         if s.has_key('external_label'):
-            record['volume'] = ('lookup_vol', s['external_label'])
+            record['volume'] = s['external_label']
         if s.has_key('pnfsid'):
             record['pnfs_id'] = s['pnfsid']
 
@@ -523,7 +534,7 @@ class FileDB(DbTable):
         return record
 
     def __getitem__(self, key):
-        res=self.dbaccess.query_dictresult(self.retrieve_query%(key))
+        res=self.dbaccess.query_dictresult(self.retrieve_query,(key,))
         if len(res) == 0:
             return None
         else:
@@ -533,7 +544,7 @@ class FileDB(DbTable):
             #
             if file.get('package_id',None) and \
                    file.get('package_id',None) != file.get('bfid',key) :
-                res1=self.dbaccess.query_dictresult(self.retrieve_query%(file.get('package_id')))
+                res1=self.dbaccess.query_dictresult(self.retrieve_query,(file.get('package_id'),))
                 if len(res1) != 0 :
                     package=res1[0]
                     file["tape_label"] = package.get("label",None)
@@ -566,45 +577,48 @@ class VolumeDB(DbTable):
                          max_connections=max_connections,
                          max_idle=5)
 
-        self.retrieve_query = "\
-            select \
-                    label, block_size, capacity_bytes, \
-                    declared, eod_cookie, first_access, \
-                    last_access, library, \
-                    media_type, \
-                    non_del_files, \
-                    remaining_bytes, sum_mounts, \
-                    sum_rd_access, sum_rd_err, \
-                    sum_wr_access, sum_wr_err, \
-                    system_inhibit_0, \
-                    system_inhibit_1, \
-                    si_time_0, \
-                    si_time_1, \
-                    user_inhibit_0, \
-                    user_inhibit_1, \
-                    storage_group, \
-                    file_family, \
-                    wrapper, \
-                    comment, \
-                    write_protected, \
-                    modification_time, \
-                    active_files, \
-                    deleted_files, \
-                    unknown_files, \
-                    active_bytes, \
-                    deleted_bytes, \
-                    unknown_bytes \
-            from volume \
-            where \
-                    label = '%s';"
-        self.insert_query = "\
-            insert into volume (%s) values (%s);"
-
-        self.update_query = "\
-            update volume set %s where label = '%s';"
-
-        self.delete_query = "\
-            delete from volume where label = '%s';"
+        #
+        # This query is used in __getitem__
+        # Typically is invoked by inquire_vol
+        #
+        self.retrieve_query = """
+        SELECT block_size,
+               capacity_bytes,
+               declared,
+               eod_cookie,
+               label,
+               first_access,
+               last_access,
+               library,
+               media_type,
+               non_del_files,
+               remaining_bytes,
+               sum_mounts,
+               sum_rd_access,
+               sum_rd_err,
+               sum_wr_access,
+               sum_wr_err,
+               system_inhibit_0,
+               system_inhibit_1,
+               si_time_0,
+               si_time_1,
+               user_inhibit_0,
+               user_inhibit_1,
+               storage_group,
+               file_family,
+               wrapper,
+               comment,
+               write_protected,
+               modification_time,
+               COALESCE(active_files,0) AS active_files,
+               COALESCE(deleted_files,0) AS deleted_files,
+               COALESCE(unknown_files,0) AS unknown_files,
+               COALESCE(active_bytes,0) AS active_bytes,
+               COALESCE(deleted_bytes,0) AS deleted_bytes,
+               COALESCE(unknown_bytes,0) AS unknown_bytes
+        FROM volume
+        WHERE label=%s
+        """
 
     def import_format(self, s):
         sts = string.split(s['volume_family'],'.') if s.has_key('volume_family') else None
@@ -685,10 +699,16 @@ class VolumeDB(DbTable):
         return data
 
 if __name__ == '__main__':
-    v=VolumeDB();
+    v=VolumeDB(host='localhost',
+               port=9999,
+               user="enstore",
+               database="enstoredb",
+               max_connections=100)
+
     number = random.randint(0,len(v)-1)
     print v.keys(), len(v)
-    volume = v[v.keys()[number]]
+    random_label=v.keys()[number]
+    volume = v[random_label]
     print volume
     local_copy=copy.deepcopy(volume)
     v[v.keys()[number]]=local_copy # update
@@ -699,6 +719,28 @@ if __name__ == '__main__':
     v[label]=local_copy #insert
     del v[label]
 
-    f=FileDB()
-    print f['CDMS115744790100000']
+    f=FileDB(host='localhost',
+             port=9999,
+             user="enstore",
+             database="enstoredb",
+             max_connections=100)
+
+    con = f.dbaccess.pool.connection()
+    record =  f['GCMS136213823000000']
+    print record
+    record['bfid']='GCMS999999999999997'
+    f['GCMS999999999999997'] = record
+
+
+
+    record['pnfsid']='3000188D464066A343F1A9839864C9B4F3C1'
+    f['GCMS999999999999997'] = record
+
+    record["external_label"]='TTC037'
+    f['GCMS999999999999997'] = record
+
+    del f['GCMS999999999999997']
+    del f['GCMS999999999999998']
+    del f['GCMS99999999999999']
+
 

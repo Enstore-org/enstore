@@ -65,7 +65,7 @@ cat $VOLUME_QUOTAS | sed -e 's/none: emergency/emergency/' | \
     echo plot \"$data\" using 1:2 t\"Blanks Left\" with impulses >>$plt
 
     /usr/bin/gnuplot $plt
-    /usr/bin/convert -rotate 90 $ps $jpg
-    /usr/bin/convert -rotate 90 -geometry 120x120  -modulate 80 $ps $stamp
+    /usr/bin/convert -flatten -background lightgray -rotate 90 $ps $jpg
+    /usr/bin/convert -flatten -background lightgray -rotate 90 -geometry 120x120  -modulate 80 $ps $stamp
     rm -f $plt
 done

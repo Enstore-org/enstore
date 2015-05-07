@@ -59,7 +59,7 @@ sparse_volumes()
     echo "No high percentage specified." 1>&2
     return 1
   fi
- 
+
   #For the active and filled tables, assign the columns to be summed.
   if [ "$1" = "active" ]; then
      numerator=active_bytes
@@ -81,10 +81,10 @@ sparse_volumes()
          active_files,
          active_files + deleted_files + unknown_files as total_files,
          remaining_bytes,
-         round((100.0 * active_bytes) / 
+         round((100.0 * active_bytes) /
                (active_bytes + deleted_bytes + unknown_bytes), 2)
                as \"active %\",
-	 round((100.0 * (deleted_bytes + unknown_bytes)) / 
+	 round((100.0 * (deleted_bytes + unknown_bytes)) /
                (active_bytes + deleted_bytes + unknown_bytes), 2)
                as \"non-active %\",
          round((100.0 * remaining_bytes) /
@@ -101,11 +101,12 @@ sparse_volumes()
                                  'duplicating', 'cloned', 'cloning')
     and file_family not like '%-MIGRATION%'
     and file_family not like '%/_copy/_%' escape '/'  --match literal underscores
-    and active_files + deleted_files + unknown_files > 0  --skip blank tapes
+    and (active_files + deleted_files + unknown_files) > 0  --skip blank tapes
+    and (active_bytes + deleted_bytes + unknown_bytes) > 0  --skip zero bytes
     $skip_recyclable  --Don't show volumes on RECYCLABLE_VOLUMES page.
     and wrapper != 'null'
     and file_family != 'DELETED_FILES'
-    and (system_inhibit_1 = 'full' 
+    and (system_inhibit_1 = 'full'
          or
          (system_inhibit_1 != 'full' and
           modification_time < current_timestamp - interval '3 months'))
@@ -195,7 +196,8 @@ empty_percentage()
                                  'duplicating', 'cloned', 'cloning')
     and file_family not like '%-MIGRATION%'
     and file_family not like '%/_copy/_%' escape '/'  --match literal underscores
-    and active_files + deleted_files + unknown_files > 0  --skip blank tapes
+    and (active_files + deleted_files + unknown_files) > 0  --skip blank tapes
+    and (active_bytes + deleted_bytes + unknown_bytes) > 0  --skip zero bytes
     and wrapper != 'null'  --skip null volumes
     and file_family != 'DELETED_FILES'  --skip known deleted file volumes
     --and system_inhibit_1 not in  ('full', 'readonly')  --only writable vols
