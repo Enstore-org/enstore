@@ -552,10 +552,6 @@ class ConfigurationClient(generic_client.GenericClient):
         request = {'work' : 'get_media_changer' ,
                    'library' : library_manager }
         ret = self.send(request, timeout, retry)
-        Trace.log(e_errors.INFO, "get_media_changer returned %s %s"%(type(ret), ret))
-        rc = ret.get("media_changer", "")
-        Trace.log(e_errors.INFO, "get_media_changer RC %s %s"%(type(rc), rc))
-
         return  ret.get("media_changer", "")
 
     def get_library_managers(self, timeout=0, retry=0):
