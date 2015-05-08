@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-###############################################################################
-# src/$RCSfile$   $Revision$
 #
 # system imports
 import sys
@@ -142,7 +140,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
 
         t0 = time.time() #Grab the current time.
         t1 = t0 #Reset counter to current time (aka zero).
-        
+
         while bytes_transfered < bytes_to_transfer:
             #Determine how much time is needed to pass before timming out.
             # This amount to time spent inside select should be the value
@@ -161,7 +159,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 r, w, ex = (None, None, None)
-                
+
 
             if w or r or ex:
                 #if necessary make the send string the correct (smaller) size.
@@ -171,10 +169,10 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                     args = (sendstr, socket.MSG_DONTWAIT)
                 try:
                     #By handling the similarities of sends and recieves the
-                    # same way, a lot of duplicate code is removed.  
+                    # same way, a lot of duplicate code is removed.
                     transfer_function = getattr(data_sock, function)
                     return_value = apply(transfer_function, args)
-                    
+
                     #For reads, we only care about the length sent...
                     if r:
                         return_value = len(return_value)
@@ -190,7 +188,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                         #raise CLIENT_CONNECTION_ERROR, \
                         #      os.strerror(errno.ECONNRESET)
                         raise MonitorError(os.strerror(errno.ECONNRESET))
-                    
+
                     #Get the new number of bytes sent.
                     bytes_transfered = bytes_transfered + return_value
 
@@ -258,7 +256,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         if rtn != 0:
             #raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
             raise MonitorError(os.strerror(rtn))
-        
+
         #Restore flag values to blocking mode.
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, flags)
 
@@ -274,7 +272,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
     #listen_sock: The socket to wait for the client to connect to creating the
     # data socket.
     def _open_data_socket(self, listen_sock):
-        
+
         listen_sock.listen(1)
 
         #wait for a response
@@ -297,11 +295,11 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         #    if status:
         #        Trace.log(e_errors.ERROR, "bindtodev(%s): %s" %
         #                  (interface,os.strerror(status)))
-        
+
         return data_sock
 
     #This is the function mentioned in the 'work' section of the ticket sent
-    # from the client.  
+    # from the client.
     def simulate_encp_transfer(self, ticket):
         reply = {'status'     : (None, None),
                  'block_size' : ticket['block_size'],
@@ -321,16 +319,16 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         #Instead of using an actual mover, this is the addr that this server
         # must tell the client it will be listening (via listen_sock) on.
         test_mover_addr = (localhost, localport)
-        
+
         #Simulate the opening and initial handshake of the control socket.
         try:
             self._open_cntl_socket(client_addr, test_mover_addr)
             data_sock = self._open_data_socket(listen_sock)
-            
+
             if not data_sock:
                 #raise CLIENT_CONNECTION_ERROR, "no connection established"
                 raise MonitorError("no connection established")
-            
+
         #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
         except MonitorError:
             Trace.log(e_errors.ERROR, "Error extablishing connection: %s"
@@ -360,12 +358,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
 
         if not data_sock:
             return
-            
-        reply['status'] = ('ok', None)
-        self.reply_to_caller(reply)
+
+        reply['status'] = (e_errors.OK, None)
+        ticket.update(reply)
+        self.reply_to_caller(ticket)
         data_sock.close()
 
-    
+
     def _become_html_gen_host(self, ticket):
         #setup for HTML output if we are so stimulated by a client
         #self.page is None if we have not setup.
@@ -381,14 +380,16 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
     # The other is 'measurement' and holds a 5-tuple.  See
     # _become_html_gen_host for more info on the 5 tuple.
     def recieve_measurement(self, ticket):
-        self.reply_to_caller({"status" : (e_errors.OK, None)})
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
         self._become_html_gen_host(ticket) #setup for making html
         self.page.add_measurement(ticket["measurement"])
 
     def flush_measurements(self, ticket):
-        self.reply_to_caller({"status" : ('ok', "")})
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
         self._become_html_gen_host(ticket)
-        m_file = enstore_files.EnFile("%s/%s"%(ticket['dir'], 
+        m_file = enstore_files.EnFile("%s/%s"%(ticket['dir'],
 					     enstore_constants.NETWORKFILE))
         m_file.open()
         m_file.write(str(self.page))
