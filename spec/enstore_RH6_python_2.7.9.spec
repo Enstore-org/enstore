@@ -1,6 +1,6 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 5.0.0
+Version: 5.1.0
 Release: 0
 License: GPL
 Group: System Environment/Base
@@ -25,9 +25,9 @@ For the postinstallation and configuration instructions please see enstore/READM
 
 %prep
 # check if all supporting rpms are installed
-rpm -q Python-enstore2.7
+rpm -q Python-enstore2.7-9*
 if [ $? -ne 0 ]; then
-	echo "Python-enstore2.7 is not installed"
+	echo "Python-enstore2.7-9 is not installed"
 	exit 1
 fi
 
@@ -44,7 +44,7 @@ rm -rf enstore-setup
 %setup -q -c -n %{prefix}
 # copy all supporting products
 cp -rp * $RPM_BUILD_ROOT/%{prefix}
-pydir=`rpm -ql Python-enstore2.7 | head -1`
+pydir=`rpm -ql Python-enstore2.7-9* | head -1`
 PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
 mkdir -p $PYTHON_DIR
 mkdir -p Python
@@ -162,8 +162,8 @@ export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
 # copy qpid extras
 cp -p /opt/enstore/etc/extra_python.pth $PYTHONLIB/site-packages
-cp -rp /usr/lib/python2.7/site-packages/qpid $PYTHONLIB/site-packages
-cp -rp /usr/lib/python2.7/site-packages/mllib $PYTHONLIB/site-packages
+cp -rp /usr/lib/python2.6/site-packages/qpid $PYTHONLIB/site-packages
+cp -rp /usr/lib/python2.6/site-packages/mllib $PYTHONLIB/site-packages
 
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
@@ -230,6 +230,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Tue May 12 2015  <moibenko@fnal.gov> -
+- started using python 2.7.9 rpm
 * Thu May 07 2015  <moibenko@fnal.gov> -
 - new version 5.0.0, release 0.
 * Mon Mar 30 2015  <moibenko@fnal.gov> -
