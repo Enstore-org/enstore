@@ -114,9 +114,9 @@ def file_checkum(f):
 # .nfs.... files
 # @param package - package complete path
 # exit code maps to True / False
-def _check_packaged_files(archive_area, package):
+def _check_packaged_files(archive_area, package, tar_blocking_factor=20):
     Trace.trace(10, "_check_packaged_files: called with %s %s"%(archive_area, package))
-    # create a temporay directory
+    # create a temporary directory
     tmp_dir = os.path.join(archive_area, "tmp_CRC", os.path.dirname(package).lstrip("/"))
     if not os.path.exists(tmp_dir):
         try:
@@ -133,7 +133,7 @@ def _check_packaged_files(archive_area, package):
     if archiver == "zip":
         cmd = "unzip "
     else: # only zip and tar so far
-        cmd = "tar -b %s --force-local -xf "%(self.blocking_factor,)
+        cmd = "tar -b %s --force-local -xf "%(tar_blocking_factor,)
     rtn = enstore_functions2.shell_command2("%s %s"%(cmd, package,))
     if rtn[0] != 0: # archiver return code
         Trace.log(e_errors.ERROR, "Error unwinding tar file %s %s"(rtn[2], package)) #stderr
@@ -510,14 +510,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if dt and self.cur_id:
             Trace.log(e_errors.INFO, "Time in %s %s"%(old_val, dt))
 
-    # is it time to data files integrity?
+    # is it time to check data files integrity?
     # stolen from mover.py
     def check_written_file(self):
-        rc = 0
+        rc = False
         if self.check_written_file_period:
             ran = random.randrange(self.check_written_file_period,self.check_written_file_period*10,1)
             if (ran % self.check_written_file_period == 0):
-                rc = 1
+                rc = True
         return rc
 
     # wrapper method for infoc.bfid_info
@@ -534,10 +534,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # so the only way to remove temporay nfs directories is
     # to terminate the process that leaves .nfs files open
     def check_packaged_files(self, package):
-        Trace.trace(10, "check_packaged_files creating __check_packaged_files %s %s %s %s "%(type(self.archive_area),self.archive_area, type(package), package ))
+        Trace.trace(10, "check_packaged_files creating _check_packaged_files %s %s %s %s "%(type(self.archive_area),self.archive_area, type(package), package ))
         self.state = CHECKING_CRC
 
-        proc = multiprocessing.Process(target = _check_packaged_files, args = (self.archive_area.path, package))
+        proc = multiprocessing.Process(target = _check_packaged_files, args = (self.archive_area.path, package, self.blocking_factor))
         Trace.trace(10, "check_packaged_files  calling _check_packaged_files")
         proc.start()
         Trace.trace(10, "check_packaged_files _check_packaged_files started")

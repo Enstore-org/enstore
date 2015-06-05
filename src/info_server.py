@@ -116,6 +116,8 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 		# setup the communications with the event relay task
 		self.event_relay_subscribe([event_relay_messages.NEWCONFIGFILE])
 		self.set_error_handler(self.info_error_handler)
+		self.erc.start_heartbeat(enstore_constants.INFO_SERVER,
+					 self.alive_interval)
 
 	def invoke_function(self, function, args=()):
 		if  function.__name__ == "quit":

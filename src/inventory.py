@@ -871,34 +871,6 @@ def is_b_library(lib):
 def is_lto3_library(lib):
     return lib.find('LTO3') >= 0
 
-# write_protect_status -- check the write protect status of the volume
-def write_protect_status(vol, db):
-	q = "select time, value from state, state_type, volume where \
-		state.type = state_type.id and \
-		state_type.name = 'write_protect' and \
-		state.volume = volume.id and \
-		volume.label = '%s' \
-		order by time desc limit 1;"%(vol)
-
-	try:
-		res = db.query(q).dictresult()
-		if not res:
-			status = "---"
-		else:
-			status = res[0]['value']
-	except:
-		status = "---"
-	return status
-
-
-# sum(list) -- add up all elements in the list
-"""
-def sum(l):
-    total = 0
-    for i in l:
-        total = total + i
-    return total
-"""
 
 #Proccess the inventory of the files specified.  This is the main source
 # function where all of the magic starts.
@@ -941,7 +913,6 @@ def inventory(output_dir, cache_dir):
                          user=dbinfo['dbuser'],
                          port=dbinfo.get('db_port',8888),
                          jou='/tmp',
-                         rdb = vol_db.db,
                          max_connections=1)
     # log to accounting db
     accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
@@ -961,7 +932,7 @@ def inventory(output_dir, cache_dir):
     #Get the media_types for each library.
     library_media_types = {}
     q = "select media_type,library,count(label) from volume where system_inhibit_0 != 'DELETED' group by media_type,library order by count;"
-    res = vol_db.db.query(q).getresult()
+    res = vol_db.dbaccess.query_getresult(q)
     for row in res:
         #The key is the (short) library name.  The value is the media type.
         # The SQL above sorts them by count, so if two libraries get
@@ -1515,7 +1486,7 @@ def inventory(output_dir, cache_dir):
 
     # log remaing blanks into accounting db
     print "logging remaining_blanks to accounting db ...",
-    res = file_db.db.query("select * from remaining_blanks;").getresult()
+    res = file_db.dbaccess.query_getresult("select * from remaining_blanks")
     for i in res:
         q = "insert into blanks values('%s', '%s', %d)"%(time2timestamp(t0), i[0], i[1])
         acs.db.query(q)
@@ -1532,11 +1503,11 @@ def inventory(output_dir, cache_dir):
             res = acs.db.query(q)
 
     #Remember to close the DB connections, too.
+
     db.close()
     vol_db.close()
-    #file_db.close() #Linked to vol_db, so closing one closes both.
-    #eq.close() #Linked to vol_db, so closing one closes both.
-    acs.db.close() #Not linked to vol_db.  Must close.
+    file_db.close()
+    acs.db.close()
 
     # make a html copy
     # Do we need both a text and non-HTML version of this file?

@@ -24,11 +24,12 @@ args = parser.parse_args()
 try:
     import sphinx
 except ImportError:
-    msg = """Sphinx could not be imported. To install it using pip, run as user enstore:
-    curl --insecure --silent https://bootstrap.pypa.io/get-pip.py | python
-    pip install --upgrade sphinx"""
+    msg = ('Sphinx could not be imported. '
+           'To install it for Python 2.7.9 or newer, run as root:\n'
+           '\tpython -m ensurepip --upgrade\n'
+           '\tpip install --upgrade pip\n'
+           '\tpip install --upgrade sphinx')
     exit(msg)
-# Note: "--insecure" option for curl is necessary on SLF5 but not on SLF6.
 # Note: Minimal version requirement for Sphinx is defined in source/conf.py.
 
 # Test Graphviz dot for availability
@@ -64,7 +65,8 @@ print("""The HTML directory path is printed after the build has finished.
 
 General troubleshooting steps:
 • If the HTML output fails to get generated for a Python module, ensure the
-  module can be imported by Python, and that its .rst file exists in {}.
+  module can be imported by Python, and that its .rst file exists in
+  {}.
 • If the HTML output exists but fails to get updated for a Python module,
   "touch" the module's .rst file.
 """.format(py_rst_dir))

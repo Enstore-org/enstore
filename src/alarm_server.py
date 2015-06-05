@@ -120,9 +120,9 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         :type isNew: :obj:`bool`
         :arg isNew: indicates wheter the alarm is new.
         :type params: :obj:`list`
-        :arg params: additional parameters- [action_name, 1|*, optional_params...]
+        :arg params: additional parameters- [action_name, 1|\*, optional_params...]
                                             if 1, only send mail the first time the alarm is seen
-                                            *, always send mail when get this alarm
+                                            \*, always send mail when get this alarm
 
          """
 

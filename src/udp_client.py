@@ -350,7 +350,8 @@ class UDPClient:
         | recv_deferred_with_repeat_send()
         | drop_deferred()
 
-        The *_deferred() functions allow for asymmetric processing of messages.
+        The \*_deferred() functions allow for asymmetric processing of
+        messages.
 
         | There are two recv_deferred() functions.  recv_deferred() does
         | what it has always been done; only wait for the prescribed time
