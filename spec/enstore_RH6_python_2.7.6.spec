@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 5.0.0
-Release: 0
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -25,7 +25,7 @@ For the postinstallation and configuration instructions please see enstore/READM
 
 %prep
 # check if all supporting rpms are installed
-rpm -q Python-enstore2.7
+rpm -q Python-enstore2.7.6*
 if [ $? -ne 0 ]; then
 	echo "Python-enstore2.7 is not installed"
 	exit 1
@@ -230,6 +230,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Jun 05 2015  <moibenko@fnal.gov> -
+- new release 5.0.0, release 1.
 * Thu May 07 2015  <moibenko@fnal.gov> -
 - new version 5.0.0, release 0.
 * Mon Mar 30 2015  <moibenko@fnal.gov> -

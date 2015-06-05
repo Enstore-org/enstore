@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 5.1.0
-Release: 0
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -230,86 +230,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Jun 05 2015  <moibenko@fnal.gov> -
+- new release 5.1.0, release 1.
 * Tue May 12 2015  <moibenko@fnal.gov> -
 - started using python 2.7.9 rpm
-* Thu May 07 2015  <moibenko@fnal.gov> -
 - new version 5.0.0, release 0.
-* Mon Mar 30 2015  <moibenko@fnal.gov> -
-- new release 4.2.2, release 6.
-* Thu Mar 26 2015  <moibenko@fnal.gov> -
-- new release 4.2.2, release 5.
-* Tue Mar 10 2015  <moibenko@fnal.gov> -
-- new release 4.2.2, release 4.
-* Mon Dec 22 2014  <moibenko@fnal.gov> -
-- new release 4.2.2, release 3
-* Thu Oct 30 2014  <moibenko@fnal.gov> -
-- new release 4.2.2, release 2
-* Thu Oct 09 2014  <moibenko@fnal.gov> -
-- new version 4.2.2, release 0
-- added SCSI Media Verify for T10000C and higher drives
-* Wed Oct 01 2014  <moibenko@fnal.gov> -
-- new release 4.2.1, release 1
-* Mon Sep 08 2014  <moibenko@fnal.gov> -
-- new release 4.2.1, release 0
-* Thu Aug 14 2014  <moibenko@fnal.gov> -
-- new version 4.2.0 release 0 ftt now is part of enstore rpm
-* Tue May 06 2014  <moibenko@fnal.gov> -
-- new release 4.1.2, release 1
-* Thu Apr 10 2014  <moibenko@fnal.gov> -
-- new version 4.1.2-0
-* Mon Feb 10 2014  <moibenko@fnal.gov> -
-- new version 4.1.1-0
-* Tue Jan 14 2014  <moibenko@fnal.gov> -
-- started using python 2.7.6 rpm
-* Thu Dec 12 2013  <moibenko@fnal.gov> -
-- new version 4.0.0-4
-* Mon Aug 19 2013 <moibenko@fnal.gov> -
-- new version 3.4.1-0
-* Mon Aug 12 2013 <moibenko@fnal.gov> -
-- new version 3.4.0-0
-* Mon Feb 11 2013 <moibenko@fnal.gov> -
-- new version 3.2.2-0
-* Fri Oct 26 2012  <moibenko@fnal.gov> -
-- new version 3.0.1-3
-- use Python-enstore2.7-3.0.0-0.x86_64
-* Fri Oct 26 2012  <moibenko@fnal.gov> -
-- new version 3.0.0-3
-* Mon Sep 10 2012  <moibenko@fnal.gov> -
-- new version 3.0.0-2
-* Thu Jul 26 2012  <moibenko@fnal.gov> -
-- new version 3.0.0-1
-* Thu Jun 07 2012  <moibenko@fnal.gov> -
-- Added Small Files Aggregation
-- new version 3.0.0-0
-* Wed Jul 13 2011  <moibenko@fnal.gov> -
-- new release 2.2.2-3
-* Fri May 06 2011  <moibenko@fnal.gov> -
-- new release 2.2.2-2
-* Tue Feb 15 2011  <moibenko@fnal.gov> -
-- new release 2.1.2-1
-* Tue Feb 01 2011  <moibenko@fnal.gov> -
-- new release
-* Mon Jan 24 2011  <moibenko@fnal.gov> -
-- new release
-* Wed Nov 24 2010  <moibenko@fnal.gov> -
-- new release
-* Fri Oct 01 2010  <moibenko@fnal.gov> -
-- new release
-* Mon Jul 19 2010  <moibenko@fnal.gov> -
-- new release
-* Tue Jun 08 2010  <moibenko@fnal.gov> -
-- using python with enabled ssl
-* Tue Mar 23 2010  <moibenko@fnal.gov> -
-- added dependency on postgresql-libs, because there now are many clients that require it
-- added a message: Enstore installed. Please read README file
-- changed Version to 2.0.1 and Release to 0
-* Mon Nov 05 2007  <moibenko@fnal.gov> -
-- added configuration files
-* Fri Aug 17 2007  <moibenko@fnal.gov> -
-- Copy enstore-setup file from config host if it exists there
-- If "server" is specified, install additional rpms
-* Thu Aug 16 2007  <moibenko@fnal.gov> -
-- Moved creation of system files from create_enstore_environment.sh here
-- Added enstore_monitor-boot
-* Wed Feb 21 2007  <moibenko@fnal.gov> -
-- Initial build.
