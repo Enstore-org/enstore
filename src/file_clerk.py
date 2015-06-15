@@ -7,15 +7,18 @@
 ##############################################################################
 
 # system import
-import sys
+
+import Queue
+import multiprocessing
 import os
-import time
-import string
-import socket
 import select
+import socket
+import string
+import sys
+import threading
+import time
 import types
 
-import threading
 
 # enstore imports
 import traceback
@@ -36,53 +39,72 @@ import file_cache_status
 import enstore_files
 import enstore_functions2
 
-isSFA=False
+SEQUENTIAL_QUEUE_SIZE=enstore_constants.SEQUENTIAL_QUEUE_SIZE
+PARALLEL_QUEUE_SIZE=enstore_constants.PARALLEL_QUEUE_SIZE
+MY_NAME = enstore_constants.FILE_CLERK
+MAX_CONNECTION_FAILURE = enstore_constants.MAX_CONNECTION_FAILURE
+MAX_THREADS = enstore_constants.MAX_THREADS
 
-try:
-	import cache.messaging.client as qpid_client
-	try:
-		import cache.messaging.pe_client as pe_client
-		isSFA=True
-	except ImportError, msg:
-		Trace.log(e_errors.INFO,"Failed to import cache.messaging.pe_client: %s"%(str(msg),))
-		pass
-	try:
-		import cache.en_logging.en_logging
-	except ImportError, msg:
-		Trace.log(e_errors.INFO,"Failed to import cache.en_logging.en_logging: %s"%(str(msg),))
-		pass
-except ImportError, msg:
-	Trace.log(e_errors.INFO,"Failed to import cache.messaging.client: %s"%(str(msg),))
-	pass
-
-
-MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
-MAX_CONNECTION_FAILURE = 5
-
-MAX_THREADS = 50
 # we have run into issues with file_clerk locking up
 # when number of max threads was more than number of max
 # connections. Set it to max number of threads + 1 (counting
 # main thread)
+
 MAX_CONNECTIONS=MAX_THREADS+1
-
 AMQP_BROKER = "amqp_broker"
-FILES_IN_TRANSITION_CHECK_INTERVAL = 3600
+FILES_IN_TRANSITION_CHECK_INTERVAL = enstore_constants.FILES_IN_TRANSITION_CHECK_INTERVAL
 
-SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f, files_in_transition fit \
-where f.bfid=fit.bfid and \
-(f.archive_status is null or f.archive_status != 'ARCHIVED') \
-and f.cache_status='CACHED' and f.deleted='n' and \
-f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
-SELECT_ALL_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f, files_in_transition fit \
-where f.bfid=fit.bfid and \
-(f.archive_status is null or f.archive_status != 'ARCHIVED') \
-and f.cache_status='CACHED' and f.deleted='n'"
+SELECT_FILES_IN_TRANSITION="""
+SELECT f.bfid,
+       f.cache_status,
+       f.cache_mod_time
+FROM file f,
+files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND (f.archive_status IS NULL
+        OR f.archive_status != 'ARCHIVED')
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+   AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '1 day'
+"""
+
+SELECT_ALL_FILES_IN_TRANSITION="""
+SELECT f.bfid,
+       f.cache_status,
+       f.cache_mod_time
+FROM file f,
+     files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND (f.archive_status IS NULL
+        OR f.archive_status != 'ARCHIVED')
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+"""
+
+isSFA=False
+
+try:
+    import cache.messaging.client as qpid_client
+    try:
+        import cache.messaging.pe_client as pe_client
+        isSFA=True
+    except ImportError, msg:
+        Trace.log(e_errors.INFO,"Failed to import cache.messaging.pe_client: %s"%(str(msg),))
+	pass
+    try:
+        import cache.en_logging.en_logging
+    except ImportError, msg:
+        Trace.log(e_errors.INFO,"Failed to import cache.en_logging.en_logging: %s"%(str(msg),))
+	pass
+except ImportError, msg:
+    Trace.log(e_errors.INFO,"Failed to import cache.messaging.client: %s"%(str(msg),))
+    pass
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+
 
 class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of File Clerk methods should only be readonly operations.
@@ -105,76 +127,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         dispatching_worker.DispatchingWorker.__init__(
             self, (self.keys['hostip'], self.keys['port']))
 
-        #Retrieve database information from the configuration.
-        Trace.log(e_errors.INFO,"determine dbHome and jouHome")
-
-        try:
-            dbInfo = self.csc.get('database')
-            dbHome = dbInfo['db_dir']
-            try:  # backward compatible
-                jouHome = dbInfo['jou_dir']
-            except:
-                jouHome = dbHome
-        except:
-            dbHome = os.environ['ENSTORE_DIR']
-            jouHome = dbHome
-
-        self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
-        self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
-                                   self.max_threads+1)
-
-        #Open conection to the Enstore DB.
-        Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
-        try:
-		# proper default values are supplied by edb.FileDB constructor
-		self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
-					      port=dbInfo.get('db_port',None),
-					      user=dbInfo.get('dbuser',None),
-					      database=dbInfo.get('dbname',None),
-					      jou=jouHome,
-					      max_connections=self.max_connections)
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-            Trace.log(e_errors.ERROR, message)
-            Trace.alarm(e_errors.ERROR, message, {})
-            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
-            sys.exit(1)
-
-    def invoke_function(self, function, args=()):
-        if  function.__name__  in ("tape_list3",
-				   "set_cache_status",
-				   "get_children",
-				   "set_children",
-				   "alive",
-				   "get_bfids",
-				   "get_bfids2",
-				   "show_state",
-				   "find_copies",
-				   "replay",
-				   "get_brand",
-				   "get_crcs",
-				   "has_undeleted_file",
-				   "open_bitfile",
-				   "open_bitfile_for_package",
-				   "bfid_info") \
-				   or MY_NAME=="info_server":
-	    c = threading.activeCount()
-            Trace.trace(5, "threads %s"%(c,))
-            if c < self.max_threads:
-		    Trace.trace(5, "threads %s"%(c,))
-		    dispatching_worker.run_in_thread(thread_name=None,
-						     function=function,
-						     args=args,
-						     after_function=self._done_cleanup)
-            else:
-		    apply(function,args)
-		    self._done_cleanup()
-        else:
-            apply(function,args)
-            self._done_cleanup()
-
     ####################################################################
+
 
     # These extract value functions are used to get a value from the ticket
     # and perform validity checks in a consistant fashion.  These functions
@@ -228,7 +182,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         if check_exists and return_record:
             #Make sure the bfid exists.   (getattr() keeps pychecker quite.)
-            record = getattr(self, 'filedb_dict', {})[bfid]
+	    record = getattr(self, 'filedb_dict', {})[bfid]
             if not record:
                 message = "%s: no such bfid %s" % (MY_NAME, bfid,)
                 ticket["status"] = (e_errors.NO_FILE, message)
@@ -731,7 +685,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 # used for tape_list2()
                 value = file_info
 	    lc = value.get("location_cookie")
-	    location_cookies[lc] = location_cookies.get(lc,0)+1
+            if value.get("pnfsid") :
+                location_cookies[lc] = location_cookies.get(lc,0)+1
 	    if value['deleted'] == 'unknown' and skip_unknown :
 		    continue
             if not value.has_key('pnfs_name0'):
@@ -758,7 +713,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 	   duplicate_cookies = [ cookie for cookie, count in location_cookies.iteritems() if count > 1 ]
 	   if duplicate_cookies :
 	      Trace.alarm(e_errors.WARNING, "Volume {} contains duplicate cookie(s) : {}".format(external_label,
-												 string.join(duplicate_cookies,",")))
+												 string.join(duplicate_cookies," ")))
         return file_list
 
     #### DONE
@@ -1049,23 +1004,39 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
 	    #
-	    # check that this is indeed the package file. Package file
+	    # check that this is indeed the package file.
 	    #
 	    if bfid != record['package_id'] or \
 	       type(record['package_id']) == types.NoneType :
-		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    ticket["status"] = (e_errors.ERROR, "This is not a package file")
 		    self.reply_to_caller(ticket)
 		    return
-	    #
-	    # retrieve the children
-	    #
-	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
-	    res = self.filedb_dict.query_getresult(q)
-	    file_records = []
-	    for i in res:
-		    file_records.append(self.filedb_dict[i[0]])
+            field = ticket.get("field",None)
+	    file_records = None
+            if field :
+                try:
+                    colnames, res =  self.filedb_dict.dbaccess.query_with_columns("select * from file limit 1")
+                    if field not in colnames :
+                        ticket["status"] = (e_errors.WRONGPARAMETER, "No such field %s"%(field,))
+                        self.reply_to_caller(ticket)
+                        return
+                    res =  self.filedb_dict.query_getresult("select %s from file where package_id = '%s' and deleted='n' and bfid<>'%s'"%(field, bfid,bfid))
+                    file_records = [ r[0] for r in res ]
+                except Exception as e:
+                    ticket["status"] = (e_errors.DATABASE_ERROR, str(e))
+                    self.reply_to_caller(ticket)
+                    return
+            else :
+                #
+                # retrieve the children
+                #
+                q = "select bfid from file where package_id = '%s' and deleted='n' and bfid <> '%s' "%(bfid,bfid)
+                res = self.filedb_dict.query_getresult(q)
+                file_records = [ self.filedb_dict[r[0]] for r in res ]
+
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["children"] = file_records
+
 	    try:
 		    self.send_reply_with_long_answer(ticket)
 	    except (socket.error, select.error), msg:
@@ -1123,11 +1094,86 @@ class FileClerkMethods(FileClerkInfoMethods):
         #Set the brand.
         self.set_brand(brand)
 
-    ####################################################################
+        #Retrieve database information from the configuration.
+        Trace.log(e_errors.INFO,"determine dbHome and jouHome")
+
+        try:
+            dbInfo = self.csc.get('database')
+            dbHome = dbInfo['db_dir']
+            try:  # backward compatible
+                jouHome = dbInfo['jou_dir']
+            except:
+                jouHome = dbHome
+        except:
+            dbHome = os.environ['ENSTORE_DIR']
+            jouHome = dbHome
+
+        self.sequentialQueueSize     = dbInfo.get('sequential_queue_size',SEQUENTIAL_QUEUE_SIZE)
+	self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+	self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
+        self.max_connections         = self.numberOfParallelWorkers+1
+
+        #Open conection to the Enstore DB.
+        Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
+        try:
+		# proper default values are supplied by edb.FileDB constructor
+		self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
+					      port=dbInfo.get('db_port',None),
+					      user=dbInfo.get('dbuser',None),
+					      database=dbInfo.get('dbname',None),
+					      jou=jouHome,
+					      max_connections=self.max_connections)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+            Trace.log(e_errors.ERROR, message)
+            Trace.alarm(e_errors.ERROR, message, {})
+            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+            sys.exit(1)
+
+	self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
+	self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue,self)
+	self.sequentialWorker.start()
+
+	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
+
+	self.parallelThreads = []
+	for i in range(self.numberOfParallelWorkers):
+		worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue,self)
+		self.parallelThreads.append(worker)
+		worker.start()
+
 
     ###
     ### These functions are internal file_clerk functions.
     ###
+
+    def invoke_function(self, function, args=()):
+        if  function.__name__  in ("tape_list3",
+				   "set_cache_status",
+				   "get_children",
+				   "alive",
+				   "set_children",
+				   "get_bfids",
+				   "get_bfids2",
+				   "show_state",
+				   "find_copies",
+				   "replay",
+				   "get_brand",
+				   "get_crcs",
+				   "has_undeleted_file",
+				   "open_bitfile",
+				   "open_bitfile_for_package",
+                                   "bfid_info") :
+		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
+		self.parallelThreadQueue.put([function.__name__, args])
+
+	elif  function.__name__ == "quit":
+		# needs to run on main thread
+		apply(function,args)
+	else:
+		Trace.trace(5, "Putting on sequential thread queue %d %s"%(self.sequentialThreadQueue.qsize(),function.__name__))
+		self.sequentialThreadQueue.put([function.__name__, args])
 
     # set_brand(brand) -- set brand
 
@@ -2317,6 +2363,13 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
     def quit(self, ticket):
 	self.filedb_dict.close()
+	# set sentinel
+	self.sequentialThreadQueue.put(None)
+	for process in self.parallelThreads:
+		self.parallelThreadQueue.put(None)
+	self.sequentialWorker.join(10.)
+	for process in self.parallelThreads:
+		process.join(10.)
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
 
 

@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
+"""
 #########################################################################
 # Log Server.                                                           #
 # Receives log messages form the client process and logs them into      #
@@ -28,6 +25,7 @@
 #    SL - severity level abbreviation (see client code)                 #
 #    MESSAGE - arbitrary message received from the client               #
 #########################################################################
+"""
 
 # system imports
 import sys
@@ -50,11 +48,6 @@ import Trace
 import log_client
 import option
 
-"""Logger Class. Instance of this class is a log server. Multiple instances
-   of this class can run using unique port numbers. But it actually is not
-   recommended. It is assumed that the only one Log Server will serve the
-   whole system.
-"""
 MY_NAME = enstore_constants.LOG_SERVER   #"log_server"
 FILE_PREFIX = "LOG-"
 NO_MAX_LOG_FILE_SIZE = -1L
@@ -67,6 +60,12 @@ def format_date(tm=None):
 class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer):
 
+    """
+    Instance of this class is a log server. Multiple instances
+    of this class can run using unique port numbers. But it actually is not
+    recommended. It is assumed that the only one Log Server will serve the
+    whole system.
+    """
     def __init__(self, csc, test=0):
 	flags = enstore_constants.NO_LOG
         generic_server.GenericServer.__init__(self, csc, MY_NAME, flags=flags,
@@ -81,11 +80,15 @@ class Logger(  dispatching_worker.DispatchingWorker
         keys = self.csc.get(MY_NAME)
         Trace.init(self.log_name)
         Trace.set_log_func(self.log_func)  #Log function for itself.
+
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
 								  keys)
+
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
-	                                              keys['port']))
+	                                              keys['port']),
+                                                      use_raw=1)
+
         if keys["log_file_path"][0] == '$':
 	    tmp = keys["log_file_path"][1:]
 	    try:
@@ -337,9 +340,20 @@ class Logger(  dispatching_worker.DispatchingWorker
             self.index = self.index + 1
         # open log file
         self.open_logfile(self.logfile_name)
+
+        # prepare raw input
+        self.set_out_file()
+        """
+        if self.allow_callback:
+            Trace.trace(5, "spawning get_fd_message")
+            # spawn callback processing thread (event relay messages)
+            run_in_thread("call_back_proc", self.serve_callback)
+        """
+        # start receiver thread or process
+        self.raw_requests.receiver()
+
         while 1:
-            self.do_one_request() ## this method will eventually call
-                                               ## log_message()
+            self.do_one_request()
             # get local time
             tm = time.localtime(time.time())
             day = tm[2]
@@ -430,6 +444,7 @@ if __name__ == "__main__" :
 
     logserver = Logger((intf.config_host, intf.config_port), intf.test)
     logserver.handle_generic_commands(intf)
+    #logserver._do_print({'levels':range(5, 400)})
 
     while 1:
         try:

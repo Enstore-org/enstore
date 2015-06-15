@@ -42,6 +42,8 @@ start)
 	CMD="$EXE -d"
         echo $CMD
         $CMD
+	sleep 5
+	$ENSTORE_DIR/src/cache/messaging/enstore_qpid_config.py
 	;;
 restart)
 	$0 stop 2>/dev/null

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-
 ###############################################################################
 #
-# $Id$
 # This module uses processes and requires python 2.6 and latter
 ###############################################################################
 import sys
@@ -13,6 +11,7 @@ import os
 import pwd
 import threading
 import time
+import select
 
 import cleanUDP
 import udp_common
@@ -53,17 +52,17 @@ def get_keyword(request, keyword):
     except:
         exc, detail, tb = sys.exc_info()
         print "Exception getting keyword %s"%(detail,)
-        
+
         return None
-        
+
 
 def _print(f, msg):
     if DEBUG and f:
         f.write("%s %s\n"%(time.time(),msg))
         f.flush()
-    
+
 class RawUDP:
-    
+
     def __init__(self, receive_timeout=60.):
         self.max_packet_size = MAX_PACKET_SIZE
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
@@ -76,6 +75,9 @@ class RawUDP:
         self.queue_size = 0L
         self.print_queue = False
         self.enable_reinsert = True
+        self.f = None
+        self.queue = multiprocessing.Queue(MAX_QUEUE_SIZE) # intermediate place for incoming messages
+
 
         # if self.replace_keyword is specified
         # replace a message with this keyword in the buffer
@@ -85,37 +87,38 @@ class RawUDP:
         # request is allowed.
         # Thus the old mover request gets replaced by the newer request
         # at the same place in the queue
-        self.replace_keyword = None 
+        self.replace_keyword = None
 
-        
+
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
         self.address_family = socket.AF_INET
-        ip, port, self.server_socket = udp_common.get_callback('', port)
+        hostip = socket.gethostbyname(socket.gethostname())
+        ip, port, self.server_socket = udp_common.get_callback(hostip, port)
         self.server_address = (ip, port)
-        
+
         # set this socket to be closed in case of an exec
         if self.server_socket != None:
             fcntl.fcntl(self.server_socket.fileno(), fcntl.F_SETFD, fcntl.FD_CLOEXEC)
 
     def init_socket(self, socket):
         self.server_socket = socket
-        
+
 
     def set_keyword(self, keyword):
         self.replace_keyword = keyword
-        
+
 
     # disable reshuffling of duplicate requests
     # this can be beneficial for mover requests
     # but may hurt encp requests
     def disable_reshuffle(self):
         self.enable_reinsert = False
-        
+
     # get message from FIFO buffer
     # return value:
     # (request, client_address)
-    # where client_address = (client_ip, client_port) 
+    # where client_address = (client_ip, client_port)
     def get(self):
         _print(self.d_o, "GET")
         rc = None
@@ -136,13 +139,13 @@ class RawUDP:
                 keyword_to_replace = get_keyword(ret[0], self.replace_keyword)
                 if self.requests.has_key(keyword_to_replace):
                     del(self.requests[keyword_to_replace])
-                
+
             except IndexError, detail:
                 print "IndexError", detail
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.trace(5, "GET:Exception %s"%(detail,))
-                
+
                 pass
             rc = ret
             self._lock.release()
@@ -150,13 +153,15 @@ class RawUDP:
             self.last_get = time.time()
 
         return rc
-        
+
 
     def receiver(self):
         print "STARTING RECEIVER", os.getpid()
         proc = multiprocessing.Process(target=_receiver, args = (self,))
+        proc1 = multiprocessing.Process(target=fetch, args = (self,))
         try:
             proc.start()
+            proc1.start()
             #proc.join()
         except:
             exc, detail, tb = sys.exc_info()
@@ -175,10 +180,10 @@ class RawUDP:
 
 # put runs in a separate process (_receiver)
 # this is why it is outside of RawUDP class
-        
-def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, replace_keyword):
-    _print (f, "QUEUE SIZE %s msg %s"%(queue_size.value, message))
-    _print (f, "enable reinsert %s replace_keyword %s"%(enable_reinsert, replace_keyword))
+def put(RawUDP_obj, message):
+    #_print (RawUDP_obj.f, "QUEUE SIZE %s msg %s"%(queue_size.value, message))
+
+    #_print (RawUDP_obj.f, "enable reinsert %s replace_keyword %s"%(enable_reinsert, replace_keyword))
     # message structure:
     #(request, cliient_address)
     req = message[0]
@@ -186,13 +191,19 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
     request=None
     try:
         request, inCRC = udp_common.r_eval(req, check=True)
-        # calculate CRC
+
+        # There is no reason to calculate CRC.
+        # The udp crc is turned on in CleanUDP.
+        # calculate CRC.
+        """
         crc = checksum.adler32(0L, request, len(request))
         if (crc != inCRC) :
             print "BAD CRC request: %s " % (request,)
             print "CRC: %s calculated CRC: %s" % (repr(inCRC), repr(crc))
-            
+
             request=None
+        """
+
     except ValueError, detail:
         # must be an event relay message
         # it has a different format
@@ -200,7 +211,6 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
             request = udp_common.r_eval(req, check=True)
         except:
             exc, msg = sys.exc_info()[:2]
-            print "PUT: exc %s %s" % (exc, msg)
             # reraise exception
             raise exc, msg
     except (SyntaxError, TypeError):
@@ -226,8 +236,8 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
                 exc, msg = sys.exc_info()[:2]
                 msg = "%s: %s: " % \
                       (exc, msg)
-                
-            
+
+
         Trace.log(5, msg)
 
         #Set these to something.
@@ -236,7 +246,7 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
     if not request:
         return
 
-    lock.acquire()
+    RawUDP_obj._lock.acquire()
     try:
         request_id = get_id(request)
         do_put = True
@@ -248,67 +258,72 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
         # request is allowed.
         # Thus the old mover request gets replaced by the newer request
         # at the same place in the queue
-        if replace_keyword:
-            keyword_to_replace = get_keyword(request, replace_keyword)
+        if RawUDP_obj.replace_keyword:
+            keyword_to_replace = get_keyword(request, RawUDP_obj.replace_keyword)
             if keyword_to_replace:
-                if requests.has_key(keyword_to_replace):
+                if RawUDP_obj.requests.has_key(keyword_to_replace):
                     try:
                        do_put = False # duplicate request, do not put into the queue
-                       index = buffer.index(requests[keyword_to_replace])
-                       del buffer[index]
-                       buffer.insert(index, (request, client_addr))
-                           
+                       index = RawUDP_obj.buffer.index(RawUDP_obj.requests[keyword_to_replace])
+                       del RawUDP_obj.buffer[index]
+                       RawUDP_obj.buffer.insert(index, (request, client_addr))
+
                     except ValueError:
                        # request is not in buffer yet
                        pass
-                _print(f, "ADD TO REQUESTS %s"%(request,))
-                requests[keyword_to_replace] = (request, client_addr)
+                _print(RawUDP_obj.f, "ADD TO REQUESTS %s"%(request,))
+                RawUDP_obj.requests[keyword_to_replace] = (request, client_addr)
         else:
             if request_id:
                 # put the latest request into the queue
-                if requests.has_key(request_id) and requests[request_id] !="":
+                if RawUDP_obj.requests.has_key(request_id) and RawUDP_obj.requests[request_id] !="":
                     # most like this is a retry
-                    _print(f, "DUPLICATE %s %s" % (time.time(), request_id))
+                    _print(RawUDP_obj.f, "DUPLICATE %s %s" % (time.time(), request_id))
                     try:
-                        # "retry" message put it closer to the beginnig of the queue
-                        index = buffer.index(requests[request_id])
-                        if enable_reinsert and queue_size.value > SHUFFLE_THRESHOLD:
+                        # "retry" message put it closer to the beginning of the queue
+                        index = RawUDP_obj.buffer.index(RawUDP_obj.requests[request_id])
+                        if RawUDP_obj.enable_reinsert and RawUDP_obj.queue_size_p.value > SHUFFLE_THRESHOLD:
                             # new index is in 10% of top messages
-                            new_index = index / (((queue_size.value + 1)/10)+1) + index % 10
+                            new_index = index / (((RawUDP_obj.queue_size_p.value + 1)/10)+1) + index % 10
                             if new_index >= index:
                                 new_index = index
                         else:
                             new_index = index
-                        _print(f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, queue_size.value))
+                        _print(RawUDP_obj.f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, RawUDP_obj.queue_size_p.value))
                         #if enable_reinsert and queue_size.value > SHUFFLE_THRESHOLD:
                         #buffer.remove(requests[request_id])
-                        del buffer[index]
-                        buffer.insert(new_index, (request, client_addr))
+                        del RawUDP_obj.buffer[index]
+                        RawUDP_obj.buffer.insert(new_index, (request, client_addr))
                         do_put = False # duplicate request, do not put into the queue
                     except ValueError, detail:
-                        _print(f,"put: Exception:ValueError %s removing %s"%(detail,request_id))  
+                        _print(RawUDP_obj.f,"put: Exception:ValueError %s removing %s"%(detail,request_id))
 
-                    requests[request_id] = (request, client_addr)
+                    RawUDP_obj.requests[request_id] = (request, client_addr)
                 else:
-                    if queue_size.value > MAX_QUEUE_SIZE:
+                    if RawUDP_obj.queue_size_p.value > MAX_QUEUE_SIZE:
                         # drop incoming message
                         do_put = False
                     else:
-                        requests[request_id] = (request, client_addr)
+                        RawUDP_obj.requests[request_id] = (request, client_addr)
 
         if do_put:
             t0 = time.time()
 
-            buffer.append((request, client_addr))
-            queue_size.value = queue_size.value + 1
-            event.set()
-            _print (f, "PUT %s %s %s"% (time.time(), request_id, time.time() - t0))
+            RawUDP_obj.buffer.append((request, client_addr))
+            RawUDP_obj.queue_size_p.value += 1
+            RawUDP_obj.arrived.set()
+            _print (RawUDP_obj.f, "PUT %s %s %s"% (time.time(), request_id, time.time() - t0))
     except:
         exc, detail, tb = sys.exc_info()
         print "put: %s %s"%(exc, detail)
-    lock.release()
+    RawUDP_obj._lock.release()
 
-        
+
+def fetch(RawUDP_obj):
+    while 1:
+        message = RawUDP_obj.queue.get()
+        put(RawUDP_obj, message)
+
 # receiver runs in a separate process
 # this is why it is outside of RawUDP class
 def _receiver(RawUDP_obj):
@@ -320,39 +335,57 @@ def _receiver(RawUDP_obj):
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
         RawUDP_obj.f = open(os.path.join(dirpath, "p_%s_%s"%(os.getpid(), thread_name)), "w")
+        print "REC OUT FILE", RawUDP_obj.f
     else:
         RawUDP_obj.f = None
-    
-    print"RECEIVER %s STARTS on %s"%(os.getpid(), RawUDP_obj.server_socket.getsockname(),)
+
+    print "RECEIVER %s STARTS on %s"%(os.getpid(), RawUDP_obj.server_socket.getsockname(),)
     rcv_timeout = RawUDP_obj.rcv_timeout
     while 1:
+        r, w, x = select.select([RawUDP_obj.server_socket], [], [], rcv_timeout)
 
-        r, w, x, remaining_time = cleanUDP.Select([RawUDP_obj.server_socket], [], [], rcv_timeout)
+        if r and r[0] == RawUDP_obj.server_socket:
+            message = RawUDP_obj.server_socket.recvfrom(
+                RawUDP_obj.max_packet_size, RawUDP_obj.rcv_timeout)
 
-        if r:
-            for fd in r:
-                if fd == RawUDP_obj.server_socket:
-                    req, client_addr = RawUDP_obj.server_socket.recvfrom(
-                        RawUDP_obj.max_packet_size, RawUDP_obj.rcv_timeout)
+            if message[0]: # request is not empty
+                # Reminder about request structure
+                # request is a string
+                # it has the following structure
+                # str(str((request_id, request_counter, body)), check_sum)
+                # where body is a dictionary
+                # message is (req, client_addr)
+                #_print (RawUDP_obj.f, "MESSAGE %s %s"%(time.time(), message))
 
-                    if req:
-                        # Reminder about request structure
-                        # request is a string
-                        # it has the following structure
-                        # str(str((request_id, request_counter, body)), check_sum)
-                        # where body is a dictionary
-                        message = (req, client_addr)
-                        #_print (RawUDP_obj.f, "MESSAGE %s %s"%(time.time(), message))
-                        put(RawUDP_obj._lock, RawUDP_obj.arrived, RawUDP_obj.buffer,
-                            RawUDP_obj.queue_size_p, message, RawUDP_obj.requests,
-                            RawUDP_obj.f, RawUDP_obj.enable_reinsert, RawUDP_obj.replace_keyword)
+                try:
+                    RawUDP_obj.queue.put_nowait(message)
+                except Queue.Full:
+                    Trace.log(5, "Intermediate queue is full")
+                except:
+                    pass
+
         else:
-            # time out
-            # set event to allow get to proceed
-            # this can be used in dispatching worker to run interva functions
             RawUDP_obj.arrived.set()
 
+def create_server(port):
+    hostip = socket.gethostbyname(socket.gethostname())
+    server_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        server_socket.socket.bind((hostip, port))
+    except socket.error, msg:
+        print msg
+        sys.exit(1)
+    raw_requests = RawUDP(receive_timeout=60)
+    raw_requests.disable_reshuffle()
+    raw_requests.init_socket(server_socket)
+    return raw_requests
+
 if __name__ == "__main__":
-    rs = RawUDP(7700)
-    
-    rs.receiver()
+
+    srv = create_server(7700)
+    srv.receiver()
+
+    while 1:
+        rc = srv.get()
+        if rc:
+           print "REQ %s %s"%(rc[1], srv.queue_size)

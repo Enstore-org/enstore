@@ -6,18 +6,20 @@
 #
 # $Id$
 ###############################################################################
-import os
-import sys
-import string
-import pwd
+
 import getopt
+import os
+import pwd
+import re
+import string
+import subprocess
+import sys
 import time
 import types
 
-import re
-
 import configuration_client
 import enstore_constants
+import enstore_functions2
 import e_errors
 import file_utils
 
@@ -25,6 +27,7 @@ sys2host={'cms':  ('cmspnfs1', 'psql-data'),
           'd0en': ('d0ensrv1n', 'psql-data'),
           'stken': ('stkensrv1n', 'psql-data'),
           'cdfen': ('cdfensrv1n', 'psql-data'),
+          'dmsen': ('dmsen01', 'psql-data'),
           }
 
 PSQL_COMMAND = "psql -U enstore postgres -c 'select datname from pg_database' 2> /dev/null"
@@ -115,6 +118,19 @@ def checkPostgres():
 		return False
 	return True
 
+def getPostgresqlVersion():
+    ret = enstore_functions2.shell_command2("psql --version")
+    if not ret:
+        return None
+
+    rc = ret[0]
+    if rc:
+        return None
+
+    out = ret[1]
+    out = string.join(re.sub("[^0-9.]+","",out).split('.')[:2],'.')
+    return out
+
 class PnfsDbRestore:
 
     def __init__(self):
@@ -140,6 +156,10 @@ class PnfsDbRestore:
         print "\t specify timestamp YYYY-MM-DD to get backup up to certain date"
 
     def recover(self,name,backup_time=None):
+        postgresqlVersion = getPostgresqlVersion()
+        if not postgresqlVersion:
+             print "Failed to determine postgresql version"
+             return 1
         pnfsSetupFile=os.path.join(os.getenv("ENSTORE_DIR"),"etc/%s-pnfsSetup"%(name))
         if sys2host.has_key(name):
             self.pnfs_host = sys2host[name][0]
@@ -163,24 +183,8 @@ class PnfsDbRestore:
 	# write modified configuration file in place (/usr/etc/pnfsSetup)
 	#
 	pnfsSetup.write()
-        #
-        # copy pnfs_wrapper and postgres_check in place
-        #
-        pnfs_wrapper   = os.path.join(os.getenv("ENSTORE_DIR"),"tools/pnfs_wrapper")
-        pnfs_wrapper_destination = "/etc/init.d/pnfs_wrapper"
-        if not os.path.exists(pnfs_wrapper_destination):
-            rc=copy(pnfs_wrapper,pnfs_wrapper_destination)
-            if rc != 0 :
-                sys.exit(1)
-        postgres_check = os.path.join(os.getenv("ENSTORE_DIR"),"tools/postgres_check")
-        postgres_check_destination = "%s/tools/postgres_check"%(pnfsSetup["pnfs"])
-        if not os.path.exists(postgres_check_destination):
-            rc=copy(postgres_check,postgres_check_destination)
-            if rc != 0 :
-                sys.exit(1)
-        for cmd in ["/sbin/service pnfs_wrapper stop",\
-                    "umount -f /pnfs/fs", \
-                    "/sbin/service postgresql stop"]:
+        for cmd in ["umount -f /pnfs/fs", \
+                    "/sbin/service postgresql-%s stop"%(postgresqlVersion,)]:
             print "Executing command ",cmd
             rc=os.system(cmd)
             if rc != 0 :
@@ -225,7 +229,7 @@ class PnfsDbRestore:
         # fill in the database location in sysconfig file
 
         psql_data=pnfsSetup[PnfsSetup.DATABASE_POSTGRES]
-        f=open("/etc/sysconfig/pgsql/postgresql","w")
+        f=open("/etc/sysconfig/pgsql/postgresql-%s"%(postgresqlVersion,),"w")
         f.write("PGDATA=%s\n"%(psql_data))
         f.close()
 
@@ -233,8 +237,8 @@ class PnfsDbRestore:
         # create recovery.conf
         rdir = '%s:%s.xlogs'% (pnfsSetup.remote_backup_host,
 			       os.path.dirname(backup_file))
-        cmd = "restore_command = '%%s/sbin/enrcp %s/"% (os.getenv("ENSTORE_DIR"),
-									 rdir) + "%f.Z %p.Z" + " && uncompress %p.Z'"
+        cmd = "restore_command = '%s/sbin/enrcp %s/"% (os.getenv("ENSTORE_DIR"),
+                                                       rdir) + "%f.Z %p.Z" + " && uncompress %p.Z'"
 	pgdb = pnfsSetup[PnfsSetup.DATABASE_POSTGRES]
         print 'Creating recovery.conf: %s'% (cmd, )
         f=open('%s/recovery.conf'%(pgdb,), 'w')
@@ -247,10 +251,11 @@ class PnfsDbRestore:
 
 	for cmd in ['sed -i "s/archive_command/#archive_command/g" %s/postgresql.conf '% (pgdb,), \
                     'sed -i "s/^[ \t\r]*archive_mode[ \t\r]*=[ \t\r]*on/archive_mode = off/g" %s/postgresql.conf '% (pgdb,),\
+                    'sed -i "s/^[ \t\r]*logging_collector[ \t\r]*=[ \t\r]*on/logging_collector = off/g" %s/postgresql.conf '% (pgdb,),\
 		    "mkdir -p %s/pg_xlog/archive_status"% (pgdb,),\
 		    "chown -R enstore.enstore %s"% (pgdb,),\
                     "rm -f %s/postmaster.pid"%(pgdb),\
-                    "/sbin/service postgresql start"]:
+                    "/sbin/service postgresql-%s start"%(postgresqlVersion,)]:
             rc = os.system(cmd)
             if rc != 0 :
                 sys.stderr.write("Command %s failed, bailing out "%(cmd,))
@@ -267,8 +272,8 @@ class PnfsDbRestore:
 
         print "DB server is ready"
 
-        cmd='/sbin/service pnfs_wrapper start'
-        print "Starting pnfs: %s"% (cmd,)
+        cmd='dcache start'
+        print "Starting chimera: %s"% (cmd,)
         rc=os.system(cmd)
 	if rc != 0 :
 		sys.stderr.write("Command %s failed, bailing out "%(cmd,))

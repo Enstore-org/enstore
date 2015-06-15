@@ -1,12 +1,7 @@
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 4.1.2
-Release: 1
+Version: 4.2.1
+Release: 0
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -31,11 +26,6 @@ if [ $? -ne 0 ]; then
 	echo "Python-enstore2.7 is not installed"
 	exit 1
 fi
-rpm -q ftt
-if [ $? -ne 0 ]; then
-	echo "ftt is not installed"
-	exit 1
-fi
 
 rpm -q swig-enstore
 if [ $? -ne 0 ]; then
@@ -54,10 +44,11 @@ pydir=`rpm -ql Python-enstore2.7 | head -1`
 PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
 cp -rp $pydir $PYTHON_DIR
 rm -rf $PYTHON_DIR/*.tgz
-fttdir=`rpm -ql ftt | head -1`
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/FTT
-cp -rp $fttdir $FTT_DIR
-rm -rf $FTT_DIR/*.tgz
+#ln -s $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
+mv $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
+#cp -rp $fttdir $FTT_DIR
+#rm -rf $FTT_DIR/*.tgz
 swigdir=`rpm -ql swig-enstore | head -1`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
 cp -rp $swigdir $SWIG_DIR
@@ -87,6 +78,17 @@ echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 echo "BUILD"
 which_python=`which python`
 echo "PYTHON_EXE `file -L /usr/src/redhat/BUILD/opt/enstore/Python/bin/python | cut -f 3 -d ' ' | cut -f 1 -d '-'`"
+pushd .
+cd $FTT_DIR/ftt_lib
+rm -f ftt_mtio.h # do not know how did it get here
+make clean
+make
+make install
+cd ../ftt_test
+make clean
+make
+make install
+popd
 make clean
 make all
 
@@ -207,6 +209,10 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Mon Sep 08 2014  <moibenko@fnal.gov> -
+- new release 4.2.1, release 0
+* Thu Aug 14 2014  <moibenko@fnal.gov> -
+- new version 4.2.0 release 0 ftt now is part of enstore rpm
 * Tue May 06 2014  <moibenko@fnal.gov> -
 - new release 4.1.2, release 1
 * Thu Apr 10 2014  <moibenko@fnal.gov> -

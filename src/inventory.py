@@ -1040,18 +1040,35 @@ def inventory(output_dir, cache_dir):
     n_recyclable2 = 0
     number_of_recyclable3 = 0
 
+    # produce list of (volume,count) of volumes
+    # containing active package files w/o active package count
+
+    q = """
+    SELECT v.label,
+       count(*)
+    FROM file f,
+       volume v
+    WHERE v.id=f.volume
+       AND f.deleted='n'
+       AND f.package_id=f.bfid
+       AND f.active_package_files_count=0
+    GROUP BY v.label
+    """
+
+    res = file_db.query(q)
+    volumes=dict(res)
 
     # read volume ... one by one
 
     for vk in vol_db.keys():
         vv = vol_db[vk]
-        if vv.get('media_type') in ('null','disk') :
-            continue
         if not vv: # vk is gone
             vv = vol_db[vk+'.deleted']
             if not vv:
                 print "%s is missing"%(vk)
                 sys.exit(1)
+        if vv.get('media_type') in ('null','disk') :
+            continue
 
         # skipping deleted volumes
         try:
@@ -1071,6 +1088,7 @@ def inventory(output_dir, cache_dir):
         if vol_sum.has_key(vk):
             try:
                 vsum = vol_sum[vk]
+                vsum['external_label']=vk
             except:
                 # can be ignored
                 print "(warning) cache problem ...",
@@ -1095,8 +1113,9 @@ def inventory(output_dir, cache_dir):
         # not been updated recently.
         if vsum and long(vsum['last']) == long(vv['modification_time']):
             skipped = True
-            # good, don't do anything
-            active = vsum['active']
+            # subtract from active counts number of active package files
+            # that have constituent files marked deleted
+            active  = vsum['active'] - volumes.get(vsum['external_label'],0)
             deleted = vsum['deleted']
             unknown = vsum['unknown']
             active_size = vsum['active_size']
@@ -1132,8 +1151,9 @@ def inventory(output_dir, cache_dir):
                      f.get('pnfs_path', "unknown")))
                 n_files = n_files + 1
 
-            #Sum the volume totals.
-            active  =  vv['active_files']
+            # subtract from active counts number of active package files
+            # that have constituent files marked deleted
+            active  =  vv['active_files'] - volumes.get(vv['external_label'],0)
             deleted =  vv['deleted_files']
             unknown =  vv['unknown_files']
             active_size = vv['active_bytes']
@@ -1145,6 +1165,7 @@ def inventory(output_dir, cache_dir):
             total_size=0L
             for k in ('active_bytes','deleted_bytes','unknown_bytes'):
                 total_size += vv[k]
+
             vsum = {
                 'last' : vv['modification_time'],
                 'active' : vv['active_files'],

@@ -1,0 +1,68 @@
+<html><body><pre>
+
+                     ENCP release notes, from v3_11 to v3_11c
+
+
+Encp changes:
+=============
+
+This release is mainly bug fix release and miscellaneous improvements.
+
+
+
+commit c750ebe48c0efa8eaed8f56a31a4680e526708fb
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Jun 10 15:07:19 2014 -0500
+
+    do not connect to other known systems, do not change modification time
+    for encp called with dCache options (addresses INC000000412632)
+
+    Patch: http://srm.fnal.gov/reviews/r/151/
+
+commit 10e46359271c6d2276511891928dd68894a1eabf
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Apr 16 20:26:47 2014 -0500
+
+         - add get_children to info server (and info_client)
+         - make enstore info --children user level option
+         - execute open_bitfile and open_bitfile_for_package on thread in file_clerk
+         - replace loop over children with two SQL queries
+         - reply to open_bitfile_for_package call immediately after changing
+           package file cache status w/o waiting for query on packaged files
+           completed (and missing cache emitted)
+
+commit 04b8323d8277e3960deafd575164fc00edc7e47e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Apr 14 16:30:00 2014 -0500
+
+        replace open with os.utime
+        RB: http://srm/reviews/r/122/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1458
+
+commit a604ced062ef4c21263a07ff908c05f43c05da75
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Feb 6 14:52:05 2014 -0600
+
+        encp - add read loop to final dialog to handle long running selective CRC
+        bump encp version to 3_11c
+
+
+commit 9d2163cb78970b7783b935cc54b47ba58fc7a91e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Jan 17 16:31:39 2014 -0600
+
+        improve enstore volume -new-library  help output so that it looks
+        like this now:
+         --new-library <LIBRARY> <VOLUME_NAME>  set new library
+
+
+commit e62c7226c0d6778eb11179ec918089e96927a6de
+Author: Dmitry Litvinsev <litvinse>
+Date:   Wed Oct 30 17:14:02 2013 +0000
+
+    extract parent directory properly from ".(access)(filename)"
+    http://uqbar/reviews/r/746/
+
+
+
+</pre></body></html>

@@ -162,15 +162,15 @@ echo                                    >> $temp_file 2>&1
 
 echo "Creating Failed Multiple Copies" `date`
 
-psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c '
+psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select active_file_copying.bfid,
-       remaining as "copies remaining",
-       active_file_copying.time as "waiting since"
+remaining as \"copies remaining\",
+active_file_copying.time as \"waiting since\"
 from active_file_copying
 left join file_copies_map on active_file_copying.bfid = file_copies_map.bfid
-where remaining > 0
-order by time;
-' >> $temp_file 2>&1
+where remaining > 0 and exists
+( select 1 from file where file.bfid = active_file_copying.bfid and file.deleted='n')
+order by time"  >> $temp_file 2>&1
 
 echo                                  >> $temp_file 2>&1
 echo "==============================" >> $temp_file 2>&1

@@ -1762,8 +1762,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     print "Can not start: %s"%(detail,)
                     sys.exit(-1)
 
-                if self.config['product_id'] == "T10000C":
-                    # for T10000C set Allow Maximum Capacity (AMC)
+                if self.config['product_id'] in ("T10000C", "T10000D"):
+                    # for T10000C/D set Allow Maximum Capacity (AMC)
                     disable_AMC = self.config.get('disable_AMC', False)
                     if not disable_AMC:
                         # enable AMC
@@ -3008,7 +3008,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
         driver = self.tape_driver
-        if self.config['product_id'] == "T10000C" and self.compression:
+        if self.config['product_id'] in ("T10000C", "T10000D") and self.compression:
             # special code for setting compression for T10000C tape drives
             rc = scsi_mode_select.t10000_set_compression(driver, compression = True)
             if not rc:
@@ -7857,6 +7857,7 @@ class DiskMover(Mover):
             if self.state != IDLE:
                 self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: filename is %s' %
                                      (filename,), error_source=DRIVE)
+                self.state = IDLE # to reset state ERROR
                 self.idle()
             return
 
@@ -8106,7 +8107,8 @@ class DiskMover(Mover):
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
 
-        r0 = self.vol_info['remaining_bytes']  #value prior to this write
+        r0 = self.vol_info.get('remaining_bytes', r2)  #value prior to this write
+        #vol_info['remaining_bytes'] may be not defined if the volume has just been added by another mover.
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
         remaining = min(r1, r2)
         self.vol_info['remaining_bytes']=remaining

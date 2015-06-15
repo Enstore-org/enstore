@@ -20,39 +20,27 @@ if [ ! -f ${setup} ] ; then
 fi
 . ${setup}
 
-if [ -z "$pnfs" ] ; then echo " pnfs not found in $setup " ; exit 1 ; fi
 if [ -z "$database" ] ; then echo " database not found in $setup " ; exit 1 ; fi
 if [ -z "$database_postgres" ] ; then echo " database_postgres not found in $setup " ; exit 1 ; fi
 if [ -z "$remotebackup" ] ; then echo " remotebackup not found in $setup " ; exit 1 ; fi
-if [ -z "$pnfsdLog" ] ; then echo " pnfsdLog not found in $setup " ; exit 1 ; fi
 
 #
 db=$database
 db_psql=$database_postgres
 backdir=$database/../backup
 genFile=$backdir/backupGeneration
-tools=$pnfs/tools
-PATH=$tools:$PATH
+
 #
 if [ ! -d $backdir ] ; then
   echo " Can't locate $backdir "
   exit 1
 fi
 
-#
-# ----------------------------------------------------------------------
-#
-if [ ! -f $db/D-0000 ] ;then echo " Admin not present " ; exit 1 ; fi
-#
-# ----------------------------------------------------------------------
-#
-
 save_loop() {
 
     if [ ! -f $genFile ] ; then
 	echo 1 >$genFile
     fi
-    #
 
     generation=`cat $genFile 2>/dev/null `
     generation=`expr $generation + 0`
@@ -66,24 +54,6 @@ save_loop() {
 	save_low
 	if [ $? -ne 0 ] ; then return 1 ; fi
     done
-
-    #copy the pnfsdLog file over too, but only if its size>0
-    if [ -e $pnfsdLog ]; then
-	fullpath=$pnfsdLog
-	save_low nomd2tool
-	if [ $? -ne 0 ] ; then return 1 ; fi
-
-        # now, in principle, there may be some pnfsdLog files that plog compressed
-        # get those too if their size>0 but don't compress them again
-	plog_more="$pnfsdLog*.Z"
-	if [ `echo $plog_more | grep -c "\*.Z$"` -eq 0 ]; then
-	    for fullpath in $plog_more; do
-		save_low nomd2tool
-		if [ $? -ne 0 ] ; then return 1 ; fi
-		rm -f $fullpath # don't keep old backups around and just keep recopying them
-	    done
-	fi
-    fi
 }
 
 checkSpaceLeft() {
@@ -116,10 +86,7 @@ save_low() {
         echo " $fullpath has file size = 0, not backing up"
 	return 0
     fi
-    if [ `echo $fullpath | grep -c volmap` -ne 0 ]; then
-        echo " $fullpath is a volmap database - deprecated - not backing up"
-	return 0
-    fi
+
     dest=$backdir/`basename $fullpath`.$generation
     echo " `date` Copying $fullpath $dest "
     echo temporarily disabled: checkSpaceLeft $fullpath $backdir
@@ -127,17 +94,13 @@ save_low() {
         echo " Not enough space left on $backdir"
         return 1
     fi
-    if [ `echo "${1:-x}" | grep -c "nomd2tool"` -ne 0 ]; then
-        cp $fullpath $dest
-    else
-        psql -U enstore template1 -c "checkpoint; select pg_start_backup('${dest}.tar.Z')" > /dev/null
-        (cd ${fullpath}/..; tar cfz ${dest}.tar.Z --exclude ./data/pg_xlog .)
-        if [ "$?" != "0" ] ; then
-	    echo " Tar cfz ${dest}.tar.Z returned error code. Some files might be modified during backup. Ignored. "
-        fi
-        psql -U enstore template1 -c "select pg_stop_backup()" > /dev/null
-        dest=$dest.tar.Z
+    psql -U enstore template1 -c "checkpoint; select pg_start_backup('${dest}.tar.Z')" > /dev/null
+    (cd ${fullpath}/..; nice -n 20 tar cfz ${dest}.tar.Z --exclude ./`basename ${fullpath}`/pg_xlog .)
+    if [ "$?" != "0" ] ; then
+	echo " Tar cfz ${dest}.tar.Z returned error code. Some files might be modified during backup. Ignored. "
     fi
+    psql -U enstore template1 -c "select pg_stop_backup()" > /dev/null
+    dest=$dest.tar.Z
     xstat=$?
     if [ $xstat -ne 0 ] ; then
         echo " Cp $fullpath $dest command failed : $xstat"

@@ -25,12 +25,12 @@ else:
 
 listing = []
 for i in os.listdir(inv_dir):
-	if i[:21] == "COMPLETE_FILE_LISTING":
+	if i.startswith(("COMPLETE_FILE_LISTING","CHIMERA_DUMP")):
 		p = os.path.join(inv_dir, i)
 		st = os.stat(p)
 		size = st[stat.ST_SIZE]
 		f = open(p)
-		if i == "COMPLETE_FILE_LISTING" or i == "COMPLETE_FILE_LISTING_ALL":
+		if i in ("COMPLETE_FILE_LISTING","COMPLETE_FILE_LISTING_ALL"):
 			mt = ' '.join(f.readline().split()[2:])
 		else:
 			mt = ' '.join(f.readline().split()[3:])
