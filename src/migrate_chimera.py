@@ -6556,6 +6556,7 @@ def _swap_metadata(MY_TASK, job, fcc, db, src_is_a_package=False):
         p1.complete_crc = dst_file_record['complete_crc']
         if src_is_a_package :
             p1.path = src_path
+            p1.p_path = p1.path
 
         # should we?
         # the best solution is to have encp ignore sanity check on file_family
