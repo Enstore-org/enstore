@@ -17,6 +17,7 @@ import os
 import string
 import threading
 
+import bfid_util
 import pnfs
 import chimera
 import namespace
@@ -50,10 +51,10 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                  path_type = enstore_constants.BOTH,
                  use_info_server=USE_INFO_SERVER_DEFAULT):
     global search_list
-    
+
     if not namespace.is_id(sfs_id):
         raise ValueError("Expected storage filesystem id not: %s" % (sfs_id,))
-    if not enstore_functions3.is_bfid(bfid):
+    if not bfid_util.is_bfid(bfid):
         raise ValueError("Expected bfid not: %s" % (bfid,))
 
     #Remember if a file with matching storage filesystem id (and unmatching
@@ -65,7 +66,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
 
     #afn = Access File Name   (aka .(access)())
     afn = ""
-    
+
     #We will need the pnfs database numbers.
     if pnfs.is_pnfsid(sfs_id):
         pnfsid_db = int(sfs_id[:4], 16)
@@ -103,13 +104,13 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
         # those that query a storage filesystem.
         if path_type == enstore_constants.FS:
             mount_paths = namespace.get_enstore_admin_mount_point()
-            
+
         elif path_type == enstore_constants.NONFS:
             mount_paths = namespace.get_enstore_mount_point()
         else:  #both
             mount_paths = namespace.get_enstore_mount_point() + \
                           namespace.get_enstore_admin_mount_point()
-            
+
         for mount_path in mount_paths:
             if enstoredb_path.startswith(mount_path):
                 #Need to add one to the length of mount_path to skip
@@ -125,7 +126,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                     new_path = enstoredb_path.replace("/pnfs/fs/usr/", "/pnfs/", 1)
                     if new_path not in path_list:
                         path_list.append(new_path)
-                    
+
             #If the paths begins with something like
             # /pnfs/fnal.gov/usr/... we need to convert and check for
             # this too.  This is most likely necessary when the scan
@@ -203,7 +204,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                 #This /pnfs/fs doesn't contain a database with the id we
                 # are looking for.
                 continue
-        
+
         #We don't need to determine the full path of the file
         # to know if it exists.  The path could be different
         # between two machines anyway.
@@ -224,7 +225,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
             if layer1_bfid == file_record['bfid'] or \
                    layer1_bfid == \
                    infc.find_original(file_record['bfid'])['original']:
-                
+
                 if layer1_bfid != file_record['bfid']:
                     #Must be a multiple copy to get to this point.
                     is_multiple_copy = True
@@ -270,11 +271,11 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                         else:
                             raise sys.exc_info()[0], sys.exc_info()[1], \
                                   sys.exc_info()[2]
-                        
+
                 else:
                     sfs = namespace.StorageFS(afn)
                     db_a_dirpath = namespace.get_directory_name(afn)
-                    
+
                     #database_path = pnfs.database_file(db_a_dirpath)
                     #Get the database info for the filesystem.
                     db_info = sfs.get_database(db_a_dirpath)
@@ -304,7 +305,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                             # to find it.  This is going to be a resource
                             # hog, but once we find it, we won't need to
                             # do so for any more files.
-                            
+
                             #If this sfs.get_path() fails, it is most likely,
                             # because of permission problems of either
                             # /pnfs/fs or /pnfs/fs/usr.  Especially for
@@ -327,7 +328,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                                     #Using the current mountpoint, we
                                     # were able to obtain layer 1, but the
                                     # file does not exists?  Let's flag this
-                                    # as a possible orphan file. 
+                                    # as a possible orphan file.
                                     possible_orphaned_file = \
                                                    possible_orphaned_file + 1
                                 else:
@@ -359,7 +360,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                     if sfs_id_mp == None:
                         continue
                     break
-            
+
             else:
                 try:
                     sfs = namespace.StorageFS(mp, shortcut = True)
@@ -412,8 +413,8 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
 
             #If we found the right bfid brand, we know the right storage
             # filesystem was found.
-            sfs_brand = enstore_functions3.extract_brand(layer1_bfid)
-            filedb_brand = enstore_functions3.extract_brand(file_record['bfid'])
+            sfs_brand = bfid_util.extract_brand(layer1_bfid)
+            filedb_brand = bfid_util.extract_brand(file_record['bfid'])
             if sfs_brand and filedb_brand and sfs_brand == filedb_brand:
                 if file_record['deleted'] == 'yes':
                     raise OSError(errno.ENOENT,
@@ -476,7 +477,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                          #found a different bfid in layer 1.  Lets fall
                          # though and report more useful error message.
                          pass
-                     
+
                          #raise OSError(errno.ENOENT, "reused pnfsid", afn)
                      elif possible_orphaned_file:
                          #File is not deleted, pnfs id is still valid, found
@@ -565,8 +566,8 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
         except (OSError, IOError):
             use_name = enstoredb_path
         use_mp = sfs_id_mp
-                                                                    
-    
+
+
     use_name = os.path.abspath(use_name)
     use_mp = os.path.abspath(use_mp)
 
@@ -631,7 +632,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                     tmp_name = tmp_name_list[0]
                 else:
                     raise OSError(errno.EIO, "to many matches", tmp_name_list)
-                
+
                 if tmp_name[0] == "/":
                     #Make sure the path is an absolute path.
                     sfs_path = tmp_name
@@ -676,7 +677,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
 
     if not pnfs.is_pnfsid(pnfsid):
         raise ValueError("Expected pnfsid not: %s" % (pnfsid,))
-    if not enstore_functions3.is_bfid(bfid):
+    if not bfid_util.is_bfid(bfid):
         raise ValueError("Expected bfid not: %s" % (bfid,))
 
     #Remember if a file with matching pnfsid (and unmatching bfid) was found
@@ -688,7 +689,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
 
     #afn = Access File Name   (aka .(access)())
     afn = ""
-    
+
     #We will need the pnfs database numbers.
     if pnfs.is_pnfsid(pnfsid):
         pnfsid_db = int(pnfsid[:4], 16)
@@ -745,7 +746,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 else:
                     new_path = enstoredb_path.replace("/pnfs/fs/usr/", "/pnfs/", 1)
                     path_list.append(new_path)
-                    
+
             #If the paths begins with something like
             # /pnfs/fnal.gov/usr/... we need to convert and check for
             # this too.  This is most likely necessary when the scan
@@ -818,7 +819,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 #This /pnfs/fs doesn't contain a database with the id we
                 # are looking for.
                 continue
-        
+
         #We don't need to determine the full path of the file
         # to know if it exists.  The path could be different
         # between two machines anyway.
@@ -839,7 +840,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
             if layer1_bfid == file_record['bfid'] or \
                    layer1_bfid == \
                    infc.find_original(file_record['bfid'])['original']:
-                
+
                 if layer1_bfid != file_record['bfid']:
                     #Must be a multiple copy to get to this point.
                     is_multiple_copy = True
@@ -885,7 +886,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                         else:
                             raise sys.exc_info()[0], sys.exc_info()[1], \
                                   sys.exc_info()[2]
-                        
+
                 else:
                     db_a_dirpath = pnfs.get_directory_name(afn)
                     database_path = pnfs.database_file(db_a_dirpath)
@@ -918,7 +919,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                             # hog, but once we find it, we won't need to
                             # do so for any more files once the mount
                             # point is added to the cached list.
-                            
+
                             #If this p.get_path() fails, it is most likely,
                             # because of permission problems of either
                             # /pnfs/fs or /pnfs/fs/usr.  Especially for
@@ -941,7 +942,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                                     #Using the current mountpoint, we
                                     # were able to obtain layer 1, but the
                                     # file does not exist?  Let's flag this
-                                    # as a possible orphan file. 
+                                    # as a possible orphan file.
                                     possible_orphaned_file = \
                                                    possible_orphaned_file + 1
                                 else:
@@ -974,7 +975,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                     if pnfsid_mp == None:
                         continue
                     break
-            
+
             else:
                 try:
                     p =  pnfs.Pnfs(shortcut = True)
@@ -1020,8 +1021,8 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
 
             #If we found the right bfid brand, we know the right pnfs system
             # was found.
-            pnfs_brand = enstore_functions3.extract_brand(layer1_bfid)
-            filedb_brand = enstore_functions3.extract_brand(file_record['bfid'])
+            pnfs_brand = bfid_util.extract_brand(layer1_bfid)
+            filedb_brand = bfid_util.extract_brand(file_record['bfid'])
             if pnfs_brand and filedb_brand and pnfs_brand == filedb_brand:
                 if file_record['deleted'] == 'yes':
                     raise OSError(errno.ENOENT,
@@ -1084,7 +1085,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                          #found a different bfid in layer 1.  Lets fall
                          # though and report more useful error message.
                          pass
-                     
+
                          #raise OSError(errno.ENOENT, "reused pnfsid", afn)
                      elif possible_orphaned_file:
                          #File is not deleted, pnfs id is still valid, found
@@ -1159,7 +1160,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
     else:
         use_name = enstoredb_path
         use_mp = pnfsid_mp
-    
+
     use_name = os.path.abspath(use_name)
     use_mp = os.path.abspath(use_mp)
 
@@ -1220,7 +1221,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                     tmp_name = tmp_name_list[0]
                 else:
                     raise OSError(errno.EIO, "to many matches", tmp_name_list)
-                
+
                 if tmp_name[0] == "/":
                     #Make sure the path is an absolute path.
                     pnfs_path = tmp_name
@@ -1255,8 +1256,8 @@ def replaced_error_string(layer1_bfid, bfid):
     #If this is the case that the bfids don't match,
     # also include this piece of information.
     try:
-        layer1_time = int(enstore_functions3.strip_brand(layer1_bfid)[:-5])
-        bfid_time = int(enstore_functions3.strip_brand(bfid)[:-5])
+        layer1_time = int(bfid_util.strip_brand(layer1_bfid)[:-5])
+        bfid_time = int(bfid_util.strip_brand(bfid)[:-5])
     except (KeyError, ValueError, AttributeError, TypeError):
         return "found different file"
 

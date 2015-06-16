@@ -52,7 +52,7 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             direction = "write"
         else:
             direction = "unknown"
-        
+
         plot_fp.write("set terminal postscript color solid\n")
         plot_fp.write("set output '%s'\n" % (ps_filename,))
         plot_fp.write("set xlabel 'Date'\n")
@@ -84,7 +84,7 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                       % (storage_group, direction))
         plot_fp.write("plot '%s' using 1:5 t '' with impulses lw 5\n" \
                       % (data_filename,))
-        
+
         #disk
         plot_fp.write("set origin 0.5,0.6\n")
         plot_fp.write("set title '%s: disk encp %s rate'\n" \
@@ -113,7 +113,7 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def get_max_time(self, db):
         sql_cmd = "select distinct(storage_group) " \
                   "from encp_xfer_average_by_storage_group;"
-        
+
         res = db.query(sql_cmd).getresult() #Get the values from the DB.
 
         # Loop over the SQL query results.
@@ -134,7 +134,7 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             storage_groups.append(row[0])
 
         return storage_groups
-            
+
 
     #######################################################################
     # The following functions must be defined by all plotting modueles.
@@ -157,9 +157,9 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             os.makedirs(self.web_dir)
 
     def fill(self, frame):
-        
-        #  here we create data points 
-        
+
+        #  here we create data points
+
         acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, {})
         db = pg.DB(host   = acc.get('dbhost', "localhost"),
                    dbname = acc.get('dbname', "accounting"),
@@ -183,7 +183,7 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                   "from encp_xfer_average_by_storage_group " \
                   "where unix_time between %s and %s;" \
                   % (str(now_time - DELTA_TIME), str(now_time))
-         
+
         res = db.query(sql_cmd).getresult() #Get the values from the DB.
 
         #Open the datafiles.
@@ -207,8 +207,8 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             out_line = "%s %s %s %s %s %s %s %s %s %s %s %s %s %s\n" % \
                        (d,a_or,s_o_r,a_nr,s_n_r,a_dsk_r,s_dsk_r,a_t_r,s_t_r,
                         a_drv_r,s_drv_r,a_s,s_s,counter)
-            
-            try: 
+
+            try:
                 open_files['%s_%s' % (sg, rw)].write(out_line)
             except KeyError:
                 continue
@@ -238,19 +238,19 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                           % (each_file.name, str(msg),)
                 sys.stderr.write(message)
                 pass
-        
+
             #Avoid resource leaks.
             each_file.close()
 
     def plot(self):
-        
+
         for sg in self.storage_groups:
 
             self.__plot(sg, "r")
             self.__plot(sg, "w")
 
     def __plot(self, storage_group, rw):
-        
+
         ps_filename = os.path.join(self.web_dir,
                                    "encp_rates_%s_%s.ps" % \
                                    (storage_group, rw))
@@ -269,7 +269,7 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         data_filename = os.path.join(self.temp_dir,
                                      "encp_rates_%s_%s.pts" \
                                      % (storage_group, rw))
-        
+
         if (os.path.exists(data_filename)):
             #Create the file that contains the commands for gnuplot to run.
             self.write_plot_file(plot_filename, data_filename, ps_filename,
@@ -277,9 +277,9 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             #Make the plot and convert it to jpg.
             os.system("gnuplot < %s" % (plot_filename))
-            os.system("convert -rotate 90 -modulate 80 %s %s" \
+            os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s" \
                       % (ps_filename, jpeg_filename))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
                       % (ps_filename, jpeg_filename_stamp))
 
             #clean up the temporary files.

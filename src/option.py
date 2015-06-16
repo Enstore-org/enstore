@@ -1,11 +1,4 @@
 #!/usr/bin/env python
-
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
 """
 Example option group dictionaries:
 
@@ -334,6 +327,7 @@ MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_RETRY = "max-retry"                      #encp
 MAX_RESUBMIT = "max-resubmit"                #encp
 MAX_WORK = "max-work"                        #media(c&s)
+MEDIA_VALIDATE = "media-validate"            # volume assert (for T10000 media only)
 MESSAGE = "message"                          #log, alarm
 MESSAGES_FILE = "messages-file"              #entv
 MIGRATED = "migrated"                        #volume
@@ -554,7 +548,7 @@ valid_option_list = [
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAKE_COPIES, MAKE_FAILED_COPIES, MARK_BAD, GET_CHILDREN, FIELD, REPLAY,
     MATCH_DIRECTORY_FILE_FAMILY, MATCH_VOLUME_FILE_FAMILY,
-    MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
+    MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,MEDIA_VALIDATE,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
     MIGRATION_ONLY,
     MKDIR, MKDIRS, MMAP_IO, MMAP_SIZE,

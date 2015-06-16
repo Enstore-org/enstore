@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
+"""
+Sends SFA migration lists to corresponding qpid queues to get processed by migrators.
+Receives migrator responds on the return queues and processes them.
+"""
 
 # system imports
 import sys
@@ -52,7 +51,12 @@ class MigrationList:
         return "id %s list: %s"%(self.id, self.list_object)
 
 class MigrationDispatcher():
+    """
+    Migration dispatcher.
+    Dispatches migration requests to migrators via corresponding qpid queues.
+    Monitors submitted requests.
 
+    """
     def __init__(self,
                  name,
                  broker,
@@ -63,25 +67,43 @@ class MigrationDispatcher():
                  lock,
                  migration_pool,
                  purge_pool,
+                 cache_written_pool,
+                 fcc,
                  clustered_configuration=None):
         '''
-        @type name: str
-        @param name - migration dispatcher name
-        @param broker - qpid broker
-        @param queue_write - queue for migration dispatcher write requests
-        @param queue_read - queue for migration dispatcher read requests
-        @param queue_purge - queue for migration dispatcher purge requests
-        @param queue_reply - replies from migrators are sent to this queue
-        @param migration_pool - pool where PE Server part puts lists to get served by Migration Dispatcher
-        @param purge_pool - purge pool where PE Server part puts lists to get served by Migration Dispatcher
-        @param clustered_configuration - indicates that clustered configuration is used or not
-        '''
+
+        :type name: :obj:`str`
+        :arg name: migration dispatcher name
+        :type broker: :obj:`dict`
+        :arg broker: ({'host':qpid_broker_host, 'port':qpid_broker_port})
+        :type queue_write: :obj:`str`
+        :arg queue_write: queue for migration dispatcher write requests
+        :type queue_read: :obj:`str`
+        :arg queue_read: queue for migration dispatcher read requests
+        :type queue_purge: :obj:`str`
+        :arg queue_purge: queue for migration dispatcher purge requests
+        :type queue_reply: :obj:`str`
+        :arg queue_reply: replies from migrators are sent to this queue
+        :type migration_pool: :obj:`str`
+        :arg migration_pool: pool where PE Server part puts lists to get served by Migration Dispatcher
+        :type purge_pool: :obj:`str`
+        :arg purge_pool: purge pool where PE Server part puts lists to get served by Migration Dispatcher
+        :type cache_written_pool: :obj:`str`
+        :arg cache_written_pool: pool where write event from file clerk are kept
+        :type fcc: :class:`file_clerk_client.FileClient`
+        :arg fcc: file clerk client
+        :type clustered_configuration: :obj:`bool`
+        :arg clustered_configuration: - indicates that clustered configuration is used or not
+       '''
+
         self.shutdown = False
         self.finished = False
         self.auto_ack = True  # auto ack incoming messages
         self.lock = lock
         self.migration_pool = migration_pool
         self.purge_pool = purge_pool
+        self.cache_written_pool = cache_written_pool
+        self.fcc = fcc
 
         self.log = logging.getLogger('log.encache.%s' % name)
         self.trace = logging.getLogger('trace.encache.%s' % name)
@@ -192,6 +214,59 @@ class MigrationDispatcher():
             time.sleep(600)
 
 
+    def refill_cache_written_pool(self, mig_list):
+        """
+        Refill cache written pool.
+
+        :type mig_list: :class:`MigrationList`
+        :arg mig_list: file list
+        """
+        f_list = mig_list.list_object
+        Trace.trace(10, "refill_cache_written_pool list: %s"%(f_list,))
+        # identify policy corresponding to this list
+        policy = f_list.list_name
+        for f in f_list.file_list:
+            bfid_info = self.fcc.bfid_info(f['bfid'])
+            if bfid_info and bfid_info['archive_status'] == None:
+                # this will go into the list to migrate
+                # check if the file list exists
+                if not policy in self.cache_written_pool:
+                    # Create list
+                    new_f_list = file_list.FileListWithCRC(id = ("%s-%s"%(mig_list.id, "MDREFILL")),
+                                                           list_type = f_list.list_type,
+                                                           list_name = policy,
+                                                           minimal_data_size = f_list.minimal_data_size,
+                                                           maximal_file_count = f_list.maximal_file_count,
+                                                           max_time_in_list = f_list.max_time_in_list,
+                                                           disk_library = f_list.disk_library)
+                    self.cache_written_pool[policy] = new_f_list
+
+                list_element = file_list.FileListItemWithCRC(bfid = bfid_info['bfid'],
+                                                       nsid = f['nsid'],
+                                                       path = f['path'],
+                                                       libraries = f['libraries'],
+                                                       crc = f['complete_crc'])
+                l_id = self.cache_written_pool[policy].list_id
+                self.lock.acquire()
+                self.cache_written_pool[policy].append(list_element, bfid_info['size'])
+                migrate_list = False
+                if self.cache_written_pool[policy].full:
+                     # pass this list to Migration Dispatcher
+                     Trace.trace(10, "refill_cache_written_pool passing to migration dispatcher id %s"%(l_id,))
+                     self.cache_written_pool[policy].creation_time = time.time()
+                     try:
+                         self.migration_pool[l_id] = self.MigrationList(new_f_list,
+                                                                      l_id,
+                                                                      file_list.FILLED)
+                         del(self.cache_written_pool[policy])
+                         migrate_list = True
+                     except Exception, detail:
+                         Trace.log(e_errors.ERROR, "Error moving to migration pool: %s"%(detail,))
+                self.lock.release()
+                if migrate_list:
+                     self.start_migration(self.migration_pool, l_id)
+
+
     def handle_message(self,m):
         # @todo : check "type" present and is string or unicode
         msg_type = m.properties["en_type"]
@@ -269,6 +344,7 @@ class MigrationDispatcher():
                             # migrator failed to write package
                             # delete corresponding migration_pool record
                             # so that it can be rebuilt later
+                            self.refill_cache_written_pool(pool[m.correlation_id])
                             del(pool[m.correlation_id])
                             Trace.trace(10, "deleted from migration pool to get rebuilt")
 
@@ -381,6 +457,7 @@ class MigrationDispatcher():
                 # send command to the queue defined in send_client
                 # and set corresponding list state to ACTIVE
                 # for monitoring of execution
+                Trace.trace(10, "migrate_list sending %s"%(command))
                 send_client.send(command)
 
                 migration_list.state = file_list.ACTIVE
@@ -388,6 +465,8 @@ class MigrationDispatcher():
                 Trace.handle_error()
 
     def start_migration(self, pool, key):
+        Trace.trace(10, "start_migration pool %s key %s"%(pool, key))
+
         try:
             item = pool[key]
         except KeyError, detail:

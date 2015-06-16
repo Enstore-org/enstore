@@ -171,7 +171,7 @@ def get_clerks_list():
 
     return csc_list, vcc_list, fcc_list
 
-def create_assert_list(check_requests):
+def create_assert_list(check_requests, media_validate=None):
     #The list of volume clerks to check.
     csc_list, vcc_list, fcc_list = get_clerks_list()
 
@@ -220,9 +220,12 @@ def create_assert_list(check_requests):
             elif isinstance(check_requests[vol], (tuple, list)):
                 ticket['action'] = "crc_check"
                 ticket['parameters'] = check_requests[vol]
+            if (media_validate and
+                (vc['media_type'] in ("T10000T2", "T10000T2D"))):
+                ticket['action'] = media_validate
             #The following are for the inquisitor.
             ticket['vc']['file_family'] = ""
-	    ticket['fc'] = {}  #Easier to do this than modify the mover.
+            ticket['fc'] = {}  #Easier to do this than modify the mover.
             ticket['fc']['external_label'] = vc['external_label']
             ticket['fc']['location_cookie'] = "0000_000000000_0000000"
             ticket['fc']['address'] = fcc_list[i].server_address  #fcc instance
@@ -471,7 +474,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
             Trace.log(e_errors.ERROR, message2)
             continue
 
-        if intf.crc_check:
+        if intf.crc_check or intf.media_validate:
             stall_volume_assert(socket)
             
 
@@ -567,6 +570,7 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
         self.volume = ""
         self.mover_timeout = 60*60
         self.crc_check = None
+        self.media_validate = None
         self.location_cookies = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -595,6 +599,10 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
                           option.VALUE_TYPE:option.INTEGER,
                           option.VALUE_USAGE:option.IGNORED,
                           option.USER_LEVEL:option.ADMIN},
+        option.MEDIA_VALIDATE:{option.HELP_STRING:"validate media (T10000 tapes only) [complete, standard]",
+                               option.VALUE_TYPE:option.STRING,
+                               option.VALUE_USAGE:option.REQUIRED,
+                               option.USER_LEVEL:option.ADMIN},
         option.MOVER_TIMEOUT:{option.HELP_STRING:"set mover timeout period "\
                               " in seconds (default 1 hour)",
                               option.VALUE_USAGE:option.REQUIRED,
@@ -625,7 +633,7 @@ def main(intf):
     encp.clients(intf)
     #Log that we have started the assert.
     log_volume_assert_start()
-    
+    validate = None
     #Read in the list of vols.
     if intf.args:  #read from file.
         check_requests = parse_file(intf.args[0])
@@ -652,6 +660,14 @@ def main(intf):
             return 1
 
         check_requests = {vol_list[0] : lc_list}
+    elif intf.volume and intf.media_validate: #read from command line arguments.
+        if intf.media_validate not in ("complete", "standard"):
+            intf.print_usage()
+            return 1
+        validate = "media_validate_%s"%(intf.media_validate,)
+        vol_list = parse_comma_list(intf.volume)
+        check_requests = {vol_list[0] : []}
+
     elif intf.volume: #read from command line argument.
         vol_list = parse_comma_list(intf.volume)
         lc_list = None
@@ -675,7 +691,7 @@ def main(intf):
     ### just check the label.
 
     #Create the list of assert work requests.
-    assert_list, listen_socket = create_assert_list(check_requests)
+    assert_list, listen_socket = create_assert_list(check_requests, media_validate=validate)
 
     if len(assert_list) == 0:
         message = "No volumes to assert?"

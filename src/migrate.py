@@ -114,6 +114,7 @@ import socket
 
 
 # enstore imports
+import bfid_util
 import file_clerk_client
 import volume_clerk_client
 import configuration_client
@@ -2056,7 +2057,7 @@ def get_volume_id(MY_TASK, volume, db):
 #Return the volume that the bfid refers to.
 """
 def get_volume_from_bfid(bfid, fcc, db):
-        if not enstore_functions3.is_bfid(bfid):
+        if not bfid_util.is_bfid(bfid):
                 return False
 
         q = "select label from volume,file where file.volume = volume.id " \
@@ -2106,7 +2107,7 @@ def is_volume_allowed(volume, vcc, db):
 # argument may also be a file path in pnfs.  It may also be a (short) library
 # name now too.
 def get_media_type(arguement, db):
-	if enstore_functions3.is_bfid(arguement):
+	if bfid_util.is_bfid(arguement):
 		q = "select media_type from volume,file where " \
 		    " file.volume = volume.id and file.bfid = '%s';" % \
 		    (arguement,)
@@ -9286,7 +9287,7 @@ def get_targets(bfid_list_queue, volume_list_queue, isc, intf):
         #4) path          /pnfs/xyz/abc
         #                 /pnfs/fs/usr/xyz/abc
 
-        if enstore_functions3.is_bfid(target):
+        if bfid_util.is_bfid(target):
             bfid_list_queue.put(target, block=True)
         elif enstore_functions3.is_volume(target):
             volume_list_queue.put(target, block=True)

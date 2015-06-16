@@ -41,7 +41,6 @@ import types
 import configuration_client
 import setpath
 import generic_server
-import event_relay_client
 import monitored_server
 import inquisitor_client
 #import enstore_functions
@@ -104,6 +103,7 @@ READ, WRITE, ASSERT = range(3)
 #error sources
 TAPE, ROBOT, NETWORK, DRIVE, USER, MOVER, UNKNOWN = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE', 'USER','MOVER', 'UNKNOWN']
 
+MEDIA_VERIFY_FAILED = "media verify failed"
 def mode_name(mode):
     if mode is None:
         return None
@@ -851,7 +851,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
-        self.draining = 0 # draining flag. Draining is not 0
+        self.draining = 0  # draining flag. Draining is not 0
         self.log_mover_state = None # allow logging additional mover information (configurable)
         self.override_ro_mount = None # if set override readonly mount MC option
         self.just_mounted = 0 # to indicate that the volume was just mounted
@@ -999,8 +999,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         """
         x = ticket
-        out_ticket = {'status':(e_errors.OK,None)}
-        self.reply_to_caller(out_ticket)
+        ticket['status'] = (e_errors.OK,None)
+        self.reply_to_caller(ticket)
         self.dump_vars()
 
     def dump_vars(self, header=None):
@@ -1991,6 +1991,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         sys.exit(0)
         Trace.alarm(e_errors.ALARM, "Could not exit! Sys.exit did not work")
 
+
+    def _reinit(self):
+        """
+        Overridden from generic server
+        to set variables if configuration was reloaded
+        """
+
+        encp_dict = self.csc.get('encp')
+        if encp_dict:
+            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
+
+
     def send_error_and_restart(self, err = (None, None), do_restart=1):
         """
         Send error message and restart.
@@ -2003,6 +2015,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             e = self.last_error
         self.send_error_msg(e)
         time.sleep(5)
+        self.dont_update_lm = 0
         self.restart()
 
 
@@ -2027,8 +2040,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             res = self.device_dump(sendto)	# take default notify
 
-        t = {"status":(e_errors.OK, res)}
-        self.reply_to_caller(t)
+        ticket['status'] = (e_errors.OK, res)
+        self.reply_to_caller(ticket)
 	return
 
     def device_dump(self, sendto=None, notify=['enstore-admin@fnal.gov']):
@@ -2218,6 +2231,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ALARM,
                                 "Net thread is running in the state %s. Will restart the mover"%
                                 (state_name(self.state),))
+                    self.dont_update_lm = 1
                     if self.state == HAVE_BOUND:
                         self.run_in_thread('media_thread', self.dismount_volume, after_function=self.send_error_and_restart)
                         #self.dismount_volume(after_function=self.restart)
@@ -2258,7 +2272,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(88, "time in state %s %s %s %s state %s"%
                         (time_in_state,self.time_in_state,self.max_time_in_state, self.state_change_time, state_name(self.state)))
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and
-                (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
+                (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, ERROR, FINISH_WRITE, ACTIVE))):
                 send_alarm = True
                 if self.state == ACTIVE:
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
@@ -2621,11 +2635,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s network %s %.3f" %
+        Trace.notify("transfer %s %s %s network %s %.3f %s" %
                      (self.shortname, self.bytes_read,
-                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+        while self.state in (ACTIVE,) and self.bytes_read < self.bytes_to_read:
             if self.tr_failed:
                 break
             if self.buffer.full():
@@ -2673,10 +2687,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    self.bytes_to_read, last_notify_time):
                 bytes_notified = self.bytes_read
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s network %s %.3f" %
+                Trace.notify("transfer %s %s %s network %s %.3f %s" %
                              (self.shortname, self.bytes_read,
                               self.bytes_to_read, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
         if self.tr_failed:
             driver.close()
@@ -2907,9 +2921,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             if block_counter == 2000:
                 percent_done = int(self.bytes_read*100 / self.bytes_to_write)
                 if percent_done - last_percent_done >= 5:
-                    Trace.notify("transfer %s %s %s media %s %.3f" %
+                    Trace.notify("transfer %s %s %s media %s %.3f %s" %
                                  (self.shortname, -self.bytes_read,
-                                  bytes_to_read, self.buffer.nbytes(), time.time()))
+                                  bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
                     last_percent_done = percent_done
                 now = time.time()
@@ -3123,11 +3137,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, self.bytes_written,
-                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_write, self.buffer.nbytes(), time.time(), self.draining))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+        while self.state in (ACTIVE, ) and self.bytes_written<self.bytes_to_write:
             loop_start = time.time()
 
             Trace.trace(133,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
@@ -3260,10 +3274,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    self.bytes_to_write, last_notify_time):
                 bytes_notified = self.bytes_written
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, self.bytes_written,
                               self.bytes_to_write, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
@@ -3487,9 +3501,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, -self.bytes_read,
-                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
         Trace.trace(24, "state %s read %s to_read %s"%(state_name(self.state),self.bytes_read, self.bytes_to_read))
         t_started = time.time()
@@ -3497,7 +3511,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         break_here = 0
         network_slow = False
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+        while self.state in (ACTIVE, ) and self.bytes_read < self.bytes_to_read:
             loop_start = time.time()
             Trace.trace(133,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
             Trace.trace(127,"read_tape: tr_failed %s"%(self.tr_failed,))
@@ -3683,10 +3697,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    self.bytes_to_read, last_notify_time):
                 bytes_notified = self.bytes_read
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, -self.bytes_read,
                               self.bytes_to_read, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.empty():
                 Trace.trace(199, "write_ok_set")
@@ -3925,7 +3939,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.net_driver
         #be careful about 0-length files
         if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper and self.wrapper.__name__ != "null_wrapper": #Skip over cpio or other headers
-            while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
+            while self.buffer.header_size is None and self.state in (ACTIVE, ):
                 Trace.trace(8, "write_client: waiting for read_tape to set header info")
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
@@ -3938,15 +3952,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s network %s %.3f" %
+        Trace.notify("transfer %s %s %s network %s %.3f %s" %
                      (self.shortname, -self.bytes_written,
                       self.bytes_to_write, self.buffer.nbytes(),
-                      time.time()))
+                      time.time(), self.draining))
         cnt = 0
         while 1:
             Trace.trace(133, "state %s cnt %s"%(state_name(self.state),cnt))
             Trace.trace(133, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
-            if self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
+            if self.state in (ACTIVE, ) and self.bytes_written < self.bytes_to_write:
                 #Trace.trace(33, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
                 if self.tr_failed:
                     break
@@ -3987,16 +4001,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     break
                 except:
                     exc, detail, tb = sys.exc_info()
-                    #Trace.handle_error(exc, detail, tb)
-                    #if self.state is not DRAINING: self.state = HAVE_BOUND
-                    # if state is DRAINING transfer_failed will set it to OFFLINE
                     msg="exc %s detail %s"%(exc, detail)
                     self.transfer_failed(e_errors.ENCP_GONE, msg)
                     failed = 1
                     break
                 if bytes_written < 0:
-                    #if self.state is not DRAINING: self.state = HAVE_BOUND
-                    # if state is DRAINING transfer_failed will set it to OFFLINE
                     self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
                     failed = 1
                     break
@@ -4018,10 +4027,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     bytes_notified = self.bytes_written
                     last_notify_time = time.time()
                     #negative byte-count to indicate direction
-                    Trace.notify("transfer %s %s %s network %s %.3f" %
+                    Trace.notify("transfer %s %s %s network %s %.3f %s" %
                                  (self.shortname, -self.bytes_written,
                                   self.bytes_to_write, self.buffer.nbytes(),
-                                  last_notify_time))
+                                  last_notify_time, self.draining))
             else:
                 break
 
@@ -4036,7 +4045,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.bytes_written == self.bytes_to_write:
             # check crc
-            if do_crc:
+            if do_crc and self.file_info['size'] != 0: # we do not calculate crc for 0 length file.
                 Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
                             (self.buffer.complete_crc, self.file_info['complete_crc']))
                 if self.buffer.complete_crc != self.file_info['complete_crc']:
@@ -4300,12 +4309,17 @@ class Mover(dispatching_worker.DispatchingWorker,
     def check_connection(self):
         """
         Check connection in ``ASSERT`` mode.
-
         Assert can run for a long period of time.
         The client initiated assert could be gone.
         This allows to check if the client is still connected and interrupt assert if it is gone.
         """
+
+        STOP_MEDIA_VALIDATION = 0x10
+        VLBPM = 0x20 # Verify Logical Block Protection Method
+
         Trace.trace(40, "check_connection started")
+        percent_completed = -1. # to have 1st notify sent when 0 bytes were transferred
+        self.bytes_read_last = 0
         while self.mode == ASSERT:
             Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
             try:
@@ -4315,6 +4329,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(40, "r= %s"%(r,))
                     if r:
                         # r - read socket appears when client connection gets closed
+                        Trace.trace(40, "media_validate= %s"%(self.media_validate,))
+                        if self.media_validate:
+                            # Stop media validation.
+                            # Effective only for T10000C and D drives
+                            # self.media_validate is set only for them
+                            scsi_mode_select.ftt_scsi_verify(self.tape_driver, VLBPM, STOP_MEDIA_VALIDATION)
+                            Trace.log(e_errors.INFO, "The assert client is gone %s" %
+                                      (self.current_work_ticket['callback_addr'],))
+                            self.transfer_failed(e_errors.ENCP_GONE,
+                                                 "The assert client is gone %s" %
+                                                 (self.current_work_ticket['callback_addr'],),
+                                                 error_source=NETWORK)
+
                         self.interrupt_assert = True
                         break
                     else:
@@ -4323,6 +4350,39 @@ class Mover(dispatching_worker.DispatchingWorker,
                     break
             except:
                 pass
+            if self.media_validate:
+                # Check percent completed
+                ret = scsi_mode_select.check_scsi_verify(self.tape_driver)
+                if ret[0]:
+                    Trace.log(DEBUG_LOG, "check_scsi_verify %s %s %s"%(ret[1], ret[2], percent_completed))
+                    if ret[1]:
+                        self.transfer_completed(e_errors.OK)
+                        Trace.log(e_errors.INFO, "The assert for %s is completed" %
+                                  (self.vol_info['external_label'],))
+                        self.transfer_completed(e_errors.OK)
+                        break
+                    if percent_completed != ret[2]:
+                        percent_completed = ret[2]
+                        self.bytes_read = int(self.vol_info['active_bytes']/100. * percent_completed)
+                        self.bytes_read_last = self.bytes_read-1 # hack to not alarm false transfer stuck
+
+                        Trace.log(DEBUG_LOG, "active %s written %s to write %s"%
+                                  (self.vol_info['active_bytes'],
+                                  self.bytes_read,
+                                  self.vol_info['active_bytes']-self.bytes_read))
+                        Trace.notify("transfer %s %s %s network %s %.3f %s" %
+                                     (self.shortname, -self.bytes_read,
+                                      self.vol_info['active_bytes'], 0,
+                                      time.time(), self.draining))
+                    time.sleep(30)
+                else:
+                    self.transfer_failed(e_errors.DRIVEERROR,
+                                         "%s for %s. Last reported percent done %s" %
+                                         (MEDIA_VERIFY_FAILED, self.vol_info['external_label'], percent_completed),
+                                         error_source=TAPE)
+                    break
+
+
         Trace.trace(40, "check_connection exits %s" % (mode_name(self.mode),))
 
 
@@ -4332,8 +4392,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Performing volume assert.
 
         """
+        STANDARD_VERIFY = 0x04
+        COMPLETE_VERIFY = 0x01
         self.net_driver = null_driver.NullDriver()
         ticket = self.current_work_ticket
+        self.media_validate = False
         self.assert_ok.clear()
         self.t0 = time.time()
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
@@ -4401,7 +4464,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_work_ticket = ticket
             self.mode = ASSERT
             if (ticket['action'] == 'crc_check'):
-                read_whole_tape = True
                 ic_conf = self.csc.get("info_server")
                 info_c = info_client.infoClient(self.csc,
                                             server_address=(ic_conf['host'],
@@ -4411,7 +4473,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ticket['return_file_list'] = {}
                 Trace.trace(24, 'ticket %s'%(ticket,))
                 if ticket.has_key('parameters') and type(ticket['parameters']) == type([]) and ticket['parameters']:
-                    read_whole_tape = False
                     # Initialize return list
                     for lc in ticket['parameters']:
                        rec = info_c.find_file_by_location(ticket['vc']['external_label'], lc)
@@ -4460,12 +4521,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(24, 'keys %s'%(keys,))
                 stat = e_errors.OK
                 # start client network monitor to detect
-                # that clinet is gone and interruprt assert
+                # that client is gone and interruprt assert
                 self.interrupt_assert = False
                 self.run_in_thread('network_monitor', self.check_connection)
 
                 for loc_cookie in keys:
-                    if self.state == DRAINING or self.interrupt_assert:
+                    if self.draining or self.interrupt_assert:
                         break
                     location = cookie_to_long(loc_cookie)
                     self.file_info =  file_info[loc_cookie]
@@ -4516,6 +4577,25 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_completed(stat)
                     Trace.log(e_errors.INFO, "The assert for %s is completed" %
                               (ticket['vc']['external_label'],))
+            elif (ticket['action'] in ('media_validate_standard', 'media_validate_complete')):
+                if not self.config['product_id'] in ("T10000C", "T10000D"):
+                    self.transfer_failed(e_errors.WRONGPARAMETER,
+                                         "Media validation is not supported for this drive type %s" %
+                                         (self.current_work_ticket['callback_addr'],),
+                                         error_source=DRIVE)
+                else:
+                    self.state = ACTIVE
+                    verify_option = STANDARD_VERIFY
+                    if ticket['action'] == 'media_validate_complete':
+                        verify_option = COMPLETE_VERIFY
+                    Trace.log(e_errors.INFO, "Starting media validation for %s"%
+                              (ticket['vc']['external_label'],))
+                    scsi_mode_select.ftt_scsi_verify(self.tape_driver,  byte2 = verify_option)
+                    # the execition monitoring will be done in network_monitor
+                    # start client network monitor to detect
+                    # that client is gone and interruprt assert
+                    self.media_validate = True
+                    self.run_in_thread('network_monitor', self.check_connection)
 
         else:
             self.transfer_completed(e_errors.OK)
@@ -4524,8 +4604,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         #    # read tape and
         #    self.dismount_volume(after_function=self.idle)
-
-
 
     def finish_transfer_setup(self):
         """
@@ -4549,10 +4627,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.t0 = time.time()
         self.crc_seed = self.initial_crc_seed
-        encp_dict = self.csc.get('encp', None)
-        if encp_dict:
-            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
-        if ticket.has_key('crc_seed'):
+        if 'crc_seed' in ticket:
             crc_seed = int(ticket['crc_seed'])
             if crc_seed == 1 or crc_seed == 0:
                 self.crc_seed = crc_seed
@@ -5076,8 +5151,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         save_state = self.state
 
         if (cur_thread_name == 'net_thread' or
-            (cur_thread_name == 'media_thread' and exc == e_errors.DISMOUNTFAILED)):
-            #For the 2nd enrty in if ... If dismount fails close net_driver (data connection).
+            (cur_thread_name == 'media_thread' and exc == e_errors.DISMOUNTFAILED) or
+            encp_gone):
+            #For the 2nd entry in if ... If dismount fails close net_driver (data connection).
             # If there is a preemptive dismount and net_driver is not closed,
             # the client (encp) port does not get disconnected.
             #This resulted in 15 min timeout for encp retry.
@@ -5087,7 +5163,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.mode == ASSERT:
             return_here = False
-            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO"))
+            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", MEDIA_VERIFY_FAILED))
                 or exc == e_errors.ENCP_GONE):
                 # stop assert
                 pass
@@ -5116,13 +5192,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dont_update_lm = 0
         if cur_thread_name:
             if cur_thread_name == 'net_thread':
+                act_thread_name = 'net_thread'
+                alt_thread_name = 'tape_thread'
+            elif cur_thread_name == 'tape_thread':
+                alt_thread_name = 'net_thread'
+                act_thread_name = 'tape_thread'
+            else:
+               act_thread_name = None
+            if act_thread_name:
                 self.dont_update_lm = 1
                 # check if tape_thread is active before allowing dismount
-                Trace.trace(26,"checking thread %s"%('tape_thread',))
-                thread = getattr(self, 'tape_thread', None)
+                Trace.trace(26,"checking thread %s"%(alt_thread_name,))
+                thread = getattr(self, alt_thread_name, None)
                 for wait in range(60):
                     if thread and thread.isAlive():
-                        Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
+                        Trace.trace(26, "thread %s is already running, waiting %s" % (alt_thread_name, wait))
                         time.sleep(1)
                     else:
                         break
@@ -5156,39 +5240,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 pass
             else:
                 self.state = HAVE_BOUND
-                #---------------
-                if self.mode == WRITE:
-                    ## AM: DO NOT REWIND TAPE
-
-
-                    ##if cur_thread_name != 'tape_thread':
-                    ##thread = getattr(self, 'tape_thread', None)
-                    ##    if thread and thread.isAlive():
-                    ##        # do actual rewind in a tape thread
-                    ##        self.rewind_tape = 1
-                    ##Trace.log(e_errors.INFO, "Waiting for tape get rewound")
-                    ##for wait in range(180):
-                    ##    if thread and thread.isAlive():
-                    ##               time.sleep(1)
-                    ##        if thread and thread.isAlive():
-                    ##            Trace.log(e_errors.ERROR, "Tape was not rewound in 3 minutes will set mover OFFLINE")
-                    ##            self.offline()
-                    ##            return
-
-                    ##    else:
-                    ##        # tape thread is gone: rewind here
-                    ##        Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape. Current thread: %s"%(cur_thread_name,));
-                    ##        self.tape_driver.rewind()
-                    ##        self.current_location = 0L
-                    ##    #return
-                    ##    pass
-                    pass
-
-                else:
-                    ## tape was rewound in the tape thread
-                    pass
-                #----------------
-
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
                     self.dont_update_lm = 0
@@ -5217,7 +5268,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.log_state(logit=1)
                 self.dump_vars()
                 self.run_in_thread('media_thread', self.dismount_volume, after_function=self.restart)
-            if save_state == DRAINING:
+            if self.draining:
                 self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
 
                 #self.dismount_volume(after_function=self.offline)
@@ -5318,7 +5369,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
-        if self.state == DRAINING or (self.state == FINISH_WRITE and self.draining):
+        if self.draining:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
             #self.dismount_volume(after_function=self.offline)
             self.log_state()
@@ -5979,7 +6030,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
+        elif state in (ACTIVE, SETUP, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
             work = "mover_busy"
             if state == SETUP:
                 try:
@@ -6037,7 +6088,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                              self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             volume_family = self.vol_info.get('volume_family', volume_family)
             volume_label = self.vol_info.get('external_label', volume_label)
-
+        state = self.state
+        #if state == DRAINING:
+        #    state = ACTIVE
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -6047,7 +6100,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             'mover_type': self.mover_type,
             "ip_map":self.ip_map,
             "returned_work": returned_work,
-            "state": state_name(self.state),
+            "state": state_name(state),
             "status": status,
             "volume_family": volume_family,
             "volume_status": volume_status,
@@ -6766,8 +6819,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "State ERROR, can not proceed")
 
         self.state = ACTIVE
-        if self.draining:
-            self.state = DRAINING
+
         if self.mode == WRITE:
             self.run_in_thread('net_thread', self.read_client)
             self.run_in_thread('tape_thread', self.write_tape)
@@ -6856,8 +6908,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
-
-        self.reply_to_caller(tick)
+        ticket.update(tick)
+        self.reply_to_caller(ticket)
         #self.log_processes(logit=1)
         return
 
@@ -6902,17 +6954,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         x = ticket # to trick pychecker
         save_state = self.state
         self.draining = 1
-        if self.state in (ACTIVE, FINISH_WRITE):
-            self.state = DRAINING
-        elif self.state in (IDLE, ERROR):
+        if self.state in (IDLE, ERROR):
             self.state = OFFLINE
-        elif self.state is HAVE_BOUND:
-            self.state = DRAINING # XXX CGW should dismount here. fix this
+
+        ##elif self.state is HAVE_BOUND:
+        ##    self.state = DRAINING # XXX CGW should dismount here. fix this
         Trace.trace(e_errors.INFO, "The mover is set to state %s"%(state_name(self.state),))
         self.create_lockfile()
         out_ticket = {'status':(e_errors.OK,None),'state':state_name(self.state), 'pid': os.getpid()}
-        self.reply_to_caller(out_ticket)
-        if save_state is HAVE_BOUND and self.state is DRAINING:
+        ticket.update(out_ticket)
+        self.reply_to_caller(ticket)
+        if save_state is HAVE_BOUND:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
 
             #self.dismount_volume()
@@ -6925,11 +6977,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
         x = ticket # to trick pychecker
         if self.state != OFFLINE:
-            out_ticket = {'status':("EPROTO","Not OFFLINE")}
-            self.reply_to_caller(out_ticket)
+            ticket['status'] =("EPROTO","Not OFFLINE")
+            self.reply_to_caller(ticket)
             return
-        out_ticket = {'status':(e_errors.OK,None)}
-        self.reply_to_caller(out_ticket)
+        ticket['status'] = (e_errors.OK,None)
+        self.reply_to_caller(ticket)
         ## XXX here we need to check if tape is mounted
         ## if yes go to have bound, NOT idle AM
         Trace.trace(11,"check lockfile %s"%(self.check_lockfile(),))
@@ -6947,7 +6999,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
         self.start_draining(ticket)
         out_ticket = {'status':(e_errors.OK,None),'state':self.state}
-        self.reply_to_caller(out_ticket)
+        ticket.update(out_ticket)
+        self.reply_to_caller(ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket)
@@ -6969,8 +7022,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         Trace.log(e_errors.INFO, "Mover has received a quit command")
         self.start_draining(ticket)
-        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
-        self.reply_to_caller(out_ticket)
+        ticket['status'] = (e_errors.OK,None)
+        ticket['state'] = self.state
+
+        self.reply_to_caller(ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket, do_restart=0)
@@ -7002,7 +7057,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if ret['status'][0] != e_errors.OK:
                 Trace.alarm(e_errors.WARNING,"clean request returned %s"%(ret['status'],))
             self.state = save_state
-        self.reply_to_caller(ret)
+        ticket.update(ret)
+        self.reply_to_caller(ticket)
 
 
 class MoverInterface(generic_server.GenericServerInterface):
@@ -7043,8 +7099,8 @@ class DiskMover(Mover):
 
         """
         x =ticket # to trick pychecker
-        t = {"status":(e_errors.ERROR, "not implemented")}
-        self.reply_to_caller(t)
+        ticket['status'] = (e_errors.ERROR, "not implemented")
+        self.reply_to_caller(ticket)
 	return
 
     def __idle(self):
@@ -7117,11 +7173,11 @@ class DiskMover(Mover):
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, self.bytes_written,
-                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_write, self.buffer.nbytes(), time.time(), self.draining))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+        while self.state in (ACTIVE,) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
                 break
@@ -7185,10 +7241,10 @@ class DiskMover(Mover):
                                    self.bytes_to_write, last_notify_time):
                 bytes_notified = self.bytes_written
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, self.bytes_written,
                               self.bytes_to_write, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
@@ -7315,11 +7371,11 @@ class DiskMover(Mover):
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
         last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s media %s %.3f" %
+        Trace.notify("transfer %s %s %s media %s %.3f %s" %
                      (self.shortname, -self.bytes_read,
-                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+                      self.bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+        while self.state in (ACTIVE,) and self.bytes_read < self.bytes_to_read:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
                 break
@@ -7399,10 +7455,10 @@ class DiskMover(Mover):
                                    self.bytes_to_read, last_notify_time):
                 bytes_notified = self.bytes_read
                 last_notify_time = time.time()
-                Trace.notify("transfer %s %s %s media %s %.3f" %
+                Trace.notify("transfer %s %s %s media %s %.3f %s" %
                              (self.shortname, -self.bytes_read,
                               self.bytes_to_read, self.buffer.nbytes(),
-                              last_notify_time))
+                              last_notify_time, self.draining))
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
@@ -7533,11 +7589,8 @@ class DiskMover(Mover):
 
         self.t0 = time.time()
         self.crc_seed = self.initial_crc_seed
-        encp_dict = self.csc.get('encp', None)
-        if encp_dict:
-            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
 
-        if ticket.has_key('crc_seed'):
+        if 'crc_seed' in ticket:
             crc_seed = int(ticket['crc_seed'])
             if crc_seed == 1 or crc_seed == 0:
                 self.crc_seed = crc_seed
@@ -7956,8 +8009,7 @@ class DiskMover(Mover):
             cur_thread_name = None
 
         Trace.trace(26,"current thread %s"%(cur_thread_name,))
-        if save_state == DRAINING:
-
+        if self.draining:
             self.offline()
         else:
             if self.mode == READ:
@@ -8010,7 +8062,8 @@ class DiskMover(Mover):
                 Trace.alarm(e_errors.ALARM, "error saving file %s to %s. Detail %s"%
                             (self.tmp_file, self.file, str(detail)))
                 self.transfer_failed(e_errors.OSERROR, 'transfer failure: %s' % (str(detail),), error_source=DRIVE)
-                self.idle()
+                self.offline()
+                return
 
         Trace.trace(10, "transfer complete mode %s"%(self.mode,))
         self.state = HAVE_BOUND
@@ -8121,6 +8174,7 @@ class DiskMover(Mover):
             self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
             return 0
         self.vol_info.update(reply)
+        self.current_work_ticket['vc'].update(self.vol_info)
 
         return 1
 
@@ -8153,7 +8207,7 @@ class DiskMover(Mover):
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
+        elif state in (ACTIVE, SETUP, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
             work = "mover_busy"
             if state == SETUP:
                 try:
@@ -8313,7 +8367,8 @@ class DiskMover(Mover):
                  'client': self.client_ip,
                  }
 
-        self.reply_to_caller(tick)
+        ticket.update(tick)
+        self.reply_to_caller(ticket)
         return
 
 if __name__ == '__main__':

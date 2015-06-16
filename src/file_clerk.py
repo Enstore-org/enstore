@@ -17,27 +17,28 @@ import string
 import sys
 import threading
 import time
+import traceback
 import types
 
 
 # enstore imports
-import traceback
-import callback
-import dispatching_worker
-import generic_server
-import monitored_server
-import enstore_constants
-import edb
 import Trace
-import e_errors
+import bfid_util
+import callback
 import configuration_client
-import hostaddr
-import event_relay_messages
-import enstore_functions3
-import udp_server
-import file_cache_status
+import dispatching_worker
+import edb
+import enstore_constants
 import enstore_files
 import enstore_functions2
+import enstore_functions3
+import event_relay_messages
+import e_errors
+import file_cache_status
+import generic_server
+import hostaddr
+import monitored_server
+import udp_server
 
 SEQUENTIAL_QUEUE_SIZE=enstore_constants.SEQUENTIAL_QUEUE_SIZE
 PARALLEL_QUEUE_SIZE=enstore_constants.PARALLEL_QUEUE_SIZE
@@ -53,6 +54,7 @@ MAX_THREADS = enstore_constants.MAX_THREADS
 MAX_CONNECTIONS=MAX_THREADS+1
 AMQP_BROKER = "amqp_broker"
 FILES_IN_TRANSITION_CHECK_INTERVAL = enstore_constants.FILES_IN_TRANSITION_CHECK_INTERVAL
+ARCHIVING_FILES_IN_TRANSITION_CHECK_INTERVAL = enstore_constants.FILES_IN_TRANSITION_CHECK_INTERVAL
 
 SELECT_FILES_IN_TRANSITION="""
 SELECT f.bfid,
@@ -61,8 +63,7 @@ SELECT f.bfid,
 FROM file f,
 files_in_transition fit
 WHERE f.bfid=fit.bfid
-   AND (f.archive_status IS NULL
-        OR f.archive_status != 'ARCHIVED')
+   AND f.archive_status IS NULL
    AND f.cache_status='CACHED'
    AND f.deleted='n'
    AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '1 day'
@@ -75,10 +76,20 @@ SELECT f.bfid,
 FROM file f,
      files_in_transition fit
 WHERE f.bfid=fit.bfid
-   AND (f.archive_status IS NULL
-        OR f.archive_status != 'ARCHIVED')
+   AND f.archive_status IS NULL
    AND f.cache_status='CACHED'
    AND f.deleted='n'
+"""
+
+SELECT_ARCHIVING_FILES_IN_TRANSITION="""
+SELECT f.bfid
+FROM file f,
+     files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND f.archive_status='ARCHIVING'
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+   AND f.archive_mod_time < CURRENT_TIMESTAMP - interval '2 day'
 """
 
 isSFA=False
@@ -170,7 +181,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 return None
 
         #Check bfid format.
-        if not enstore_functions3.is_bfid(bfid):
+        if not bfid_util.is_bfid(bfid):
             message = "%s: bfid %s not valid" % (MY_NAME, bfid,)
             ticket["status"] = (e_errors.WRONG_FORMAT, message)
             Trace.log(e_errors.ERROR, message)
@@ -277,11 +288,14 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # get_all_bfids(external_label) -- get all bfids of a particular volume
 
     def get_all_bfids(self, external_label):
-        q = "select bfid, location_cookie from file, volume\
-             where volume.label = '%s' and \
-                   file.volume = volume.id \
-                   order by location_cookie;"%(external_label)
-        res = self.filedb_dict.query_getresult(q)
+        q = """
+        SELECT bfid, location_cookie
+        FROM file, volume
+        WHERE volume.label = %s
+            AND file.volume = volume.id
+        ORDER BY location_cookie
+        """
+        res = self.filedb_dict.query_getresult(q,(external_label,))
         bfids = []
         for i in res:
             bfids.append(i[0])
@@ -337,10 +351,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     # _find_copies(bfid) -- find all copies
     def _find_copies(self, bfid):
-        q = "select alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
+        q = "select alt_bfid from file_copies_map where bfid = %s"
         bfids = []
         try:
-            for i in self.filedb_dict.query_getresult(q):
+            for i in self.filedb_dict.query_getresult(q,(bfid,)):
                 bfids.append(i[0])
         except:
             pass
@@ -373,9 +387,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # _find_original(bfid) -- find its original
     # there should eb at most one original!
     def _find_original(self, bfid):
-        q = "select bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
+        q = "select bfid from file_copies_map where alt_bfid = %s"
         try:
-            res = self.filedb_dict.query_getresult(q)
+            res = self.filedb_dict.query_getresult(q,(bfid,))
             if len(res):
                 return res[0][0]
         except:
@@ -411,9 +425,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         src_list = []
         dst_list = []
 
-        q = "select src_bfid,dst_bfid from migration where (dst_bfid = '%s' or src_bfid = '%s') ;" % (bfid, bfid)
+        q = "select src_bfid,dst_bfid from migration where (dst_bfid = %s or src_bfid = %s)"
 
-        res = self.filedb_dict.query_getresult(q)
+        res = self.filedb_dict.query_getresult(q,(bfid,bfid))
         for row in res:
             src_list.append(row[0])
             dst_list.append(row[1])
@@ -454,23 +468,21 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         dst_res = []
 
         if find_src:
-            q = "select * from migration where src_bfid = '%s' order by %s;" \
-                % (bfid, order_by)
+            q = "select * from migration where src_bfid = %s order by {}".format(order_by)
             Trace.log(e_errors.INFO, q)
 	    #
 	    # convert datetime.datetime to string
 	    #
-            src_res = edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q))
+            src_res = edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q,(bfid,)))
             Trace.log(e_errors.INFO, src_res)
 
         if find_dst:
-            q = "select * from migration where dst_bfid = '%s' order by %s;" \
-                % (bfid, order_by)
+            q = "select * from migration where dst_bfid = %s order by {}".format(order_by)
             Trace.log(e_errors.INFO, q)
 	    #
 	    # convert datetime.datetime to string
 	    #
-            dst_res =  edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q))
+            dst_res =  edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q,(bfid,)))
             Trace.log(e_errors.INFO, dst_res)
 
         return src_res + dst_res
@@ -516,10 +528,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def __has_undeleted_file(self, vol):
         Trace.log(e_errors.INFO, 'checking if files of volume %s are deleted'%(vol))
         q = "select bfid from file, volume \
-             where volume.label = '%s' and \
+             where volume.label = %s and \
                    file.volume = volume.id and \
-                   file.deleted = 'n';"%(vol)
-	res = self.filedb_dict.query(q)
+                   file.deleted = 'n'"
+	res = self.filedb_dict.query(q,(vol,))
 	return len(res)
 
     #### DONE
@@ -657,7 +669,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 f.crc,
                 f.deleted,
                 f.drive,
-                v.label AS label,
+                v.label,
                 f.location_cookie,
                 f.pnfs_path,
                 f.pnfs_id,
@@ -670,10 +682,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             FROM file f,
                 volume v
             WHERE f.volume = v.id
-                AND v.label='{}'
+                AND v.label=%s
             ORDER BY f.location_cookie
 	    """
-        res = self.filedb_dict.query_dictresult(q.format(external_label))
+        res = self.filedb_dict.query_dictresult(q,(external_label,))
         # convert to external format
         file_list = []
 	location_cookies={}
@@ -693,11 +705,24 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
             if file_info.get("bfid",None) == file_info.get("package_id",None) and all_files :
-	       result = self.filedb_dict.query_dictresult("select f.bfid, f.crc, f.deleted, f.drive , \
-	       f.location_cookie, f.pnfs_path, f.pnfs_id, \
-	       f.sanity_size, f.sanity_crc, f.size, \
-	       f.package_id, f.archive_status, f.cache_status \
-	       from file f where f.package_id='%s' and f.bfid != '%s'"%((file_info.get("bfid",None),)*2))
+	       result = self.filedb_dict.query_dictresult("""
+               SELECT f.bfid,
+	              f.crc,
+		      f.deleted,
+		      f.drive,
+		      f.location_cookie,
+                      f.pnfs_path,
+                      f.pnfs_id,
+                      f.sanity_size,
+                      f.sanity_crc,
+                      f.size,
+                      f.package_id,
+                      f.archive_status,
+		      f.cache_status
+               FROM file f
+               WHERE f.package_id=%s
+                   AND f.bfid=%s
+                      """,(file_info.get("bfid"),file_info.get("bfid")))
 	       for finfo in result:
 		       finfo["location_cookie"] = file_info.get("location_cookie",None)
 		       finfo["label"] = file_info.get("label",None)
@@ -847,23 +872,31 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return
         callback.write_tcp_obj(self.data_socket,ticket)
 
-        q = "select bfid, crc, deleted, drive, volume.label, \
-                    location_cookie, pnfs_path, pnfs_id, \
-                    sanity_size, sanity_crc, size \
-             from file, volume \
-             where \
-                 file.volume = volume.id and volume.label = '%s' \
-             order by location_cookie;"%(external_label)
-
-        res = self.filedb_dict.query_dictresult(q)
+        q = """
+        SELECT f.bfid,
+	       f.crc,
+	       f.deleted,
+	       f.drive,
+               f.location_cookie,
+	       f.pnfs_path,
+	       f.pnfs_id,
+	       f.sanity_size,
+	       f.sanity_crc,
+	       f.size,
+               v.label
+        FROM file f, volume v
+        WHERE f.volume = v.id
+        AND v.label = %s AND f.deleted <> 'y'
+        ORDER BY f.location_cookie
+        """
+        res = self.filedb_dict.query_dictresult(q,(external_label,))
 
         alist = []
 
         for ff in res:
             value = self.filedb_dict.export_format(ff)
-            if not value.has_key('deleted') or value['deleted'] != "yes":
-                if value.has_key('pnfs_name0') and value['pnfs_name0']:
-                    alist.append(value['pnfs_name0'])
+            if value.has_key('pnfs_name0') and value['pnfs_name0']:
+                alist.append(value['pnfs_name0'])
 
         # finishing up
 
@@ -874,16 +907,18 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         return
 
     def __list_active2(self, external_label):
-        q = "select pnfs_path from \
-    		(select pnfs_path, location_cookie \
-    		from file, volume \
-    		where \
-    			file.volume = volume.id and volume.label = '%s' and\
-    			deleted = 'n' and not pnfs_path is null and \
-    			pnfs_path != '' order by location_cookie) a1;"%(
-    		 external_label)
-
-    	return self.filedb_dict.query_getresult(q)
+        q = """
+          SELECT f.pnfs_path,
+                 f.location_cookie
+        FROM file f, volume v
+        WHERE f.volume = v.id
+        AND v.label = %s
+        AND f.deleted = 'n'
+        AND NOT f.pnfs_path is NULL
+        AND f.pnfs_path != ''
+        ORDER BY f.location_cookie
+        """
+        return self.filedb_dict.query_getresult(q,(external_label,))
 
 
     # list_active2(self, ticket) -- list the active files on a volume
@@ -954,7 +989,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
              from bad_file, file, volume \
              where \
                  bad_file.bfid = file.bfid and \
-                 file.volume = volume.id;"
+                 file.volume = volume.id"
         return self.filedb_dict.query_dictresult(q)
 
 
@@ -1020,7 +1055,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                         ticket["status"] = (e_errors.WRONGPARAMETER, "No such field %s"%(field,))
                         self.reply_to_caller(ticket)
                         return
-                    res =  self.filedb_dict.query_getresult("select %s from file where package_id = '%s' and deleted='n' and bfid<>'%s'"%(field, bfid,bfid))
+                    res =  self.filedb_dict.query_getresult("select {} from file where package_id = %s and deleted='n' and bfid<>%s".format(field),(bfid,bfid))
                     file_records = [ r[0] for r in res ]
                 except Exception as e:
                     ticket["status"] = (e_errors.DATABASE_ERROR, str(e))
@@ -1030,8 +1065,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 #
                 # retrieve the children
                 #
-                q = "select bfid from file where package_id = '%s' and deleted='n' and bfid <> '%s' "%(bfid,bfid)
-                res = self.filedb_dict.query_getresult(q)
+                q = "select bfid from file where package_id = %s and deleted='n' and bfid <> %s"
+                res = self.filedb_dict.query_getresult(q,(bfid,bfid,))
                 file_records = [ self.filedb_dict[r[0]] for r in res ]
 
 	    ticket["status"] = (e_errors.OK, None)
@@ -1049,6 +1084,7 @@ class FileClerkMethods(FileClerkInfoMethods):
     def __init__(self, csc):
         global isSFA
         FileClerkInfoMethods.__init__(self, csc)
+
 
         # find the brand
         Trace.log(e_errors.INFO, "find the brand")
@@ -1089,11 +1125,6 @@ class FileClerkMethods(FileClerkInfoMethods):
 			else:
 				Trace.log(e_errors.INFO,  "Failed to extract '%s' from configuration"%(AMQP_BROKER,))
 
-
-
-        #Set the brand.
-        self.set_brand(brand)
-
         #Retrieve database information from the configuration.
         Trace.log(e_errors.INFO,"determine dbHome and jouHome")
 
@@ -1113,29 +1144,21 @@ class FileClerkMethods(FileClerkInfoMethods):
 	self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
         self.max_connections         = self.numberOfParallelWorkers+1
 
-        #Open conection to the Enstore DB.
-        Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
-        try:
-		# proper default values are supplied by edb.FileDB constructor
-		self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
-					      port=dbInfo.get('db_port',None),
-					      user=dbInfo.get('dbuser',None),
-					      database=dbInfo.get('dbname',None),
-					      jou=jouHome,
-					      max_connections=self.max_connections)
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-            Trace.log(e_errors.ERROR, message)
-            Trace.alarm(e_errors.ERROR, message, {})
-            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
-            sys.exit(1)
+        self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
+                                      port=dbInfo.get('db_port',None),
+                                      user=dbInfo.get('dbuser',None),
+                                      database=dbInfo.get('dbname',None),
+                                      jou=jouHome,
+                                      max_connections=self.max_connections)
+
+        self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
 	self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
 	self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue,self)
 	self.sequentialWorker.start()
 
 	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
+        self.bfid_generator = bfid_util.BfidGenerator(brand)
 
 	self.parallelThreads = []
 	for i in range(self.numberOfParallelWorkers):
@@ -1164,7 +1187,10 @@ class FileClerkMethods(FileClerkInfoMethods):
 				   "has_undeleted_file",
 				   "open_bitfile",
 				   "open_bitfile_for_package",
-                                   "bfid_info") :
+                                   "bfid_info",
+                                   "modify_file_records",
+                                   "swap_package",
+                                   "new_bit_file") :
 		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
 		self.parallelThreadQueue.put([function.__name__, args])
 
@@ -1178,14 +1204,12 @@ class FileClerkMethods(FileClerkInfoMethods):
     # set_brand(brand) -- set brand
 
     def set_brand(self, brand):
-        self.brand = brand
-        return
+        self.bfid_generator.set_brand(brand)
 
     def get_brand(self, ticket):
-        ticket['brand'] = self.brand
+        ticket['brand'] = self.bfid_generator.get_brand()
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        return
 
     #### DONE
     # A bit file id is defined to be a 64-bit number whose most significant
@@ -1193,10 +1217,7 @@ class FileClerkMethods(FileClerkInfoMethods):
     # to make it unique
 
     def unique_bit_file_id(self):
-        bfid = long(time.time()*100000)
-        while self.filedb_dict.has_key(self.brand+str(bfid)):
-            bfid = bfid + 1
-        return self.brand+str(bfid)
+        return self.bfid_generator.create()
 
     # register_copy(original, copy) -- register copy of original
     def register_copy(self, original, copy):
@@ -1223,22 +1244,22 @@ class FileClerkMethods(FileClerkInfoMethods):
     # _made_copy(bfid) -- decrease copies count
     #                    if the count becomes zero, delete the record
     def _made_copy(self, bfid):
-        q = "select * from active_file_copying where bfid = '%s';"%(bfid)
-        res = self.filedb_dict.query_dictresult(q)
+        q = "select * from active_file_copying where bfid = %s"
+        res = self.filedb_dict.query_dictresult(q,(bfid,))
         if not res:
             Trace.log(e_errors.ERROR, "made_copy(): %s does not have copies"%(bfid))
             return 0
         if res[0]['remaining'] <= 1:
             # all done, delete this entry
-            q = "delete from active_file_copying where bfid = '%s';"%(bfid)
+            q = "delete from active_file_copying where bfid = %s"
             try:
-                res = self.filedb_dict.remove(q)
+                res = self.filedb_dict.remove(q,(bfid,))
             except:
                 return 1
         else: # decrease the number
-            q = "update active_file_copying set remaining = %d where bfid = '%s';"%(res[0]['remaining'] - 1, bfid)
+            q = "update active_file_copying set remaining = %s where bfid = %s"
             try:
-                res = self.filedb_dict.insert(q)
+                res = self.filedb_dict.update(q,(res[0]['remaining'] - 1,bfid,))
             except:
                 return 1
         return 0
@@ -1273,18 +1294,10 @@ class FileClerkMethods(FileClerkInfoMethods):
         # does it have bfid?
         if ticket["fc"].has_key("bfid"):
             bfid = ticket["fc"]["bfid"]
-            # make sure the brand is right
-            if bfid[:len(self.brand)] != self.brand:
-                msg = "new_bit_file(): wrong brand %s (%s)"%(bfid, self.brand)
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
-            # make sure the bfid is right
-            if bfid[len(self.brand):].isdigit():
-                msg = "new_bit_file(): invalid bfid %s"%(bfid,)
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.ERROR, msg)
+            rc, reason = self.bfid_generator.check(bfid)
+            if not rc:
+                Trace.log(e_errors.ERROR, reason)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, reason)
                 self.reply_to_caller(ticket)
                 return
             # make sure the bfid does not exist
@@ -1341,9 +1354,23 @@ class FileClerkMethods(FileClerkInfoMethods):
 		record["cache_status"] = file_cache_status.CacheStatus.CREATED
 		record["cache_mod_time"] = time2timestamp(now)
 
-        # record it to the database
-        self.filedb_dict[bfid] = record
-
+        # insert record
+        is_inserted=False
+        retries=10
+        while not is_inserted and retries:
+            try:
+                self.filedb_dict.insert_new_record(bfid,record)
+                is_inserted=True
+            except Exception as e:
+                retries -= 1
+                bfid = self.unique_bit_file_id()
+                record["bfid"] = bfid
+                # last try failed, report
+                if not retries :
+                    Trace.alarm(e_errors.ERROR, "Failed to insert new file record with bfid {} : {}".format(bfid, str(e)))
+                    ticket["status"] = (e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
+                    self.reply_to_caller(ticket)
+                    return
         # if it is a copy, register it
         if original_bfid:
             if self.register_copy(original_bfid, bfid):
@@ -1395,9 +1422,9 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         if bfid[0] in string.letters:
             sequence = long(bfid[4:]+'L')
-            while self.filedb_dict.has_key(self.brand+str(sequence)):
+            while self.filedb_dict.has_key(self.bfid_generator.get_brand()+str(sequence)):
                 sequence = sequence + 1
-            bfid = self.brand+str(sequence)
+            bfid =self.bfid_generator.get_brand()+str(sequence)
 
         # extracting the values
         try:
@@ -1608,12 +1635,12 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    return
 	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
 	    self.filedb_dict[bfid] = record
-	    q3 = "select v.library from file f, volume v where v.id=f.volume and f.package_id = '%s' and f.deleted='n' and f.bfid!=f.package_id limit 1"%(record["package_id"],)
+	    q3 = "select v.library from file f, volume v where v.id=f.volume and f.package_id = %s and f.deleted='n' and f.bfid!=f.package_id limit 1"
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["fc"] = record
 	    library=None
 	    try:
-		    library=self.filedb_dict.query_getresult(q3)[0][0]
+		    library=self.filedb_dict.query_getresult(q3,(record["package_id"],))[0][0]
 	    except:
 		    ticket["status"] =  (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 		    self.reply_to_caller(ticket)
@@ -1665,8 +1692,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    # retrieve the children. Note that the query below retrieves the parent
 	    # as well
 	    #
-	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
-	    res = self.filedb_dict.query_getresult(q)
+	    q = "select bfid from file where package_id = %s and deleted='n'"
+	    res = self.filedb_dict.query_getresult(q,(bfid,))
 	    file_records = []
 	    for i in res:
 		    child_record = self.filedb_dict[i[0]]
@@ -1708,7 +1735,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    return
 	    except:
 		    exc_type, exc_value = sys.exc_info()[:2]
-		    message = 'swap_parent(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+		    message = 'swap_package(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
 		    Trace.log(e_errors.ERROR, message)
 		    ticket["status"] = (e_errors.ERROR, message)
 		    self.reply_to_caller(ticket)
@@ -2001,8 +2028,8 @@ class FileClerkMethods(FileClerkInfoMethods):
             return #extract_value_from_ticket handles its own errors.
 
         # check if this file has already been marked bad
-        q = "select * from bad_file where bfid = '%s';"%(bfid)
-        res = self.filedb_dict.query_dictresult(q)
+        q = "select * from bad_file where bfid = %s"
+        res = self.filedb_dict.query_dictresult(q,(bfid,))
         if res:
             msg = "file %s has already been marked bad"%(bfid)
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
@@ -2240,10 +2267,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                                                   MY_NAME,
                                                                   self.keys)
 
-        #Setup the error handling to reconnect to the database if the
-        # connection is broken.
         self.set_error_handler(self.file_error_handler)
-        self.connection_failure = 0
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
         # start our heartbeat to the event relay process
@@ -2251,8 +2275,13 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                  self.alive_interval)
 
 	threading.Thread(target=self.replay_cache_written_events).start()
-	self.file_check_thread = threading.Thread(target=self.check_files_in_transition)
-	self.file_check_thread.start()
+
+	self.check_files_in_transiion_thread = threading.Thread(target=self.check_files_in_transition)
+	self.check_files_in_transiion_thread.start()
+
+	self.check_archiving_files_in_transition_thread = threading.Thread(target=self.check_archiving_files_in_transition)
+	self.check_archiving_files_in_transition_thread.start()
+
 
     def get_files_in_transition(self, all=None):
         if all:
@@ -2296,70 +2325,76 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
             ticket["status"] = (e_errors.ERROR, "No qpid client defined, check configuration")
         self.reply_to_caller(ticket)
 
+    def __check_files_in_transition(self, query, filename):
+        """
+        Takes as input a query and a file name to save the output
+        to. Sends alarm if files stuck in transition are found.
+        Also copies the list to enstore web host.
+
+        :type query: :obj:`str`
+        :arg query: SQL query
+
+        :type filename: :obj:`str`
+        :arg filename: file containing BFID list
+
+        """
+        try:
+            res = self.filedb_dict.query_getresult(query)
+            path = os.path.join("/tmp",filename)
+            if len(res)>0:
+                txt=""
+                f=open(path,"w")
+                for row in res :
+                    txt += "%s\n"%(row[0])
+                f.write("%s"%(txt,))
+                f.close();
+                inq_d = self.csc.get(enstore_constants.INQUISITOR, {})
+                html_dir=inq_d.get("html_file",enstore_files.default_dir)
+                html_host=inq_d.get("host","localhost")
+                cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
+                rc = enstore_functions2.shell_command2(cmd)
+                failed=False
+                if rc :
+                    if rc[0] !=0 :
+                        failed=True
+                        txt = "Failed to execute command %s\n. Output was %s\n. List of files: %s\n"%(cmd, rc[2], txt,)
+                else :
+                    failed=True
+                    txt = "Failed to execute command %s\n. List of files: %s\n"%(cmd, txt,)
+                if not failed :
+                    txt = 'See <A HREF="{0}">{0}</A>'.format(filename)
+                Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transition table"%len(res), txt )
+        except Exception as e:
+            Trace.alarm(e_errors.INFO, "Failed to execute file in transition check %s"%(str(e)))
+
 
     def check_files_in_transition(self) :
-	    q=SELECT_FILES_IN_TRANSITION
-	    while True:
-		    res = self.filedb_dict.query_getresult(q)
-		    if len(res)>0:
-			    txt=""
-			    f=open("/tmp/FILES_IN_TRANSITION","w")
-			    for row in res :
-				    txt += "%s\n"%(row[0])
-			    f.write("%s"%(txt,))
-			    f.close();
-			    inq_d = self.csc.get(enstore_constants.INQUISITOR, {})
-			    html_dir=inq_d.get("html_file",enstore_files.default_dir)
-			    html_host=inq_d.get("host","localhost")
-			    cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
-			    rc = enstore_functions2.shell_command2(cmd)
-			    failed=False
-			    if rc :
-				    if rc[0] !=0 :
-					    failed=True
-					    txt = "Failed to execute command %s\n. Output was %s\n. List of files: %s\n"%(cmd, rc[2], txt,)
+        """
+        This function is executed periodically on a separate thread. It checks
+        for files in transition.
+        """
+        while True:
+            self.__check_files_in_transition(SELECT_FILES_IN_TRANSITION,
+                                             "FILES_IN_TRANSITION")
 
-			    else :
-				    failed=True
-				    txt = "Failed to execute command %s\n. List of files: %s\n"%(cmd, txt,)
-			    if not failed :
-				    txt = 'See <A HREF="FILES_IN_TRANSITION">FILES_IN_TRANSITION</A>'
-			    Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transition table"%len(res), txt )
-		    time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
+            time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
 
+
+    def check_archiving_files_in_transition(self) :
+        """
+        This function is executed periodically on as separate thread. It checks
+        for files in transition in 'ARCHIVING' state.
+        """
+        while True:
+            self.__check_files_in_transition(SELECT_ARCHIVING_FILES_IN_TRANSITION,
+                                             "ARCHIVING_FILES_IN_TRANSITION")
+            time.sleep(ARCHIVING_FILES_IN_TRANSITION_CHECK_INTERVAL)
 
 
     def file_error_handler(self, exc, msg, tb):
         __pychecker__ = "unusednames=tb"
-        # is it PostgreSQL connection error?
-        #
-        # This is indeed a OR condition implemented in if-elif-elif-...
-        # so that each one can be specified individually
-        if exc == edb.pg.ProgrammingError and str(msg)[:13] == 'server closed':
-            self.reconnect(msg)
-        elif exc == ValueError and str(msg)[:13] == 'server closed':
-            self.reconnect(msg)
-        elif exc == TypeError and str(msg)[:10] == 'Connection':
-            self.reconnect(msg)
-        elif exc == ValueError and str(msg)[:13] == 'no connection':
-            self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg)} )
-
-    # reconnect() -- re-establish connection to database
-    def reconnect(self, msg="unknown reason"):
-        try:
-            self.filedb_dict.reconnect()
-            Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
-            self.connection_failure = 0
-        except:
-            Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
-                "Is database server running on %s:%d?"%(self.filedb_dict.host,
-                self.filedb_dict.port))
-            self.connection_failure = self.connection_failure + 1
-            if self.connection_failure > MAX_CONNECTION_FAILURE:
-                pass	# place holder for future RED BALL
-
 
     def quit(self, ticket):
 	self.filedb_dict.close()
@@ -2371,6 +2406,9 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 	for process in self.parallelThreads:
 		process.join(10.)
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
+	self.check_files_in_transiion_thread.join(10)
+	self.check_archiving_files_in_transition_thread.join(10)
+
 
 
 class FileClerkInterface(generic_server.GenericServerInterface):
@@ -2392,14 +2430,12 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
-        except edb.pg.Error, exp:
-            fc.reconnect(exp)
+        except e_errors.EnstoreError:
             continue
         except SystemExit, exit_code:
-            # fc.dict.close()
+            fc.filedb_dict.close()
             sys.exit(exit_code)
         except:
             fc.serve_forever_error(fc.log_name)
-            fc.reconnect("paranoid")
             continue
     Trace.trace(e_errors.ERROR,"File Clerk finished (impossible)")

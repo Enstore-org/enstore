@@ -7,7 +7,7 @@
 #
 # This script produces histograms perinent to encp rate:
 #
-# Requires no input arguments 
+# Requires no input arguments
 #
 ###############################################################################
 
@@ -55,7 +55,7 @@ def main():
     if not os.path.exists("%s/%s"%(web_dir,ENCP_RATE)):
         os.makedirs("%s/%s"%(web_dir,ENCP_RATE))
         os.system("cp ${ENSTORE_DIR}/etc/*.gif %s/%s"%(web_dir,ENCP_RATE))
-                        
+
     if accounting_db_port:
         login_string = "psql  %s -h %s -p %s -U %s -t -q -c "%(accounting_db_name, accounting_db_server_name, accounting_db_port, accounting_db_user)
     else:
@@ -71,7 +71,7 @@ def main():
     inp.close ()
 
     max_time = now_time
-    
+
     for line in out.readlines() :
        if not line:
            continue
@@ -85,7 +85,7 @@ def main():
 #
 
     cmd = "%s  \"select distinct(storage_group) from encp_xfer_average_by_storage_group\""%(login_string)
-    
+
     inp,out = os.popen2 (cmd, 'r')
     inp.write (cmd)
     inp.close ()
@@ -110,8 +110,8 @@ def main():
 
 #
 # extract values for a month
-# 
-    
+#
+
     cmd = "%s  \"select  "%(login_string)
     cmd = cmd + "date,unix_time,storage_group,rw,"
     cmd = cmd + "avg_overall_rate,stddev_overall_rate,"
@@ -161,7 +161,7 @@ def main():
         plot_data_file_r="rate_%s_r.dat"%(sg.strip(' '))
         plot_data_file_w="rate_%s_w.dat"%(sg.strip(' '))
 
-        if (os.path.exists(plot_data_file_r)) : 
+        if (os.path.exists(plot_data_file_r)) :
             lower = "%s"%(time.strftime("%Y-%m-%d",time.localtime(now_time-delta_time)))
             file_name = "tmp_%s_r_gnuplot.cmd"%(sg.strip(' '))
             gnu_cmd = open(file_name,'w')
@@ -198,10 +198,10 @@ def main():
             gnu_cmd.write("set title '%s: driver encp read rate'\n"%(sg.strip(' '),))
             gnu_cmd.write("plot '%s' using 1:11 t '' with impulses lw 5\n"%(plot_data_file_r,))
             gnu_cmd.close()
-            
+
             os.system("gnuplot %s"%(file_name))
-            os.system("convert -rotate 90 -modulate 80 %s %s"%(postscript_output, jpeg_output))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))
+            os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"%(postscript_output, jpeg_output))
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))
             os.system("rm -f %s"%file_name)
 
 
@@ -209,7 +209,7 @@ def main():
         jpeg_output="%s/encp_rates_%s_w.jpg"%(ENCP_RATE,sg.strip(' '))
         jpeg_output_stamp="%s/encp_rates_%s_w_stamp.jpg"%(ENCP_RATE,sg.strip(' '))
 
-        if (os.path.exists(plot_data_file_w)) : 
+        if (os.path.exists(plot_data_file_w)) :
             lower = "%s"%(time.strftime("%Y-%m-%d",time.localtime(now_time-delta_time)))
             file_name = "tmp_%s_w_gnuplot.cmd"%(sg.strip(' '))
             gnu_cmd = open(file_name,'w')
@@ -246,10 +246,10 @@ def main():
             gnu_cmd.write("set title '%s: driver encp write rate'\n"%(sg.strip(' '),))
             gnu_cmd.write("plot '%s' using 1:11 t '' with impulses lw 5\n"%(plot_data_file_w,))
             gnu_cmd.close()
-            
+
             os.system("gnuplot %s"%(file_name))
-            os.system("convert -rotate 90 -modulate 80 %s %s"%(postscript_output, jpeg_output))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))
+            os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"%(postscript_output, jpeg_output))
+            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))
             os.system("rm -f %s"%file_name)
 
 
@@ -298,4 +298,4 @@ if __name__ == "__main__":
             print l
         sys.exit(0)
     sys.exit(0)
-        
+

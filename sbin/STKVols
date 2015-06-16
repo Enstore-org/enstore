@@ -124,8 +124,8 @@ set label \"Plotted `date` \" at graph .99,0 rotate font \"Helvetica,10\"
 set label \"$free Free\" at graph .2,.9 font \"Helvetica,80\"
 plot \"$i\" using 1:3 w impulses linetype 2, \"$i\" using 1:4 t \"Used Slots\" w impulses linetype 1" >$pltcmd
     gnuplot $pltcmd
-    convert -rotate 90 /tmp/silo.$silo.ps /tmp/silo.$silo.jpg
-    convert -geometry 120x120 -modulate 80 /tmp/silo.$silo.jpg /tmp/silo.${silo}_stamp.jpg
+    convert -flatten -background lightgray -rotate 90 /tmp/silo.$silo.ps /tmp/silo.$silo.jpg
+    convert -flatten -background lightgray -geometry 120x120 -modulate 80 /tmp/silo.$silo.jpg /tmp/silo.${silo}_stamp.jpg
   done
   cp /tmp/silo*.ps /tmp/silo*.jpg /fnal/ups/prd/www_pages/enstore/
 

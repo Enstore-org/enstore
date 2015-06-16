@@ -253,7 +253,8 @@ class PnfsDbRestore:
                     'sed -i "s/^[ \t\r]*archive_mode[ \t\r]*=[ \t\r]*on/archive_mode = off/g" %s/postgresql.conf '% (pgdb,),\
                     'sed -i "s/^[ \t\r]*logging_collector[ \t\r]*=[ \t\r]*on/logging_collector = off/g" %s/postgresql.conf '% (pgdb,),\
 		    "mkdir -p %s/pg_xlog/archive_status"% (pgdb,),\
-		    "chown -R enstore.enstore %s"% (pgdb,),\
+		    "chown -R enstore.enstore %s/pg_xlog"% (pgdb,),\
+                    "chown enstore.enstore %s/recovery.conf"%(pgdb)),\
                     "rm -f %s/postmaster.pid"%(pgdb),\
                     "/sbin/service postgresql-%s start"%(postgresqlVersion,)]:
             rc = os.system(cmd)
@@ -294,9 +295,8 @@ def get_command_output(command):
 # get next to the last backup
 #
 def get_backup(pnfsSetup):
-	cmd='rsh %s  "ls -t %s/%s.*|head -n 2|tail -1"'%(pnfsSetup.remote_backup_host,
-							 pnfsSetup.remote_backup_dir,
-							 pnfsSetup.backup_name)
+	cmd='rsh %s  "ls -t %s/*.Z | grep -v xlog|head -n 2|tail -1"'%(pnfsSetup.remote_backup_host,
+                                                                       pnfsSetup.remote_backup_dir)
 	return get_command_output(cmd)
 
 

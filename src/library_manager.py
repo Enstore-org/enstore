@@ -525,8 +525,7 @@ class AtMovers:
             self.at_movers[mover].update(mover_info)
         else:
             # new entry
-            mover_info['time_started'] = time.time()
-            mover_info['current_time'] = mover_info['time_started']
+            mover_info['time_started'] = mover_info.get("current_time", time.time())
             self.at_movers[mover] = mover_info
         self.sg_vf.put(mover, mover_info['external_label'], storage_group, vol_family)
         Trace.trace(self.trace_level,"AtMovers put: at_movers: %s" % (self.at_movers,))
@@ -4416,7 +4415,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(self.my_trace_level, "_mover_bound_volume: active movers %s"%(self.volumes_at_movers.at_movers,))
             if mover in self.volumes_at_movers.get_active_movers():
                 # continue checking. This check requires synchronization between LM and mover machines.
-                if self.volumes_at_movers.at_movers[mover]['current_time'] >= mticket['current_time']:
+                if self.volumes_at_movers.at_movers[mover]['time_started'] >= mticket['current_time']:
                     # request was issued before the request became active
                     # ignore this request, but send something to mover.
                     # If nothing is sent the mover may hang wating for the
@@ -4469,7 +4468,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mticket['unique_id'] and mticket['unique_id'] != w['unique_id']:
                 if mticket.has_key("current_time"):
                     mover = mticket['mover']
-                    if self.volumes_at_movers.at_movers[mover]['current_time'] ==  mticket['current_time']:
+                    if self.volumes_at_movers.at_movers[mover]['time_started'] ==  mticket['current_time']:
                         Trace.log(e_errors.INFO, "Duplicate MOVER_BOUND request will be ignored for %s"%(mover,))
                         blank_reply = {'work': None, 'r_a': saved_reply_address}
                         self.reply_to_caller(blank_reply)

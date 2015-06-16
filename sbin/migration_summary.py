@@ -52,7 +52,7 @@ if outfile:
 	for i in res1:
 		if i[1] > m:
 			m = i[1]
-	(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(outfile, outfile, outfile, outfile))
+	(out, gp) = popen2.popen2("gnuplot; convert -flatten -background lightgray -rotate 90 %s.ps %s.jpg; convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(outfile, outfile, outfile, outfile))
 	gp.write(gscript%(outfile, "Migration/Duplication per day", 3, day_after(res1[0][0], -1), day_after(res1[-1][0], 1), (m+5)/5*5))
 	for i in res1:
 		gp.write("%s %d\n"%(i[0], i[1]))
@@ -64,7 +64,7 @@ if outfile:
 	print '<a href="MIGRATION_SUMMARY.ps">Postscript version</a>'
 	print '<p>'
 
-	(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(outfile+'_acc', outfile+'_acc', outfile+'_acc', outfile+'_acc'))
+	(out, gp) = popen2.popen2("gnuplot; convert -flatten -background lightgray -rotate 90 %s.ps %s.jpg; convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(outfile+'_acc', outfile+'_acc', outfile+'_acc', outfile+'_acc'))
 	gp.write('set title "Accumulated Progress"\n')
 	total = 0
 	for i in res1:

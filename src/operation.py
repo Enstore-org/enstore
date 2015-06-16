@@ -182,7 +182,7 @@ def library_type(cluster, lib):
 			return '8500G1'
 		if lib == 'CD-LTO3GS' or lib == 'CD-LTO4GS' or lib == 'CD-10KCGS':
 			return '8500GS'
-		if lib == 'CD-LTO4F1' or lib == 'CD-10KCF1':
+		if lib in ('CD-LTO4F1','CD-10KCF1','CD-10KDF1'):
 			return '8500F1'
 	elif cluster == 'CDF':
 		if lib == 'CDF-9940B' or lib == 'cdf':

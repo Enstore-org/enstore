@@ -1,14 +1,10 @@
 #!/usr/bin/env python
-
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
+"""
+Configuration server client.
+"""
 
 # system imports
 import sys
-#import time
 import errno
 import pprint
 import os
@@ -24,14 +20,10 @@ import generic_client
 import enstore_constants
 import enstore_functions2
 import option
-#import udp_client
 import Trace
 import callback
 import e_errors
 import hostaddr
-#import enstore_erc_functions
-#import event_relay_client
-#import event_relay_messages
 
 MY_NAME = enstore_constants.CONFIGURATION_CLIENT         #"CONFIG_CLIENT"
 MY_SERVER = enstore_constants.CONFIGURATION_SERVER
@@ -57,7 +49,7 @@ class ConfigFlag:
     def reset_new_config(self):
         #if self.do_caching == self.ENABLE:
         self.new_config_file = self.MSG_NO
-        
+
     def have_new_config(self):
         if self.do_caching == self.DISABLE:
             return 1
@@ -73,8 +65,14 @@ class ConfigFlag:
         self.do_caching = self.ENABLE
 
 class ConfigurationClient(generic_client.GenericClient):
-
+    """
+    Configuration client
+    """
     def __init__(self, address=None):
+        """
+        :type address: :obj:`tuple`
+        :arg address: (:obj:`str` - host, :obj:`int` - port) - configuration server address
+        """
         if address is None:
             address = (enstore_functions2.default_host(),
                        enstore_functions2.default_port())
@@ -115,7 +113,7 @@ class ConfigurationClient(generic_client.GenericClient):
                           "ticket missing config_load_timestamp is: %s" % \
                           (result,))
             ##############################################################
-            
+
             if result['config_load_timestamp'] <= self.config_load_timestamp:
                 return True
 
@@ -136,7 +134,7 @@ class ConfigurationClient(generic_client.GenericClient):
                 #Return None if no responce from the configuration
                 # server was received.
                 return None
-        
+
         for item in ret.items():
             if socket.getfqdn(item[1][0]) == \
                socket.getfqdn(self.server_address[0]):
@@ -148,10 +146,20 @@ class ConfigurationClient(generic_client.GenericClient):
         return socket.getfqdn(self.server_address[0]).split(".")[0]
 
     def do_lookup(self, key, timeout, retry):
+        """
+        Lookup configuration item.
+
+        :type key: :obj:`str`
+        :arg key: item in question
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: value
+        """
+
         request = {'work' : 'lookup', 'lookup' : key, 'new' : 1}
-
         ret = self.send(request, timeout, retry)
-
         if e_errors.is_ok(ret):
             try:
                 #New format.  This is requested by new configuration clients
@@ -168,11 +176,22 @@ class ConfigurationClient(generic_client.GenericClient):
 
         #Keep the hostaddr allow() information up-to-date on all lookups.
         hostaddr.update_domains(ret.get('domains', {}))
-        
+
 	return ret_val
 
-    # return value for requested item
     def get(self, key, timeout=0, retry=0):
+        """
+        Return value for requested item.
+
+        :type key: :obj:`str`
+        :arg key: item in question
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
         self.timeout = timeout #Remember this.
         self.retry = retry     #Remember this.
         if key == enstore_constants.CONFIGURATION_SERVER:
@@ -217,11 +236,20 @@ class ConfigurationClient(generic_client.GenericClient):
         #    # log it
         #    for l in traceback.format_stack():
         #        Trace.log(e_errors.INFO, l)
-                
+
         return ret
 
-    # dump the configuration dictionary (use active protocol)
     def dump(self, timeout=0, retry=0):
+        """
+        Dump the configuration dictionary (use active protocol).
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
         ticket = {"work"          : "dump2",
                   }
         done_ticket = self.send(ticket, rcv_timeout = timeout,
@@ -238,11 +266,20 @@ class ConfigurationClient(generic_client.GenericClient):
         return done_ticket
 
 
-    # dump the configuration dictionary
     def dump_old(self, timeout=0, retry=0):
+        """
+        Dump the configuration dictionary.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        
+
         request = {'work' : 'dump',
                    'callback_addr'  : (host,port)
                    }
@@ -274,8 +311,17 @@ class ConfigurationClient(generic_client.GenericClient):
         control_socket.close()
         return d
 
-    # dump the configuration dictionary and save it too
     def dump_and_save(self, timeout=0, retry=0):
+        """
+        Dump the configuration dictionary and save it too.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
         if not self.new_config_obj or self.new_config_obj.have_new_config() \
            or not self.is_config_current():
 
@@ -290,62 +336,130 @@ class ConfigurationClient(generic_client.GenericClient):
                     self.new_config_obj.reset_new_config()
 
                 return self.saved_dict  #Success.
-            
+
             return config_ticket  #An error occured.
 
         return self.saved_dict #Used cached dictionary.
 
     def config_load_time(self, timeout=0, retry=0):
+        """
+        Find configuration load time.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
         request = {'work' : 'config_timestamp' }
         x = self.send(request,  timeout,  retry )
         return x
 
     # get all keys in the configuration dictionary
     def get_keys(self, timeout=0, retry=0):
+        """
+        Get all keys in the configuration dictionary
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
         request = {'work' : 'get_keys' }
         keys = self.send(request,  timeout,  retry )
         return keys
 
-    # reload a new  configuration dictionary
     def load(self, configfile, timeout=0, retry=0):
-        
+        """
+        Reload a new  configuration dictionary.
+
+        :type configfile: :obj:`str`
+        :arg configfile: configuration file path
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
+
+
         request = {'work' : 'load' ,  'configfile' : configfile, 'user': getpass.getuser() }
         x = self.send(request, timeout, retry)
         return x
 
-    # multithreaded on / off
     def threaded(self, on = 0, timeout=0, retry=0):
+        """
+        Multithreaded on / off
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
         request = {'work' : 'thread_on' , 'on':on }
         x = self.send(request, timeout, retry)
         return x
 
-    # copy_level: 2 = deepcopy, 1 = copy, 0 = direct reference
     def copy_level(self, copy_level = 2, timeout=0, retry=0):
+        """
+        Set copy level in cofiguration server (may affect server performance).
+
+        :type copy_level: :obj:`int`
+        :arg copy_level: 2 = deepcopy, 1 = copy, 0 = direct reference.
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
         request = {'work' : 'copy_level' , 'copy_level':copy_level }
         x = self.send(request, timeout, retry)
         return x
 
-    #def alive(self, server, rcv_timeout=0, tries=0):
-    #    return self.send({'work':'alive'}, rcv_timeout, tries)
-
-    ### get_library_managers(), get_media_changers() and get_movers() are
-    ### not thread safe on the configuration server side.  It is possible
-    ### to get a reply that should have gone to anther process.
-
-    # get list of the Library manager movers
-    ### Not thread safe!
     def get_movers(self, library_manager, timeout=0, retry=0):
-        request = {'work' : 'get_movers' ,  'library' : library_manager }
-        return self.send(request, timeout, retry)
+        """
+        Get list of the Library manager movers.
 
-    # get list of the Library manager movers with full config info
-    #
-    # The library_manager parameter should be the full "name.library_manager"
-    # style name.  If all movers are to be returned, pass None instead.
+        :type library_manager: :obj:`str`
+        :arg library_manager: library manager name
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
+        request = {'work' : 'get_movers' ,  'library' : library_manager }
+        ret = self.send(request, timeout, retry)
+        if e_errors.is_ok(ret):
+            result = ret['movers']
+        else:
+            result = ret
+        return result
+
     def get_movers2(self, library_manager, timeout=0, retry=0, conf_dict=None):
+        """
+        Get list of the Library manager movers with full config info.
+
+        :type library_manager: :obj:`str`
+
+        :arg library_manager: The library_manager parameter should be the full "name.library_manager"
+                               style name.  If all movers are to be returned, pass None instead.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict` configuration server reply
+        """
+
         mover_list = []
-        
-        if conf_dict == None: 
+
+        if conf_dict == None:
             conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
         if not e_errors.is_ok(conf_dict):
             return mover_list
@@ -377,11 +491,22 @@ class ConfigurationClient(generic_client.GenericClient):
 
         return mover_list
 
-    # get list of the migrators with full config info
     def get_migrators2(self, timeout=0, retry=0, conf_dict=None):
+        """
+        Get list of the migrators with full config info
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :type conf_dict: :obj:`str`
+        :arg conf_dict: if not specified reload update configuration in cache
+        :rtype: :obj:`dict` configuration server reply
+        """
+
         migrator_list = []
-        
-        if conf_dict == None: 
+
+        if conf_dict == None:
             conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
         if not e_errors.is_ok(conf_dict):
             return migrator_list
@@ -392,31 +517,76 @@ class ConfigurationClient(generic_client.GenericClient):
                 migrator_list.append(value)
         return migrator_list
 
-    # get list of the migrators
     def get_migrators(self, timeout=0, retry=0, conf_dict=None):
+        """
+        Get list of the migrators.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :type conf_dict: :obj:`str`
+        :arg conf_dict: if not specified reload update configuration in cache
+        :rtype: :obj:`list` list of migrators
+        """
+
         migrator_list = []
         migrator_list1 = self.get_migrators2(timeout, retry, conf_dict)
         for migrator in migrator_list1:
            migrator_list.append(migrator['name'])
         return migrator_list
 
-    # get media changer associated with a library manager
     def get_media_changer(self, library_manager, timeout=0, retry=0):
+        """
+        Get media changer associated with a library manager.
+
+        :type library_manager: :obj:`str`
+        :arg library_manager: library manager
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`str` media changer
+         """
+
         request = {'work' : 'get_media_changer' ,
                    'library' : library_manager }
-        return  self.send(request, timeout, retry)
+        ret = self.send(request, timeout, retry)
+        return  ret.get("media_changer", "")
 
-    #get list of library managers
-    ### Not thread safe!
     def get_library_managers(self, timeout=0, retry=0):
-        request = {'work': 'get_library_managers'}
-        return self.send(request, timeout, retry)
+        """
+        Get list of library managers.
 
-    # get list of library managers with full config info
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`list` list of library managers
+         """
+
+        request = {'work': 'get_library_managers'}
+        ret = self.send(request, timeout, retry)
+        if e_errors.is_ok(ret):
+            result = ret['library_managers']
+        else:
+            result = ret
+        return result
+
     def get_library_managers2(self, timeout=0, retry=0, conf_dict=None):
+        """
+        Get list of library managers with full config info.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`list` list of library managers
+         """
+
         library_manager_list = []
-        
-        if conf_dict == None: 
+
+        if conf_dict == None:
             conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
         if not e_errors.is_ok(conf_dict):
             return library_manager_list
@@ -429,17 +599,38 @@ class ConfigurationClient(generic_client.GenericClient):
 
         return library_manager_list
 
-    #get list of media changers
-    ### Not thread safe!
     def get_media_changers(self, timeout=0, retry=0):
-        request = {'work': 'get_media_changers'}
-        return self.send(request, timeout, retry)
+        """
+        Get list of media changers.
 
-    # get list of media changers with full config info
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`list` list of media changers
+         """
+
+        request = {'work': 'get_media_changers'}
+        ret = self.send(request, timeout, retry)
+        if e_errors.is_ok(ret):
+            result = ret['media_changers']
+        else:
+            result = ret
+        return result
+
     def get_media_changers2(self, timeout=0, retry=0, conf_dict=None):
+        """
+        Get list of media changers with full config info.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`list` list of media changers
+         """
         media_changer_list = []
-        
-        if conf_dict == None: 
+
+        if conf_dict == None:
             conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
         if not e_errors.is_ok(conf_dict):
             return media_changer_list
@@ -452,17 +643,32 @@ class ConfigurationClient(generic_client.GenericClient):
 
         return media_changer_list
 
-    #get list of migrators
-    ### Not thread safe!
     def get_migrators_list(self, timeout=0, retry=0):
-        request = {'work': 'get_migrators'}
-        return self.send(request, timeout, retry)
+        """
+        Get list of the migrators directly from configuration server.
 
-    # get list of proxy servers with full config info
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`list` list of migrators
+        """
+        request = {'work': 'get_migrators'}
+        ret = self.send(request, timeout, retry)
+        if e_errors.is_ok(ret):
+            result = ret['migrators']
+        else:
+            result = ret
+        return result
+
     def get_proxy_servers2(self, timeout=0, retry=0, conf_dict=None):
+        """
+        Get list of proxy servers with full config info.
+        Deprecated as we do not use proxy servers
+        """
         proxy_server_list = []
-        
-        if conf_dict == None: 
+
+        if conf_dict == None:
             conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
             if not e_errors.is_ok(conf_dict):
                 return proxy_server_list
@@ -474,16 +680,37 @@ class ConfigurationClient(generic_client.GenericClient):
                 proxy_server_list.append(item[1])
 
         return proxy_server_list
-    
-    # get the configuration dictionary element(s) that contain the specified
-    # key, value pair
+
     def get_dict_entry(self, keyValue, timeout=0, retry=0):
+        """
+        Get the configuration dictionary element(s) that contain the specified
+        key, value pair.
+
+        :type keyValue: :obj:`tuple`
+        :arg keyValue: key - value tuple
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict`
+
+        """
+
         request = {'work': 'get_dict_element',
                    'keyValue': keyValue }
         return self.send(request, timeout, retry)
 
-    # get the configuration dictionary keys that refer to enstore servers
     def reply_serverlist(self, timeout=0, retry=0):
+        """
+        Get the configuration dictionary keys that refer to enstore servers.
+
+        :type timeout: :obj:`float`
+        :arg timeout: reply waiting time
+        :type retry: :obj:`int`
+        :arg retry: number of retries
+        :rtype: :obj:`dict`
+         """
+
         request = {'work': 'reply_serverlist',
                    }
         return self.send(request, timeout, retry)
@@ -509,7 +736,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.file_fallback = 0
         self.print_1 = 0
         self.copy = None
-        
+
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -619,7 +846,7 @@ def flatten2(prefix, value, flat_dict):
             flat_dict[prefix] = value
 
 def print_configuration(config_dict, intf, prefix = ""):
-    
+
     if intf.show:
         #If there wasn't a problem finding the information, print it.
         if type(config_dict) == types.StringType:
@@ -666,7 +893,7 @@ def do_work(intf):
             use_tries = 3    #Need to override in this case.
         else:
             use_tries = generic_client.DEFAULT_TRIES
-        
+
         #Attempt to get the configuration from the configuration server.
         try:
             result = csc.dump(use_timeout, use_tries)
@@ -718,7 +945,7 @@ def do_work(intf):
             else:
                 #Print the configuration to the terminal/stdout.
                 print_configuration(use_config, intf, prefix)
-        
+
     elif intf.load:
         result= csc.load(intf.config_file, intf.alive_rcv_timeout,
 	                intf.alive_retries)
@@ -800,7 +1027,7 @@ def do_work(intf):
                 print msg_spec % (mover_name['mover'], mover_info['host'],
                                   mover_info['mc_device'], mover_info['driver'],
                                   mover_info['library'])
-                
+
     elif intf.list_migrators:
         try:
             result = csc.get_migrators_list(
@@ -848,10 +1075,10 @@ def get_config_dict(timeout=5, retry=2):
                   "Get configuration from local file: %s" % \
                   (os.environ['ENSTORE_CONFIG_FILE'],)
         except KeyError:
-           config_dict ={} 
+           config_dict ={}
     return config_dict
 
-    
+
 if __name__ == "__main__":
     Trace.init(MY_NAME)
 

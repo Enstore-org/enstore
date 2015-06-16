@@ -1,10 +1,7 @@
 #!/usr/bin/env python
-
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
+"""
+Alarm client. Sends alarms to alarm server.
+"""
 
 # system imports
 import sys
@@ -39,10 +36,31 @@ class Lock:
         return s
 
 class AlarmClient(generic_client.GenericClient):
+    """
+    Implements a client of alarm server.
+    """
 
     def __init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
                  server_address = None, flags = 0, logc = None,
                  rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
+        """
+        :type csc: :class:`configuraion_client.ConfigurationClient`
+        :arg csc: configuration client or :obj:`tuple` configuration server address
+        :type name: :obj:`str`
+        :arg name: client name
+        :type server_name: :obj:`str`
+        :arg server_name: server name
+        :type server_address: :obj:`tuple`
+        :arg server_address: server address
+        :type flags: :obj:`int`
+        :arg flags: special flags (see :class:`generic_client.GenericClient`)
+        :type logc: :class:`log_client.LogClient`
+        :arg logc: log client
+        :type rcv_timeout: :obj:`float`
+        :type rcv_timeout: :obj:`float`
+        :type rcv_tries: :obj:`int`
+        :arg rcv_tries: numbre of send retries
+        """
 
         # need the following definition so the generic client init does not
         # get another alarm client
@@ -62,20 +80,40 @@ class AlarmClient(generic_client.GenericClient):
         self.rcv_timeout = rcv_timeout
         self.rcv_tries = rcv_tries
         Trace.set_alarm_func( self.alarm_func )
-        self.alarm_func_lock = Lock() 
-        
-    def alarm_func(self, time, pid, name, root_error, 
+        self.alarm_func_lock = Lock()
+
+    def alarm_func(self, time, pid, name, root_error,
 		   severity, condition, remedy_type, args):
-        #Even though this implimentation of alarm_func() does not use the time
-        # parameter, others will.
+        """
+        Alarm function
+
+        :type time: :obj:`float`
+        :arg time: time issued. Even though this implementation of alarm_func() does not use the time
+                   parameter, others will.
+        :type pid: :obj:`int`
+        :arg pid: process id
+        :type name: :obj:`str`
+        :arg name: client name
+        :type root_error: :obj:`str`
+        :arg root_error: alarm cause
+        :type severity: :obj:`str`
+        :arg severity: alarm severity
+        :type condition: :obj:`str`
+        :arg condition: alarm condition
+        :type remedy_type: :obj:`str`
+        :arg remedy_type: alarm remedy type
+        :type args: :obj:`list`
+        :arg args: additional arguments
+        """
+
         __pychecker__ = "unusednames=time"
-        
+
         # prevent infinite recursion (i.e if some function call by this
         # function does a trace and the alarm bit is set
         if self.alarm_func_lock.test_and_set(): return None
 	# translate severity to text
 	if type(severity) == types.IntType:
-	    severity = e_errors.sevdict.get(severity, 
+	    severity = e_errors.sevdict.get(severity,
 					    e_errors.sevdict[e_errors.ERROR])
         ticket = {}
         ticket['work'] = "post_alarm"
@@ -89,7 +127,8 @@ class AlarmClient(generic_client.GenericClient):
 	ticket['text'] = args
 	log_msg = "%s, %s (severity : %s)"%(root_error, args, severity)
 
-        self.send(ticket, self.rcv_timeout, self.rcv_tries )
+        #self.send(ticket, self.rcv_timeout, self.rcv_tries )
+        self.u.send_no_wait( ticket, self.server_address, unique_id=True)
         # log it for posterity
         Trace.log(e_errors.ALARM, log_msg, Trace.MSG_ALARM)
         return self.alarm_func_lock.unlock()
@@ -98,22 +137,49 @@ class AlarmClient(generic_client.GenericClient):
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               alarm_info=None, condition=None,
               remedy_type=None):
+        """
+        Send alarm
+
+        :type severity: :obj:`str`
+        :arg severity: alarm severity
+        :type root_error: :obj:`str`
+        :arg root_error: alarm cause
+        :type alarm_info: :obj:`str`
+        :arg alarm_info: alarm details
+        :type condition: :obj:`str`
+        :arg condition: alarm condition
+        :type remedy_type: :obj:`str`
+        :arg remedy_type: alarm remedy type
+        """
+
         if alarm_info is None:
             alarm_info = {}
         Trace.alarm(severity, root_error, alarm_info, condition, remedy_type )
 
     def resolve(self, id):
-        # this alarm has been resolved.  we need to tell the alarm server
+        """
+        This alarm has been resolved.  we need to tell the alarm server
+
+        :type id: :obj:`int`
+        :arg id: alarm id
+        :rtype: :obj:`dict` reply from alarm server
+        """
+
         ticket = {'work' : "resolve_alarm",
                   enstore_constants.ALARM   : id}
         return self.send(ticket, self.rcv_timeout, self.rcv_tries)
 
     def get_patrol_file(self):
+        """
+        This functionality is deprecated
+        """
         ticket = {'work' : 'get_patrol_filename'}
         return self.send(ticket, self.rcv_timeout, self.rcv_tries)
 
 class AlarmClientInterface(generic_client.GenericClientInterface):
-
+    """
+    Defines alarm client command inteface and legal commands
+    """
 
     def __init__(self, args=sys.argv, user_mode=1):
         #self.do_parse = flag

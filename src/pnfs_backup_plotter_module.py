@@ -40,7 +40,7 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #Write the gnuplot commands out.
 
         plot_fp = open(plot_filename, "w+")
-        
+
         plot_fp.write("set terminal postscript color solid\n")
         plot_fp.write("set title 'pnfs backup time generated on %s'\n" \
                       % (time.ctime(),))
@@ -90,9 +90,9 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         self.plot_filename = "%s/pnfs_format.plot" % (temp_dir,)
 
     def fill(self, frame):
-        
-        #  here we create data points 
-        
+
+        #  here we create data points
+
         acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, {})
         db = pg.DB(host   = acc.get('dbhost', "localhost"),
                    dbname = acc.get('dbname', "accounting"),
@@ -103,7 +103,7 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         sql_cmd = "select start,finish - start as duration from event " \
                    "where name = 'pnfsFastBackup' and " \
                    "start > CURRENT_TIMESTAMP - interval '30 days';"
-        
+
         res = db.query(sql_cmd).getresult() #Get the values from the DB.
 
         #Open the file that will contain the data gnuplot will plot.
@@ -114,7 +114,7 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             if not row[0] or not row[1]:
                 #row[1] could be None if a backup is still going on.
                 continue
-            
+
             start = row[0]     #YYYY:MM:DD HH:MM:SS
             duration = row[1]  #hh:mm:ss
 
@@ -163,20 +163,20 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #Make the file that tells gnuplot what to do.
         self.write_plot_file(self.plot_filename, self.data_filename,
                              self.output_filename)
-       
+
         # make the plot
 	rtn = os.system("gnuplot < %s" % (self.plot_filename,))
 	if rtn:
 		sys.stderr.write("gnuplot failed\n")
 		sys.exit(1)
-        
+
         # convert to jpeg
-        rtn = os.system("convert -rotate 90 -modulate 80 %s %s" %
+        rtn = os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s" %
                   (self.output_filename, self.output_filename_jpeg))
 	if rtn:
 		sys.stderr.write("convert failed\n")
                 sys.exit(1)
-        rtn = os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
+        rtn = os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
                   (self.output_filename, self.output_filename_stamp_jpeg))
 	if rtn:
 		sys.stderr.write("convert failed\n")

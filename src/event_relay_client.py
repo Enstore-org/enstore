@@ -405,11 +405,22 @@ class EventRelayClientInterface:
             self.quit = 1
         else:
             self.quit = 0
+        if "--%s"%(event_relay_messages.DOPRINT,) in sys.argv:
+            self.doprint = 1
+        else:
+            self.doprint = 0
+        if "--%s"%(event_relay_messages.DONTPRINT,) in sys.argv:
+            self.dontprint = 1
+        else:
+            self.dontprint = 0
 
     def print_help(self):
-        print "[--%s] [--%s] [--%s]"%(event_relay_messages.ALIVE,
-                                      event_relay_messages.DUMP,
-                                      event_relay_messages.QUIT)
+        print "[--%s] [--%s] [--%s] [--%s] [--%s]"% \
+            (event_relay_messages.ALIVE,
+             event_relay_messages.DUMP,
+             event_relay_messages.DOPRINT,
+             event_relay_messages.DONTPRINT,
+             event_relay_messages.QUIT)
 
 def do_work(intf):
     # now get an event relay client
@@ -423,6 +434,10 @@ def do_work(intf):
 
     elif intf.quit:
         erc.quit()
+    elif intf.doprint:
+        erc.do_print()
+    elif intf.dontprint:
+        erc.dont_print()
 
     else:
         intf.print_help()

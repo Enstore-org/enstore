@@ -65,6 +65,8 @@ MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%(MSG_TYPE,)
 MSG_ADD_TO_LMQ = "%sADD_TO_LMQ "%(MSG_TYPE,)
 MSG_EVENT_RELAY = "%sEVENT_RELAY "%(MSG_TYPE,)
 
+MAX_MESSAGE_SIZE = 10000 # maximum allowed message size
+
 #List of severities that should use standard error instead of standard out.
 STDERR_SEVERITIES = [e_errors.EMAIL,
                      e_errors.ALARM,
@@ -122,8 +124,8 @@ def notify(msg):
 def trunc(x):
     if type(x) != type(""):
         x = str(x)
-    if len(x)>=4096:
-        x=x[:4080] + "(trunc. %s)"%(len(x),)
+    if len(x) > MAX_MESSAGE_SIZE:
+        x=x[:MAX_MESSAGE_SIZE-20] + "(trunc. %s)"%(len(x),)
     return x
 
 #Initialize the log and thread values.  This is done for the current

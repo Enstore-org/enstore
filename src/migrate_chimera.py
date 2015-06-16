@@ -114,6 +114,7 @@ import stat
 import socket
 
 # enstore imports
+import bfid_util
 import file_clerk_client
 import volume_clerk_client
 import configuration_client
@@ -299,6 +300,15 @@ dbport = None
 dbname = None
 dbuser = "enstore"
 
+###############################################################################
+# Parameterization of Constants for communication with File Clerk.
+# RCV_TIMEOUT, RCV_TRIES actually shall be used when instantiating file_clerk,
+# but these values are ignored in fcc.get_bfid() and invocation arguments are
+# used instead. Keep these constants in one place.
+
+# File Clerk timeout and Number of Retries
+FC_TO   = 60
+FC_RETRY = 1
 ###############################################################################
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
@@ -2124,7 +2134,7 @@ def get_volume_id(MY_TASK, volume, db):
 #Return the volume that the bfid refers to.
 """
 def get_volume_from_bfid(bfid, fcc, db):
-        if not enstore_functions3.is_bfid(bfid):
+        if not bfid_util.is_bfid(bfid):
                 return False
 
         q = "select label from volume,file where file.volume = volume.id " \
@@ -2174,7 +2184,7 @@ def is_volume_allowed(volume, vcc, db):
 # argument may also be a file path in pnfs.  It may also be a (short) library
 # name now too.
 def get_media_type(arguement, db):
-	if enstore_functions3.is_bfid(arguement):
+	if bfid_util.is_bfid(arguement):
 		q = "select media_type from volume,file where " \
 		    " file.volume = volume.id and file.bfid = '%s';" % \
 		    (arguement,)
@@ -2725,6 +2735,7 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             migration_match = "dst_bfid"
         else:
             migration_match = "src_bfid"
+
         if all_files:
             use_deleted_sql = "or deleted in ('y', 'u')"
             use_empty_sql = ""
@@ -2735,8 +2746,9 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
             use_deleted_sql = "or (deleted = 'y' and migration.dst_bfid is not NULL)"
             use_empty_sql = "and pnfs_path != ''"
         else:
-            use_deleted_sql = "or migration.dst_bfid is not NULL"
+            use_deleted_sql = ""
             use_empty_sql = "and pnfs_path != ''"
+
         if intf.skip_bad:
             use_skip_bad = "and bad_file.bfid is NULL"
         else:
@@ -6544,6 +6556,7 @@ def _swap_metadata(MY_TASK, job, fcc, db, src_is_a_package=False):
         p1.complete_crc = dst_file_record['complete_crc']
         if src_is_a_package :
             p1.path = src_path
+            p1.p_path = p1.path
 
         # should we?
         # the best solution is to have encp ignore sanity check on file_family
@@ -7006,7 +7019,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
             # We need to be this draconian if we had to restart the
             # migration processes.
             dst_file_record = fcc.bfid_info(dst_bfid,
-                                        timeout = 10, retry = 4)
+                                        timeout = FC_TO, retry = FC_RETRY)
             if not e_errors.is_ok(dst_file_record):
                 error_log(MY_TASK, "no file record found(%s)" % (dst_bfid,))
                 return
@@ -7193,7 +7206,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
             #Just written new files will get here.  Files already written
             # will just move on to getting the volume information.
             dst_file_record = fcc.bfid_info(dst_bfid,
-                                            timeout = 10, retry = 4)
+                                            timeout = FC_TO, retry = FC_RETRY)
             if not e_errors.is_ok(dst_file_record):
                 message = "no file record found(%s)" % (dst_bfid,)
                 error_log(MY_TASK2, message)
@@ -7255,7 +7268,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                    not is_expected_restore_type(cur_dst_bfid, db):
                 #Obtain new multiple copy volume information.
                 mc_dst_file_record = fcc.bfid_info(cur_dst_bfid,
-                                                   timeout = 10, retry = 4)
+                                        timeout = FC_TO, retry = FC_RETRY)
                 if not e_errors.is_ok(dst_file_record):
                     message = "no file record found(%s)" % (cur_dst_bfid,)
                     error_log(MY_TASK2, message)
@@ -9860,7 +9873,7 @@ def get_targets(bfid_list_queue, volume_list_queue, isc, intf):
         #4) path          /pnfs/xyz/abc
         #                 /pnfs/fs/usr/xyz/abc
 
-        if enstore_functions3.is_bfid(target):
+        if bfid_util.is_bfid(target):
             bfid_list_queue.put(target, block=True)
         elif enstore_functions3.is_volume(target):
             volume_list_queue.put(target, block=True)

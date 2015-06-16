@@ -103,11 +103,6 @@
     <column name="authorized" type="integer"/>
     <column name="quota" type="integer"/>
   </table>
-  <table name="sg_count">
-    <column name="library" type="varchar" null="no" key="1"/>
-    <column name="storage_group" type="varchar" null="no" key="2"/>
-    <column name="count" type="integer"/>
-  </table>
   <table name="migration">
     <column name="src_bfid" type="varchar" null="no" key="1"/>
     <column name="dst_bfid" type="varchar" null="no" key="2"/>
@@ -313,6 +308,14 @@
   <view name="remaining_blanks">
     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE ((((volume.storage_group)::text = 'none'::text) AND ((volume.file_family)::text = 'none'::text)) AND ((volume.wrapper)::text = 'none'::text)) GROUP BY volume.media_type;
   </view>
+    <view name="sg_count">
+     SELECT volume.library,
+    volume.storage_group,
+    count(*) AS count
+   FROM volume
+  WHERE (NOT ((volume.label)::text ~~ '%.deleted'::text))
+  GROUP BY volume.library, volume.storage_group;
+  </view>
   <view name="volume_summary">
     SELECT volume.label, volume.capacity_bytes, sum(file2.size) AS used, sum(file2.n_active) AS n_active, sum(file2.size_active) AS active, sum(file2.n_deleted) AS n_deleted, sum(file2.size_deleted) AS deleted, sum(file2.n_unknown) AS n_unknown, sum(file2.size_unknown) AS unknown, volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file2.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment FROM file2, volume WHERE (file2.volume = volume.id) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment;
   </view>
@@ -406,6 +409,11 @@ RETURN NEW;
 END;
   </function>
   <function name="swap_package" arguments="varchar old_bfid, varchar new_bfid" returns="void" language="plpgsql">
+DECLARE
+	old_record RECORD;
+	new_record RECORD;
+        total INTEGER;
+	active INTEGER;
 BEGIN
       IF ( new_bfid is NULL ) THEN
           RAISE EXCEPTION 'destination package bfid is not specified';
@@ -425,8 +433,15 @@ BEGIN
           RAISE EXCEPTION '% is not a package file',old_bfid;
   RETURN;
       END IF;
-      update file set package_id=new_bfid where package_id=old_bfid and package_id &lt;&gt; bfid;
-      update file set package_files_count=package_files_count+old_record.package_files_count, active_package_files_count=active_package_files_count+old_record.active_package_files_count,package_id=new_bfid where bfid=new_bfid;
+      IF ( new_record.package_files_count is not NULL and new_record.package_files_count &lt;&gt; 0 ) THEN
+          RAISE EXCEPTION '% has package_files_count=%',new_bfid, new_record.package_files_count;
+      END IF;
+      with updated_rows AS (
+      update file set package_id=new_bfid where package_id=old_bfid and package_id &lt;&gt; bfid RETURNING deleted)
+      select sum(case when deleted='n' then 1 else 0 end), count(*) into active, total from updated_rows;
+      update file set package_files_count=coalesce(total,0),
+                      active_package_files_count=coalesce(active,0),
+      package_id=new_bfid where bfid=new_bfid;
       update file set package_files_count=0, active_package_files_count=0 where bfid=old_bfid;
 END;
   </function>

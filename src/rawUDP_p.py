@@ -12,6 +12,7 @@ import pwd
 import threading
 import time
 import select
+import Queue
 
 import cleanUDP
 import udp_common
@@ -76,8 +77,9 @@ class RawUDP:
         self.print_queue = False
         self.enable_reinsert = True
         self.f = None
-        self.queue = multiprocessing.Queue(MAX_QUEUE_SIZE) # intermediate place for incoming messages
-
+        self.max_queue_size = MAX_QUEUE_SIZE
+        self.use_queue = False # use queue directly, not as intermediate place for incoming messages
+        self.queue = multiprocessing.Queue(self.max_queue_size) # intermediate place for incoming messages
 
         # if self.replace_keyword is specified
         # replace a message with this keyword in the buffer
@@ -108,12 +110,71 @@ class RawUDP:
     def set_keyword(self, keyword):
         self.replace_keyword = keyword
 
+    def set_max_queue_size(self, queue_size):
+        self.max_queue_size = queue_size
+        del(self.queue)
+        self.queue = multiprocessing.Queue(self.max_queue_size)
+
+    def set_use_queue(self):
+        self.use_queue = True
+
+    def set_caller_name(self, caller_name):
+        self.caller_name = caller_name
+
 
     # disable reshuffling of duplicate requests
     # this can be beneficial for mover requests
     # but may hurt encp requests
     def disable_reshuffle(self):
         self.enable_reinsert = False
+
+
+    def process_enstore_message(self, message):
+        rc = None
+        req = message[0]
+        client_addr = (message[1])
+        request=None
+        try:
+            request, inCRC = udp_common.r_eval(req, check=True)
+
+        except ValueError, detail:
+            # must be an event relay message
+            # it has a different format
+            try:
+                request = udp_common.r_eval(req, check=True)
+            except:
+                exc, msg = sys.exc_info()[:2]
+                # reraise exception
+                raise exc, msg
+        except (SyntaxError, TypeError):
+            #If TypeError occurs, keep retrying.  Most likely it is
+            # an "expected string without null bytes".
+            #If SyntaxError occurs, also keep trying, most likely
+            # it is from and empty UDP datagram.
+            exc, msg = sys.exc_info()[:2]
+            try:
+                msg = "%s: %s: From client %s:%s" % \
+                          (exc, msg, client_addr, request[:100])
+            except IndexError:
+                msg = "%s: %s: From client %s: %s" % \
+                          (exc, msg, client_addr, request)
+            # There were cases when request could not get formatted as a string.
+            # This apparently happened during port scan
+            except:
+                try:
+                    exc, msg = sys.exc_info()[:2]
+                    msg = "%s: %s: From client %s" % \
+                          (exc, msg, client_addr)
+                except:
+                    exc, msg = sys.exc_info()[:2]
+                    msg = "%s: %s: " % \
+                          (exc, msg)
+
+            print msg
+        if request:
+            rc = request, client_addr
+        return rc
+
 
     # get message from FIFO buffer
     # return value:
@@ -122,9 +183,20 @@ class RawUDP:
     def get(self):
         _print(self.d_o, "GET")
         rc = None
+
+        if self.use_queue:
+            message = self.queue.get(True, self.rcv_timeout)
+            if message:
+                rc = self.process_enstore_message(message)
+            else:
+                if self.arrived.is_set():
+                    self.arrived.clear()
+            return rc
+
         if self.queue_size_p.value == 0:
             self.arrived.wait()
             self.arrived.clear()
+
         if self.queue_size_p.value > 0:
             ret = None
             request_id = None
@@ -154,15 +226,12 @@ class RawUDP:
 
         return rc
 
-
     def receiver(self):
         print "STARTING RECEIVER", os.getpid()
-        proc = multiprocessing.Process(target=_receiver, args = (self,))
-        proc1 = multiprocessing.Process(target=fetch, args = (self,))
         try:
-            proc.start()
-            proc1.start()
-            #proc.join()
+            multiprocessing.Process(target=_receiver, args = (self,)).start()
+            if not self.use_queue:
+                multiprocessing.Process(target=fetch, args = (self,)).start()
         except:
             exc, detail, tb = sys.exc_info()
             print detail
@@ -185,67 +254,13 @@ def put(RawUDP_obj, message):
 
     #_print (RawUDP_obj.f, "enable reinsert %s replace_keyword %s"%(enable_reinsert, replace_keyword))
     # message structure:
-    #(request, cliient_address)
-    req = message[0]
+    # (request, client_address)
+    rc = RawUDP_obj.process_enstore_message(message)
     client_addr = (message[1])
-    request=None
-    try:
-        request, inCRC = udp_common.r_eval(req, check=True)
 
-        # There is no reason to calculate CRC.
-        # The udp crc is turned on in CleanUDP.
-        # calculate CRC.
-        """
-        crc = checksum.adler32(0L, request, len(request))
-        if (crc != inCRC) :
-            print "BAD CRC request: %s " % (request,)
-            print "CRC: %s calculated CRC: %s" % (repr(inCRC), repr(crc))
-
-            request=None
-        """
-
-    except ValueError, detail:
-        # must be an event relay message
-        # it has a different format
-        try:
-            request = udp_common.r_eval(req, check=True)
-        except:
-            exc, msg = sys.exc_info()[:2]
-            # reraise exception
-            raise exc, msg
-    except (SyntaxError, TypeError):
-        #If TypeError occurs, keep retrying.  Most likely it is
-        # an "expected string without null bytes".
-        #If SyntaxError occurs, also keep trying, most likely
-        # it is from and empty UDP datagram.
-        exc, msg = sys.exc_info()[:2]
-        try:
-            msg = "%s: %s: From client %s:%s" % \
-                      (exc, msg, client_addr, request[:100])
-        except IndexError:
-            msg = "%s: %s: From client %s: %s" % \
-                      (exc, msg, client_addr, request)
-        # There were cases when request could not get formatted as a string.
-        # This apparently happened during port scan
-        except:
-            try:
-                exc, msg = sys.exc_info()[:2]
-                msg = "%s: %s: From client %s" % \
-                      (exc, msg, client_addr)
-            except:
-                exc, msg = sys.exc_info()[:2]
-                msg = "%s: %s: " % \
-                      (exc, msg)
-
-
-        Trace.log(5, msg)
-
-        #Set these to something.
-        request = None
-
-    if not request:
+    if not rc:
         return
-
+    request, client_addr = rc
     RawUDP_obj._lock.acquire()
     try:
         request_id = get_id(request)
@@ -253,32 +268,30 @@ def put(RawUDP_obj, message):
         # if self.replace_keyword is specified
         # replace a message with this keyword in the buffer
         # this is needed for processing
-        # mover requests require different aprroaach in their processing
+        # mover requests requiring different aprroach in their processing
         # they need to be aligned on the order they came and no duplicate
         # request is allowed.
         # Thus the old mover request gets replaced by the newer request
         # at the same place in the queue
         if RawUDP_obj.replace_keyword:
             keyword_to_replace = get_keyword(request, RawUDP_obj.replace_keyword)
-            if keyword_to_replace:
-                if RawUDP_obj.requests.has_key(keyword_to_replace):
-                    try:
-                       do_put = False # duplicate request, do not put into the queue
-                       index = RawUDP_obj.buffer.index(RawUDP_obj.requests[keyword_to_replace])
-                       del RawUDP_obj.buffer[index]
-                       RawUDP_obj.buffer.insert(index, (request, client_addr))
+            if keyword_to_replace and keyword_to_replace in RawUDP_obj.requests:
+                try:
+                   do_put = False # duplicate request, do not put into the queue
+                   index = RawUDP_obj.buffer.index(RawUDP_obj.requests[keyword_to_replace])
+                   del RawUDP_obj.buffer[index]
+                   RawUDP_obj.buffer.insert(index, (request, client_addr))
 
-                    except ValueError:
-                       # request is not in buffer yet
-                       pass
-                _print(RawUDP_obj.f, "ADD TO REQUESTS %s"%(request,))
+                except ValueError:
+                   # request is not in buffer yet
+                   pass
                 RawUDP_obj.requests[keyword_to_replace] = (request, client_addr)
         else:
             if request_id:
                 # put the latest request into the queue
-                if RawUDP_obj.requests.has_key(request_id) and RawUDP_obj.requests[request_id] !="":
-                    # most like this is a retry
-                    _print(RawUDP_obj.f, "DUPLICATE %s %s" % (time.time(), request_id))
+                if request_id in RawUDP_obj.requests and RawUDP_obj.requests[request_id] !="":
+                    # most likely this is a retry
+                    #_print(RawUDP_obj.f, "DUPLICATE %s %s" % (time.time(), request_id))
                     try:
                         # "retry" message put it closer to the beginning of the queue
                         index = RawUDP_obj.buffer.index(RawUDP_obj.requests[request_id])
@@ -300,19 +313,19 @@ def put(RawUDP_obj, message):
 
                     RawUDP_obj.requests[request_id] = (request, client_addr)
                 else:
-                    if RawUDP_obj.queue_size_p.value > MAX_QUEUE_SIZE:
+                    if RawUDP_obj.queue_size_p.value > RawUDP_obj.max_queue_size:
                         # drop incoming message
                         do_put = False
                     else:
                         RawUDP_obj.requests[request_id] = (request, client_addr)
 
         if do_put:
-            t0 = time.time()
+            #t0 = time.time()
 
             RawUDP_obj.buffer.append((request, client_addr))
             RawUDP_obj.queue_size_p.value += 1
             RawUDP_obj.arrived.set()
-            _print (RawUDP_obj.f, "PUT %s %s %s"% (time.time(), request_id, time.time() - t0))
+            #_print (RawUDP_obj.f, "PUT %s %s %s"% (time.time(), request_id, time.time() - t0))
     except:
         exc, detail, tb = sys.exc_info()
         print "put: %s %s"%(exc, detail)
@@ -360,9 +373,14 @@ def _receiver(RawUDP_obj):
                 try:
                     RawUDP_obj.queue.put_nowait(message)
                 except Queue.Full:
-                    Trace.log(5, "Intermediate queue is full")
-                except:
-                    pass
+                    m = str(message)
+                    if RawUDP_obj.caller_name == "log_server":
+                        if not " ENCP " in m:
+                            # Send to stdout as enstore log service may not be available.
+                            msg = " ".join((time.strftime("%Y-%m-%d %H:%M:%S"), m))
+                            print "Intermediate queue is full", msg
+                except Exception, detail:
+                    print "Exception putting into queue:", detail
 
         else:
             RawUDP_obj.arrived.set()

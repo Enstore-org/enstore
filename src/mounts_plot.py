@@ -34,7 +34,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		self.hist_keys=[]
 
 		self.libraries=None
-		
+
 	def hist_key(self,n):
 		if n >= self.high_water_mark:
 			return 'Over '+str(self.high_water_mark)
@@ -105,7 +105,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		outf.write("plot '%s' notitle with impulses, %d notitle, %d notitle\n"
 			   % (pts_filename, self.low_water_mark,
 			      self.high_water_mark))
-		
+
 		outf.close()
 
 	def write_hist_plot_file(self, plot_filename, pts_filename,
@@ -182,7 +182,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		self.hist_keys.append(k)
 		self.mtsh[k] = 0
 
-		
+
 		edb = frame.get_configuration_client().get('database', {})
 		db = pg.DB(host  = edb.get('db_host', "localhost"),
 			   dbname= edb.get('dbname', "enstoredb"),
@@ -190,8 +190,8 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 			   user  = edb.get('dbuser', "enstore"))
 
 		res_lib = db.query("select distinct library from volume where media_type!='null'").getresult()
-		
-		
+
+
 		self.libraries = {}
 		for row in res_lib:
 			if not row:
@@ -211,9 +211,9 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 					"count" : count,
 					}
 		db.close()
-			
+
 	def __fill(self, library, pts_filename, db):
-		
+
 		sql_stm = "declare volume_cursor cursor for " \
 			  "select label,sum_mounts,storage_group,file_family,wrapper,library " \
 			  "from volume " \
@@ -247,7 +247,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 					self.tol = self.tol + 1
 				k = self.hist_key(m)
 				self.mtsh[k] = self.mtsh[k]+1
-				
+
 			l=len(res)
 			if (l < 10000):
 				break
@@ -277,7 +277,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		#
 		### The mount plots by library (and one total).
 		#
-		
+
 	        #Some preliminary variables to be used in filenames.
 		output_file="mounts"
 		if library:
@@ -309,13 +309,13 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		os.system("gnuplot %s" % (plot_filename))
 
 		# convert to jpeg
-		os.system("convert -rotate 90 -modulate 80 %s %s"
+		os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
 			  % (ps_filename, jpeg_filename))
-		os.system("convert -rotate 90 -modulate 80 %s %s"
+		os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
 			  % (ps_filename_logy, jpeg_filename_logy))
-		os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+		os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
 			  % (ps_filename, jpeg_filename_stamp))
-		os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+		os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
 			  % (ps_filename_logy, jpeg_filename_logy_stamp))
 
 		#Cleanup the temporary files.
@@ -333,7 +333,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		#
 		### The histogram.
 		#
-		
+
 		#Filenames for various values.
 		hist_out = output_file + '_hist'
 		ps_hist_filename = os.path.join(self.web_dir,
@@ -350,7 +350,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 			pts_filename = os.path.join(self.temp_dir,
 						    "%s.pts" % hist_out)
 
-		
+
 		count = 0
 		set_label = ""
 		set_xtics = "set xtics rotate ("
@@ -378,12 +378,12 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		self.write_hist_plot_file(plot_filename, pts_filename,
 					  ps_hist_filename, library,
 					  count, set_xtics, maxy, set_label)
-			
+
 		#Make the plot and convert it to jpg.
 		os.system("gnuplot %s" % (plot_filename,))
-		os.system("convert -rotate 90 -modulate 80 %s %s"
+		os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s"
 			  % (ps_hist_filename, jpeg_hist_filename))
-		os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+		os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s"
 			  % (ps_hist_filename, jpeg_hist_filename_stamp))
 
 		#Cleanup the temporary files.

@@ -80,14 +80,16 @@ class Logger(  dispatching_worker.DispatchingWorker
         keys = self.csc.get(MY_NAME)
         Trace.init(self.log_name)
         Trace.set_log_func(self.log_func)  #Log function for itself.
-
+        self.max_queue_size = keys.get("max_queue_size") # maximum size of incoming message queue
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
 								  keys)
 
+        self.use_raw_input = keys.get('use_raw_input') # use raw input to buffer incoming messages
+
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']),
-                                                      use_raw=1)
+                                                      use_raw=self.use_raw_input)
 
         if keys["log_file_path"][0] == '$':
 	    tmp = keys["log_file_path"][1:]
@@ -341,16 +343,17 @@ class Logger(  dispatching_worker.DispatchingWorker
         # open log file
         self.open_logfile(self.logfile_name)
 
+        if self.use_raw_input:
         # prepare raw input
-        self.set_out_file()
-        """
-        if self.allow_callback:
-            Trace.trace(5, "spawning get_fd_message")
-            # spawn callback processing thread (event relay messages)
-            run_in_thread("call_back_proc", self.serve_callback)
-        """
-        # start receiver thread or process
-        self.raw_requests.receiver()
+            self.set_out_file()
+            self.raw_requests.set_caller_name(self.name)
+            self.raw_requests.set_use_queue()
+            if self.max_queue_size:
+                # Reset incoming message queue.
+                self.raw_requests.set_max_queue_size(self.max_queue_size)
+
+            # start receiver thread or process
+            self.raw_requests.receiver()
 
         while 1:
             self.do_one_request()

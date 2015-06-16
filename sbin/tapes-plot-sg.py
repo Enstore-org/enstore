@@ -91,7 +91,7 @@ if not a_week_ago in keys:
         if keys[i] >= a_week_ago:
             a_week_ago = keys[i]
             break
-        
+
 tapes_written_last_month = 0
 tot_m_ago = tapes_written[a_month_ago]['total']
 tot_now = tapes_written[last_time_written]['total']
@@ -107,7 +107,7 @@ tapes_written_last_week = 0
 for key in tapes_written.keys():
     if key >= a_week_ago and key < last_time_written:
         tapes_written_last_week = tapes_written_last_week + tapes_written[key]['tapes']
-        
+
 
 g = open(thefile+".gnuplot", "w")
 g.write('set terminal postscript color solid\n')
@@ -134,9 +134,9 @@ g.write('plot "%s.data" using 1:3 with impulses linewidth 10, "%s.data" using 1:
 g.close()
 
 #           'gv %s.ps' % (thefile,),
-#           'convert -rotate 90 -geometry 120x120 -modulate -20 %s.ps %s_stamp.jpg' % (thefile,thefile)
+#           'convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate -20 %s.ps %s_stamp.jpg' % (thefile,thefile)
 for cmd in '/usr/bin/gnuplot %s.gnuplot' % (thefile,),\
-           '/usr/X11R6/bin/convert -rotate 90 -modulate 80 %s.ps %s.jpg' % (thefile,thefile),\
-           '/usr/X11R6/bin/convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg' % (thefile,thefile):
+           '/usr/X11R6/bin/convert -flatten -background lightgray -rotate 90 -modulate 80 %s.ps %s.jpg' % (thefile,thefile),\
+           '/usr/X11R6/bin/convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg' % (thefile,thefile):
     print cmd
     os.system(cmd)

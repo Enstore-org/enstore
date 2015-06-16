@@ -187,6 +187,7 @@ except ImportError:
 
 # enstore modules
 import Trace
+import bfid_util
 import e_errors
 import option
 import callback
@@ -1686,7 +1687,7 @@ def __get_csc(parameter=None):
         volume = parameter.get('fc', {}).get('external_label',
                                              parameter.get('volume', None))
 
-    elif enstore_functions3.is_bfid(parameter):  #If passed a bfid.
+    elif bfid_util.is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
 
     elif enstore_functions3.is_volume(parameter):  #If passed a volume.
@@ -1702,7 +1703,6 @@ def __get_csc(parameter=None):
 
     #Call the correct version of the underlying get_csc functions.
     if bfid:  #If passed a bfid.
-        #brand = enstore_functions3.extract_brand(bfid)
         csc = _get_csc_from_bfid(bfid)
 
     elif volume:  #If passed a volume.
@@ -1777,7 +1777,7 @@ def __get_fcc(parameter = None):
         bfid = parameter.get('fc', {}).get("bfid",
                                            parameter.get("bfid", None))
 
-    elif enstore_functions3.is_bfid(parameter):  #If passed a bfid.
+    elif bfid_util.is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
 
     else:
@@ -2311,7 +2311,7 @@ def get_clerks(bfid_or_volume=None):
         #Get the clerk clients.
         vcc = get_vcc(volume)  #Make sure vcc is done before fcc.
         fcc = get_fcc(None)
-    elif enstore_functions3.is_bfid(bfid_or_volume):
+    elif bfid_util.is_bfid(bfid_or_volume):
         #Set the bfid.
         volume = None
         bfid = bfid_or_volume
@@ -3670,7 +3670,7 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
             #Test to verify that all the brands are the same.  If not exit.
             # If so, then the system will function.  If this was not true,
             # then a lot of file clerk key errors could occur.
-            if enstore_functions3.extract_brand(db_bfid) != bfid_brand:
+            if bfid_util.extract_brand(db_bfid) != bfid_brand:
                 msg = "All bfids must have the same brand."
                 raise EncpError(None, str(msg), e_errors.USERERROR, request)
 
@@ -3902,8 +3902,8 @@ def outputfile_check(work_list, e):
                             l4_line1 = layer4[0]
                         except IndexError:
                             l4_line1 = None
-                        l1_is_bfid = enstore_functions3.is_bfid(l1_bfid)
-                        l4_is_bfid = enstore_functions3.is_bfid(l4_bfid)
+                        l1_is_bfid = bfid_util.is_bfid(l1_bfid)
+                        l4_is_bfid = bfid_util.is_bfid(l4_bfid)
                         #Log this for debugging, because users don't care.
                         if layer1:
                             Trace.log(99, "Detected layer 1: %s" % (layer1,))
@@ -9465,7 +9465,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
     # system.
     try:
         vol = requests_per_vol.keys()[0]
-        bfid_brand = enstore_functions3.extract_brand(
+        bfid_brand = bfid_util.extract_brand(
             requests_per_vol[vol][0]['fc']['bfid'])
     except (ValueError, AttributeError, TypeError,
             IndexError, KeyError), msg:
@@ -10301,8 +10301,6 @@ def create_read_request(request, file_number,
                 sfs = None
             elif e.skip_pnfs:
                 # When told to skip PNFS, we should avoid all PNFS information.
-                # Unfortuanately, NullMovers insist on verfifying the that
-                # the pnfs path contains the string "NULL" in it.
                 ifullname = fc_reply['pnfs_name0']
                 use_dir = ""
                 sfs = None
@@ -12596,6 +12594,8 @@ def main(intf):
     for x in xrange(1, intf.verbose + 1):
         Trace.do_message(x)
 
+    if intf.get_bfid or intf.get_bfids :
+        intf.skip_pnfs = True
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
     status_ticket = clients(intf)

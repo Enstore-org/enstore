@@ -175,10 +175,10 @@ def find_jpg_files(dir):
     return (jpg_files, jpg_stamp_files, ps_files)
 
 def convert_to_jpg(psfile, file_name):
-    os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s%s"%(psfile, file_name,
+    os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s%s"%(psfile, file_name,
                                                               STAMP_JPG))
     #JPG_STAMP_FILES.append("%s%s"%(file_name, STAMP_JPG))
-    os.system("convert -rotate 90 -modulate 80 %s %s%s"%(psfile, file_name,
+    os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s%s"%(psfile, file_name,
                                                          enstore_constants.JPG))
     #JPG_FILES.append("%s%s"%(file_name, enstore_constants.JPG))
 

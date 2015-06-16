@@ -375,18 +375,28 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             bad_file = path
         else:
             bad_file = os.path.join(dirname, ".bad." + filename)
-            # rename it
+            if os.path.exists(bad_file):
+                msg = "Refuse to set file bad because there is already .bad. file {} present ".format(bad_file)
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg) }
+
+
+        ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
+        ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
+        if ticket['status'][0] != e_errors.OK:
+            return ticket
+
+        if not is_multiple_copy:
             try:
                 os.rename(a_path, bad_file)
             except:
                 msg = "failed to rename %s to %s"%(a_path, bad_file)
-                return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
+                ticket = {'work': 'unmark_bad', 'bfid': bfid, 'path': bad_file};
+                ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
+                if ticket['status'][0] != e_errors.OK:
+                    msg += '(Failed to umark the file bad: '+ticket['status'][1]+')'
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg) }
 
-        # log it in the bad_file table of the database
-        ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
-        ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
-        if ticket['status'][0] == e_errors.OK:
-            print bfid, a_path, "->", bad_file
+        print bfid, a_path, "->", bad_file
         return ticket
 
     def unmark_bad(self, path, specified_bfid = None, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
@@ -724,7 +734,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(ticket))
 
     # swap parents for children
-    def swap_package(self, ticket, timeout=0, retry=0):
+    def swap_package(self, ticket, timeout=600, retry=1):
         ticket['work'] = 'swap_package'
         return self.send(ticket,rcv_timeout=timeout, tries=retry )
 
@@ -1148,8 +1158,9 @@ def do_work(intf):
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)
-        print "bfid %s: sanity_cookie %s, complete_crc %s"%(`bfid`,ticket["sanity_cookie"],
-                                                 `ticket["complete_crc"]`) #keep L suffix
+        if ticket['status'][0] == e_errors.OK:
+            print "bfid %s: sanity_cookie %s, complete_crc %s"%(`bfid`,ticket["sanity_cookie"],
+                                                                `ticket["complete_crc"]`) #keep L suffix
     elif intf.set_crcs:
         bfid,sanity_size,sanity_crc,complete_crc=string.split(intf.set_crcs,',')
         sanity_crc=en_eval(sanity_crc)

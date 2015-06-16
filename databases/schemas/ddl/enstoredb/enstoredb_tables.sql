@@ -1,5 +1,5 @@
 --
--- Name: qa; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: qa; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE qa (
@@ -20,7 +20,7 @@ CREATE TABLE qa (
 ALTER TABLE public.qa OWNER TO enstore;
 
 --
--- Name: tc; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: tc; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE tc (
@@ -33,7 +33,7 @@ CREATE TABLE tc (
 ALTER TABLE public.tc OWNER TO enstore;
 
 --
--- Name: active_file_copying; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: active_file_copying; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE active_file_copying (
@@ -48,7 +48,7 @@ ALTER TABLE public.active_file_copying OWNER TO enstore;
 SET default_with_oids = true;
 
 --
--- Name: bad_file; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: bad_file; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE bad_file (
@@ -60,7 +60,7 @@ CREATE TABLE bad_file (
 ALTER TABLE public.bad_file OWNER TO enstore;
 
 --
--- Name: volume; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE volume (
@@ -105,7 +105,7 @@ CREATE TABLE volume (
 ALTER TABLE public.volume OWNER TO enstore;
 
 --
--- Name: file; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE file (
@@ -129,7 +129,7 @@ CREATE TABLE file (
 ALTER TABLE public.file OWNER TO enstore;
 
 --
--- Name: file_copies_map; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_copies_map; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE file_copies_map (
@@ -140,7 +140,7 @@ CREATE TABLE file_copies_map (
 
 ALTER TABLE public.file_copies_map OWNER TO enstore;
 --
--- Name: media_capacity; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: media_capacity; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE media_capacity (
@@ -152,7 +152,7 @@ CREATE TABLE media_capacity (
 ALTER TABLE public.media_capacity OWNER TO enstore;
 
 --
--- Name: migration; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE migration (
@@ -169,7 +169,7 @@ CREATE TABLE migration (
 ALTER TABLE public.migration OWNER TO enstore;
 
 --
--- Name: migration_history; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_history; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE migration_history (
@@ -185,7 +185,7 @@ CREATE TABLE migration_history (
 ALTER TABLE public.migration_history OWNER TO enstore;
 
 --
--- Name: no_flipping_file_family; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: no_flipping_file_family; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE no_flipping_file_family (
@@ -197,7 +197,7 @@ CREATE TABLE no_flipping_file_family (
 ALTER TABLE public.no_flipping_file_family OWNER TO enstore;
 
 --
--- Name: no_flipping_storage_group; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: no_flipping_storage_group; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE no_flipping_storage_group (
@@ -208,7 +208,7 @@ CREATE TABLE no_flipping_storage_group (
 ALTER TABLE public.no_flipping_storage_group OWNER TO enstore;
 
 --
--- Name: option; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: option; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE "option" (
@@ -220,7 +220,7 @@ CREATE TABLE "option" (
 ALTER TABLE public."option" OWNER TO enstore;
 
 --
--- Name: quota; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quota; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE quota (
@@ -238,7 +238,7 @@ ALTER TABLE public.quota OWNER TO enstore;
 SET default_with_oids = false;
 
 --
--- Name: quotas; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quotas; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE quotas (
@@ -257,20 +257,7 @@ CREATE TABLE quotas (
 ALTER TABLE public.quotas OWNER TO enstore;
 
 --
--- Name: sg_count; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
---
-
-CREATE TABLE sg_count (
-    library character varying NOT NULL,
-    storage_group character varying NOT NULL,
-    count integer
-);
-
-
-ALTER TABLE public.sg_count OWNER TO enstore;
-
---
--- Name: state; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE state (
@@ -284,7 +271,7 @@ CREATE TABLE state (
 ALTER TABLE public.state OWNER TO enstore;
 
 --
--- Name: state_type; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_type; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE state_type (

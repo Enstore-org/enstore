@@ -28,7 +28,7 @@ else
 fi
 
 dir=`dirname $out`
-if [ ! -d $dir ]; then mkdir $dir; fi
+if [ ! -d "$dir" ]; then mkdir $dir; fi
 export out
 exec >>$out 2>&1 <&-
 
@@ -44,9 +44,15 @@ if [ -z "${E_H:-}" ]; then
   fi
 fi
 
-LOGFILE=$E_H/dcache-log/real-encp.log
-ERROR=$E_H/dcache-log/real-encp-error.log
-SUCCESS=$E_H/dcache-log/real-encp-success.log
+if [ -d "${LOG_DIR:-}" ]; then
+    LOGFILE=$LOG_DIR/real-encp.log
+    ERROR=$LOG_DIR/real-encp-error.log
+    SUCCESS=$LOG_DIR/real-encp-success.log
+else
+    LOGFILE=$E_H/dcache-log/real-encp.log
+    ERROR=$E_H/dcache-log/real-encp-error.log
+    SUCCESS=$E_H/dcache-log/real-encp-success.log
+fi
 
 args="$*"
 say() { if [ -n "${LOGFILE-}" ]; then  echo $version `date` ${node:-nonode} ${command:-nocmd} ${pnfsid:-noid} ${filepath:-nofilepath} $* >> $LOGFILE; fi
@@ -178,8 +184,14 @@ if [ -z "$ENCP" ]; then
 fi
 
 if [ -z "$ENCP" ]; then say $0 $* Can not find encp in our path; exit 1; fi
-#. $E_H/dcache-deploy/scripts/encp.options # this sets variable options
-options="--verbose=4 --threaded --ecrc --bypass-filesystem-max-filesize-check --resubmit-timeout 1800"
+
+if [  -r /etc/dcache/encp.options ]; then
+    . /etc/dcache/encp.options  # this sets variable options
+elif  [ -r $E_H/dcache-deploy/scripts/encp.options ]; then
+    . $E_H/dcache-deploy/scripts/encp.options # this sets variable options
+else
+    options="--verbose=4 --threaded --ecrc --bypass-filesystem-max-filesize-check --mmap-io --buffer-size 62914560"
+fi
 
 if [ $# -lt 3 ] ;then
     say Not enough arguments  $0 $args
@@ -339,7 +351,7 @@ except:
 	   # getting list of children overloads info server, so only do it for smallish packages
 	   #
 	   if [ ${n_children} -lt 50 ]; then
-	       children=`enstore info --children ${package_id} | grep pnfsid | sed -e "s/[[:punct:]]//g" | awk '{ print $NF}'`
+	       children=`enstore info --children ${package_id} --field pnfs_id`
 	       #
 	       # loop over packaged files and pre-stage then with dccp -P
 	       #
@@ -401,102 +413,49 @@ except:
 	   # start timer to measure transfer time
 	   #
 	   t0=`date +"%s"`
-           (cd ${file_dir} && tar --seek --record-size=512 --strip-components 5 --force-local -xf ${package_path} ${file_path}  2>&1 > /dev/null)
-           rc=$?
-           if [ $rc -eq 0 ]; then
-               chmod 0644 $filepath
-               touch $filepath
-               t1=`date +"%s"`
-               dt=$((t1-t0))
-               say SFA Completed untarring ${uri_size} bytes in ${dt} sec.
-               exit 0
-           else
-	       unset LD_PRELOAD
-               rm -f ${filepath}
-               say Failed to untar file ${pnfsid}, Proceed to encp it
-           fi
-       fi
-       #
-       # before encping file check if it is cached and scp it from aggregators:
-       #
-       cache_location=`python -c '
-import string
-import sys
-try:
-  f=open("'${py_file}'","r")
-  code="d=%s"%(string.join(f.readlines(),""))
-  f.close()
-  exec(code)
-  if d["cache_status"] == "CACHED":
-     print d["cache_location"]
-  else:
-     sys.exit(1)
-except:
-  sys.exit(1)
-'`
-       rc=$?
-       rm -f ${py_file}
-       if [ $rc -eq 0 -a "${cache_location}" != "" ]; then
-
-	   krbdir="/usr/krb5/bin"
-	   defaultDomain=".fnal.gov"
-	   host=`uname -n`
-
-	   if expr $host : '.*\.' >/dev/null;then
-	       thisHost=$host;
-	   else
-	       thisHost=${host}${defaultDomain};
-	   fi
-
-	   OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
-	   KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
-	   ${krbdir}/kinit -k host/${thisHost}
-
-	   rc=0
-	   #
-	   # TODO: in the future need to get names from configuration
-	   #
-	   t0=`date +"%s"`
-	   for node in pagg01 pagg02;
-	     do
-	     scp -o StrictHostKeyChecking=no -c blowfish root@${node}:${cache_location} $filepath
-	     rc=$?
-	     if [ $rc -eq 0 ]; then
-		 break
-	     fi
-	   done
+	   (cd ${file_dir} && tar --seek --record-size=512 --strip-components 5 --force-local -xf ${package_path} ${file_path})
+	   rc=$?
 	   if [ $rc -eq 0 ]; then
-	       crc=`ecrc $filepath -0 $filepath | awk '/CRC/ {print $2}' | sed -e 's/0x//'`
-	       if [ "${crc}" != "${uri_crc}" ]; then
-		   say "CRC do not match ${crc} ${uri_crc}"
-		   rm -f $filepath
-	       else
-		   chown ${si_uid}.${si_gid} $filepath
-		   chmod 0644 $filepath
-		   t1=`date +"%s"`
-		   dt=$((t1-t0))
-		   say SFA Completed transferring ${uri_size} bytes in ${dt} sec.
-		   exit 0
-	       fi
+	       chmod 0644 $filepath
+	       touch $filepath
+	       t1=`date +"%s"`
+	       dt=$((t1-t0))
+	       say SFA Completed untarring ${uri_size} bytes in ${dt} sec.
+	       exit 0
 	   else
-	       rm -f $filepath
+	       rm -f ${filepath}
+	       say Failed to untar file ${pnfsid}, Proceed to encp it
 	   fi
        fi
+       unset LD_PRELOAD
    fi
    #
-   # execute normal encp
+   # try to get file by bfid
    #
-   say  g1   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath
-nice -n -3   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath >>$LOGFILE 2>&1
+   say g1 $ENCP $options --age-time 60 --delpri 10 --skip-pnfs --get-bfid ${si_bfid} $filepath
+   nice -n -3 $ENCP $options --age-time 60 --delpri 10 --skip-pnfs --get-bfid ${si_bfid} $filepath  >>$LOGFILE 2>&1
    ENCP_EXIT=$?
-   say encp --get-cache $pnfsid $filepath, rc=$ENCP_EXIT
+   say encp --get-bfid ${si_bfid} $filepath, rc=$ENCP_EXIT
    if [ $ENCP_EXIT -eq 0 ]; then
-      rm -f $out
-     sayS g2s get, rc=$ENCP_EXIT
+       rm -f $out
+       sayS g2s get, rc=$ENCP_EXIT
+       exit $ENCP_EXIT
    else
-     sayE g2e get, rc=$ENCP_EXIT
+       #
+       # execute normal encp, if getting by bfid failed
+       #
+       say  g1   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath
+       nice -n -3   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath >>$LOGFILE 2>&1
+       ENCP_EXIT=$?
+       say encp --get-cache $pnfsid $filepath, rc=$ENCP_EXIT
+       if [ $ENCP_EXIT -eq 0 ]; then
+	   rm -f $out
+	   sayS g2s get, rc=$ENCP_EXIT
+       else
+	   sayE g2e get, rc=$ENCP_EXIT
+       fi
+       exit $ENCP_EXIT
    fi
-   exit $ENCP_EXIT
 
 #------------------------------------------------------------------------------------------
 elif [ "$command" = "put" ] ; then
@@ -511,101 +470,45 @@ elif [ "$command" = "put" ] ; then
       wrapper=""
     fi
 
-    # a user may put a file into the dcache, execute an 'rm' on the pnfs file and then
-    # later when the dcache tries to upload the file there isn't a pnfs id anymore!
-    # check if the file is still in the pnfs database
-    x="`P_ls $pnfsid`"
-    if [ $sP_ls -eq 0 ]; then
-
 # RDK: test against /pnfs/fnal.gov/usr, /pnfs/fs/usr to avoid local mount paths
-        pathtype1=`echo $si_path | grep -c "^/pnfs/fnal.gov/usr"`
-        pathtype2=`echo $si_path | grep -c "^/pnfs/fs/usr"`
-        let npathtypesok=${pathtype1}+${pathtype2}
-        if [ ${npathtypesok} -ne 0 -a $OVERRIDE_PATH -eq 1 ]; then
-          override=1; override_msg=" overriding path "
-          say p9 $ENCP $options $wrapper --pnfs-mount $pnfs_root --shortcut --override-path $si_path --put-cache $pnfsid $filepath
-   nice -n -3    $ENCP $options $wrapper --pnfs-mount $pnfs_root --shortcut --override-path $si_path --put-cache $pnfsid $filepath >>$LOGFILE 2>&1
-        else
-          override=0; override_msg=" "
-          say  p10  can not find acceptable path in SI.  si_path=\"$si_path\"  Using lookup mode
-          sayE p10e can not find acceptable path in SI.  si_path=\"$si_path\"  Using lookup mode
-          say p11 $ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath
-   nice -n -3     $ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath >>$LOGFILE 2>&1
-        fi
-
-        ENCP_EXIT=$?
-
-        bfid=`P_bfid $pnfsid 2>/dev/null`
-        if [ "${bfid:-notset}" = "notset" ]; then bfid="notset"; fi
-        say p12 $override_msg encp $options $wrapper --pnfs-mount $pnfs_root --shortcut --override-path $si_path --put-cache $pnfsid $filepath, bfid=$bfid, rc=$ENCP_EXIT
-        if [ $ENCP_EXIT -ne 0 ];then
-          sayE p13 $override_msg encp $options $wrapper --pnfs-mount $pnfs_root --shortcut --override-path $si_path --put-cache $pnfsid $filepath, bfid=$bfid, rc=$ENCP_EXIT
-        fi
-
-        if [ $override -eq 1 -a $ENCP_EXIT -ne 0 -a -z "$bfid" ];then
-          say  p14  retrying $pnfsid without override of \"$si_path\"
-          sayE p14e retrying $pnfsid without override of \"$si_path\"
-          override=0; override_msg=" "
-          say p15 $ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath
-   nice -n -3 $ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath >>$LOGFILE 2>&1
-          ENCP_EXIT=$?
-          bfid=`P_bfid $pnfsid 2>/dev/null`
-          if [ "${bfid:-notset}" = "notset" ]; then bfid="notset"; fi
-          say p16 $override_msg $ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath, bfid=$bfid, rc=$ENCP_EXIT
-          if [ $ENCP_EXIT -ne 0 ]; then
-            sayE p17e $override_msg $ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath, bfid=$bfid, rc=$ENCP_EXIT
-          fi
-        else
-          if [ $ENCP_EXIT -ne 0 ]; then
-            sayE p17e encp failed, but not retrying with non override mode: override=$override ENCP_EXIT=$ENCP_EXIT bfid=$bfid, sP_bfidedu=$sP_bfid
-          fi
-          x=1
-        fi
-
+    pathtype1=`echo $si_path | grep -c "^/pnfs/fnal.gov/usr"`
+    pathtype2=`echo $si_path | grep -c "^/pnfs/fs/usr"`
+    let npathtypesok=${pathtype1}+${pathtype2}
+    CMD=""
+    if [ ${npathtypesok} -ne 0 -a $OVERRIDE_PATH -eq 1 ]; then
+        override=1; override_msg=" overriding path "
+	CMD="$ENCP $options $wrapper --pnfs-mount $pnfs_root --shortcut --override-path $si_path --put-cache $pnfsid $filepath"
+        say p9 $CMD
     else
-        say p18 "The $pnfsid file seems to have been delete from pnfs space.  We're going to stash it away in case that comes back to haunt us"
-        mountHost=`mount |grep /pnfs/fs |head -n1 | cut -f1 -d":"`  # first check what machine hosts the mount - use the 1st one found
-        # get the filepath from the host
-        # the filepath is only the filename, not the full path.  So we'll add the date to make it unique (man I hope this code is never the difference between success and failure!)
-        destinationName=$pnfs_root/usr/dcache_trash_bin/$pnfsid.`date +%s`
-        say  p19 $ENCP $options $wrapper $filepath $destinationName
-  nice -n -3 $ENCP $options $wrapper $filepath $destinationName >>$LOGFILE 2>&1
-        ENCP_EXIT=$?
-        bfid=`P_bfid $pnfsid 2>/dev/null`
-        if [ "${bfid:-notset}" = "notset" ]; then bfid="notset"; fi
-        say p20 user removed file... saving encp $filepath $destinationName, bfid=$bfid, rc=$ENCP_EXIT
-        if [ $ENCP_EXIT -ne 0 ]; then
-          say p21 user removed file... saving encp $filepath $destinationName, bfid=$bfid, rc=$ENCP_EXIT
-        fi
+        override=0; override_msg=" "
+        say  p10  can not find acceptable path in SI.  si_path=\"$si_path\"  Using lookup mode
+        sayE p10e can not find acceptable path in SI.  si_path=\"$si_path\"  Using lookup mode
+	CMD="$ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath"
+        say p11 $CMD
     fi
 
-    if [ $ENCP_EXIT -eq 0 -o $ENCP_EXIT -eq 31 ]; then
-        if [ ! -n "$bfid" -o $bfid = "notset" ]; then
-	   say   p21.5  ERROR: NO BFID for last successful trasnsfer $pnfsid, set ENCP_EXIT to 27 # very strange, should be impossible
-	   sayE  p21.5 ERROR: NO BFID for last successful trasnsfer $pnfsid, set ENCP_EXIT to 27 # very strange, should be impossible
-           ENCP_EXIT=27
-        fi
+    nice -n -3 $CMD >>$LOGFILE 2>&1
+
+    ENCP_EXIT=$?
+
+    #
+    # make sure bfid, and layer4 are set
+    #
+    bfid=`enstore sfs --bfid ${pnfsid}`
+    rc=$?
+    if [ ${rc} -ne 0 ]; then bfid="notset"; fi
+
+    say p12 $override_msg $CMD, bfid=$bfid, rc=$ENCP_EXIT
+    if [ $ENCP_EXIT -ne 0 ];then
+        sayE p13 $override_msg $CMD, bfid=$bfid, rc=$ENCP_EXIT
     fi
 
-    # dcache creates the pnfs entry, then when encp copies it into enstore and updates the file size pnfs. check if right
-    if [ $ENCP_EXIT -eq 0 ]; then
-        if [ -n "$bfid" -a $bfid != "notset" ]; then
-           size=`P_size $pnfsid`
-  	   if [ -z "$size" -o $size -eq 0 ]; then
-           if [ -n "$filename" -a 1 -eq 2 ]; then  #THIS DOES NOT WORK WHEN IT IS NEEDED, WORKS WHEN IT IS NOT NEEDED
-	     say p22 touch ".(fset)(`basename $filename`)(size)($fsize)"
-  	     (cd `dirname $filename` && touch ".(fset)(`basename $filename`)(size)($fsize)"  >> $LOGFILE 2>&1 )
-             say p23 touch $filename $fsize done
-           fi
-           fi
-        else
-	   say   p24  ERROR: NO BFID for last successful trasnsfer $pnfsid # very strange, impossible
-	   sayE  p24e ERROR: NO BFID for last successful trasnsfer $pnfsid # very strange, impossible
-        fi
-
-    # if file is already in enstore, then deactivate request
-    else
-      if [ -n "$bfid" -a "$bfid" != "notset" ]; then
+    if [ $ENCP_EXIT -ne 0 ]; then
+	l4=`enstore sfs --xref ${pnfsid} | wc -l`
+	rc=$?
+	if [ ${rc} -ne 0 ]; then l4=0; fi
+      # if file is already in enstore, then deactivate request
+      if [ -n "$bfid" -a "$bfid" != "notset" -a ${l4} -eq 11 ]; then
         say p25 checking for already in enstore $bfid
         bfid_info="`enstore file --bfid $bfid 2>/dev/null`"
         location_cookie="`echo "$bfid_info" |grep location_cookie 2>/dev/null | cut -f2 -d: 2>/dev/null |sed -e "s/'//g" -e "s/,//g" -e "s/^ //" 2>/dev/null`"
@@ -613,7 +516,6 @@ elif [ "$command" = "put" ] ; then
         if [ -n "$location_cookie" -a "$deleted" = "no" ]; then
            say  p26 $pnfsid is already in enstore, bfid $bfid_info	This is ok and not an error
            sayE p26e $pnfsid is already in enstore, bfid $bfid_info	This is ok and not an error
-           #ENCP_EXIT=31  # already in enstore
            ENCP_EXIT=0  # already in enstore
         else
           say p27 location_cookie=${location_cookie:-notset} deleted=${deleted:-notset} = not in enstore
@@ -637,7 +539,6 @@ else
   say  $0 $args  Command not yet supported: $command
   sayE $0 $args  Command not yet supported: $command
   exit 5
-
 fi
 #------------------------------------------------------------------------------------------
 

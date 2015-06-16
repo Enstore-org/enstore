@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 4.2.1
-Release: 0
+Version: 5.0.0
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -25,7 +25,7 @@ For the postinstallation and configuration instructions please see enstore/READM
 
 %prep
 # check if all supporting rpms are installed
-rpm -q Python-enstore2.7
+rpm -q Python-enstore2.7.6*
 if [ $? -ne 0 ]; then
 	echo "Python-enstore2.7 is not installed"
 	exit 1
@@ -51,6 +51,7 @@ mkdir -p Python
 cp -rp $pydir/* $PYTHON_DIR
 cp -rp $pydir/* Python
 rm -rf $PYTHON_DIR/*.tgz
+rm -rf Python/*.tgz
 #fttdir=`rpm -ql ftt | head -1`
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/FTT
 mv $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
@@ -155,6 +156,7 @@ echo export FTT_DIR >> /tmp/enstore-setup
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 . /tmp/enstore-setup
+mv $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
 #chown -R enstore.enstore /home/enstore
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
@@ -228,9 +230,28 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Jun 05 2015  <moibenko@fnal.gov> -
+- new release 5.0.0, release 1.
+* Thu May 07 2015  <moibenko@fnal.gov> -
+- new version 5.0.0, release 0.
+* Mon Mar 30 2015  <moibenko@fnal.gov> -
+- new release 4.2.2, release 6.
+* Thu Mar 26 2015  <moibenko@fnal.gov> -
+- new release 4.2.2, release 5.
+* Tue Mar 10 2015  <moibenko@fnal.gov> -
+- new release 4.2.2, release 4.
+* Mon Dec 22 2014  <moibenko@fnal.gov> -
+- new release 4.2.2, release 3
+* Thu Oct 30 2014  <moibenko@fnal.gov> -
+- new release 4.2.2, release 2
+* Thu Oct 09 2014  <moibenko@fnal.gov> -
+- new version 4.2.2, release 0
+- added SCSI Media Verify for T10000C and higher drives
+* Wed Oct 01 2014  <moibenko@fnal.gov> -
+- new release 4.2.1, release 1
 * Mon Sep 08 2014  <moibenko@fnal.gov> -
 - new release 4.2.1, release 0
-** Thu Aug 14 2014  <moibenko@fnal.gov> -
+* Thu Aug 14 2014  <moibenko@fnal.gov> -
 - new version 4.2.0 release 0 ftt now is part of enstore rpm
 * Tue May 06 2014  <moibenko@fnal.gov> -
 - new release 4.1.2, release 1

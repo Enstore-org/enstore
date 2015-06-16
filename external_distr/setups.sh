@@ -20,45 +20,13 @@ setup() {
         last=${!#}
         if [ $last = "enstore" -o $last = "python" -o $last = "ftt" -o $last = "pnfs" ]
         then
-		if [ $last = "pnfs" ]
-		then
-		    rpm -q $last > /dev/null
-		    if [ $? -eq 0 ]
-		    then
-			if [ -f /usr/etc/pnfsSetup ]
-			then
-			    source /usr/etc/pnfsSetup
-			    PATH=$PATH:$pnfs/bin:$pnfs/tools
-			fi    
-			return 0
-		    else
-                        # new pnfs rpm name is pnfs-postgresql
-                        # old pnfs rpm name is pnfs
-
-                        rpm -q "pnfs-postgresql" > /dev/null
-                        if [ $? -eq 0 ]
-                        then
-                                if [ -f /usr/etc/pnfsSetup ]
-                                then
-                                        source /usr/etc/pnfsSetup
-                                        PATH=$PATH:$pnfs/bin:$pnfs/tools
-                                fi
-                                return 0
-                        else
-                                if [ "${UPS_DIR:-x}" != "x" ]
-                                then
-                                . `$UPS_DIR/bin/ups setup $last`
-                                fi
-                        fi
-		    fi
-		fi
-                return 0
-        else
-		if [ "${UPS_DIR:-x}" != "x" ]
-		then
-                . `$UPS_DIR/bin/ups setup $last`
-		fi
-        fi
+	    return 0
+	else
+	    if [ "${UPS_DIR:-x}" != "x" ]
+	    then
+		. `$UPS_DIR/bin/ups setup $last`
+	    fi
+	fi
 	return 0
 }
 

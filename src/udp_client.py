@@ -26,9 +26,9 @@ import cleanUDP
 import udp_common
 import host_config
 import enstore_constants
+import inspect
 
-
-MAX_EXPONENT=6 # do not increase reeive TO in send beyond this
+MAX_EXPONENT=6 # do not increase receive TO in send beyond this
 TRANSFER_MAX=enstore_constants.MAX_UDP_PACKET_SIZE #Max size of UDP datagram.
 
 
@@ -52,13 +52,19 @@ def wait_rsp( sock, address, rcv_timeout ):
 
 
 class UDPClient:
-
+    """
+    UDP client
+    """
     def __init__(self):
+
         self.thread_specific_data = threading.local() #Thread-specific data
 
         self.reinit()
 
     def reinit(self):
+        """
+        Create new set of TSD parameters
+        """
         #Obtain necessary values.
         pid = os.getpid()
         host, port, socket = udp_common.get_default_callback()
@@ -82,22 +88,46 @@ class UDPClient:
 
         return tsd
 
-    #Return this thread's local data.  If it hasn't been initialized yet,
-    # call reinit() to do so.
     def get_tsd(self):
+        """
+        Return this thread's local data.  If it hasn't been initialized yet,
+        call reinit() to do so.
+
+        :rtype: :obj:`threading.local()`
+        """
+
 
         if not hasattr(self.thread_specific_data, 'pid'):
             self.reinit()
 
         return self.thread_specific_data
 
-    #Return the IP address for the socket.
     def get_address(self):
+        """
+        Return the IP address for the socket.
+
+        :rtype: :obj:`str` - socket
+
+        """
+
         tsd = self.get_tsd()
 
         return tsd.socket.getsockname()
 
     def _mkident(self, host, port, pid, tid):
+        """
+        Generate unique (for this thread) message id
+
+        :type host: :obj:`str`
+        :arg host: host name or ip of the client host
+        :type port: :obj:`int`
+        :arg port: port on which client sends / receives messages
+        :type pid: :obj:`int`
+        :arg pid: client process id
+        :type tid: :obj:`int`
+        :arg tid: client thread id
+        :rtype: :obj:`str` message id
+        """
         return "%s-%d-%f-%d-%d" % (host, port, time.time(), pid, abs(tid))
 
 
@@ -105,6 +135,13 @@ class UDPClient:
         return self.get_tsd().socket.fileno()
 
     def protocolize( self, text ):
+        """
+        Protocolize the message.
+
+        :type text: :obj:`str`
+        :arg text: message content
+        :rtype: :obj:`tuple` (:obj:`txt` - message, :obj:`long` - message number)
+        """
         tsd = self.get_tsd()
 
         tsd.txn_counter = tsd.txn_counter + 1
@@ -131,9 +168,25 @@ class UDPClient:
 
 
     def send(self, data, dst, rcv_timeout=0, max_send=0, send_done=1, exponential_to=False):
-        """send msg to dst address, up to `max_send` times, each time
-        waiting `rcv_timeout' seconds for reply
-        A value of 0 for max_send means retry forever"""
+        """
+        Send message to dst address, up to `max_send` times, each time
+        waiting rcv_timeout seconds for reply.
+        A value of 0 for max_send means retry forever.
+
+        :type data: :obj:`str`
+        :arg data: data to send
+        :type dst: :obj:`tuple`
+        :arg dst: (destination host, destination port)
+        :type rcv_timeout: `int`
+        :arg rcv_timeout: reply receive timeout. If 0 - wait forever
+        :type max_send: `int`
+        :arg max_send: number of send retries
+        :type send_done: `int`
+        :arg send_done: send a "done_cleanup" after we are done
+        :type exponential_to: `bool`
+        :arg exponential_to: exponentially grow timeout value
+        :rtype: :obj:`str` - reply
+        """
 
         tsd = self.get_tsd()
 
@@ -192,9 +245,25 @@ class UDPClient:
                 Trace.trace(5, "GOT REPLY %s"%(reply,))
                 try:
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
+                    Trace.trace(5, "txn_id %s out %s t %s"%(rcvd_txn_id, out, t))
+                    #tsd.ident
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
                         return out
+                    if 'r_a' in out:
+                        client_id = out['r_a'][2]
+                        Trace.trace(5, "client_id %s"%(client_id,))
+
+                        if client_id != tsd.ident:
+                            errmsg = "Wrong client id in reply. Expected %s %s. received %s %s"% \
+                                (tsd.ident, tsd.txn_counter, client_id, rcvd_txn_id)
+                            out['status'] = (e_errors.MALFORMED, errmsg)
+                            return out
+                    else:
+                        Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'): %s"%
+                                  (server_addr, out))
+                        #Trace.log(e_errors.WARNING, "CALL 1: %s"%(inspect.stack(),))
+
                 except (SyntaxError, TypeError, ValueError):
                     #If TypeError occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
@@ -242,8 +311,19 @@ class UDPClient:
         #raise errno.errorcode[errno.ETIMEDOUT]
         raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
 
-    # send message without waiting for reply and resend
     def send_no_wait(self, data, address, unique_id=False) :
+        """
+        Send message to address and do not wait for response.
+
+        :type data: :obj:`str`
+        :arg data: data to send
+        :type address: :obj:`tuple`
+        :arg address: (destination host, destination port)
+        :type unique_id: :obj:`bool`
+        :arg unique_id: generate unique id for each message
+        :rtype: :obj:`int` - number of bytes sent
+        """
+
         tsd = self.get_tsd()
         if unique_id:
             # Create unique id for each message.
@@ -260,27 +340,37 @@ class UDPClient:
 
 	return reply
 
-    ### send_deferred()
-    ### repeat_deferred()
-    ### recv_deferred()
-    ### recv_deferred_with_repeat_send()
-    ### drop_deferred()
-    ###
-    ### The *_deferred() functions allow for asymetric processing of messages.
-    ###
-    ### There are two recv_deferred() functions.  recv_deferred() does
-    ### what it has always been done; only wait for the prescribed time
-    ### without any automatic resending of messages where a response has not
-    ### returned after too long of a time period.  This means that the caller
-    ### of the recv_deferred() function needs to handle their own retrying
-    ### with geometric timeout backoff.
-    ###
-    ### The other recv_deffered function, recv_deferred_with_repeat_send(),
-    ### performs automatic resending/retrying of messages.  This function
-    ### does geometric backoff of retransmitted messages.
 
-    # send message, return an ID that can be used in the recv_deferred function
     def send_deferred(self, data, address):
+        """
+        | Send message, return an ID that can be used in the recv_deferred function.
+        | send_deferred()
+        | repeat_deferred()
+        | recv_deferred()
+        | recv_deferred_with_repeat_send()
+        | drop_deferred()
+
+        The \*_deferred() functions allow for asymmetric processing of
+        messages.
+
+        | There are two recv_deferred() functions.  recv_deferred() does
+        | what it has always been done; only wait for the prescribed time
+        | without any automatic resending of messages where a response has not
+        | returned after too long of a time period.  This means that the caller
+        | of the recv_deferred() function needs to handle their own retrying
+        | with geometric timeout backoff.
+
+        | The other recv_deffered function, recv_deferred_with_repeat_send(),
+        | performs automatic resending/retrying of messages.  This function
+        | does geometric backoff of retransmitted messages.
+
+        :type data: :obj:`str`
+        :arg data: data to send
+        :type address: :obj:`tuple`
+        :arg address: (destination host, destination port)
+        :rtype: :obj:`long` transaction id
+        """
+
         tsd = self.get_tsd()
         tsd.send_done[address] = 1
         message, txn_id = self.protocolize( data )
@@ -300,8 +390,14 @@ class UDPClient:
 
         return txn_id
 
-    # Resend any messages that have not yet yielded a reply.
     def repeat_deferred(self, txn_ids):
+        """
+        Resend any messages that have not yet yielded a reply.
+
+        :type txn_ids: :obj:`list`
+        :arg txn_ids: transaction ids to resend data for
+        """
+
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
@@ -325,8 +421,9 @@ class UDPClient:
 
             tsd.socket.sendto( message, address )
 
-    # Recieve a reply, timeout has the same meaning as in select
+    # Receive a reply, timeout has the same meaning as in select
     def __recv_deferred(self, txn_ids, timeout):
+
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
@@ -359,6 +456,20 @@ class UDPClient:
                        and out['status'][0] == e_errors.MALFORMED:
                         del tsd.send_queue[rcvd_txn_id]
                         return out, rcvd_txn_id
+                    if 'r_a' in out:
+                        client_id = out['r_a'][2]
+                        Trace.trace(5, "client_id %s"%(client_id,))
+
+                        if client_id != tsd.ident:
+                            errmsg = "Wrong client id in reply. Expected %s %s. received %s %s"% \
+                                (tsd.ident, tsd.txn_counter, client_id, rcvd_txn_id)
+                            out['status'] = (e_errors.MALFORMED, errmsg)
+                            return out, rcvd_txn_id
+                    else:
+                        Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'): %s"%
+                                  (server_addr, out))
+                        #Trace.log(e_errors.WARNING, "CALL 2: %s"%(sys._getframe(1).f_code.co_name,))
+
                 except (SyntaxError, TypeError):
                     #If a this error occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
@@ -392,24 +503,50 @@ class UDPClient:
         ## message we sent.
         raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
 
-    # Recieve a reply, timeout has the same meaning as in select
-    #This version returns the message.
     def recv_deferred(self, txn_ids, timeout):
+        """
+        Receive a reply, timeout has the same meaning as in select.
+        This version returns the message.
+
+        :type txn_ids: :obj:`list`
+        :arg txn_ids: transaction ids to resend data for
+        :type timeout: :obj:`int`
+        :arg timeout: receive timeout
+        :rtype: :obj:`str` - reply
+        """
         return self.__recv_deferred(txn_ids, timeout)[0]
 
-    # Recieve a reply, timeout has the same meaning as in select
-    #This version returns a tuple of the message and transaction id.
     def recv_deferred2(self, txn_ids, timeout):
+        """
+        Receive a reply, timeout has the same meaning as in select.
+        This version returns a tuple of the message and transaction id.
+
+        :type txn_ids: :obj:`list`
+        :arg txn_ids: transaction ids to resend data for
+        :type timeout: :obj:`int`
+        :arg timeout: receive timeout
+        :rtype: :obj:`tuple` - (:obj:`str` - message, :obj: `long` - transaction id)
+        """
         return self.__recv_deferred(txn_ids, timeout)
 
-    # Recieve a reply, timeout has the same meaning as in select.  This
-    # version is different from recv_deferred(); entire_timeout refers to the
-    # entire timeout period just like recv_deferred(), but a geometric backoff
-    # of resending the original message is performed up to entire_timeout
-    # number of seconds.
-    #
-    #Note: This function not fully verified to work yet.
     def recv_deferred_with_repeat_send(self, txn_ids, entire_timeout):
+        """
+        Receive a reply, timeout has the same meaning as in select.  This
+        version is different from recv_deferred(); entire_timeout refers to the
+        entire timeout period just like recv_deferred(), but a geometric backoff
+        of resending the original message is performed up to entire_timeout
+        number of seconds.
+
+        Note: This function not fully verified to work yet.
+
+        :type txn_ids: :obj:`list`
+        :arg txn_ids: transaction ids to resend data for
+        :type timeout: :obj:`int`
+        :arg timeout: receive timeout
+        :rtype: :obj:`tuple` - (:obj:`str` - message, :obj: `long` - transaction id)
+
+        """
+
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
@@ -447,9 +584,15 @@ class UDPClient:
                     else:
                         raise sys.exc_info()
 
-    #If we are giving up on a response, we can remove it from the send and
-    # receive lists explicitly.
     def drop_deferred(self, txn_ids):
+        """
+        If we are giving up on a response, we can remove it from the send and
+        receive lists explicitly.
+
+        :type txn_ids: :obj:`list`
+        :arg txn_ids: transaction ids to resend data for
+        """
+
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
@@ -483,7 +626,7 @@ if __name__ == "__main__" :
                 print "Sleeping for 5 sec."
                 time.sleep(5)
                 back = u.recv_deferred(txn_id, 5)
-                print "Recieved message %s." % (back)
+                print "Received message %s." % (back)
 
             elif "nowait" in sys.argv:
                 back = u.send_no_wait(msg, address)
@@ -491,7 +634,7 @@ if __name__ == "__main__" :
 
             else:
                 back = u.send(msg, address, rcv_timeout = 10, max_send=3)
-                print "Recieved message %s." % (back)
+                print "Received message %s." % (back)
 
         except:
             exc, msg = sys.exc_info()[:2]
@@ -520,7 +663,7 @@ if __name__ == "__main__" :
     #   $ python udp_client.py
     #   Sending message {'message': 'TEST MESSAGE'} to ('localhost', 7700)
     #   using callback ('131.225.84.1', 60853).
-    #   Recieved message {'message': 'TEST MESSAGE'}.
+    #   Received message {'message': 'TEST MESSAGE'}.
 
     # get a UDP client
     u = UDPClient()
@@ -531,6 +674,7 @@ if __name__ == "__main__" :
     ## and > 16KB
     # message = {'message':data}
     address = ("localhost", 7700)
+    Trace.do_print([5,6,10])
 
     test_thread = threading.Thread(target = send_test,
                                    args = (message, address, u),

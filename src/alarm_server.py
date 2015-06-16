@@ -1,10 +1,7 @@
 #! /usr/bin/env python
-
-##############################################################################
-#
-# $Id$
-#
-##############################################################################
+"""
+Enstore alarm server
+"""
 
 # system import
 import sys
@@ -13,7 +10,6 @@ import string
 import re
 
 # enstore imports
-#import setpath
 import dispatching_worker
 import enstore_files
 import generic_server
@@ -47,6 +43,9 @@ SEVERITY = alarm.SEVERITY
 
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
+    """
+    Implements alarm server methods
+    """
 
     def get_from_ticket(self, ticket, key, default):
         if ticket.has_key(key):
@@ -58,8 +57,13 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             rtn = default
         return rtn;
 
-    # pull out alarm info from the ticket and raise the alarm
     def post_alarm(self, ticket):
+        """
+        Pull out alarm info from the ticket and raise the alarm.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: alarm ticket
+        """
         severity = self.get_from_ticket(ticket, SEVERITY, e_errors.DEFAULT_SEVERITY)
         root_error = self.get_from_ticket(ticket, enstore_constants.ROOT_ERROR,
                                           e_errors.DEFAULT_ROOT_ERROR)
@@ -81,7 +85,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                        enstore_constants.ALARM    : repr(theAlarm.get_id()) }
         Trace.log(e_errors.ALARM, " (%s) %s "%(theAlarm.timedate, theAlarm.short_text(),),
                   Trace.MSG_ALARM)
-        self.send_reply(ret_ticket)
 
     def default_action(self, theAlarm, isNew, params=[]):
         if isNew:
@@ -101,22 +104,51 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     # all action methods need to call this function
     def action_defaults(self, theAlarm, isNew, params):
+        """
+        The default alarm action.
+        All action methods need to call this function.
+        In order to create a new alarm action, do -
+
+        1. add an element to self.ALARM_ACTIONS
+
+        2. add a method with parameters like in send_mail_action
+
+        3. this method should call action_defaults method
+
+        :type theAlarm: :class:`alarm.Alarm`
+        :arg theAlarm: alarm
+        :type isNew: :obj:`bool`
+        :arg isNew: indicates wheter the alarm is new.
+        :type params: :obj:`list`
+        :arg params: additional parameters- [action_name, 1|\*, optional_params...]
+                                            if 1, only send mail the first time the alarm is seen
+                                            \*, always send mail when get this alarm
+
+         """
+
         if isNew:
             self.info_alarms[theAlarm.get_id()] = theAlarm
 
-    # params = [action_name, 1|*, optional_params...]
-    # if 1, only send mail the first time the alarm is seen
-    #    *, always send mail when get this alarm
     def send_mail_action(self, theAlarm, isNew, params):
+        """
+        Send mail alarm action.
+
+        :type theAlarm: :class:`alarm.Alarm`
+        :arg theAlarm: alarm
+        :type isNew: :obj:`bool`
+        :arg isNew: indicates whether the alarm is new.
+        :type params: :obj:`list`
+        :arg params: additional parameters. See above
+         """
         params_len = len(params)
         alarm_info=theAlarm.alarm_info
         #
         # We expect to get in alarm_info a bunch of key,value pairs
         # like e.g.
         #   alarm_info['patterns']= { 'sg' : 'cms',
-        #                           'node' : 'fcdsgi2.fnal.gov' } 
+        #                           'node' : 'fcdsgi2.fnal.gov' }
         #                      Dmitry Litvintsev (litvinse@fnal.gov)
-        #       
+        #
         if isNew or (params_len > 1 and params[1] == "*"):
             e_mail=""
             if type(params[2]) == types.StringType:
@@ -143,13 +175,17 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                     pass
         self.action_defaults(theAlarm, isNew, params)
 
-    # in order to create a new alarm action, do -
-    #  1. add an element to self.ALARM_ACTIONS
-    #  2. add a method with parameters like in send_mail_action
-    #  3. this method should call action_defaults method
-
     # handle the alarm
     def process_alarm(self, theAlarm, isNew):
+        """
+        Handle the alarm.
+
+        :type theAlarm: :class:`alarm.Alarm`
+        :arg theAlarm: alarm
+        :type isNew: :obj:`bool`
+        :arg isNew: indicates wheter the alarm is new.
+        """
+
         actions = self.severity_actions.get(theAlarm.severity, [])
         if actions:
             # there is a specified action(s) for this alarm
@@ -169,7 +205,25 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     def find_alarm(self, host, severity, root_error, source, alarm_info,
                    condition, remedy_type):
-        # find the alarm that matches the above information
+        """
+        Find the alarm that matches the above information.
+
+        :type host: :obj:`str`
+        :arg host: hostname
+        :type severity: :obj:`str`
+        :arg severity: alarm severity
+        :type severity: :obj:`str`
+        :arg severity: alarm severity
+        :type source: :obj:`str`
+        :arg source: alarm source
+        :type alarm_info: :obj:`str`
+        :arg alarm_info: alarm details
+        :type condition: :obj:`str`
+        :arg condition: alarm condition
+        :type remedy_type: :obj:`str`
+        :arg remedy_type: alarm remedy type
+        """
+
         ids = self.alarms.keys()
         for an_id in ids:
             if self.alarms[an_id].compare(host, severity, root_error, source, \
@@ -181,7 +235,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                                             alarm_info, condition, remedy_type) == alarm.MATCH:
                 return self.info_alarms[an_id]
         return None
-        
+
 
     # raise the alarm
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY,
@@ -191,6 +245,28 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
               condition=alarm.DEFAULT_CONDITION,
               remedy_type=alarm.DEFAULT_TYPE,
               alarm_info=None):
+        """
+        Raise the alarm.
+
+        :type severity: :obj:`str`
+        :arg severity: alarm severity
+        :type root_error: :obj:`str`
+        :arg root_error: alarm cause
+        :type pid: :obj:`int`
+        :arg pid: alarm client process id
+        :type uid: :obj:`int`
+        :arg uid: alarm client user id
+        :type source: :obj:`str`
+        :arg source: alarm source
+        :type condition: :obj:`str`
+        :arg condition: alarm condition
+        :type remedy_type: :obj:`str`
+        :arg remedy_type: alarm remedy type
+        :type alarm_info: :obj:`str`
+        :arg alarm_info: alarm details
+        :rtype: :class:`alarm.Alarm` alarm object
+        """
+
         if alarm_info is None:
             alarm_info = {}
         # find out where the alarm came from
@@ -216,10 +292,21 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         return theAlarm
 
     def resolve(self, id):
-        # an alarm is being resolved, we must do the following -
-        #      remove it from our alarm dictionary
-        #      rewrite the entire enstore_alarm file (txt and html)
-        #      log this fact
+        """
+        Resolve alarm.
+        An alarm is being resolved, we must do the following -
+
+             1. Remove it from our alarm dictionary.
+
+             2. Rewrite the entire enstore_alarm file (txt and html).
+
+             3. Log this fact.
+
+        :type id: :obj:`int`
+        :arg id: alarm id
+        :rtype: :obj:`tuple` - (:obj:`str`, :obj:`str`)
+        """
+
         if self.alarms.has_key(id):
             del self.alarms[id]
             self.write_alarm_file()
@@ -233,13 +320,25 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             return (e_errors.NOALARM, None)
 
     def resolve_all(self):
+        """
+        Resolve all alarms.
+        :rtype: :obj:`tuple` - (:obj:`str`, :obj:`str`)
+        """
+
         self.alarms = {}
         self.write_alarm_file()
         self.write_html_file()
         Trace.log(e_errors.INFO, "All Alarms have been resolved")
         return (e_errors.OK, None)
-            
+
     def resolve_alarm(self, ticket):
+        """
+        Resolve alarm work.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: client ticket with "resolve_alarm" work
+        """
+
         # get the unique identifier for this alarm
         this_id = ticket.get(enstore_constants.ALARM, 0)
 	ticket = {}
@@ -250,16 +349,29 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
         # send the reply to the client
         self.send_reply(ticket)
-        
+
     def dump(self, ticket):
+        """
+        Print all current alarms.
+
+        :type ticket: :obj:`dict`
+        :arg ticket: client ticket with "dump" work
+        """
 	# dump our brains
 	for key in self.alarms.keys():
 	    print self.alarms[key]
         # send the reply to the client
         ticket['status'] = (e_errors.OK, None)
         self.send_reply(ticket)
-        
+
     def write_alarm_file(self, alarm=None):
+        """
+        Write alarm to sorted alarms file.
+
+        :type alarm: :obj:`dict`
+        :arg alarm: alarm dictionary
+        """
+
         if alarm:
             self.alarm_file.open()
             self.alarm_file.write(alarm)
@@ -272,8 +384,11 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                     self.alarm_file.write(self.alarms[key])
         self.alarm_file.close()
 
-    # create the web page that contains the list of raised alarms
     def write_html_file(self):
+        """
+        Create the web page that contains the list of raised alarms.
+        """
+
 	self.alarmhtmlfile.open()
 	self.alarmhtmlfile.write(self.alarms, self.get_www_host())
 	self.alarmhtmlfile.close()
@@ -281,18 +396,21 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     def get_log_path(self):
         log = self.csc.get("log_server")
         return log.get("log_file_path", ".")
-        
+
     def get_www_host(self):
         inq = self.csc.get("inquisitor")
         return inq.get("www_host", ".")
-        
+
     def get_www_path(self):
         inq = self.csc.get("inquisitor")
         return inq.get("html_file", ".")
-        
-    # read the persistent alarm file if it exists.  this reads in all the
-    # alarms that have not been resolved.
+
     def get_alarm_file(self):
+        """
+        Read the persistent alarm file if it exists.  this reads in all the
+        alarms that have not been resolved.
+        """
+
         # the alarm file lives in the same directory as the log file
         self.alarm_file = enstore_files.EnAlarmFile("%s/%s"%(self.get_log_path(),
 							     DEFAULT_FILE_NAME))
@@ -302,8 +420,15 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
 
 class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
-
+    """
+    Implements alarm server functionality.
+    """
     def __init__(self, csc):
+        """
+        :type csc: :class:`configuraion_client.ConfigurationClient`
+        :arg csc: configuration client or :obj:`tuple` configuration server address
+        """
+
         # actions supported by the alarm server.  these actions can be
         # specified in the config file for specific severities.  if no
         # action is specified, the default action is to display the alarm
@@ -345,13 +470,13 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 	self.alarmhtmlfile = enstore_files.HtmlAlarmFile("%s/%s"%( \
 	    self.get_www_path(), DEFAULT_HTML_ALARM_FILE), self.system_tag)
 
-	# write the current alarms to it if 
+	# write the current alarms to it if
 	self.write_html_file()
 
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
 	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(enstore_constants.ALARM_SERVER, 
+	self.erc.start_heartbeat(enstore_constants.ALARM_SERVER,
 				 self.alive_interval)
 
 
@@ -376,7 +501,7 @@ if __name__ == "__main__":
     csc = intf.config_host, intf.config_port
     als = AlarmServer(csc)
     als.handle_generic_commands(intf)
-    
+
     while 1:
         try:
             Trace.log(e_errors.INFO, "Alarm Server (re)starting")

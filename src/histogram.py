@@ -19,6 +19,23 @@ import time
 import errno
 import string
 
+CONVERT_COMMAND_LINE_FOR_IMAGE="convert -flatten -background lightgray -rotate 90 -modulate 80 {} {}"
+CONVERT_COMMAND_LINE_FOR_THUMBNAIL="convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 {} {}"
+GNUPLOT_HEADER="""
+         set output \"{}\"
+         set terminal postscript color solid
+         set title \"{} {}\"
+         set xrange [ : ]
+         set size 1.5,1
+         set grid
+         set ylabel \"{}\"
+         set xlabel \"{}\"
+         {}
+         {}
+"""
+
+
+
 class Attribute:
     def __init__(self, name, title):
         self.name=name
@@ -188,6 +205,7 @@ class BasicHistogram(Attribute):
          Attribute.__init__(self, name, title)
 
          self.entries=0
+         self.gnuplot_command=""
 
      def n_entries(self):
          return self.entries
@@ -195,9 +213,32 @@ class BasicHistogram(Attribute):
      def get_entries(self):
          return self.entries
 
-     def plot(self,command=""):
+     def plot(self,directory="./"):
+         ps_file_name = os.path.join(directory, self.name + ".ps")
+         jpg_file_name = os.path.join(directory, self.name + ".jpg")
+         stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
+         gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
 
-         print "Plot function is not implemented by BasicHistogram"
+         self.gnuplot_command=self.gnuplot_command.format(ps_file_name,
+                                                          self.title,
+                                                          time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())),
+                                                          self.ylabel,
+                                                          self.xlabel,
+                                                          string.join(self.commands,"\n"),
+                                                          self.get_text())
+
+         gnu_cmd = open(gnu_file_name,'w')
+         gnu_cmd.write(self.gnuplot_command)
+         gnu_cmd.close()
+
+         os.system("gnuplot {}".format(gnu_file_name))
+         os.system(CONVERT_COMMAND_LINE_FOR_IMAGE.format(ps_file_name,
+                                                         jpg_file_name))
+         os.system(CONVERT_COMMAND_LINE_FOR_THUMBNAIL.format(ps_file_name,
+                                                             stamp_jpg_file_name))
+         self.remove(gnu_file_name)
+
+
 
      def fill(self,command=""):
          print "Fill function is not implemented by BasicHistogram"
@@ -221,59 +262,32 @@ class Ntuple(BasicHistogram):
     #
 
     def plot(self, command, directory="./"):
-        #Get some filenames for the various files that get created.
-        ps_file_name = os.path.join(directory, self.name + ".ps")
-        jpg_file_name = os.path.join(directory, self.name + ".jpg")
-        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
-        gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
+        self.gnuplot_command=GNUPLOT_HEADER
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xdata time
+            set timefmt \"%Y-%m-%d %H:%M:%S\"
+            set format x \"{}\"
+            """.format(self.time_axis_format)
 
-        #Create the file that contains the commands for gnuplot to run.
-        gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '" + ps_file_name + "'\n"+ \
-                     "set terminal postscript color solid\n"\
-                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set xrange [ : ]\n"+ \
-                     "set size 1.5,1\n"+ \
-                     "set grid\n"+ \
-                     "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)+ \
-                     string.join(self.commands,"\n")+"\n"
-        long_string=long_string+" set pm3d; set palette; \n";
-        if (  self.time_axis ) :
-            long_string=long_string+"set xlabel '%s'\n"%(self.xlabel)+ \
-                         "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
-                         "set format x \""+self.time_axis_format+"\"\n"
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+self.data_file_name+"' using "+command+" "
-        else :
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+self.data_file_name+"' using "+command+" "
-        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
-        gnu_cmd.write(long_string)
-        gnu_cmd.close()
-
-        #Make the plot and convert it to jpg.
-        os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
-                  % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
-                  % (ps_file_name, stamp_jpg_file_name))
-
-        #Cleanup the temporary files.
-        self.remove(gnu_file_name)  # remove gnu file
-
+        if self.get_logy():
+            self.gnuplot_command+="""
+            set logscale y
+            set yrange [ 0.99  : ]
+            """
+        if self.get_logx():
+            self.gnuplot_command+="""
+            set logscale x
+            """
+        self.gnuplot_command +="""
+        plot \"{}\" using {} t \"{}\" with {} lw {} lt {}
+        """.format(self.data_file_name,
+                   command,
+                   self.get_marker_text(),
+                   self.get_marker_type(),
+                   self.get_line_width(),
+                   self.get_line_color())
+        BasicHistogram.plot(self,directory)
 
     def __del__(self):
         if self.is_delete_data_file():
@@ -355,8 +369,6 @@ class Plotter:
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \""+self.histogram_list[0].time_axis_format+"\"\n"
 
-#            if ( isinstance(hist,histogram.Histogram1D)) :
-
         for hist in self.histogram_list:
             pts_file_name=os.path.join(directory, hist.data_file_name)
             hist.save_data(pts_file_name)
@@ -383,11 +395,11 @@ class Plotter:
         gnu_cmd.close()
 
         #Make the plot and convert it to jpg.
-        os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
-                  % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
-                  % (ps_file_name, stamp_jpg_file_name))
+        os.system("gnuplot {}".format(gnu_file_name))
+        os.system(CONVERT_COMMAND_LINE_FOR_IMAGE.format(ps_file_name,
+                                                        jpg_file_name))
+        os.system(CONVERT_COMMAND_LINE_FOR_THUMBNAIL.format(ps_file_name,
+                                                            stamp_jpg_file_name))
 
         #Cleanup the temporary files.
         for hist in self.histogram_list:
@@ -816,7 +828,7 @@ class Histogram1D(BasicHistogram):
             return None
         return self.low+(bin+1.)*(self.high-self.low)/float(self.nbins)
 
-    def get_text(self):
+    def get_textq(self):
         return self.additional_text
 
     def get_marker_type(self):
@@ -888,14 +900,6 @@ class Histogram1D(BasicHistogram):
     # "plot" is the act of creating an image
     #
 
-#    def add_opt_stat(self) :
-#        return "set key right top Left samplen 20 title \""+\
-#               "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
-#               "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
-#               "\\nEntries : %d"%(self.entries)+\
-#               "\\n Overflow : %d"%(self.overflow)+\
-#               "\\n Underflow : %d"%(self.underflow)+"\" box\n"
-
     def add_opt_stat(self) :
         return "set key right top Left samplen 20 title \""+\
                "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
@@ -905,218 +909,187 @@ class Histogram1D(BasicHistogram):
                "\\n Underflow : %d"%(self.underflow)+"\" box\n"
 
     def plot(self, directory="./"):
-        #Get some filenames for the various files that get created.
-        pts_file_name = os.path.join(directory, self.data_file_name)
-        ps_file_name = os.path.join(directory, self.name + ".ps")
-        jpg_file_name = os.path.join(directory, self.name + ".jpg")
-        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
-        gnu_file_name = "/tmp/%s_gnuplot.cmd"%(self.name)
 
-        #Polulate the data file that gnuplot will plot.
+        pts_file_name = os.path.join(directory, self.data_file_name)
         self.save_data(pts_file_name)
 
-        #Create the file that contains the commands for gnuplot to run.
-        gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '" + ps_file_name + "'\n"+ \
-                     "set terminal postscript color solid\n"\
-                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set size 1.5,1\n"+ \
-                     "set grid\n"+ \
-                     "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)+ \
-                     string.join(self.commands,"\n")+"\n"
-        if ( self.get_opt_stat() ) :
-            long_string=long_string+self.add_opt_stat()
-        if (  self.time_axis ) :
-            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
-                         "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
-                         "set xrange [ \""+\
-                         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_low_edge(0))) + \
-                         "\":\""+ \
-                         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_high_edge(self.n_bins()-1))) + \
-                         "\"]\n"+ \
-                         "set format x \""+self.time_axis_format+"\"\n"
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:4 "
-        else :
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text() +\
-                         "set xrange ["+\
-                         str(self.get_bin_low_edge(0)) + \
-                         ":"+ \
-                         str(self.get_bin_high_edge(self.n_bins()-1)) + \
-                         "]\n"
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:3 "
-        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
-        gnu_cmd.write(long_string)
-        gnu_cmd.close()
+        self.gnuplot_command=GNUPLOT_HEADER
 
-        #Make the plot and convert it to jpg.
-        os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
-                  % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
-                  % (ps_file_name, stamp_jpg_file_name))
+        if self.get_opt_stat():
+            self.gnuplot_command+=self.add_opt_stat()
+
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xdata time
+            set timefmt \"%Y-%m-%d %H:%M:%S\"
+            set format x \"{}\"
+            """.format(self.time_axis_format)
+
+        if self.get_logy():
+            self.gnuplot_command+="""
+            set logscale y
+            set yrange [ 0.99  : ]
+            """
+        if self.get_logx():
+            self.gnuplot_command+="""
+            set logscale x
+            """
+
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xlabel \"Date (year-month-day)\"
+            set xrange [ \"{}\" : \"{} \" ]
+            plot '{}' using 1:4 t \"{}\" with {} lw {} lt {}
+            """.format(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_low_edge(0))),
+                       time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_high_edge(self.n_bins()-1))),
+                       pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
+        else :
+            self.gnuplot_command+="""
+            set xrange [ {} : {} ]
+            plot '{}' using 1:3 t \"{}\" with {} lw {} lt {}
+            """.format(self.get_bin_low_edge(0),
+                       self.get_bin_high_edge(self.n_bins()-1),
+                       pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
+        BasicHistogram.plot(self,directory)
+
+        if self.is_delete_data_file():
+            self.remove(pts_file_name)
+
+    def plot2(self, h, reflect=False, directory="./"):
+
+        pts_file_name = os.path.join(directory, self.data_file_name)
+        pts_file_name1 = os.path.join(directory, h.get_data_file_name())
+
+        self.save_data(pts_file_name)
+        h.save_data(pts_file_name1)
+
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xdata time
+            set timefmt \"%Y-%m-%d %H:%M:%S\"
+            set format x \"{}\"
+            """.format(self.time_axis_format)
+
+        if self.get_logy():
+            self.gnuplot_command+="""
+            set logscale y
+            set yrange [ 0.99  : ]
+            """
+        if self.get_logx():
+            self.gnuplot_command+="""
+            set logscale x
+            """
+
+        if self.get_opt_stat():
+            self.gnuplot_command+=self.add_opt_stat()
+
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xlabel \"Date (year-month-day)\"
+            set xrange [ \"{}\" : \"{} \" ]
+            plot '{}' using 1:4 t \"{}\" with {} lw {} lt {}
+            """.format(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_low_edge(0))),
+                       time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_high_edge(self.n_bins()-1))),
+                       pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
+        else:
+            self.gnuplot_command+="""
+            set xrange [ {} : {} ]
+            plot '{}' using 1:3  t \"{}\" with {} lw {} lt {} \
+            """.format(self.get_bin_low_edge(0),
+                       self.get_bin_high_edge(self.n_bins()-1),
+                       pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
+
+        self.gnuplot_command+=" , \"{}\"".format(pts_file_name1)
+
+        if self.time_axis:
+            if reflect:
+                self.gnuplot_command+= "  using 1:(-$4) "
+            else :
+                self.gnuplot_command+= "  using 1:4 "
+        else:
+            if reflect:
+                self.gnuplot_command+= "  using 1:(-$3) "
+            else :
+                self.gnuplot_command+= "  using 1:3 "
+
+        self.gnuplot_command+="t \"{}\" with {} lw {} lt {}".format(h.get_marker_text(),
+                                                                    h.get_marker_type(),
+                                                                    h.get_line_width(),
+                                                                    h.get_line_color())
+
+        BasicHistogram.plot(self,directory)
 
         #Cleanup the temporary files.
         if self.is_delete_data_file():
             self.remove(pts_file_name)
-        self.remove(gnu_file_name)
-
-    def plot2(self, h, reflect=False, directory="./"):
-        #Get some filenames for the various files that get created.
-        pts_file_name = os.path.join(directory, self.data_file_name)
-        pts_file_name1 = os.path.join(directory, h.get_data_file_name())
-        ps_file_name = os.path.join(directory, self.name + ".ps")
-        jpg_file_name = os.path.join(directory, self.name + ".jpg")
-        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
-        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
-
-        #Polulate the data file that gnuplot will plot.
-        self.save_data(pts_file_name)
-        h.save_data(pts_file_name1)
-
-        #Create the file that contains the commands for gnuplot to run.
-        gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '" + ps_file_name + "'\n"+ \
-                     "set terminal postscript color solid\n"\
-                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set xrange [ : ]\n"+ \
-                     "set size 1.5,1\n"+ \
-                     "set grid\n"+ \
-                     "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)+ \
-                     string.join(self.commands,"\n")+"\n"
-        if ( self.get_opt_stat() ) :
-            long_string=long_string+self.add_opt_stat()
-        if (  self.time_axis ) :
-            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
-                         "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
-                         "set format x \""+self.time_axis_format+"\"\n"
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:4 "
-        else :
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:3 "
-        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                     +self.get_marker_type()+" lw "+str(self.get_line_width())+"  lt "+str(self.get_line_color())+"  "
-        if (  self.time_axis ) :
-            if (reflect) :
-                long_string=long_string+",  '"+pts_file_name1+"' using 1:(-$4) "
-            else :
-                long_string=long_string+",  '"+pts_file_name1+"' using 1:4 "
-
-        else:
-            if (reflect) :
-                long_string=long_string+",  '"+pts_file_name1+"' using 1:(-$3)"
-            else :
-                long_string=long_string+",  '"+pts_file_name1+"' using 1:3 "
-
-        long_string=long_string+" t '"+h.get_marker_text()+"' with "\
-                    +h.get_marker_type()+" lw "+str(h.get_line_width())+" lt "+str(h.get_line_color())+" \n "
-        gnu_cmd.write(long_string)
-        gnu_cmd.close()
-
-        #Make the plot and convert it to jpg.
-        os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
-                  % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
-                  % (ps_file_name, stamp_jpg_file_name))
-
-        #Cleanup the temporary files.
-        if self.is_delete_data_file():
-            self.remove(pts_file_name) # remove pts file
-        self.remove(pts_file_name1) # remove pts file
-        self.remove(pts_file_name) # remove pts file
-        self.remove(gnu_file_name)  # remove gnu file
+            self.remove(pts_file_name1)
 
     def plot_derivative(self, directory="./"):
         #Get some filenames for the various files that get created.
         pts_file_name = os.path.join(dir, self.data_file_name)
-        ps_file_name = os.path.join(directory, self.name + ".ps")
-        jpg_file_name = os.path.join(directory, self.name + ".jpg")
-        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
-        gnu_file_name = "/tmp/%s_gnuplot.cmd"%(self.name)
-
-        #Polulate the data file that gnuplot will plot.
         self.save_data(pts_file_name)
 
-        #Create the file that contains the commands for gnuplot to run.
-        gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '" + ps_file_name + "'\n"+ \
-                     "set terminal postscript color solid\n"\
-                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set xrange [ : ]\n"+ \
-                     "set size 1.5,1\n"+ \
-                     "set grid\n"+ \
-                     "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)+ \
-                     string.join(self.commands,"\n")+"\n"
-        if ( self.get_opt_stat() ) :
-            long_string=long_string+"set key right top Left samplen 20 title \""+\
-                         "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
-                         "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
-                         "\\nEntries : %d"%(self.entries)+\
-                         "\\n Overflow : %d"%(self.overflow)+\
-                         "\\n Underflow : %d"%(self.underflow)+"\"\n"
-        if (  self.time_axis ) :
-            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
-                         "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
-                         "set format x \""+self.time_axis_format+"\"\n"
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:6 "
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xdata time
+            set timefmt \"%Y-%m-%d %H:%M:%S\"
+            set format x \"{}\"
+            """.format(self.time_axis_format)
+
+        if self.get_logy():
+            self.gnuplot_command+="""
+            set logscale y
+            set yrange [ 0.99  : ]
+            """
+        if self.get_logx():
+            self.gnuplot_command+="""
+            set logscale x
+            """
+
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xlabel \"Date (year-month-day)\"
+            set xrange [ \"{}\" : \"{} \" ]
+            plot '{}' using 1:6 t \"{}\" with {} lw {} lt {}
+            """.format(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_low_edge(0))),
+                       time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_high_edge(self.n_bins()-1))),
+                       pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
         else :
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:5 "
-        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
-        gnu_cmd.write(long_string)
-        gnu_cmd.close()
+            self.gnuplot_command+="""
+            set xrange [ {} : {} ]
+            plot '{}' using 1:5 t \"{}\" with {} lw {} lt {}
+            """.format(self.get_bin_low_edge(0),
+                       self.get_bin_high_edge(self.n_bins()-1),
+                       pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
 
-        #Make the plot and convert it to jpg.
-        os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
-                  % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
-                  % (ps_file_name, stamp_jpg_file_name))
+        BasicHistogram.plot(self,directory)
 
-        #Cleanup the temporary files.
-        self.remove(pts_file_name) # remove pts file
-        self.remove(gnu_file_name)  # remove gnu file
+        if self.is_delete_data_file():
+            self.remove(pts_file_name)
 
     def dump(self):
         print repr(self.__dict__)
@@ -1242,13 +1215,14 @@ class Histogram2D(Histogram1D):
 
     def save_data(self,fname):
         data_file=open(fname,'w')
+        xold = self.get_bin_center(0)[0]
         for i in range(self.nbins):
             x,y = self.get_bin_center(i)
+            if xold != x :
+                data_file.write("\n")
+                xold = x
             z = float(self.get_bin_content(i));
             dz = math.sqrt(self.get_bin_content(i))
-#            if ( self.entries > 0 ) :
-#                z =  z / float(self.entries) * 100.
-#                dz = dz / float(self.entries) * 100.
             if ( self.time_axis ) :
                 data_file.write("%s %f %f %f\n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),y,z,dz,))
             else :
@@ -1260,152 +1234,122 @@ class Histogram2D(Histogram1D):
     #
 
     def plot(self, directory="./"):
-        #Get some filenames for the various files that get created.
-        pts_file_name = os.path.join(directory, self.data_file_name)
-        ps_file_name = os.path.join(directory, self.name + ".ps")
-        jpg_file_name = os.path.join(directory, self.name + ".jpg")
-        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
-        gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
 
-        #Polulate the data file that gnuplot will plot.
+        pts_file_name = os.path.join(directory, self.data_file_name)
         self.save_data(pts_file_name)
 
-        #Create the file that contains the commands for gnuplot to run.
-        gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '" + ps_file_name + "'\n"+ \
-                     "set terminal postscript color solid\n"\
-                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set view map \n"+\
-                     "set palette defined ( 0 0.05 0.05 0.2, 0.1 0 0 1, 0.25 0.7 0.85 0.9, 0.4 0 0.75 0, 0.5 1 1 0, 0.7 1 0 0, 0.9 0.6 0.6 0.6, 1 0.95 0.95 0.95 )\n"+\
-                     "set xrange [ : ]\n"+ \
-                     "set zrange [ 0.001 : ]\n"+ \
-                     "set size 1.5,1\n"+ \
-                     "set grid\n"+ \
-                     "set pm3d at b \n"+\
-                     "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set zlabel '%s'\n"%(self.zlabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)+ \
-                     string.join(self.commands,"\n")+"\n"
-        if (  self.time_axis ) :
-            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
-                         "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
-                         "set format x \"%y-%m-%d\"\n"
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logz() ) :
-                long_string=long_string+"set logscale z\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"splot '"+pts_file_name+"' using 1:3:4 "
-        else :
-            #                     "set style fill solid 1.000000 \n" (not working:)
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logz() ) :
-                long_string=long_string+"set logscale z\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"splot '"+pts_file_name+"' using 1:2:3 "
-        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                     +"points pt 5 ps 2  palette\n"
+        self.gnuplot_command=GNUPLOT_HEADER
 
-#                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
-        gnu_cmd.write(long_string)
-        gnu_cmd.close()
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xdata time
+            set timefmt \"%Y-%m-%d %H:%M:%S\"
+            set format x \"{}\"
+            """.format(self.time_axis_format)
 
-        #Make the plot and convert it to jpg.
-        os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
-                  % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
-                  % (ps_file_name, stamp_jpg_file_name))
+        if self.get_logy():
+            self.gnuplot_command+="""
+            set logscale y
+            set yrange [ 0.99  : ]
+            """
+        if self.get_logx():
+            self.gnuplot_command+="""
+            set logscale x
+            set xrange [ 0.99  : ]
+            """
 
-        #Cleanup the temporary files.
-        self.remove(pts_file_name) # remove pts file
-        self.remove(gnu_file_name)  # remove gnu file
+        if self.get_logz():
+             self.gnuplot_command+="""
+             set logscale z
+             set zrange [ 0.99  : ]
+             """
+        self.gnuplot_command+="""
+        set view map
+        set palette defined ( 0 0.05 0.05 0.2, 0.1 0 0 1, 0.25 0.7 0.85 0.9, 0.4 0 0.75 0, 0.5 1 1 0, 0.7 1 0 0, 0.9 0.6 0.6 0.6, 1 0.95 0.95 0.95 )
+        set zrange [ 0.001 : ]
+        set pm3d at b
+        set zlabel \"{}\"
+        """.format(self.zlabel)
+
+
+        if self.time_axis:
+            self.gnuplot_command+="""
+            splot \"{}\" using 1:3:4  t \"{}\" with points pt 5 ps 2  palette
+            """.format(pts_file_name,
+                       self.get_marker_text())
+
+        else:
+            self.gnuplot_command+="""
+            splot \"{}\" using 1:2:3 t \"{}\" with points pt 5 ps 2 palette
+            """.format(pts_file_name,
+                       self.get_marker_text())
+
+        BasicHistogram.plot(self,directory)
+
+        if self.is_delete_data_file():
+            self.remove(pts_file_name)
 
 
     def plot_ascii(self, directory="./"):
-        #Get some filenames for the various files that get created.
-        pts_file_name = os.path.join(directory, self.data_file_name)
-        ps_file_name = os.path.join(directory, self.name + ".ps")
-        jpg_file_name = os.path.join(directory, self.name + ".jpg")
-        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
-        gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
 
-        #Polulate the data file that gnuplot will plot.
+        pts_file_name = os.path.join(directory, self.data_file_name)
         self.save_data(pts_file_name)
 
-        #Create the file that contains the commands for gnuplot to run.
-        gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '" + ps_file_name + "'\n"+ \
-                     "set terminal postscript color solid\n"\
-                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set xrange [  :  ]\n"+\
-                     "set size 1.5,1\n"+ \
-                     "set grid\n"+ \
-                     "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set zlabel '%s'\n"%(self.zlabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)+ \
-                     string.join(self.commands,"\n")+"\n"
-        for bin in range(self.nbins) :
+        self.gnuplot_command=GNUPLOT_HEADER
+
+        if self.time_axis:
+            self.gnuplot_command+="""
+            set xdata time
+            set timefmt \"%Y-%m-%d %H:%M:%S\"
+            set format x \"{}\"
+            """.format(self.time_axis_format)
+
+        if self.get_logy():
+            self.gnuplot_command+="""
+            set logscale y
+            set yrange [ 0.99  : ]
+            """
+        if self.get_logx():
+            self.gnuplot_command+="""
+            set logscale x
+            set xrange [ 0.99  : ]
+            """
+
+        if self.get_logz():
+             self.gnuplot_command+="""
+             set logscale z
+             set zrange [ 0.99  : ]
+             """
+
+        for bin in range(self.nbins):
             x,y=self.get_bin_center(bin)
             count=self.get_bin_content(bin)
-            if (count>0):
-                if (  self.time_axis ) :
-                    self.add_text("set label \"%5d\" at \"%s\",%f center font \"Helvetica,10\"\n"%(count,time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),
-                                                                                               y),)
+            if count>0:
+                if self.time_axis:
+                    self.add_text("set label \"%5d\" at \"%s\",%f center font \"Helvetica,10\"\n"%(count,time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),y,))
                 else:
                     self.add_text("set label \"%5d\" at %f,%f center font \"Helvetica,10\"\n"%(count,x,y,))
-        if (  self.time_axis ) :
-            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
-                         "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
-                         "set format x \"%y-%m-%d\"\n"
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logz() ) :
-                long_string=long_string+"set logscale z\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:3 "
-        else :
-            #                     "set style fill solid 1.000000 \n" (not working:)
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logz() ) :
-                long_string=long_string+"set logscale z\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+pts_file_name+"' using 1:2 "
-        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt  "+str(self.get_line_color())+" \n "
-        gnu_cmd.write(long_string)
-        gnu_cmd.close()
 
-        #Make the plot and convert it to jpg.
-        os.system("gnuplot %s" % (gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s %s"
-                  % (ps_file_name, jpg_file_name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
-                  % (ps_file_name, stamp_jpg_file_name))
+        if self.time_axis:
+            self.gnuplot_command+="""
+            plot \"{}\" using 1:3  t \"{}\" with {} lw {} lt {}
+            """.format(pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
+        else:
+              self.gnuplot_command+="""
+              plot \"{}\" using 1:2  t \"{}\" with {} lw {} lt {}
+            """.format(pts_file_name,
+                       self.get_marker_text(),
+                       self.get_marker_type(),
+                       self.get_line_width(),
+                       self.get_line_color())
 
-        #Cleanup the temporary files.
-        self.remove(pts_file_name) # remove pts file
-        self.remove(gnu_file_name)  # remove gnu file
+        BasicHistogram.plot(self,directory)
+
+        self.remove(pts_file_name)
 
 
 if __name__ == "__main__":
@@ -1430,6 +1374,7 @@ if __name__ == "__main__":
     ntuple.set_line_width(5)
     ntuple.plot("1:2")
     hh.plot()
+    #hh.plot_ascii()
     h1.set_ylabel("Counts / %s"%(h1.get_bin_width(0)))
     h1.set_xlabel("x variable")
     h1.set_marker_text("blah")

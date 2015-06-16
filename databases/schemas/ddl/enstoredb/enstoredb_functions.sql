@@ -576,6 +576,8 @@ AS $$
 DECLARE
 	old_record RECORD;
 	new_record RECORD;
+        total INTEGER;
+	active INTEGER;
 BEGIN
       IF ( new_bfid is NULL ) THEN
           RAISE EXCEPTION 'destination package bfid is not specified';
@@ -595,8 +597,15 @@ BEGIN
           RAISE EXCEPTION '% is not a package file',old_bfid;
 	  RETURN;
       END IF;
-      update file set package_id=new_bfid where package_id=old_bfid and package_id <> bfid;
-      update file set package_files_count=package_files_count+old_record.package_files_count, active_package_files_count=active_package_files_count+old_record.active_package_files_count,package_id=new_bfid where bfid=new_bfid;
+      IF ( new_record.package_files_count is not NULL and new_record.package_files_count <> 0 ) THEN
+          RAISE EXCEPTION '% has package_files_count=%',new_bfid, new_record.package_files_count;
+      END IF;
+      with updated_rows AS (
+      update file set package_id=new_bfid where package_id=old_bfid and package_id <> bfid RETURNING deleted)
+      select sum(case when deleted='n' then 1 else 0 end), count(*) into active, total from updated_rows;
+      update file set package_files_count=coalesce(total,0),
+                      active_package_files_count=coalesce(active,0),
+		      package_id=new_bfid where bfid=new_bfid;
       update file set package_files_count=0, active_package_files_count=0 where bfid=old_bfid;
 END;
 $$
@@ -664,15 +673,16 @@ INSERT into state_type (name) select 'modified'         as name  where not exist
 INSERT into state_type (name) select 'set_comment'      as name  where not exists (select state_type.name from state_type where state_type.name='set_comment');
 INSERT into state_type (name) select 'new_library'      as name  where not exists (select state_type.name from state_type where state_type.name='new_library');
 
-INSERT into media_capacity select '9840',        21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9840'     and  media_capacity.capacity=21474836480);
-INSERT into media_capacity select '9940',        64424509440 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940'     and  media_capacity.capacity=64424509440);
-INSERT into media_capacity select '9940B',      214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940B'    and  media_capacity.capacity=214748364800);
-INSERT into media_capacity select 'DECDLT',      21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='DECDLT'   and  media_capacity.capacity=21474836480);
-INSERT into media_capacity select 'null',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='null'     and  media_capacity.capacity=214748364800);
-INSERT into media_capacity select 'LTO2',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO2'     and  media_capacity.capacity=214748364800);
-INSERT into media_capacity select 'LTO3',       429496729600 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO3'     and  media_capacity.capacity=429496729600);
-INSERT into media_capacity select 'LTO4',       858993459200 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO4'     and  media_capacity.capacity=858993459200);
-INSERT into media_capacity select 'T10000T2',  5401000000000 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='T10000T2' and  media_capacity.capacity=5401000000000);
+INSERT into media_capacity select '9840',        21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9840'      and  media_capacity.capacity=21474836480);
+INSERT into media_capacity select '9940',        64424509440 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940'      and  media_capacity.capacity=64424509440);
+INSERT into media_capacity select '9940B',      214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940B'     and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'DECDLT',      21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='DECDLT'    and  media_capacity.capacity=21474836480);
+INSERT into media_capacity select 'null',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='null'      and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'LTO2',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO2'      and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'LTO3',       429496729600 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO3'      and  media_capacity.capacity=429496729600);
+INSERT into media_capacity select 'LTO4',       858993459200 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO4'      and  media_capacity.capacity=858993459200);
+INSERT into media_capacity select 'T10000T2',  5401000000000 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='T10000T2'  and  media_capacity.capacity=5401000000000);
+INSERT into media_capacity select 'T10000T2D', 8400000000000 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='T10000T2D' and  media_capacity.capacity=8400000000000);
 
 INSERT into cache_statuses select 'CREATED','file was written to cache' where not exists (select status, explanation from cache_statuses where status='CREATED' and explanation='file was written to cache');
 INSERT into cache_statuses select 'PURGING','file is being purged' where not exists (select status, explanation from cache_statuses where status='PURGING' and explanation='file is being purged');
