@@ -6612,7 +6612,7 @@ def _swap_metadata(MY_TASK, job, fcc, db, src_is_a_package=False):
             try:
                 os.chmod(src_path, src_stat[stat.ST_MODE])
             except (OSError, IOError), msg:
-                error_log("Unable to reset persisions for %s to %s" % \
+                error_log("Unable to reset permissions for %s to %s" % \
                           (src_path, src_stat[stat.ST_MODE]))
 
     # Cross check:
@@ -6693,7 +6693,7 @@ def swap_metadata(job, fcc, db):
     swap_metadata(job, fcc, db) -- swap metadata for src and dst
 
     @type  job: tuple
-    @param job: tuple with job argumetns  (src_file_record, src_volume_record, src_path,
+    @param job: tuple with job arguments  (src_file_record, src_volume_record, src_path,
      dst_file_record, dst_volume_record, tmp_path, mig_path)
     @rtype: str or None
     @return: None if file swapped OK, otherwise error string

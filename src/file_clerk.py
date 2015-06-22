@@ -721,7 +721,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 		      f.cache_status
                FROM file f
                WHERE f.package_id=%s
-                   AND f.bfid=%s
+                   AND f.bfid<>%s
                       """,(file_info.get("bfid"),file_info.get("bfid")))
 	       for finfo in result:
 		       finfo["location_cookie"] = file_info.get("location_cookie",None)
