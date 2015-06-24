@@ -840,8 +840,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             else:
                 Trace.log(DEBUGLOG,
-                          "FC error: %s. File was not included into package %s archive_status %s"%
-                          (rec['status'], rec['bfid'], rec['archive_status']))
+                          "FC error: %s. File was not included into package"%
+                          (rec,))
         for c in components_to_remove:
             request_list.remove(c)
         if len(request_list) == 0:
