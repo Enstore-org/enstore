@@ -6770,16 +6770,16 @@ def swap_metadata(job, fcc, db):
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
 def write_file(MY_TASK,
-	       src_bfid, src_path, tmp_path, mig_path,
+               src_bfid, src_path, tmp_path, mig_path,
                libraries, sg, ff, wrapper,
-	       deleted, encp, intf):
+               deleted, encp, intf):
         __pychecker__ = "unusednames=deleted" #Used to use; need in future?
 
 	# check destination path
 	if not mig_path:     # This can not happen!!!
 		error_log(MY_TASK, "%s is not a pnfs entry" % (mig_path,))
 		return 1
-	# check if the directory is witeable
+	# check if the directory is writeable
 	try:
 		(dst_directory, dst_basename) = os.path.split(mig_path)
 		d_stat = file_utils.get_stat(dst_directory)
@@ -6895,8 +6895,14 @@ def write_file(MY_TASK,
                        "--file-family-width", str(intf.file_family_width),
                        "--no-crc"]
 
-        argv = ["encp"] + use_verbose + encp_options + use_priority + \
-               dst_options + use_threads + [tmp_path, mig_path]
+        use_redirection = []
+        if intf.enable_redirection:
+            use_redirection += ['--enable-redirection']
+
+        argv = ["encp"] + use_verbose + encp_options \
+                + use_redirection + use_priority \
+                + dst_options + use_threads \
+                + [tmp_path, mig_path]
 
         if debug:
             cmd = string.join(argv)
@@ -9610,6 +9616,7 @@ class MigrateInterface(option.Interface):
         self.library__ = None
         self.infile = None
         self.file_family_width = 1
+        self.enable_redirection = 0
 
         self.do_print = []
         self.dont_print = []
@@ -9638,24 +9645,27 @@ class MigrateInterface(option.Interface):
 
     migrate_options = {
         option.DEBUG:{option.HELP_STRING:
-                "Output extra debugging information",
-                 option.VALUE_USAGE:option.IGNORED,
-			     option.VALUE_TYPE:option.INTEGER,
-			     option.USER_LEVEL:option.HIDDEN,
-                 option.DEFAULT_VALUE:1,
-                option.VALUE_NAME:'debug_level',
-                option.VALUE_TYPE:option.INTEGER,
-                option.VALUE_USAGE:option.OPTIONAL,
-                option.FORCE_SET_DEFAULT:option.FORCE,
-                option.VALUE_LABEL:"debug_level",
-                 },
-		option.DESTINATION_ONLY:{option.HELP_STRING:
-					 "Used with --status to only list "
-					 "output assuming the volume is a "
-					 "destination volume.",
-					 option.VALUE_USAGE:option.IGNORED,
-					 option.VALUE_TYPE:option.INTEGER,
-					 option.USER_LEVEL:option.USER,},
+            "Output extra debugging information",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.HIDDEN,
+            option.DEFAULT_VALUE:1,
+            option.VALUE_NAME:'debug_level',
+            option.VALUE_TYPE:option.INTEGER,
+            option.VALUE_USAGE:option.OPTIONAL,
+            option.FORCE_SET_DEFAULT:option.FORCE,
+            option.VALUE_LABEL:"debug_level",
+             },
+        option.DESTINATION_ONLY:{option.HELP_STRING:
+            "Used with --status to only list "
+            "output assuming the volume is a "
+            "destination volume.",
+        option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER, },
+        option.ENABLE_REDIRECTION:{option.HELP_STRING:
+            "Enable redirection to SFA",
+            option.VALUE_TYPE:option.INTEGER, },
 		option.FILE_FAMILY:{option.HELP_STRING:
 				    "Specify an alternative file family to "
 				    "override the pnfs file family tag.",
