@@ -8103,6 +8103,7 @@ def final_scan_volume(vol, intf):
                 warning_log(MY_TASK, message)
 
             continue
+
         #Second, get the bfid's file record.
         src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
         if not e_errors.is_ok(src_file_record):
@@ -8110,6 +8111,7 @@ def final_scan_volume(vol, intf):
                       "unable to obtain file information for %s" % (src_bfid,))
             local_error = local_error + 1
             continue
+
         #Third, get the source file's volume record.
         src_volume_record = get_volume_info(MY_TASK,
                                             src_file_record['external_label'],
@@ -8154,44 +8156,6 @@ def final_scan_volume(vol, intf):
         else:
             #Make sure we have the admin path.
             pass
-            """
-            try:
-                likely_path = find_pnfs_file.find_chimeraid_path(
-                    src_file_record['pnfsid'], dst_bfid,
-                    likely_path = dst_file_record['pnfs_name0'],
-                    path_type = enstore_constants.FS)
-            except (OSError, IOError), msg:
-                if msg.args[0] == errno.EBADF and \
-                     msg.args[1].find("conflicting layer") != -1:
-                    #If we get here, we have a state where PNFS is returning
-                    # different values for the normal pathname and the
-                    # .(access)() pathname.  Remounting the filesystem usually
-                    # clears this situation.
-                    local_error = local_error + 1
-                    error_log(MY_TASK, msg.args[1])
-                    log(MY_TASK, "HINT: remount the PNFS filesystem and/or " \
-                        "flush the PNFS file system buffer cache.")
-                else:
-                    exc_type, exc_value, exc_tb = sys.exc_info()
-                    Trace.handle_error(exc_type, exc_value, exc_tb)
-                    del exc_tb #avoid resource leaks
-                    error_log(MY_TASK, str(exc_type),
-                              str(exc_value),
-                              " %s %s %s %s is not a valid pnfs file" \
-                              % (
-                        dst_volume_record['external_label'],
-                        dst_bfid,
-                        dst_file_record['location_cookie'],
-                        dst_file_record['pnfsid']))
-                continue
-
-            if not is_expected_volume(
-                MY_TASK, vol, likely_path, fcc, db):
-                #Error message reported from
-                # is_expected_volume().
-                local_error = local_error + 1
-                continue
-            """
 
         #If we are using volume_assert, check what the assert returned.
         if intf.use_volume_assert or USE_VOLUME_ASSERT:
@@ -8223,10 +8187,6 @@ def final_scan_volume(vol, intf):
         ## Note: if we are using volume assert, then final_scan_file()
         ##       uses --check with the encp to avoid redundant
         ##       reading of the file.
-        #rtn_code = final_scan_file(MY_TASK, src_bfid, dst_bfid,
-        #			   pnfs_id, likely_path, deleted,
-        #                           is_multiple_copy,
-        #			   fcc, encp, intf, db)
         rtn_code = final_scan_file(MY_TASK, job, fcc, encp, intf, db)
         if rtn_code:
             local_error = local_error + 1
