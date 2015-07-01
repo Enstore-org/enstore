@@ -7827,8 +7827,8 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
         return cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db)
 
 # Helper function for the final_scan_files(), and it is only called from there
-# All arguments are internal varibales of the final_scan_files()
-def __scan_dest(MY_TASK,src_bfid, dst_bfid,dst_file_record,dst_volume_record,
+# All arguments are internal variables of the final_scan_files()
+def _scan_dest(MY_TASK,src_bfid, dst_bfid,dst_file_record,dst_volume_record,
             encp,intf,fcc,vcc,db):
 
     src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
@@ -7881,7 +7881,7 @@ def final_scan_files(dst_bfids, intf):
 
             # 1) destination is a regular file
             if not d_is_pack:
-                err_count += __scan_dest(MY_TASK, src_bfid,
+                err_count += _scan_dest(MY_TASK, src_bfid,
                              dst_bfid, dst_file_record, dst_volume_record,
                              encp,intf,fcc,vcc,db)
                 continue
@@ -7893,14 +7893,14 @@ def final_scan_files(dst_bfids, intf):
             # dst_bfid is found in migration table
             # scan destination package as before, as a regular file
             if check_dst_bfid is not None:
-                err_count += __scan_dest(MY_TASK, src_bfid,
+                err_count += _scan_dest(MY_TASK, src_bfid,
                              dst_bfid, dst_file_record, dst_volume_record,
                              encp,intf,fcc,vcc,db)
                 continue
 
             # 3) small files were packaged during migration
-            # destination is a package and not in migraiton table
-            # constutuent files are im migration table
+            # destination is a package and not in migration table
+            # constituent files are in migration table
 
             # find children for destination package bfid:
             d_children = fcc.get_children(dst_bfid)
@@ -7922,7 +7922,7 @@ def final_scan_files(dst_bfids, intf):
 
                 dc_vol = dc_rec['external_label']
                 dc_vol_rec = get_volume_info(MY_TASK,dc_vol,vcc,db)
-                err_count += __scan_dest(MY_TASK, sc_bfid,
+                err_count += _scan_dest(MY_TASK, sc_bfid,
                                          dc_bfid,dc_rec,dc_vol_rec,
                                          encp,intf,fcc, vcc, db)
     finally:
@@ -7931,7 +7931,7 @@ def final_scan_files(dst_bfids, intf):
 
 
 # final_scan() -- last part of migration, driven by scan_queue
-#   read the file as a user to reasure everything is fine
+#   read the file as a user to reassure everything is fine
 def final_scan(thread_num, scan_list, intf, deleted_files = NO):
     if deleted_files == YES:
         MY_TASK = "FINAL_SCAN_DELETED"
@@ -8153,7 +8153,7 @@ def final_scan_volume(vol, intf):
             # Now for active files.
             # 1) These could be new files written
             # to the destination tape.  We only need to worry about this
-            # here if the tape is being rescanned after being release to
+            # here if the tape is being rescanned after being released to
             # users to write additional files onto it.
             # 2) package file created during migration (packaging)
             if not d_is_pack:
