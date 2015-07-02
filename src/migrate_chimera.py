@@ -7872,15 +7872,16 @@ def final_scan_files(dst_bfids, intf):
             dst_vol = dst_file_record['external_label']
             dst_volume_record = get_volume_info(MY_TASK,dst_vol,vcc,db)
 
-            d_package_id = dst_file_record.get("package_id", None)
-            d_is_pack = ((d_package_id is not None)
-                and (d_package_id['bfid'] == d_package_id))
+            dst_package_id = dst_file_record.get("package_id", None)
+            dst_package_files_count = dst_file_record.get("package_files_count",0)
+            dst_is_a_package = ((dst_package_id is not None) 
+                                and (dst_bfid == dst_package_id))
 
             #Get source file info for dst_bfid from migration table
             (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
 
             # 1) destination is a regular file
-            if not d_is_pack:
+            if not dst_is_a_package:
                 err_count += _scan_dest(MY_TASK, src_bfid,
                              dst_bfid, dst_file_record, dst_volume_record,
                              encp,intf,fcc,vcc,db)
@@ -7925,6 +7926,9 @@ def final_scan_files(dst_bfids, intf):
                 err_count += _scan_dest(MY_TASK, sc_bfid,
                                          dc_bfid,dc_rec,dc_vol_rec,
                                          encp,intf,fcc, vcc, db)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log(MY_TASK, str(exc_type), str(exc_value), str(dst_bfid))
     finally:
         db.close()  #Avoid resource leaks.
     return err_count
@@ -8134,9 +8138,10 @@ def final_scan_volume(vol, intf):
     for dst_file_record in tape_list:
 
         dst_bfid = dst_file_record['bfid']
-        d_package_id = dst_file_record.get("package_id", None)
-        d_is_pack = (d_package_id is not None) \
-            and (d_package_id['bfid'] == d_package_id)
+        dst_package_id = dst_file_record.get("package_id", None)
+        dst_package_files_count = dst_file_record.get("package_files_count",0)
+        dst_is_a_package = ((dst_package_id is not None) 
+                                and (dst_bfid == dst_package_id))
 
         #Get the source info.
 
@@ -8156,7 +8161,7 @@ def final_scan_volume(vol, intf):
             # here if the tape is being rescanned after being released to
             # users to write additional files onto it.
             # 2) package file created during migration (packaging)
-            if not d_is_pack:
+            if not dst_is_a_package:
                 # new file - continue
                 message = "active file on destination tape without a source"
                 warning_log(MY_TASK, message)
@@ -9473,7 +9478,7 @@ def restore_package(dst_file_record, dst_bfid, dst_path,
     helper function to restore metadata for files in package associated with "dst"
     to the package referred by "src."
     Effectively, this method calls  File Clerk to "swap" package for small files.
-    Note, we keep same notation as elsewhere in the code, and in may seem unusial:
+    Note, we keep same notation as elsewhere in the code, and it may seem unusial:
         we swap files from destination "dst" to the source "src" as we restore metadata,
         where "src" is source file for migration and "dst" is the destination file for migration.
     cf - chimera.File for original path
