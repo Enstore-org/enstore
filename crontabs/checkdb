@@ -1,1 +1,1 @@
-35 0-23/2 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p checkdb -c 2 nice -n 20 python $ENSTORE_DIR/src/checkdb.py  > /dev/null 2> /dev/null
+35 0,12 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p checkdb -c 2 nice -n 20 python $ENSTORE_DIR/src/checkdb.py  > /dev/null 2> /dev/null
