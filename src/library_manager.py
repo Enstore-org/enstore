@@ -1496,29 +1496,39 @@ class LibraryManagerMethods:
         return rticket
 
 
-    def inquire_vol(self, external_label, vol_server_address = None):
+    def inquire_vol(self, external_label, requestor=None, vol_server_address = None):
         """
         Get volume record.
 
         :type external_label: :obj:`str`
         :arg external_label:  volume name
+        :type requestor: :obj:`dict`
+        :arg requestor:  mover ticket
         :type vol_server_address: :obj:`tuple`
         :arg vol_server_address: (:obj:`str`- IP address, :obj:`int` - port)
         :rtype: :obj:`dict` - volume record containing status
         """
 
-        Trace.trace(self.trace_level+2, 'inquire_vol')
-        if self.known_volumes.has_key(external_label):
-            vol_info = self.known_volumes[external_label]
+        Trace.trace(self.trace_level+2, 'inquire_vol label %s req %s addr=%s'%
+                    (external_label, requestor, vol_server_address))
+        if requestor and requestor.get('mover_type') == 'DiskMover':
+            vol_info = requestor # return information from mover
+            vol_info['system_inhibit'] = vol_info['volume_status'][0]
+            vol_info['user_inhibit'] = vol_info['volume_status'][1]
+        elif not external_label:
+            vol_info = {'status':('KEYERROR', 'volume_clerk: key external_label is None')}
         else:
-            self.set_vcc(vol_server_address)
-            vol_info = self.vcc.inquire_vol(external_label, timeout=INQUIRE_VOL_TO, retry=INQUIRE_VOL_RETRY)
-            Trace.trace(self.trace_level+2, 'inquire_vol %s'%(vol_info,))
-            if vol_info['status'][0] == e_errors.TIMEDOUT:
-                Trace.alarm(e_errors.INFO, "volume clerk problem inquire_volume %s TIMEDOUT"%(external_label,))
-            if not self.known_volumes.has_key(external_label):
-                self.known_volumes[external_label] = vol_info
-        Trace.trace(self.trace_level+2, 'inquire_vol %s'%(self.known_volumes,))
+            if self.known_volumes.has_key(external_label):
+                vol_info = self.known_volumes[external_label]
+            else:
+                self.set_vcc(vol_server_address)
+                vol_info = self.vcc.inquire_vol(external_label, timeout=INQUIRE_VOL_TO, retry=INQUIRE_VOL_RETRY)
+                Trace.trace(self.trace_level+2, 'inquire_vol %s'%(vol_info,))
+                if vol_info['status'][0] == e_errors.TIMEDOUT:
+                    Trace.alarm(e_errors.INFO, "volume clerk problem inquire_volume %s TIMEDOUT"%(external_label,))
+                if not self.known_volumes.has_key(external_label):
+                    self.known_volumes[external_label] = vol_info
+            Trace.trace(self.trace_level+2, 'inquire_vol %s'%(self.known_volumes,))
         Trace.trace(self.trace_level+2, 'inquire_vol returns %s'%(vol_info,))
 
         return vol_info
@@ -1544,6 +1554,12 @@ class LibraryManagerMethods:
         """
 
         Trace.trace(self.trace_level+2, 'write_volumes %s'%(self.write_volumes,))
+        if self.mover_type(mover) == 'DiskMover':
+            # no new volume needed
+            v = {'status' : (e_errors.OK, None),
+                 'external_label': None}
+            return v
+
         required_bytes = max(long(size*SAFETY_FACTOR), MIN_LEFT)
         for vol_rec in self.write_volumes:
             if ((library == vol_rec['library']) and
@@ -2756,7 +2772,7 @@ class LibraryManagerMethods:
             else:
                 return  None, (e_errors.NOWORK, None)
 
-        self.current_volume_info = self.inquire_vol(label)
+        self.current_volume_info = self.inquire_vol(label, requestor)
 
         Trace.trace(self.trace_level, "next_work_this_volume: current volume info: %s"%(self.current_volume_info,))
         if self.current_volume_info['status'][0] == e_errors.TIMEDOUT:
@@ -4180,7 +4196,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w['work'] == 'write_to_hsm':
             initial_file_family = w['vc']['file_family'] # to deal with ephemeral FF
             # update volume info
-            vol_info = self.inquire_vol(w["fc"]["external_label"], w['vc']['address'])
+            vol_info = self.inquire_vol(w["fc"]["external_label"], None, w['vc']['address'])
             if vol_info['status'][0] == e_errors.OK:
                 w['vc'].update(vol_info)
             if initial_file_family == 'ephemeral':
@@ -4261,7 +4277,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             Trace.trace(self.my_trace_level+1,"mover_idle:inquire_vol")
 
-            vol_info = self.inquire_vol(mticket['external_label'], w['vc']['address'])
+            vol_info = self.inquire_vol(mticket['external_label'], mticket, w['vc']['address'])
             mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                         vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             if "Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1]:
@@ -4332,7 +4348,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # Try to get volume info.
                 # If it fails then log this and do not update at_movers list
                 volume_clerk_address = mticket.get("volume_clerk", None)
-                vol_info = self.inquire_vol(mticket['external_label'], volume_clerk_address)
+                vol_info = self.inquire_vol(mticket['external_label'], mticket, volume_clerk_address)
                 if vol_info['status'][0] == e_errors.OK:
                     mticket['volume_family'] = vol_info['volume_family']
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['none', 'none']),
@@ -4436,7 +4452,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
             else:
                 volume_clerk_address = mticket.get("volume_clerk", None)
-                vol_info = self.inquire_vol(mticket['external_label'], volume_clerk_address)
+                vol_info = self.inquire_vol(mticket['external_label'], mticket, volume_clerk_address)
                 if vol_info['status'][0] == e_errors.OK:
                     mticket['volume_family'] = vol_info['volume_family']
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['none', 'none']),
@@ -4532,7 +4548,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
             if w['work'] == 'write_to_hsm':
                 # update volume info
-                vol_info = self.inquire_vol(w["fc"]["external_label"], w['vc']['address'])
+                vol_info = self.inquire_vol(w["fc"]["external_label"], mticket, w['vc']['address'])
                 if vol_info['status'][0] == e_errors.OK:
                     w['vc'].update(vol_info)
 	    log_add_to_wam_queue(w['vc'])
@@ -4565,7 +4581,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 if self.mover_type(mticket) == 'DiskMover':
                     mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
                 else:
-                    vol_info = self.inquire_vol(mticket['external_label'], w['vc']['address'])
+                    vol_info = self.inquire_vol(mticket['external_label'], mticket, w['vc']['address'])
                     if vol_info['status'][0] != e_errors.OK:
                         Trace.log(e_errors.ERROR, "mover_bound_volume 2: can not update volume info, status:%s"%
                                   (vol_info['status'],))

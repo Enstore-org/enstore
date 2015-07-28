@@ -7515,8 +7515,8 @@ class DiskMover(Mover):
         :arg volume_family: volume family from work ticket
         """
 
-        # time format: ISO8601
-        return string.join((ip_map, volume_family,time.strftime("%Y-%m-%dT%H:%M:%SZ")),':')
+        #return string.join((ip_map, volume_family,time.strftime("%Y-%m-%dT%H:%M:%SZ")),':')
+        return string.join((ip_map, volume_family,),':')
 
     def setup_transfer(self, ticket, mode):
         """
@@ -7629,20 +7629,14 @@ class DiskMover(Mover):
                                                          server_address=vc['address'])
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = self.current_volume
-        Trace.log(e_errors.INFO, "CUR LABEL %s" % (volume_label,))
-
         self.current_location = 0L
-        if volume_label:
-            self.vol_info.update(self.vcc.inquire_vol(volume_label))
-            self.current_location = cookie_to_long(self.vol_info['eod_cookie'])
-        else:
-            Trace.log(e_errors.INFO, "setup_transfer: volume label=%s" % (volume_label,))
+        if not volume_label:
             if  self.setup_mode == WRITE:
                 self.current_volume = self.create_volume_name(self.ip_map,
                                                               self.volume_family)
                 self.vol_info['external_label'] = self.current_volume
                 self.vol_info['status'] = (e_errors.OK, None)
-                Trace.trace(e_errors.INFO, "new volume label created %s"%(self.current_volume,))
+
         if self.vol_info['status'][0] != e_errors.OK:
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
                 self.setup_mode, e_errors.EPROTO), self.vol_info['status'][1])
@@ -8043,10 +8037,6 @@ class DiskMover(Mover):
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
             self.current_volume, 0))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
-        if self.mode == WRITE:
-            self.vcc.update_counts(self.current_volume, wr_access=1)
-        else:
-            self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
         self.network_write_active = False # reset to indicate no network activity
@@ -8115,13 +8105,11 @@ class DiskMover(Mover):
         #Get the volume information. If necessary create a new one.
         Trace.trace(15,"inquire volume %s"%(self.current_volume,))
         v = self.vcc.inquire_vol(self.current_volume)
-        import statvfs
-        stats = os.statvfs(self.config['device'])
-        r2 = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
         if v['status'][0] == e_errors.NO_VOLUME:
             # volume does not exist, create it!
             Trace.log(e_errors.INFO, "new disk volume request")
-
+            stats = os.statvfs(self.config['device'])
+            r2 = long(stats.f_bavail)*stats.f_bsize
             r = self.vcc.add(self.vol_info['library'],
                              volume_family.extract_file_family(self.vol_info['volume_family']),
                              volume_family.extract_storage_group(self.vol_info['volume_family']),
@@ -8137,7 +8125,7 @@ class DiskMover(Mover):
                           "cannot assign new bfid")
                 self.transfer_failed(e_errors.ERROR, "Cannot add new volume")
                 return 0
-            self.vol_info['remaining_bytes'] = r2
+            self.vol_info.update(r)
         elif v['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,
                       "cannot assign new bfid")
@@ -8160,20 +8148,6 @@ class DiskMover(Mover):
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
 
-        r0 = self.vol_info.get('remaining_bytes', r2)  #value prior to this write
-        #vol_info['remaining_bytes'] may be not defined if the volume has just been added by another mover.
-        r1 = r0 - self.bytes_written           #value derived from simple subtraction
-        remaining = min(r1, r2)
-        self.vol_info['remaining_bytes']=remaining
-        reply = self.vcc.set_remaining_bytes(self.current_volume,
-                                             remaining,
-                                             loc_to_cookie(self.current_location+1), bfid)
-        if reply['status'][0] != e_errors.OK:
-            self.set_volume_noaccess(self.current_volume, "Failed to update volume information on %s, EOD %s. May cause a data loss. See log for details"%
-                                     (self.current_volume, self.vol_info['eod_cookie']))
-            self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
-            return 0
-        self.vol_info.update(reply)
         self.current_work_ticket['vc'].update(self.vol_info)
 
         return 1
