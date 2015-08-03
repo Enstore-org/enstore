@@ -112,6 +112,7 @@ import exceptions
 import re
 import stat
 import socket
+import traceback
 
 # enstore imports
 import bfid_util
@@ -630,6 +631,32 @@ def init(intf):
 
     return
 
+class Pgdb:
+    """contextmanager class to ensure db.close()"""
+    def __enter__(self):
+        self.db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.db.close()
+
+def get_csc():
+    """get Configuration Client"""
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    return configuration_client.ConfigurationClient((config_host,config_port))
+
+def get_clerks():
+    """get File Clerk and Volume Clerk Clients"""
+    csc = get_csc()
+    return (file_clerk_client.FileClient(csc),
+            volume_clerk_client.VolumeClerkClient(csc),)
+
+def get_fcc():
+    """get File Clerk Client"""
+    return file_clerk_client.FileClient(get_csc())
+
+def get_vcc():
+    """get Volume Clerk Client"""
+    return volume_clerk_client.VolumeClerkClient(get_csc())
 
 #Return two important values for the copy queue:
 # 1) The number of files that should be read, per thread, before writes
@@ -2793,6 +2820,9 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
     return return_list #list of file record dictionaries
 
 ##########################################################################
+# This function needs refactoring.
+# FIXME: len(res) == 0 not reported as error or warning (return is 0)
+# FIXME: exceptions not processed
 
 def mark_deleted(MY_TASK, bfid, fcc, db):
     """
@@ -5895,7 +5925,6 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
             #We failed spectacularly!
 
             print "HERE WE ARE ",  sys.exc_info()
-            import traceback
             traceback.print_tb(sys.exc_info()[2])
 
             pass_along_jobs = None #Set this so we can continue.
@@ -7498,7 +7527,6 @@ def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
 		res = encp.encp(argv)
 	except:
 		exc, msg, tb = sys.exc_info()
-		import traceback
 		traceback.print_tb(tb)
 		print exc, msg
 		res = 1
@@ -7826,7 +7854,7 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
         # cleanup_after_scan() reports its own errors.
         return cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db)
 
-# Helper function for the final_scan_files(), and it is only called from there
+# Helper function for the final_scan_files(), it is called only from there.
 # All arguments are internal variables of the final_scan_files()
 def _scan_dest(MY_TASK,src_bfid, dst_bfid,dst_file_record,dst_volume_record,
             encp,intf,fcc,vcc,db):
@@ -7851,86 +7879,84 @@ def _scan_dest(MY_TASK,src_bfid, dst_bfid,dst_file_record,dst_volume_record,
 #If given a list of destination bfids, scan them.
 def final_scan_files(dst_bfids, intf):
     MY_TASK = "FINAL_SCAN"
-    err_count = 0
 
     threading.currentThread().setName('FINAL_SCAN')
     encp = encp_wrapper.Encp(tid='FINAL_SCAN')
 
-    # get its own file & volume clerk client
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,config_port))
-    fcc = file_clerk_client.FileClient(csc)
-    vcc = volume_clerk_client.VolumeClerkClient(csc)
+    # get its own file & volume clerk clients
+    (fcc,vcc) = get_clerks()
+    err_count = 0
 
-    try:
-        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+    with Pgdb as db:
+        try:
+            for dst_bfid in dst_bfids:
+                #Get the destination info.
+                dst_file_record = get_file_info(MY_TASK, dst_bfid, fcc, db)
+                dst_vol = dst_file_record['external_label']
+                dst_volume_record = get_volume_info(MY_TASK,dst_vol,vcc,db)
 
-        for dst_bfid in dst_bfids:
-            #Get the destination info.
-            dst_file_record = get_file_info(MY_TASK, dst_bfid, fcc, db)
-            dst_vol = dst_file_record['external_label']
-            dst_volume_record = get_volume_info(MY_TASK,dst_vol,vcc,db)
+                dst_package_id = dst_file_record.get("package_id", None)
+#               dst_package_files_count = dst_file_record.get("package_files_count",0)
+                dst_is_a_package = ((dst_package_id is not None)
+                                    and (dst_bfid == dst_package_id))
 
-            dst_package_id = dst_file_record.get("package_id", None)
-            dst_package_files_count = dst_file_record.get("package_files_count",0)
-            dst_is_a_package = ((dst_package_id is not None) 
-                                and (dst_bfid == dst_package_id))
+                #Get source file info for dst_bfid from migration table
+                (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
 
-            #Get source file info for dst_bfid from migration table
-            (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
-
-            # 1) destination is a regular file
-            if not dst_is_a_package:
-                err_count += _scan_dest(MY_TASK, src_bfid,
-                             dst_bfid, dst_file_record, dst_volume_record,
-                             encp,intf,fcc,vcc,db)
-                continue
-
-            # destination is a package
-
-            # 2) SFA migration through the switch of whole-package:
-            #    src,dst package is in migration table but no chidren there
-            # dst_bfid is found in migration table
-            # scan destination package as before, as a regular file
-            if check_dst_bfid is not None:
-                err_count += _scan_dest(MY_TASK, src_bfid,
-                             dst_bfid, dst_file_record, dst_volume_record,
-                             encp,intf,fcc,vcc,db)
-                continue
-
-            # 3) small files were packaged during migration
-            # destination is a package and not in migration table
-            # constituent files are in migration table
-
-            # find children for destination package bfid:
-            d_children = fcc.get_children(dst_bfid)
-            if not e_errors.is_ok(d_children['status']):
-                message = ("Failed to get children for dst_bfid %s: %s"
-                           % (dst_bfid, d_children['status']))
-                error_log(MY_TASK, message)
-                err_count += 1
-                continue
-
-            for dc_rec in d_children['children']:
-                dc_bfid = dc_rec['bfid']
-                # skip the original package record
-                if dc_bfid == dst_bfid:
+                # 1) destination file is a regular file
+                if not dst_is_a_package:
+                    err_count += _scan_dest(MY_TASK, src_bfid,
+                                 dst_bfid, dst_file_record, dst_volume_record,
+                                 encp,intf,fcc,vcc,db)
                     continue
 
-                #Get source file info for dc_bfid from migration table
-                (sc_bfid, check_dc_bfid) = get_bfids(dc_bfid, fcc, db)
+                # 2) destination file is a package
 
-                dc_vol = dc_rec['external_label']
-                dc_vol_rec = get_volume_info(MY_TASK,dc_vol,vcc,db)
-                err_count += _scan_dest(MY_TASK, sc_bfid,
-                                         dc_bfid,dc_rec,dc_vol_rec,
-                                         encp,intf,fcc, vcc, db)
-    except:
-        exc_type, exc_value = sys.exc_info()[:2]
-        error_log(MY_TASK, str(exc_type), str(exc_value), str(dst_bfid))
-    finally:
-        db.close()  #Avoid resource leaks.
+                # 2a) SFA package-based migration was used to migrate the package.
+                #  The parent package was switched for constituent files by single
+                #     call to file clerk.
+                #  src,dst packages are in migration table but no constituent files
+                #      are there
+                #  dst_bfid for the package is found in migration table
+                #
+                # scan destination package as before, as a regular file
+                if check_dst_bfid is not None:
+                    err_count += _scan_dest(MY_TASK, src_bfid,
+                                 dst_bfid, dst_file_record, dst_volume_record,
+                                 encp,intf,fcc,vcc,db)
+                    continue
+
+                # 2b) Constituent files were packaged during migration.
+                # The destination file is a package and it is not in the migration
+                # table, constituent files are in migration table
+
+                # find constituent files for destination package bfid:
+                d_children = fcc.get_children(dst_bfid)
+                if not e_errors.is_ok(d_children['status']):
+                    message = ("Failed to get children for dst_bfid %s: %s"
+                               % (dst_bfid, d_children['status']))
+                    error_log(MY_TASK, message)
+                    err_count += 1
+                    continue
+
+                for dc_rec in d_children['children']:
+                    dc_bfid = dc_rec['bfid']
+                    # skip the original package record
+                    if dc_bfid == dst_bfid:
+                        continue
+
+                    #Get source file info for dc_bfid from migration table
+                    (sc_bfid, check_dc_bfid) = get_bfids(dc_bfid, fcc, db)
+
+                    dc_vol = dc_rec['external_label']
+                    dc_vol_rec = get_volume_info(MY_TASK,dc_vol,vcc,db)
+                    err_count += _scan_dest(MY_TASK, sc_bfid,
+                                            dc_bfid,dc_rec,dc_vol_rec,
+                                            encp,intf,fcc, vcc, db)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            error_log(MY_TASK, str(exc_type), str(exc_value), str(dst_bfid))
+
     return err_count
 
 
@@ -7943,13 +7969,7 @@ def final_scan(thread_num, scan_list, intf, deleted_files = NO):
         MY_TASK = "FINAL_SCAN"
 
     # get its own file clerk client
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,config_port))
-    fcc = file_clerk_client.FileClient(csc)
-
-    # get a database connection
-    db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+    fcc = get_fcc()
 
     # set thread name
     name_ending = "_0"
@@ -7961,23 +7981,21 @@ def final_scan(thread_num, scan_list, intf, deleted_files = NO):
 
     encp = encp_wrapper.Encp(tid = "FINAL_SCAN%s" % (name_ending,))
 
-    #Loop over the files ready for scanning.
-    for job in scan_list:
-        try:
-            final_scan_file(MY_TASK, job, fcc, encp, intf, db)
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            #Report the error so we can continue.
-            exc_type, exc_value, exc_tb = sys.exc_info()
-            Trace.handle_error(exc_type, exc_value, exc_tb)
-            del exc_tb #avoid resource leaks
-            error_log(MY_TASK, str(exc_type),str(exc_value),
-                      " scanning file for %s" % (job,))
-            break
-        finally:
-            db.close()  #Avoid resource leaks.
-    # make sure you close db connection if you add more code below.
+    with Pgdb() as db:
+        #Loop over the files ready for scanning.
+        for job in scan_list:
+            try:
+                final_scan_file(MY_TASK, job, fcc, encp, intf, db)
+            except (KeyboardInterrupt, SystemExit):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:
+                #Report the error so we can continue.
+                exc_type, exc_value, exc_tb = sys.exc_info()
+                Trace.handle_error(exc_type, exc_value, exc_tb)
+                del exc_tb #avoid resource leaks
+                error_log(MY_TASK, str(exc_type),str(exc_value),
+                          " scanning file for %s" % (job,))
+                break
 
 # NOT DONE YET, consider deleted file in final scan
 # Is the file deleted due to copying error?
@@ -7990,393 +8008,329 @@ def final_scan(thread_num, scan_list, intf, deleted_files = NO):
 # if it is a migrated deleted file, check it, too
 def final_scan_volume(vol, intf):
     MY_TASK = "FINAL_SCAN_VOLUME"
-    local_error = 0
-    # get its own fcc and vcc
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,
-                                                    config_port))
-    fcc = file_clerk_client.FileClient(csc)
-    vcc = volume_clerk_client.VolumeClerkClient(csc)
 
     # get an encp
     threading.currentThread().setName('FINAL_SCAN')
     encp = encp_wrapper.Encp(tid='FINAL_SCAN')
     volume_assert = volume_assert_wrapper.VolumeAssert(tid='FINAL_SCAN')
+    (fcc,vcc) = get_clerks()
 
+    local_error = 0
 
     log(MY_TASK, "verifying volume", vol)
 
     dst_volume_record = vcc.inquire_vol(vol)
     if dst_volume_record['status'][0] != e_errors.OK:
-        error_log(MY_TASK,
-                  "failed to find volume %s: %s" % (vol,
-                                      dst_volume_record['status'][1]))
+        error_log(MY_TASK,"failed to find volume %s: %s"
+                  % (vol,dst_volume_record['status'][1]))
         return 1
     if debug:
         log(MY_TASK, "volume_info:", str(dst_volume_record))
 
-    # get a db connection
-    db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+    with Pgdb as db:
+        sg, ff, wp = string.split(dst_volume_record['volume_family'], '.')
 
-    # make sure this is a migration volume
-    sg, ff, wp = string.split(dst_volume_record['volume_family'], '.')
-    is_migration_closed = is_migration_history_closed(MY_TASK, vol, db)
-    if is_migration_closed == None:
-        #Confirm that the history does not return an error case.  If it did
-        # we get here.
-        error_log(MY_TASK, "Unable to continue, migration history error")
-        db.close()  #Avoid resource leaks.
-        return 1
-    if not migrated_from(vol, db):
-        #This volume is not a destination volume.
-        error_log(MY_TASK, "%s is not a %s volume" %
-                  (vol, MIGRATION_NAME.lower()))
-        db.close()  #Avoid resource leaks.
-        return 1
-    elif not is_migration_closed:
-        #If the scanning is not recorded as completed in the migration_history
-        # table, let the scanning proceed regardless of the following
-        # system_inhibit and file_family tests.
-        pass
-    # make sure the volume is ok to scan (check system_inhibit 0)
-    elif dst_volume_record['system_inhibit'][0] != 'none':
-        error_log(MY_TASK, 'volume %s is "%s"' % (vol,
-                                      dst_volume_record['system_inhibit'][0]))
-        db.close()  #Avoid resource leaks.
-        return 1
-    # If the destination tapes are already migrated, don't continue.
-    elif not is_migration_file_family(ff) and \
-             not getattr(intf, "force", None):
-        error_log(MY_TASK, "%s has a non-%s file family" %
-                  (vol, MIGRATION_NAME.lower()))
-        db.close()  #Avoid resource leaks.
-        return 1
-    #Verify that the system_inhibit 1 is in a valid state too.
-    elif (dst_volume_record['system_inhibit'][1] != 'full' and \
-            dst_volume_record['system_inhibit'][1] != 'none' and \
-            dst_volume_record['system_inhibit'][1] != 'readonly') \
-            and is_migrated_by_dst_vol(vol, intf, db):
-        error_log(MY_TASK, 'volume %s is "%s"' % (vol,
-                                      dst_volume_record['system_inhibit'][1]))
-        db.close()  #Avoid resource leaks.
-        return 1
+        # make sure this is a migration volume
+        is_migration_closed = is_migration_history_closed(MY_TASK, vol, db)
+        if is_migration_closed == None:
+            error_log(MY_TASK, "Unable to continue, migration history error")
+            return 1
 
-    #Warn if the volume about to be scanned is not full.  Scan a non-
-    # full tape will not allow future migration files to be written
-    # onto it (without intervention anyway).
-    if dst_volume_record['system_inhibit'][1] != 'full':
-        warning_log(MY_TASK, 'volume %s is not "full"'%(vol))
-    #If necessary set the system_inhibit_1 to readonly.  Leave "full"
-    # alone, but change the others.
-    if dst_volume_record['system_inhibit'][1] != "readonly" and \
-           dst_volume_record['system_inhibit'][1] != 'full':
-        vcc.set_system_readonly(vol)
-        log(MY_TASK, 'set %s to readonly'%(vol))
-
-    #Get the CRCs for all files on the tape.
-    assert_errors = {}
-    if intf.use_volume_assert or USE_VOLUME_ASSERT:
-        log(MY_TASK, "asserting %s" % (vol,))
-        volume_assert_options = "--crc-check"
-        cmd = "volume_assert --volume %s %s" % (vol,
-                                                volume_assert_options)
-        try:
-            res = volume_assert.volume_assert(cmd)
-        except:
-            exc, msg, tb = sys.exc_info()
-            import traceback
-            traceback.print_tb(tb)
-            print exc, msg
-            local_error = local_error + 1
-            db.close()  #Avoid resource leaks.
-            return local_error
-
-        #Look for the assert of this volume.  There should only be one though.
-        for done_ticket in volume_assert.err_msg:
-            if done_ticket['volume'] == vol:
-                break
-        else:
-            message = "volume %s return information not found" % (vol,)
-            error_log(MY_TASK, message)
-            local_error = local_error + 1
-            db.close()  #Avoid resource leaks.
-            return local_error
-
-        #At this point, done_ticket['return_file_list'] is a dictionary,
-        # keyed by location cookie of any errors that occured reading
-        # the files.
-
-        if res == 0:
-            ok_log(MY_TASK, vol)
-            assert_errors = done_ticket['return_file_list']
-        else: # error
-            error_log(MY_TASK, "failed on %s error = %s"
-                      % (vol, done_ticket['status']))
-            assert_errors = done_ticket.get('return_file_list', [])
-            if len(assert_errors) == 0:
-                #If we had an error and didn't get anything in the file
-                # list, then give up.
-                local_error = local_error + 1
-                db.close()  #Avoid resource leaks.
-                return local_error
-            else:
-                #If the volume assert failed, but did return some file
-                # information, try and proceed.
-                pass
-
-    #tape_list is a list of file records
-    tape_list = get_tape_list(MY_TASK, vol, fcc, db, intf)
-    # Detect empty tapes.
-    if len(tape_list) == 0:
-        log(MY_TASK, vol, "volume is empty")
-        db.close()  #Avoid resource leaks.
-        return 0
-
-    # Loop over all files (unpackaged files and packages) on the tape
-    #  and verify everything is okay.
-    for dst_file_record in tape_list:
-
-        dst_bfid = dst_file_record['bfid']
-        dst_package_id = dst_file_record.get("package_id", None)
-        dst_package_files_count = dst_file_record.get("package_files_count",0)
-        dst_is_a_package = ((dst_package_id is not None) 
-                                and (dst_bfid == dst_package_id))
-
-        #Get the source info.
-
-        #First, get the src_bfid.
-        (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
-
-        if src_bfid == None and check_dst_bfid == None:
-            if dst_file_record['deleted'] in [YES, UNKNOWN]:
-                #The file is a failed migration file.
-                message = "found failed migration file %s, skipping" % (dst_bfid,)
-                log(MY_TASK, message)
-                continue
-
-            # Now for active files.
-            # 1) These could be new files written
-            # to the destination tape.  We only need to worry about this
-            # here if the tape is being rescanned after being released to
-            # users to write additional files onto it.
-            # 2) package file created during migration (packaging)
-            if not dst_is_a_package:
-                # new file - continue
-                message = "active file on destination tape without a source"
-                warning_log(MY_TASK, message)
-                continue
-
-        #Second, get the bfid's file record.
-        src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
-        if not e_errors.is_ok(src_file_record):
-            error_log(MY_TASK,
-                      "unable to obtain file information for %s" % (src_bfid,))
-            local_error = local_error + 1
-            continue
-
-        #Third, get the source file's volume record.
-        src_volume_record = get_volume_info(MY_TASK,
-                                            src_file_record['external_label'],
-                                            vcc, db, use_cache=True)
-
-        job = (src_file_record, src_volume_record, None,
-               dst_file_record, dst_volume_record, None, None)
-
-        st = is_swapped(src_bfid, fcc, db)
-        if not st:
-            error_log(MY_TASK,
-                      "%s %s has not been swapped" \
-                      % (src_bfid, dst_bfid))
-            local_error = local_error + 1
-            continue
-
-        checked_timestamp = is_checked(dst_bfid, fcc, db)
-
-        #If the user deleted the files, require --with-deleted be
-        # used on the command line.  If the volume only contains
-        # deleted files, which is determined from the file_family
-        # part of the volume_family triple, the allow for scanning
-        # without --with-deleted to be required on the command line.
-        if dst_file_record['deleted'] == YES and \
-               (intf.with_deleted or
-                dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) != -1):
-            pass #Just use likely_path; the file is deleted anyway.
-        elif dst_file_record['deleted'] == YES and not intf.with_deleted:
-            log(MY_TASK,
-                "Skipping scan of deleted file: %s" \
-                % (dst_bfid,))
-            continue
-        elif is_copied(dst_bfid, fcc, db):
-            log(MY_TASK, "found destination bfid, %s, already migrated" \
-                % (dst_bfid,))
-            # This should be correct.  We don't need to pass a "src_path"
-            # here as final_scan_file() figures that out on its own.
+        if not migrated_from(vol, db):
+            #This volume is not a destination volume.
+            error_log(MY_TASK, "%s is not a %s volume" % (vol, MIGRATION_NAME.lower()))
+            return 1
+        # FIXME: this is never True due to test and return above
+        elif not is_migration_closed:
+            #If the scanning is not recorded as completed in the migration_history
+            # table, let the scanning proceed regardless of the following
+            # system_inhibit and file_family tests.
             pass
-        elif checked_timestamp:
-            #Already checked.  We don't need to pass a "src_path"
-            # here as final_scan_file() figures that out on its own.
-            pass
-        else:
-            #Make sure we have the admin path.
-            pass
-            """
-            try:
-                likely_path = find_pnfs_file.find_chimeraid_path(
-                    src_file_record['pnfsid'], dst_bfid,
-                    likely_path = dst_file_record['pnfs_name0'],
-                    path_type = enstore_constants.FS)
-            except (OSError, IOError), msg:
-                if msg.args[0] == errno.EBADF and \
-                     msg.args[1].find("conflicting layer") != -1:
-                    #If we get here, we have a state where PNFS is returning
-                    # different values for the normal pathname and the
-                    # .(access)() pathname.  Remounting the filesystem usually
-                    # clears this situation.
-                    local_error = local_error + 1
-                    error_log(MY_TASK, msg.args[1])
-                    log(MY_TASK, "HINT: remount the PNFS filesystem and/or " \
-                        "flush the PNFS file system buffer cache.")
-                else:
-                    exc_type, exc_value, exc_tb = sys.exc_info()
-                    Trace.handle_error(exc_type, exc_value, exc_tb)
-                    del exc_tb #avoid resource leaks
-                    error_log(MY_TASK, str(exc_type),
-                              str(exc_value),
-                              " %s %s %s %s is not a valid pnfs file" \
-                              % (
-                        dst_volume_record['external_label'],
-                        dst_bfid,
-                        dst_file_record['location_cookie'],
-                        dst_file_record['pnfsid']))
-                continue
+        # make sure the volume is ok to scan (check system_inhibit 0)
+        elif dst_volume_record['system_inhibit'][0] != 'none':
+            error_log(MY_TASK, 'volume %s is "%s"'
+                      % (vol,dst_volume_record['system_inhibit'][0]))
+            return 1
+        # If the destination tapes are already migrated, don't continue.
+        elif (not is_migration_file_family(ff)
+              and not getattr(intf, "force", None)):
+            error_log(MY_TASK,"%s has a non-%s file family"
+                      % (vol, MIGRATION_NAME.lower()))
+            return 1
+        #Verify that the system_inhibit 1 is in a valid state too.
+        elif ((dst_volume_record['system_inhibit'][1] != 'full'
+                and dst_volume_record['system_inhibit'][1] != 'none'
+                and dst_volume_record['system_inhibit'][1] != 'readonly')
+              and is_migrated_by_dst_vol(vol, intf, db)):
+            error_log(MY_TASK, 'volume %s is "%s"'
+                      % (vol,dst_volume_record['system_inhibit'][1]))
+            return 1
 
-            if not is_expected_volume(
-                MY_TASK, vol, likely_path, fcc, db):
-                #Error message reported from
-                # is_expected_volume().
-                local_error = local_error + 1
-                continue
-            """
+        # Warn if the volume about to be scanned is not full.
+        # The scan of non-full tape will prevent future migration of files to this tape.
+        if (dst_volume_record['system_inhibit'][1] != 'full'):
+            warning_log(MY_TASK, 'volume %s is not "full"'%(vol))
+            if (dst_volume_record['system_inhibit'][1] != "readonly"):
+                vcc.set_system_readonly(vol)
+                log(MY_TASK, 'set %s to readonly'%(vol))
 
-        #If we are using volume_assert, check what the assert returned.
+        #Get the CRCs for all files on the tape.
+        assert_errors = {}
         if intf.use_volume_assert or USE_VOLUME_ASSERT:
-            if not assert_errors.has_key(dst_file_record['location_cookie']):
-                error_log(MY_TASK,
-                          "assert of %s was not found in returned assert list"
-                          % (dst_bfid,))
-                local_error = local_error + 1
-                continue
+            log(MY_TASK, "asserting %s" % (vol,))
+            volume_assert_options = "--crc-check"
+            cmd = ("volume_assert --volume %s %s"
+                   % (vol,volume_assert_options))
+            try:
+                res = volume_assert.volume_assert(cmd)
+            except:
+                exc, msg, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                print exc, msg
+                return 1
 
-            if not e_errors.is_ok(assert_errors[dst_file_record['location_cookie']]):
-                error_log(MY_TASK,
-                          "assert of %s %s:%s failed" % \
-                          (dst_bfid, vol, dst_file_record['location_cookie']))
-                local_error = local_error + 1
-                continue
-
-            log(MY_TASK, "assert of %s %s:%s succeeded" % \
-                (dst_bfid, vol, dst_file_record['location_cookie']))
-
-        ## Scan the file by reading it with encp.
-        ## Note: if we are using volume assert, then final_scan_file()
-        ##       uses --check with the encp to avoid redundant
-        ##       reading of the file.
-        rtn_code = final_scan_file(MY_TASK, job, fcc, encp, intf, db)
-        if rtn_code:
-            local_error = local_error + 1
-
-            if not intf.use_volume_assert and \
-               not USE_VOLUME_ASSERT:
-                #If we failed reading the file, check if
-                # the tape is still accessable.
-                if not is_volume_allowed(vol, vcc, db):
-                    # If we get here the tape has been
-                    # marked NOACCESS or NOTALLOWED.
-                    message = "%s is NOACCESS or NOTALLOWED" \
-                              % (vol,)
-                    error_log(MY_TASK, message)
+            # Look for the assert of this volume.  There should be only one though.
+            for done_ticket in volume_assert.err_msg:
+                if done_ticket['volume'] == vol:
                     break
-            continue
+            else:
+                message = "volume %s return information not found" % (vol,)
+                error_log(MY_TASK, message)
+                return 1
 
-        # If we get here, then the file has been scaned.
-        # Consider it closed too.
-        closed = is_closed(dst_bfid, fcc, db)
-        if not closed:
-            log_closed(src_bfid, dst_bfid, fcc, db)
-            close_log('OK')
+            #At this point, done_ticket['return_file_list'] is a dictionary
+            # keyed by location cookie of any errors that occured reading
+            # the files.
 
-    # restore file family only if there is no error
-    if not local_error and is_migrated_by_dst_vol(vol, intf, db):
-        rtn_code = set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db)
-        if rtn_code:
-            local_error = local_error + 1
-    else:
-        error_log(MY_TASK,
-                  "skipping volume metadata update since not all files have been scanned")
+            assert_errors = done_ticket.get('return_file_list', [])
+            if res == 0:
+                ok_log(MY_TASK, vol)
+            else:
+                # volume assert failed
+                local_error += 1
+                error_log(MY_TASK, "failed on %s error = %s"
+                          % (vol, done_ticket['status']))
 
-    db.close()  #Avoid resource leaks.
+                # if assert failed and the list is empty - give up.
+                if len(assert_errors) == 0:
+                    return 1
+                # Otherwise try to proceed with information returned 
+                #   by vol assert despite the error
 
-    return local_error
+        # tape_list is a list of file records
+        tape_list = get_tape_list(MY_TASK, vol, fcc, db, intf)
+        # Detect empty tapes.
+        if len(tape_list) == 0:
+            log(MY_TASK, vol, "volume is empty")
+            return 0
+
+        # Loop over all files (unpackaged files and packages) on the tape
+        #  and verify everything is okay.
+        for dst_file_record in tape_list:
+            dst_bfid = dst_file_record['bfid']
+            dst_package_id = dst_file_record.get("package_id", None)
+#            dst_package_files_count = dst_file_record.get("package_files_count",0)
+            dst_is_a_package = ((dst_package_id is not None) 
+                                    and (dst_bfid == dst_package_id))
+
+            #Get the source info.
+
+            #First, get the src_bfid.
+            (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
+
+            if src_bfid == None and check_dst_bfid == None:
+                if dst_file_record['deleted'] in [YES, UNKNOWN]:
+                    #The file is a failed migration file.
+                    message = "found failed migration file %s, skipping" % (dst_bfid,)
+                    log(MY_TASK, message)
+                    continue
+
+                # Now for active files.
+                # 1) These could be new files written
+                # to the destination tape.  We only need to worry about this
+                # here if the tape is being rescanned after being released to
+                # users to write additional files onto it.
+                # 2) package file created during migration (packaging)
+                if not dst_is_a_package:
+                    # new file - continue
+                    message = "active file on destination tape without a source"
+                    warning_log(MY_TASK, message)
+                    continue
+
+            #Second, get the bfid's file record.
+            src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
+            if not e_errors.is_ok(src_file_record):
+                error_log(MY_TASK,
+                          "unable to obtain file information for %s" % (src_bfid,))
+                local_error += 1
+                continue
+
+            #Third, get the source file's volume record.
+            src_volume_record = get_volume_info(MY_TASK,
+                                                src_file_record['external_label'],
+                                                vcc, db, use_cache=True)
+
+            job = (src_file_record, src_volume_record, None,
+                   dst_file_record, dst_volume_record, None, None)
+
+            st = is_swapped(src_bfid, fcc, db)
+            if not st:
+                error_log(MY_TASK,"%s %s has not been swapped"
+                          % (src_bfid, dst_bfid))
+                local_error += 1
+                continue
+
+            checked_timestamp = is_checked(dst_bfid, fcc, db)
+
+# replacement:
+            if dst_file_record['deleted'] == YES:
+                if (intf.with_deleted or
+                    dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) != -1):
+                    pass #Just use likely_path; the file is deleted anyway.
+                elif not intf.with_deleted:
+                    log(MY_TASK,"Skipping scan of deleted file: %s"
+                        % (dst_bfid,))
+                    continue
+# end of replacement
+
+            # If the user deleted the files, require --with-deleted be
+            # used on the command line.  If the volume only contains
+            # deleted files, which is determined from the file_family
+            # part of the volume_family triple, then allow for scanning
+            # without --with-deleted to be required on the command line.
+            if dst_file_record['deleted'] == YES and \
+                   (intf.with_deleted or
+                    dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) != -1):
+                pass #Just use likely_path; the file is deleted anyway.
+            elif dst_file_record['deleted'] == YES and not intf.with_deleted:
+                log(MY_TASK,"Skipping scan of deleted file: %s"
+                    % (dst_bfid,))
+                continue
+            elif is_copied(dst_bfid, fcc, db):
+                log(MY_TASK, "found destination bfid, %s, already migrated"
+                    % (dst_bfid,))
+                # This should be correct.  We don't need to pass a "src_path"
+                # here as final_scan_file() figures that out on its own.
+                pass
+            elif checked_timestamp:
+                #Already checked.  We don't need to pass a "src_path"
+                # here as final_scan_file() figures that out on its own.
+                pass
+            else:
+                #Make sure we have the admin path.
+                pass
+                # 7/29/15: removed large fragment of commented out code dead since 7/19/10
+
+            #If we are using volume_assert, check what the assert returned.
+            if intf.use_volume_assert or USE_VOLUME_ASSERT:
+                if not assert_errors.has_key(dst_file_record['location_cookie']):
+                    error_log(MY_TASK,
+                              "assert of %s was not found in returned assert list"
+                              % (dst_bfid,))
+                    local_error += 1
+                    continue
+
+                if not e_errors.is_ok(assert_errors[dst_file_record['location_cookie']]):
+                    error_log(MY_TASK,"assert of %s %s:%s failed"
+                              % (dst_bfid, vol, dst_file_record['location_cookie']))
+                    local_error += 1
+                    continue
+
+                log(MY_TASK, "assert of %s %s:%s succeeded"
+                    % (dst_bfid, vol, dst_file_record['location_cookie']))
+
+            ## Scan the file by reading it with encp.
+            ## Note: if we are using volume assert, then final_scan_file()
+            ##       uses --check with the encp to avoid redundant read
+            ret_code = final_scan_file(MY_TASK, job, fcc, encp, intf, db)
+            if ret_code == 0:
+                # The file has been scaned OK. Set it closed too if need.
+                if not is_closed(dst_bfid, fcc, db):
+                    log_closed(src_bfid, dst_bfid, fcc, db)
+                    close_log('OK')
+                continue
+
+            # File scan failed
+            local_error += 1
+
+            if intf.use_volume_assert or USE_VOLUME_ASSERT:
+                continue
+
+            # Check if the tape is still accessable.
+            if not is_volume_allowed(vol, vcc, db):
+                # The tape has been marked NOACCESS or NOTALLOWED.
+                message = "%s is NOACCESS or NOTALLOWED" % (vol,)
+                error_log(MY_TASK, message)
+                break
+
+        # end of scan dst_file_record in tape_list
+
+        # Final actions after the volume was scanned
+
+        # restore file family only if there was no error
+        if (local_error
+            or not is_migrated_by_dst_vol(vol, intf, db)):
+                error_log(MY_TASK,"skipping volume metadata update "
+                          "since not all files have been scanned")
+        else:
+            if set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
+                local_error += 1
+
+        return local_error
 
 def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 
-	## Prepare to set the file family back to that of the original.
-	ff = normal_file_family(ff)
-	vf = string.join((sg, ff, wp), '.')
-	## Prepare to remove the readonly system inhibit set at the begining
-	## of final_scan_volume().
-	v = vcc.inquire_vol(vol)
-	if v['system_inhibit'][1] == "readonly":
-		#only if the volume is currently readonly should this be
-		# set back to 'none'.
-		system_inhibit = [v['system_inhibit'][0], 'none']
-	else:
-		system_inhibit = v['system_inhibit']
+    ## Prepare to set the file family back to that of the original.
+    ff = normal_file_family(ff)
+    vf = string.join((sg, ff, wp), '.')
 
-	#Update the information with the volume clerk.
-	res = vcc.modify({'external_label':vol, 'volume_family':vf,
-			  'system_inhibit':system_inhibit})
-	if res['status'][0] == e_errors.OK:
-		ok_log(MY_TASK, "restore file_family of", vol, "to", ff)
-	else:
-		error_log(MY_TASK, "failed to restore volume_family of", vol, "to", vf)
-		return 1
+    # Prepare to remove the 'readonly' system inhibit set at the begining
+    # of final_scan_volume().
+    # Set inhibit back to 'none' only if it is presntly set to 'readonly'
+    v = vcc.inquire_vol(vol)
+    if v['system_inhibit'][1] == "readonly":
+        system_inhibit = [v['system_inhibit'][0], 'none']
+    else:
+        system_inhibit = v['system_inhibit']
 
+    #Update the information with the volume clerk.
+    res = vcc.modify({'external_label':vol, 'volume_family':vf,
+                      'system_inhibit':system_inhibit})
+    if res['status'][0] != e_errors.OK:
+        error_log(MY_TASK, "failed to restore volume_family of", vol, "to", vf)
+        return 1
 
+    ok_log(MY_TASK, "restore file_family of", vol, "to", ff)
 
-	## Set comment with the list of volumes.
-	from_list = migrated_from(vol, db)
-	vol_list = ""
-	for i in from_list:
-		# set last access time to now
-		reply_ticket = vcc.touch(i)
-                if not e_errors.is_ok(reply_ticket):
-                    error_log(MY_TASK,
-                            "failed to update last access time for %s: %s" \
-                              % (i, str(reply_ticket['status'])))
-                    return 1
-		# log history closed
-                rtn_value = log_history_closed(i, vol, vcc, db)
-                if rtn_value:
-                    #log_history_closed gives its own error.
-                    return 1
-		# build comment
-		vol_list = vol_list + ' ' + i
-	if vol_list:
-		res = vcc.set_comment(vol, MFROM + vol_list)
-		if res['status'][0] == e_errors.OK:
-			ok_log(MY_TASK, 'set comment of %s to "%s%s"' \
-			       % (vol, MFROM, vol_list))
-		else:
-			error_log(MY_TASK,
-                                  'failed to set comment of %s to "%s%s"' \
-                                  % (vol, MFROM, vol_list))
-			return 1
+    ## Set comment with the list of volumes.
+    from_list = migrated_from(vol, db)
+    vol_list = ""
+    sep = ""
+    for vfrom in from_list:
+        # set last access time to now
+        reply_ticket = vcc.touch(vfrom)
+        if not e_errors.is_ok(reply_ticket):
+            error_log(MY_TASK,"failed to update last access time for %s: %s"
+                    % (vfrom, str(reply_ticket['status'])))
+            return 1
 
+        if log_history_closed(vfrom, vol, vcc, db):
+            return 1
 
+        # add soruce volume name to the target volume comment entry
+        vol_list += sep + vfrom
+        sep = " "
 
-	return 0
+    if vol_list:
+        msg = 'set comment of %s to "%s%s"' % (vol, MFROM, vol_list)
+        res = vcc.set_comment(vol, MFROM + vol_list)
+        if res['status'][0] == e_errors.OK:
+            ok_log(MY_TASK, msg)
+        else:
+            error_log(MY_TASK,'failed to %s' % msg)
+            return 1
+
+    return 0
 
 ##########################################################################
 
@@ -8713,7 +8667,7 @@ def migrate_volume(vol, intf):
     # was used on the command line, go with that.  Otherwise,
     # set the media_type.
     if intf.library:
-        media_type = get_media_type(intf.library, db)
+        media_type = get_media_type(intf.library, db )
         media_types = [media_type]
     else:
         """
