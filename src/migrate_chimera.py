@@ -8031,40 +8031,46 @@ def final_scan_volume(vol, intf):
         sg, ff, wp = string.split(dst_volume_record['volume_family'], '.')
 
         # make sure this is a migration volume
+        # see "FIXME" below: the code was intended to run in this case
         is_migration_closed = is_migration_history_closed(MY_TASK, vol, db)
-        if is_migration_closed == None:
-            error_log(MY_TASK, "Unable to continue, migration history error")
+        if not is_migration_closed:
+            error_log(MY_TASK, "migration history is not closed for volume %s,"
+                      " stop processing the volume" % (vol,))
             return 1
 
         if not migrated_from(vol, db):
-            #This volume is not a destination volume.
-            error_log(MY_TASK, "%s is not a %s volume" % (vol, MIGRATION_NAME.lower()))
+            error_log(MY_TASK, "volume %s is not a %s destination volume"
+                      % (vol, MIGRATION_NAME.lower()))
             return 1
-        # FIXME: this is never True due to test and return above
-        elif not is_migration_closed:
+
+        if is_migration_closed:
+            # FIXME: this test is ALWAYS True due to the test of the opposite
+            # condition and return above thus "if " can be removed.
+            # Track code modification history anf think what the author meant.
+            # Original comments verbatim:
             #If the scanning is not recorded as completed in the migration_history
             # table, let the scanning proceed regardless of the following
             # system_inhibit and file_family tests.
-            pass
-        # make sure the volume is ok to scan (check system_inhibit 0)
-        elif dst_volume_record['system_inhibit'][0] != 'none':
-            error_log(MY_TASK, 'volume %s is "%s"'
-                      % (vol,dst_volume_record['system_inhibit'][0]))
-            return 1
-        # If the destination tapes are already migrated, don't continue.
-        elif (not is_migration_file_family(ff)
-              and not getattr(intf, "force", None)):
-            error_log(MY_TASK,"%s has a non-%s file family"
-                      % (vol, MIGRATION_NAME.lower()))
-            return 1
-        #Verify that the system_inhibit 1 is in a valid state too.
-        elif ((dst_volume_record['system_inhibit'][1] != 'full'
-                and dst_volume_record['system_inhibit'][1] != 'none'
-                and dst_volume_record['system_inhibit'][1] != 'readonly')
-              and is_migrated_by_dst_vol(vol, intf, db)):
-            error_log(MY_TASK, 'volume %s is "%s"'
-                      % (vol,dst_volume_record['system_inhibit'][1]))
-            return 1
+
+            # make sure the volume is ok to scan (check system_inhibit 0)
+            if dst_volume_record['system_inhibit'][0] != 'none':
+                error_log(MY_TASK,'volume %s is "%s"'
+                          % (vol,dst_volume_record['system_inhibit'][0]))
+                return 1
+
+            # If the destination tapes are already migrated, don't continue.
+            if (not is_migration_file_family(ff)
+                and not getattr(intf, "force", None)):
+                    error_log(MY_TASK,"%s has a non-%s file family"
+                              % (vol, MIGRATION_NAME.lower()))
+                    return 1
+
+            #Verify that the system_inhibit[1] is in the valid state
+            if (dst_volume_record['system_inhibit'][1] not in ('full','none','readonly')
+                and is_migrated_by_dst_vol(vol, intf, db)):
+                    error_log(MY_TASK, 'volume %s is "%s"'
+                              % (vol,dst_volume_record['system_inhibit'][1]))
+                    return 1
 
         # Warn if the volume about to be scanned is not full.
         # The scan of non-full tape will prevent future migration of files to this tape.
@@ -8072,9 +8078,9 @@ def final_scan_volume(vol, intf):
             warning_log(MY_TASK, 'volume %s is not "full"'%(vol))
             if (dst_volume_record['system_inhibit'][1] != "readonly"):
                 vcc.set_system_readonly(vol)
-                log(MY_TASK, 'set %s to readonly'%(vol))
+                log(MY_TASK, 'set %s to readonly' % (vol))
 
-        #Get the CRCs for all files on the tape.
+        # Get the CRCs for all files on the tape.
         assert_errors = {}
         if intf.use_volume_assert or USE_VOLUME_ASSERT:
             log(MY_TASK, "asserting %s" % (vol,))
@@ -8098,8 +8104,8 @@ def final_scan_volume(vol, intf):
                 error_log(MY_TASK, message)
                 return 1
 
-            #At this point, done_ticket['return_file_list'] is a dictionary
-            # keyed by location cookie of any errors that occured reading
+            # At this point, done_ticket['return_file_list'] is a dictionary
+            # keyed by location cookie of any errors that occured when reading
             # the files.
 
             assert_errors = done_ticket.get('return_file_list', [])
@@ -8129,7 +8135,7 @@ def final_scan_volume(vol, intf):
         for dst_file_record in tape_list:
             dst_bfid = dst_file_record['bfid']
             dst_package_id = dst_file_record.get("package_id", None)
-#            dst_package_files_count = dst_file_record.get("package_files_count",0)
+#           dst_package_files_count = dst_file_record.get("package_files_count",0)
             dst_is_a_package = ((dst_package_id is not None) 
                                     and (dst_bfid == dst_package_id))
 
@@ -8150,9 +8156,9 @@ def final_scan_volume(vol, intf):
                 # to the destination tape.  We only need to worry about this
                 # here if the tape is being rescanned after being released to
                 # users to write additional files onto it.
-                # 2) package file created during migration (packaging)
+                # 2) package file created during migration with packaging
                 if not dst_is_a_package:
-                    # new file - continue
+                    # new file:
                     message = "active file on destination tape without a source"
                     warning_log(MY_TASK, message)
                     continue
@@ -8166,9 +8172,9 @@ def final_scan_volume(vol, intf):
                 continue
 
             #Third, get the source file's volume record.
-            src_volume_record = get_volume_info(MY_TASK,
-                                                src_file_record['external_label'],
-                                                vcc, db, use_cache=True)
+            src_volume_record = get_volume_info(
+                                    MY_TASK,src_file_record['external_label'],
+                                    vcc, db, use_cache=True)
 
             job = (src_file_record, src_volume_record, None,
                    dst_file_record, dst_volume_record, None, None)
@@ -8180,46 +8186,53 @@ def final_scan_volume(vol, intf):
                 local_error += 1
                 continue
 
-            checked_timestamp = is_checked(dst_bfid, fcc, db)
+            # Determine if the volume contains deleted files only
+            #   by tesing file_family part of the volume_family triple.
+            # The command line option "--with-deleted" is not required to scan 
+            #   deleted files on "*.deleted" columns.
+            # Otherwise, require argument --with-deleted on the command line
+            #   to scan files deleted by user.
 
-# replacement:
-            if dst_file_record['deleted'] == YES:
-                if (intf.with_deleted or
-                    dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) != -1):
-                    pass #Just use likely_path; the file is deleted anyway.
-                elif not intf.with_deleted:
-                    log(MY_TASK,"Skipping scan of deleted file: %s"
-                        % (dst_bfid,))
+            # find string 'deleted' (or equvivalent) in volume family triple
+            not_deleted_vol = (dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) == -1)
+            if (dst_file_record['deleted'] == YES
+                and not intf.with_deleted
+                and not_deleted_vol):
+                    log(MY_TASK,"Skipping scan of deleted file: %s"% (dst_bfid,))
                     continue
-# end of replacement
 
-            # If the user deleted the files, require --with-deleted be
-            # used on the command line.  If the volume only contains
-            # deleted files, which is determined from the file_family
-            # part of the volume_family triple, then allow for scanning
-            # without --with-deleted to be required on the command line.
-            if dst_file_record['deleted'] == YES and \
-                   (intf.with_deleted or
-                    dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) != -1):
-                pass #Just use likely_path; the file is deleted anyway.
-            elif dst_file_record['deleted'] == YES and not intf.with_deleted:
-                log(MY_TASK,"Skipping scan of deleted file: %s"
-                    % (dst_bfid,))
-                continue
-            elif is_copied(dst_bfid, fcc, db):
-                log(MY_TASK, "found destination bfid, %s, already migrated"
-                    % (dst_bfid,))
-                # This should be correct.  We don't need to pass a "src_path"
-                # here as final_scan_file() figures that out on its own.
-                pass
-            elif checked_timestamp:
-                #Already checked.  We don't need to pass a "src_path"
-                # here as final_scan_file() figures that out on its own.
-                pass
-            else:
-                #Make sure we have the admin path.
-                pass
-                # 7/29/15: removed large fragment of commented out code dead since 7/19/10
+#             # Replaced code, verbatim:
+#             #If the user deleted the files, require --with-deleted be
+#             # used on the command line.  If the volume only contains
+#             # deleted files, which is determined from the file_family
+#             # part of the volume_family triple, the allow for scanning
+#             # without --with-deleted to be required on the command line.
+#
+#            checked_timestamp = is_checked(dst_bfid, fcc, db)
+#
+#             if dst_file_record['deleted'] == YES and \
+#                    (intf.with_deleted or
+#                     dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) != -1):
+#                 pass #Just use likely_path; the file is deleted anyway.
+#             elif dst_file_record['deleted'] == YES and not intf.with_deleted:
+#                 log(MY_TASK,"Skipping scan of deleted file: %s"
+#                     % (dst_bfid,))
+#                 continue
+#             elif is_copied(dst_bfid, fcc, db):
+#                 log(MY_TASK, "found destination bfid, %s, already migrated"
+#                     % (dst_bfid,))
+#                 # This should be correct.  We don't need to pass a "src_path"
+#                 # here as final_scan_file() figures that out on its own.
+#                 pass
+#             elif checked_timestamp:
+#                 #Already checked.  We don't need to pass a "src_path"
+#                 # here as final_scan_file() figures that out on its own.
+#                 pass
+#             else:
+#                 #Make sure we have the admin path.
+#                 pass
+#             #    7/29/15: removed large fragment of commented out code dead since 7/19/10
+#             #.end replace code
 
             #If we are using volume_assert, check what the assert returned.
             if intf.use_volume_assert or USE_VOLUME_ASSERT:
@@ -8243,14 +8256,16 @@ def final_scan_volume(vol, intf):
             ## Note: if we are using volume assert, then final_scan_file()
             ##       uses --check with the encp to avoid redundant read
             ret_code = final_scan_file(MY_TASK, job, fcc, encp, intf, db)
+
             if ret_code == 0:
-                # The file has been scaned OK. Set it closed too if need.
+                # The file has been scaned OK. Set it closed too.
                 if not is_closed(dst_bfid, fcc, db):
                     log_closed(src_bfid, dst_bfid, fcc, db)
                     close_log('OK')
                 continue
 
-            # File scan failed
+            # File scan failed.
+            # Increase error count and decide to break or continue
             local_error += 1
 
             if intf.use_volume_assert or USE_VOLUME_ASSERT:
@@ -8267,7 +8282,7 @@ def final_scan_volume(vol, intf):
 
         # Final actions after the volume was scanned
 
-        # restore file family only if there was no error
+        # restore file family only if there was NO error
         if (local_error
             or not is_migrated_by_dst_vol(vol, intf, db)):
                 error_log(MY_TASK,"skipping volume metadata update "
