@@ -1605,7 +1605,7 @@ def do_work(intf):
 	    #ticket = vcc.tape_list(intf.list)
 	    ticket = {'status' : "--force not supported"}
 	else:
-            ticket = ifc.tape_list(intf.list)
+            ticket = ifc.tape_list(intf.list, all_files=(not intf.package))
 	ifc.print_volume_files(intf.list,ticket,intf.package,intf.pkginfo)
     elif intf.ls_active:
         if intf.force:

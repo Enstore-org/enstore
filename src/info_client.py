@@ -1298,13 +1298,13 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 def do_work(intf):
     # now get a info client
     ifc = infoClient((intf.config_host, intf.config_port), None, intf.alive_rcv_timeout, intf.alive_retries)
-
     ticket = ifc.handle_generic_commands(MY_SERVER, intf)
     if ticket:
         pass
 
     elif intf.list:
-        ticket = ifc.tape_list(intf.list)
+        # Option --package does not require all files. Package components are not required.
+        ticket = ifc.tape_list(intf.list, all_files=(not intf.package))
         ifc.print_volume_files(intf.list,ticket,intf.package,intf.pkginfo)
     elif intf.file:
         # is it vol:loc?

@@ -1011,10 +1011,10 @@ def do_work(intf):
 
     elif intf.list:
         if intf.force:
-            ticket = fcc.tape_list(intf.list)
+            ticket = fcc.tape_list(intf.list, all_files=(not intf.package))
         else:
-            ticket = ifc.tape_list(intf.list,intf.all)
-        ifc.print_volume_files(intf.list,ticket,intf.package,intf.pkginfo)
+            ticket = ifc.tape_list(intf.list,all_files=(not intf.package))
+        ifc.print_volume_files(intf.list,ticket,intf.package, intf.pkginfo)
     elif intf.mark_bad:
         ticket = fcc.mark_bad(intf.mark_bad, intf.bfid)
 
