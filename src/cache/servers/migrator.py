@@ -232,12 +232,12 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         # Do not set wrapper tag, just return it to be used as encp option.
         # This is done to not interfere with other migrators writing into the same directory
     try:
-        cffw = tag.readtag("file_family_width")[0]
-    except IOError,detail:
-        if detail.errno == errno.ENOENT:
-            cffw = ""
-    if cffw != ff_width_tag:
-        Trace.trace(10, "ns_tags: FF width tag: %s"%(ff_width_tag,))
+        cffw = int(tag.readtag("file_family_width")[0])
+    except Exception, detail:
+        Trace.trace(10, "Exception reading file_family_width tag %s"%(detail,))
+        cffw = ff_width_tag
+    Trace.trace(10, "ns_tags: FF width tag: %s(%s). Was %s(%s)"%(ff_width_tag,type(ff_width_tag), cffw, type(cffw)))
+    if cffw < ff_width_tag:
         tag.writetag("file_family_width", ff_width_tag)
     return ff_wrapper_tag
 
@@ -801,6 +801,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         components_to_remove = []
         self.src_dirs = []
         self.state = PREPARING_PACKAGING
+        file_family_width = 0
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
@@ -838,10 +839,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     Trace.log(DEBUGLOG, "Error: %s. Returned status OK but still error %s"%(detail, rec))
 
 
+                file_family_width = max(file_family_width, rec['file_family_width'])
             else:
                 Trace.log(DEBUGLOG,
-                          "FC error: %s. File was not included into package %s archive_status %s"%
-                          (rec['status'], rec['bfid'], rec['archive_status']))
+                          "FC error: %s. File was not included into package"%
+                          (rec,))
         for c in components_to_remove:
             request_list.remove(c)
         if len(request_list) == 0:
@@ -971,7 +973,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                  rec['storage_group'],
                                  rec['file_family'],
                                  rec['wrapper'],
-                                 rec['file_family_width'],
+                                 file_family_width,
                                  fstats[stat.ST_SIZE])
         except:
             Trace.handle_error()

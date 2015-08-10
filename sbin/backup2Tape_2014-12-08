@@ -6,7 +6,7 @@ timeout='--timeout 10 --retries 3'
 #Override the default time allowed to wait for the mover.  This is used as
 # a workaround for cases where it takes longer than 15 minutes for a tape
 # to be mounted.
-mover_timeout='--mover-timeout 1800'  #30 minutes (default is 15 minutes)
+mover_timeout='--mover-timeout 1800'  #30 minutes (defualt is 15 minutes)
 
 if [ -n "${1:-}" ];then
   FULL=`echo $1 | tr a-z A-Z `
@@ -179,28 +179,6 @@ done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $PNFS_FILES
 find $PNFS -type f -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
-
-
-#### PostgreSQL PITR Backups ###############################################
-
-# Copy uncopied base backups to tape
-mkdir -m 0755 -p "${filePath}/pg_base_backup"
-find "${filePath}/pg_base_backup" $find_options -type f -mmin +1 | while read f; do saveit "$f"; done
-# Note: "-mmin +1" excludes any possible active backups.
-# Note: Old base backups are deleted from disk by pg_base_backup.sh.
-
-# Pack uncopied xlogs
-mkdir -m 0755 -p "${filePath}/pg_xlog_archive" "${filePath}/pg_xlog_pack"
-for DB in $(ls -1 "${filePath}/pg_xlog_archive"); do
-  mkdir -m 0755 -p "${filePath}/pg_xlog_pack/${DB}"
-  OUT="${filePath}/pg_xlog_pack/${DB}/$(date +%F_%H-%M-%S).tar"
-  tar -cf "${OUT}" --newer-mtime "${LAST_BACKUP_DATE}" -C "${filePath}/pg_xlog_archive/${DB}" ./
-done
-
-# Copy uncopied packed xlogs to tape
-find "${filePath}/pg_xlog_pack" $find_options -type f | while read f; do saveit "$f"; done
-tmpwatch -f -q -m 4d "${filePath}/pg_xlog_pack"
-# Note: Old unpacked xlogs are deleted from disk by pg_xlog_archive.sh.
 
 
 #### Enstore Database Backup ###############################################

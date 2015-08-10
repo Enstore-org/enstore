@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 5.1.0
-Release: 1
+Release: 2
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz

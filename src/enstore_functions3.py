@@ -56,16 +56,17 @@ def is_volume_disk(volume):
         # or
         # hostname:SG.FF.WRAPPER:YYYY-mm-ddTHH:MM:SSZ.deleted
         # time format: ISO8601
+        # Old naming
         if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[-TZ:0-9]+(.deleted){0,1}$"
                       % (charset.hostnamecharset, charset.charset,
                          charset.charset, charset.charset), volume):
             rc = 1   #If passed a disk volume.
         else:
-            # legacy naming
-            # hostname:SG.FF.WRAPPER:time_in_seconds
+            # New naming
+            # hostname:SG.FF.WRAPPER
             # or
-            # hostname:SG.FF.WRAPPER:time_in_seconds.deleted
-            if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[0-9]+(.deleted){0,1}$"
+            # hostname:SG.FF.WRAPPER.deleted
+            if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+(.deleted){0,1}$"
                          % (charset.hostnamecharset, charset.charset,
                             charset.charset, charset.charset), volume):
                 rc = 1   #If passed a disk volume.
