@@ -191,14 +191,18 @@ find "${filePath}/pg_base_backup" $find_options -type f -mmin +1 | while read f;
 
 # Pack uncopied xlogs
 mkdir -m 0755 -p "${filePath}/pg_xlog_archive" "${filePath}/pg_xlog_pack"
-for DB in $(ls -1 "${filePath}/pg_xlog_archive"); do
+DB_LIST=$(find "${filePath}/pg_xlog_archive" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
+for DB in ${DB_LIST}; do
   mkdir -m 0755 -p "${filePath}/pg_xlog_pack/${DB}"
   OUT="${filePath}/pg_xlog_pack/${DB}/$(date +%F_%H-%M-%S).tar"
   tar -cf "${OUT}" --newer-mtime "${LAST_BACKUP_DATE}" -C "${filePath}/pg_xlog_archive/${DB}" ./
 done
 
 # Copy uncopied packed xlogs to tape
-find "${filePath}/pg_xlog_pack" $find_options -type f | while read f; do saveit "$f"; done
+find "${filePath}/pg_xlog_pack" -newermc "${LAST_BACKUP_DATE}" -type f | while read f; do saveit "$f"; done
+# Note: "-newermc" is used instead of "-newer" in order to compare with the last
+# tape backup's finish time rather than with its start time. This prevents
+# recopying files that were already copied during the last tape backup.
 tmpwatch -f -q -m 4d "${filePath}/pg_xlog_pack"
 # Note: Old unpacked xlogs are deleted from disk by pg_xlog_archive.sh.
 
@@ -303,7 +307,9 @@ find ${filePath}/billing-backup -type f $find_options  -name "*sql*" -exec rm -f
 ############################################################################
 
 #next time, get only new files since we started the backup.
-mv $START_BACKUP_DATE $LAST_BACKUP_DATE
+mv $START_BACKUP_DATE $LAST_BACKUP_DATE  # Updates ctime but not mtime.
+# Note: mtime of $LAST_BACKUP_DATE file is the last backup start time.
+# Note: ctime of $LAST_BACKUP_DATE file is the last backup finish time.
 
 #  send mail to let people know what was backed up
 cat $BACKUP_LOG | /usr/bin/Mail -s "Metadata tape backup OK. Log from $node on `uname -n`" $ENSTORE_MAIL
