@@ -338,64 +338,12 @@ except:
   sys.exit(1)
 '`
        rc=$?
+       rm -f ${py_file}
        if [ ${rc} -eq 0 -a "${package_id}" != "" -a "${package_id}" != "None" -a "${package_id}" != "${si_bfid}" ]; then
 	   #
 	   # get package pnfsid
 	   #
 	   package_pnfsid=`enstore info --file ${package_id} | grep pnfsid | sed -e "s/[[:punct:]]//g" | awk '{ print $NF}'`
-	   #
-	   # get list of children
-	   #
-	   n_children=`enstore info --file ${package_id}  | grep active_package_files_count |  sed -e "s/[[:punct:]]//g"  |awk '{ print $NF}'`
-	   #
-	   # getting list of children overloads info server, so only do it for smallish packages
-	   #
-	   if [ ${n_children} -lt 50 ]; then
-	       children=`enstore info --children ${package_id} --field pnfs_id`
-	       #
-	       # loop over packaged files and pre-stage then with dccp -P
-	       #
-	       for child in ${children}; do
-		   if [ "${child}" !=  "${package_pnfsid}"  -a  "${child}" !=  ${pnfsid} ]; then
-		       #
-		       # check that the file still exists
-		       #
-		       if [ ! -e ${pnfs_root}/".(nameof)(${child})" ]; then
-			   continue
-		       fi
-		       #
-		       # check if file is already online
-		       #
-		       dc_check ${child}
-		       rc=$?
-		       if [ ${rc} -eq 0 ]; then
-			   say "File ${child} is online "
-			   continue
-		       fi
-		       #
-		       # file is offline, check if we already have it in PoolManager queue
-		       #
-		       rc_ls ${child}
-		       rc=$?
-		       if [ $rc -eq 0 ]; then
-			   #
-			   # File is in PoolManager queue, continue
-			   #
-			   say "File ${child} is staging. Skipping "
-			   continue
-		       fi
-		       say "Pre-staging ${child}"
-		       dc_stage ${child}
-		       rc=$?
-		       if [ ${rc} -ne 0 ]; then
-			   say "Failed to pre-stage $child"
-		       fi
-		   fi
-	       done
-	   fi
-	   #
-	   # continue handling original file
-	   #
 	   package_path=`pathfinder ${package_pnfsid}`
 	   #
 	   # strip leading slash from location cookie
@@ -491,41 +439,7 @@ elif [ "$command" = "put" ] ; then
 
     ENCP_EXIT=$?
 
-    #
-    # make sure bfid, and layer4 are set
-    #
-    bfid=`enstore sfs --bfid ${pnfsid}`
-    rc=$?
-    if [ ${rc} -ne 0 ]; then bfid="notset"; fi
-
-    say p12 $override_msg $CMD, bfid=$bfid, rc=$ENCP_EXIT
-    if [ $ENCP_EXIT -ne 0 ];then
-        sayE p13 $override_msg $CMD, bfid=$bfid, rc=$ENCP_EXIT
-    fi
-
-    if [ $ENCP_EXIT -ne 0 ]; then
-	l4=`enstore sfs --xref ${pnfsid} | wc -l`
-	rc=$?
-	if [ ${rc} -ne 0 ]; then l4=0; fi
-      # if file is already in enstore, then deactivate request
-      if [ -n "$bfid" -a "$bfid" != "notset" -a ${l4} -eq 11 ]; then
-        say p25 checking for already in enstore $bfid
-        bfid_info="`enstore file --bfid $bfid 2>/dev/null`"
-        location_cookie="`echo "$bfid_info" |grep location_cookie 2>/dev/null | cut -f2 -d: 2>/dev/null |sed -e "s/'//g" -e "s/,//g" -e "s/^ //" 2>/dev/null`"
-        deleted="`echo "$bfid_info" |grep deleted 2>/dev/null | cut -f2 -d: 2>/dev/null |sed -e "s/'//g" -e "s/,//g"  -e "s/^ //" 2>/dev/null `"
-        if [ -n "$location_cookie" -a "$deleted" = "no" ]; then
-           say  p26 $pnfsid is already in enstore, bfid $bfid_info	This is ok and not an error
-           sayE p26e $pnfsid is already in enstore, bfid $bfid_info	This is ok and not an error
-           ENCP_EXIT=0  # already in enstore
-        else
-          say p27 location_cookie=${location_cookie:-notset} deleted=${deleted:-notset} = not in enstore
-        fi
-      else
-        say p28 bfid empty or set to \"notset\"... skipping check for already in enstore
-      fi
-    fi
-
-    if [ $ENCP_EXIT -eq 0 -o $ENCP_EXIT -eq 31 ]; then
+    if [ $ENCP_EXIT -eq 0 ]; then
       rm -f $out;
       sayS p29s put rc=$ENCP_EXIT
     fi
