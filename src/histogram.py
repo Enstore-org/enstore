@@ -971,6 +971,8 @@ class Histogram1D(BasicHistogram):
         self.save_data(pts_file_name)
         h.save_data(pts_file_name1)
 
+        self.gnuplot_command=GNUPLOT_HEADER
+
         if self.time_axis:
             self.gnuplot_command+="""
             set xdata time
@@ -995,27 +997,18 @@ class Histogram1D(BasicHistogram):
             self.gnuplot_command+="""
             set xlabel \"Date (year-month-day)\"
             set xrange [ \"{}\" : \"{} \" ]
-            plot '{}' using 1:4 t \"{}\" with {} lw {} lt {}
             """.format(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_low_edge(0))),
-                       time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_high_edge(self.n_bins()-1))),
-                       pts_file_name,
-                       self.get_marker_text(),
-                       self.get_marker_type(),
-                       self.get_line_width(),
-                       self.get_line_color())
+                       time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_high_edge(self.n_bins()-1))))
+            self.gnuplot_command+="plot '"+pts_file_name+"' using 1:4"
         else:
             self.gnuplot_command+="""
-            set xrange [ {} : {} ]
-            plot '{}' using 1:3  t \"{}\" with {} lw {} lt {} \
-            """.format(self.get_bin_low_edge(0),
-                       self.get_bin_high_edge(self.n_bins()-1),
-                       pts_file_name,
-                       self.get_marker_text(),
-                       self.get_marker_type(),
-                       self.get_line_width(),
-                       self.get_line_color())
+            set xrange [ {} : {} ]""".format(self.get_bin_low_edge(0),
+                             self.get_bin_high_edge(self.n_bins()-1))
 
-        self.gnuplot_command+=" , \"{}\"".format(pts_file_name1)
+            self.gnuplot_command+="plot '"+pts_file_name+"' using 1:3"
+
+        self.gnuplot_command+=" t \'"+self.get_marker_text()+"' with "+self.get_marker_type()+\
+        " lw "+str(self.get_line_width())+" lt "+str(self.get_line_color()) + ", '"+pts_file_name1+"' "
 
         if self.time_axis:
             if reflect:
