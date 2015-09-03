@@ -309,6 +309,7 @@ then
         echo "## Get policy_file name from configuration server"
         # try get policy file name by accessing configuration server
         policy_file=$(${ENSTORE_DIR}/bin/conf.sh -k dispatcher | \
+	    grep -v "has no reply address" | \
                         awk -F ":" '/policy_file/{print $2}' | tr -d "\,\'[:space:]" )
     fi
 
