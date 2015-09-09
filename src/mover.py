@@ -1985,9 +1985,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #    del(self.buffer)
         #    self.buffer = None
         if do_restart:
-            Trace.log(e_errors.INFO, "sending restart command")
             cmd = '/usr/bin/at now+1minute'
-            ecmd = "enstore Estart %s '--just %s > /dev/null'\n"%(self.config['host'],self.name)
+            ecmd = "enstore start --just %s\n"%(self.name,)
+            Trace.log(e_errors.INFO, "sending restart command: %s"%(ecmd,))
             p=os.popen(cmd, 'w')
             p.write(ecmd)
             p.close()
