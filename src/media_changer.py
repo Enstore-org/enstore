@@ -603,9 +603,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 		#Need to call reply_to_caller() here since the request has
 		# not been processed far enough for WorkDone() to reply
 		# for us.
-		busy_ticket = {'status' : (e_errors.MC_QUEUE_FULL, 0,
-					   "retry later")}
-		self.reply_to_caller(busy_ticket)
+		ticket['status'] = (e_errors.MC_QUEUE_FULL, 0,
+				    "retry later")
+		self.reply_to_caller(ticket)
                 return
 	    # Else if the work queue is temporarily closed, assume client
 	    # will resend the request.

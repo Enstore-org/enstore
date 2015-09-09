@@ -341,7 +341,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
         # get the unique identifier for this alarm
         this_id = ticket.get(enstore_constants.ALARM, 0)
-	ticket = {}
+	#ticket = {}
 	if this_id == enstore_html.RESOLVEALL:
             ticket['ALL'] = self.resolve_all()
 	else:

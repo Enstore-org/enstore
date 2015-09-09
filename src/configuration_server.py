@@ -575,13 +575,12 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                     ticket['domains'] = domains
             else:
                 #For backward compatibility.
-                ticket = self.get_dict_entry(lookup)
+                ticket.update(self.get_dict_entry(lookup))
             ticket['status'] = (e_errors.OK, None)
         except KeyError:
             ticket['status'] = (e_errors.KEYERROR,
                                 "Configuration Server: no such name: "
                                 +repr(lookup))
-
         self.send_reply(ticket)
 
 
