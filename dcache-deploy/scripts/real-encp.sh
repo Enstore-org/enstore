@@ -408,6 +408,12 @@ except:
 #------------------------------------------------------------------------------------------
 elif [ "$command" = "put" ] ; then
 
+    filename_length=`basename ${si_path} | wc -c`
+    if [ ${filename_length} -gt 200 ]; then
+	say "${si_path:-notset} filename length is too long :  ${filename_length}"
+	exit 31
+    fi
+
     encp --help | egrep "\-\-enable\-redirection" >/dev/null 2>&1 && options="${options:-} --enable-redirection"
     # files that bigger than 8 GB need to use the cern wrapper, not the default cpio
     big=`expr 8 \* 1024 \* 1024 \* 1024 - 10000`
@@ -434,6 +440,7 @@ elif [ "$command" = "put" ] ; then
 	CMD="$ENCP $options $wrapper --pnfs-mount $pnfs_root --put-cache $pnfsid $filepath"
         say p11 $CMD
     fi
+
 
     nice -n -3 $CMD >>$LOGFILE 2>&1
 
