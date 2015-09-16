@@ -1157,6 +1157,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 	self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue,self)
 	self.sequentialWorker.start()
 
+        self.copy_lock = threading.Lock()
+
 	self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
         self.bfid_generator = bfid_util.BfidGenerator(brand)
 
@@ -1190,7 +1192,8 @@ class FileClerkMethods(FileClerkInfoMethods):
                                    "bfid_info",
                                    "modify_file_records",
                                    "swap_package",
-                                   "new_bit_file") :
+                                   "new_bit_file",
+                                   "set_pnfsid") :
 		Trace.trace(5, "Putting on parallel thread queue %d %s"%(self.parallelThreadQueue.qsize(),function.__name__))
 		self.parallelThreadQueue.put([function.__name__, args])
 
@@ -1257,9 +1260,9 @@ class FileClerkMethods(FileClerkInfoMethods):
             except:
                 return 1
         else: # decrease the number
-            q = "update active_file_copying set remaining = %s where bfid = %s"
+            q = "update active_file_copying set remaining =  remaining - 1 where bfid = %s"
             try:
-                res = self.filedb_dict.update(q,(res[0]['remaining'] - 1,bfid,))
+                res = self.filedb_dict.update(q,(bfid,))
             except:
                 return 1
         return 0
@@ -1284,6 +1287,9 @@ class FileClerkMethods(FileClerkInfoMethods):
         record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
         record["complete_crc"]     = ticket["fc"]["complete_crc"]
 	record["original_library"] = ticket["fc"].get("original_library",None)
+        if ticket["fc"].get("mover_type",None) == "DiskMover":
+            record["cache_location"] = record["location_cookie"]
+
 
         # uid and gid
         if ticket["fc"].has_key("uid"):
@@ -1518,13 +1524,16 @@ class FileClerkMethods(FileClerkInfoMethods):
     # update the database entry for this file - add the pnfs file id
     def set_pnfsid(self, ticket):
 
-        bfid, record = self.extract_bfid_from_ticket(ticket.get('fc', {}))
+        bfid  = self.extract_bfid_from_ticket(ticket.get('fc', {}),check_exists = False)
         if not bfid:
             return #extract_bfid_from_ticket handles its own errors.
 
         pnfsid = self.extract_value_from_ticket('pnfsid', ticket.get('fc', {}))
         if not pnfsid:
             return #extract_value_from_ticket handles its own errors.
+
+        ticket["status"] = (e_errors.OK, None)
+        record={}
 
         # temporary workaround - sam doesn't want to update encp too often
         pnfsvid = ticket["fc"].get("pnfsvid")
@@ -1554,16 +1563,22 @@ class FileClerkMethods(FileClerkInfoMethods):
 	record["file_family_width"] = ticket["fc"].get("file_family_width",None)
 	if ticket["fc"].get("mover_type",None) == "DiskMover":
 		record["cache_status"] = file_cache_status.CacheStatus.CACHED
-		record["cache_location"] = record.get("location_cookie",None)
 
         # take care of the copy count
         original = self._find_original(bfid)
         if original:
-            self._made_copy(original)
+            with self.copy_lock:
+                self._made_copy(original)
 
 	# record our changes
-	self.filedb_dict[bfid] = record
-	ticket["status"] = (e_errors.OK, None)
+        try:
+            record=self.filedb_dict.update_record(bfid,record)
+        except Exception as e:
+            Trace.alarm(e_errors.ERROR, "Failed to update file record with bfid {} : {}".format(bfid, str(e)))
+            ticket["status"] = (e_errors.ERROR, "Failed to update file record with bfid {}, see server log for details".format(bfid))
+            self.reply_to_caller(ticket)
+            return
+
 	#
 	# send event to PE
 	#

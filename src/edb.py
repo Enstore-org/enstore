@@ -264,6 +264,34 @@ class DbTable:
             self.jou[key] = value
 
 
+    def update_record(self,key,value):
+        """
+        Update existing record providing key and
+        a dictionary. A dictionary may contain
+        a subset of key,value pairs. This method
+        is alternative to __setitem__ method which
+        is not transactionally secure.
+
+        :type key: :obj: `str`
+        :arg key: record key (label or bfid)
+
+        :type value: :obj: `dict`
+        :arg value: dictionary containing updated pieces of record
+        :rtype: :obj:`dict` updated record
+        """
+        v1 = self.import_format(value)
+        query = dbaccess.generate_update_query(self.table,v1.keys())
+        query += " WHERE {}=%s".format(self.pkey)
+        v=v1.values()
+        v.append(key)
+        res = self.dbaccess.update(query,tuple(v))
+        updated_record = self.__getitem__(key)
+        if self.auto_journal:
+            self.jou[key] = updated_record
+        return updated_record
+
+
+
     def __delitem__(self, key):
         if self.auto_journal:
             if not self.jou.has_key(key):
@@ -408,7 +436,7 @@ class FileDB(DbTable):
 
         """
         if not value.has_key("external_label"):
-            DbTable.insert_new_record(key,value)
+            DbTable.insert_new_record(self,key,value)
             return
         v1 = self.import_format(value)
         query = """
@@ -424,6 +452,42 @@ class FileDB(DbTable):
         self.dbaccess.update(query,v1.values())
         if self.auto_journal:
             self.jou[key] = value
+
+    def update_record(self,key,value):
+        """
+        Update existing record providing key and
+        a dictionary. A dictionary may contain
+        a subset of key,value pairs. This method
+        is alternative to __setitem__ method which
+        is not transactionally secure.
+
+        :type key: :obj: `str`
+        :arg key: record key (label or bfid)
+
+        :type value: :obj: `dict`
+        :arg value: dictionary containing updated pieces of record
+        :rtype: :obj:`dict` updated record
+
+        """
+        if not value.has_key("external_label"):
+            return DbTable.update_record(self,key,value)
+        v1 = self.import_format(value)
+        query="""
+        UPDATE file SET
+        """
+        for k in v1.keys():
+            if k != "volume":
+                query += "{}=%s,".format(k)
+            else:
+                query += "{}=(SELECT id FROM volume WHERE label=%s),".format(k)
+        query = query[:-1] + " WHERE {}=%s".format(self.pkey)
+        v=v1.values()
+        v.append(key)
+        res = self.dbaccess.update(query,tuple(v))
+        updated_record =  self.__getitem__(key)
+        if self.auto_journal:
+            self.jou[key] = updated_record
+        return updated_record
 
     def export_format(self, s):
         # take care of deleted
