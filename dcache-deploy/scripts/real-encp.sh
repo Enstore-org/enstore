@@ -361,7 +361,7 @@ except:
 	   # start timer to measure transfer time
 	   #
 	   t0=`date +"%s"`
-	   (cd ${file_dir} && tar --seek --record-size=512 --strip-components 5 --force-local -xf ${package_path} ${file_path})
+	   (cd ${file_dir} && tar --seek --record-size=512 --strip-components 5 --force-local -xf ${package_path} ${file_path})  >>$LOGFILE 2>&1
 	   rc=$?
 	   if [ $rc -eq 0 ]; then
 	       chmod 0644 $filepath
@@ -372,7 +372,8 @@ except:
 	       exit 0
 	   else
 	       rm -f ${filepath}
-	       say Failed to untar file ${pnfsid}, Proceed to encp it
+	       say Failed to untar file ${pnfsid}
+	       exit 1
 	   fi
        fi
        unset LD_PRELOAD
