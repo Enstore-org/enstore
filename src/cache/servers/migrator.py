@@ -590,19 +590,17 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             if type(component['bfid']) == types.UnicodeType:
                 component['bfid'] = component['bfid'].encode("utf-8")
-            bfids.append(component['bfid'])
             # Check if such file exists in cache.
             # This should be already checked anyway.
             if os.path.exists(cache_file_path):
+                bfids.append(component['bfid'])
                 cache_file_list.append((cache_file_path, component['path'], component['complete_crc']))
                 ns_file_list.append(component['path']) # file path in name space
             else:
-                Trace.log(e_errors.ERROR, "File aggregation failed. File %s does not exist in cache"%(cache_file_path))
-                return None
-        if len(cache_file_path) == 1: # single file
-            src_path = cache_file_path
-            dst = self.request_list[0][ 'path'] # complete file path in name space
-        else: # multiple files
+                Trace.alarm(e_errors.ERROR, "File %s does not exist in cache. It will be skipped, but please investigate"%(cache_file_path))
+        if len(cache_file_list) == 0:
+            return None
+        else: 
             # Create a special file containing the names
             # of file as known in the namespace.
             # This file can be used for metadate recovery.
@@ -669,14 +667,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             if rtn[0] != 0: # archiver return code
                 Trace.log(e_errors.ERROR, "Error creating package %s %s"%(src_path, rtn[2])) #stderr
-                return None, None, None
+                return None
 
             t = time.time() - start_t
             fstats = os.stat(src_path)
             fsize = fstats[stat.ST_SIZE]/1000000.
 
             Trace.log(e_errors.INFO, "Finished tar to %s size %s MB rate %s MB/s"%(src_path, fsize, fsize/t)) # do not change! It is used in plotter
-        os.remove("file_list")
+            os.remove("file_list")
 
         # Qpid converts strings to unicode.
         # Encp does not like this.
