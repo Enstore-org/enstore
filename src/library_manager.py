@@ -4054,7 +4054,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mover in self.volumes_at_movers.get_active_movers():
                 # how idle mover can be in the active list?
                 # continue checking. This check requires synchronization between LM and mover machines.
-                if self.volumes_at_movers.at_movers[mover]['time_started'] > mticket['current_time']:
+                if self.volumes_at_movers.at_movers[mover]['time_started'] >= mticket['current_time']:
                     # idle request was issued before the request became active
                     # ignore this request, but send something to mover.
                     # If nothing is sent the mover may hang wating for the

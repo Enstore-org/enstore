@@ -2415,7 +2415,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         retry = 0
                         if addr == self.udp_control_address:
                             to = 10
-                            retry = 3
+                            retry = 1 # 1 means no retry
                         if addr == self.udp_control_address and ticket['work'] == 'mover_busy':
                             # do not send mover_busy to get
                             set_cm_sent = 0
