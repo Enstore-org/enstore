@@ -1708,8 +1708,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         crc_control = self.config.get("read_crc_control", None)
         if crc_control and crc_control in (0,1):
             self.read_crc_control = crc_control
+
         elif crc_control != None:
             Trace.log(e_errors.ERROR, "Ignoring invalid 'read_crc_control' value of %s found in configuration. Allowed values are 0 or 1. Using default value of 0 ('calculate CRC when reading from memory')."%(crc_control,))
+
+        self._reinit() # pickup whatever reinit provides
         drive_rate_threshold =  self.config.get("drive_rate_threshold", None)
         if drive_rate_threshold:
             exit_flag = False
@@ -1982,9 +1985,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #    del(self.buffer)
         #    self.buffer = None
         if do_restart:
-            Trace.log(e_errors.INFO, "sending restart command")
             cmd = '/usr/bin/at now+1minute'
-            ecmd = "enstore Estart %s '--just %s > /dev/null'\n"%(self.config['host'],self.name)
+            ecmd = "enstore start --just %s\n"%(self.name,)
+            Trace.log(e_errors.INFO, "sending restart command: %s"%(ecmd,))
             p=os.popen(cmd, 'w')
             p.write(ecmd)
             p.close()
@@ -2412,7 +2415,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         retry = 0
                         if addr == self.udp_control_address:
                             to = 10
-                            retry = 3
+                            retry = 1 # 1 means no retry
                         if addr == self.udp_control_address and ticket['work'] == 'mover_busy':
                             # do not send mover_busy to get
                             set_cm_sent = 0
@@ -4725,8 +4728,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.saved_mode = self.mode
         self.mode = self.setup_mode
-        if self.mode == READ:
-            # for reads alwas set crc_seed to 0
+        if self.mode in (READ, ASSERT):
+            # for reads and asserts always set crc_seed to 0
             # crc will be automatically checked against seed 1
             # in case if seed 0 crc check fails
             self.buffer.set_crc_seed(0L)

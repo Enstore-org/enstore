@@ -1512,7 +1512,10 @@ class LibraryManagerMethods:
         Trace.trace(self.trace_level+2, 'inquire_vol label %s req %s addr=%s'%
                     (external_label, requestor, vol_server_address))
         if requestor and requestor.get('mover_type') == 'DiskMover':
-            vol_info = requestor # return information from mover
+            vol_info = {}
+            vol_info.update(requestor) # return information from mover
+            if "address" in vol_info:
+                del(vol_info['address'])
             vol_info['system_inhibit'] = vol_info['volume_status'][0]
             vol_info['user_inhibit'] = vol_info['volume_status'][1]
         elif not external_label:
@@ -4051,7 +4054,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mover in self.volumes_at_movers.get_active_movers():
                 # how idle mover can be in the active list?
                 # continue checking. This check requires synchronization between LM and mover machines.
-                if self.volumes_at_movers.at_movers[mover]['time_started'] > mticket['current_time']:
+                if self.volumes_at_movers.at_movers[mover]['time_started'] >= mticket['current_time']:
                     # idle request was issued before the request became active
                     # ignore this request, but send something to mover.
                     # If nothing is sent the mover may hang wating for the
@@ -4550,6 +4553,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # update volume info
                 vol_info = self.inquire_vol(w["fc"]["external_label"], mticket, w['vc']['address'])
                 if vol_info['status'][0] == e_errors.OK:
+                    if self.mover_type(mticket) == 'DiskMover':
+                       vol_info["external_label"] = w["vc"]["external_label"]
                     w['vc'].update(vol_info)
 	    log_add_to_wam_queue(w['vc'])
             #self.work_at_movers.append(w)
