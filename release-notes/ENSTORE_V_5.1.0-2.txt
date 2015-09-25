@@ -1,0 +1,153 @@
+commit a263a67ba91c8b18973e8e2b48c615a09576784f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Aug 10 13:59:34 2015 -0500
+
+    v 5.1.0
+    r 2
+
+A	release-notes/ENSTORE_V_5.0.0-1.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit dc1d702792e25cee532fe1afa8bf1802a5da704d
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Mon Aug 10 13:41:42 2015 -0500
+
+    The backup2Tape script is patched to copy PostgreSQL base-backups and packed xlogs to tape.  Only those base-backups and xlogs that have been created since the last run of backup2Tape are copied to tape. The preexisting file is renamed to backup2Tape_2014-12-08. This contents of this file are unchanged. Tested on dmsen03.
+    
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1661
+    http://srm.fnal.gov/reviews/r/286/
+
+M	sbin/backup2Tape
+A	sbin/backup2Tape_2014-12-08
+
+commit dc595ac7ae92c6f115e1bc2d4f22b592fc88d078
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Aug 6 10:17:53 2015 -0500
+
+        With command-line option --package do not request the complete volume list from the server.
+        I found that _tape_list() file_clerk method leaks memory when called to produce the list of package members.
+        The corresponding command-line calls do not have an option to not get the full list of files.
+        This patch will allow to get lists and do not have info_server memory leaks, because the part of the file_clerk _tape_list() code will not be executed.
+        The fix in the file_clerk _tape_list() is still needed.
+        RB: http://srm.fnal.gov/reviews/r/285/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1670
+
+M	src/file_clerk_client.py
+M	src/info_client.py
+M	src/volume_clerk_client.py
+
+commit 6d5432a0532477a63d47dd57df8da1d49a6ad7ad
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Mon Aug 3 15:40:10 2015 -0500
+
+    Added parametrized scripts and cronjobs for PostgreSQL base-backup and WAL-archiving. The base backup and WAL archives are both written locally and copied to a remote host.
+    
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1661
+    http://srm.fnal.gov/reviews/r/278/
+
+M	crontabs/accounting_db
+M	crontabs/drivestat_db
+M	crontabs/enstore_db
+A	tools/pg_base_backup.sh
+A	tools/pg_xlog_archive.sh
+
+commit 888758dd12b3604370a1c28b69def6a5d491abce
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Jul 29 12:44:36 2015 -0500
+
+    enstore kt directory was incorrect.
+    RB: http://srm.fnal.gov/reviews/r/283/
+    BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1665
+
+M	sbin/enrsync
+
+commit ea7267886db4a4c8e41f3dece037b18973a4c787
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Jul 28 13:50:58 2015 -0500
+
+    mprove SFA performance. Have only one disk volume for a given volume family. Reduce the amount of calls to volume clerk.
+    RB:http://srm.fnal.gov/reviews/r/282/
+    BZ:http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1664
+
+M	src/enstore_functions3.py
+M	src/library_manager.py
+M	src/mover.py
+
+commit 2e54278a2858ad12642d17327e8a000f2bc21484
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jul 27 10:32:04 2015 -0500
+
+        Change file family width for package based on the file family width of all constituent files.
+        This allows to better control the number of simultaneous writes.
+    
+        RB: http://srm.fnal.gov/reviews/r/281/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1663
+
+M	src/cache/servers/migrator.py
+
+commit 975816e907e43dd05524c5834d8c62b22335419a
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Fri Jul 24 12:31:04 2015 -0500
+
+    Decreased checkdb cron frequency from once per 2 hours to once per 12 hours. This should prevent a possible overlap of running instances on stken. Per recent stken data noted by SSA in the Bug, the longest running instance used approximately 9 hours. This change is only a temporary measure, as the time used by the cron may grow further if the script is not investigated and optimized.
+    
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1608
+    http://srm.fnal.gov/reviews/r/280/
+
+M	crontabs/checkdb
+
+commit 6c520eeb746ea2b4a51a30a277b3adb8b1d921e2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Jun 24 14:00:21 2015 -0500
+
+        If bfid_info returns not OK in status, the other fields may be absent in bfid info. In case of timeout, for instance, there are no  rec['bfid'], rec['archive_status'], which produces exception.
+        http://srm.fnal.gov/reviews/r/275/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1656
+
+M	src/cache/servers/migrator.py
+
+commit e62645258020831337187b2f9a740a26e22f3e93
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Jun 19 12:53:52 2015 -0500
+
+        fix bug introduced in commit 34aac7806c6b9d2ed29eacd1f44fd868697be145
+        query in __tape_list was erroneously modified to not return packaged
+        files.
+           RB : http://srm.fnal.gov/reviews/r/274/
+           BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1655
+
+M	src/file_clerk.py
+
+commit 34732f13129d9f9354fe2261fef996926f5d41eb
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Tue Jun 16 17:15:26 2015 -0500
+
+    rb273/bz1654: [migration] fix minor typos in comments or string
+
+M	src/migrate_chimera.py
+
+commit c2d115a60e84099fa6f82898e37b83c626063f12
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Tue Jun 16 16:47:28 2015 -0500
+
+    rb272/bz1650: [migration] set file name in pnfs layer 4 for package files
+
+M	src/migrate_chimera.py
+
+commit 335dda2fcd5863112f6e4e4ae201ada4c6392cfb
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jun 11 16:01:29 2015 -0500
+
+        fix issue with palette in gnuplot and black background color,
+        also re-arrange functions for convenience
+          RB : http://srm/reviews/r/271/
+          BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1633
+
+M	src/histogram.py
+
+commit 2320dfa047cd15f78efcba613588fecb360ec0b8
+Merge: a933e4c 500640e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jun 5 15:00:54 2015 -0500
+
+    Merge branch 'release/5.0.0-1' into develop
