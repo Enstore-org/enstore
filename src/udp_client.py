@@ -252,6 +252,7 @@ class UDPClient:
                         return out
                     if 'r_a' in out:
                         client_id = out['r_a'][2]
+                        del(out['r_a'])
                         Trace.trace(5, "client_id %s"%(client_id,))
 
                         if client_id != tsd.ident:
@@ -458,6 +459,7 @@ class UDPClient:
                         return out, rcvd_txn_id
                     if 'r_a' in out:
                         client_id = out['r_a'][2]
+                        del(out['r_a'])
                         Trace.trace(5, "client_id %s"%(client_id,))
 
                         if client_id != tsd.ident:
