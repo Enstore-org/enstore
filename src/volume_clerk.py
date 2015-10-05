@@ -1089,9 +1089,9 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
 
-        self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
-        self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
-        self.max_connections         =  self.numberOfParallelWorkers+1
+        self.parallelQueueSize       = self.keys.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+        self.numberOfParallelWorkers = self.keys.get('max_threads',MAX_THREADS)
+        self.max_connections         = self.numberOfParallelWorkers+1
 
         self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host',None),
                                           port=dbInfo.get('db_port',None),

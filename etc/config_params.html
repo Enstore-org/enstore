@@ -586,6 +586,17 @@ state. Default - do not restart</td>
 	      this number, the corresponding library will be paused</td>
 	   <td>Optional</td><td>2</td>
 </tr>
+
+<tr><td><a NAME="max_threads">max_threads</a></td><td> Number of
+              threads processing requests concurrently
+	      </td>
+	   <td>Optional</td><td>50</td>
+</tr>
+<tr><td><a NAME="parallel_queue_size">parallel_queue_size</a></td><td>Size of
+              request queue processed concurrently
+	      </td>
+	   <td>Optional</td><td>100000</td>
+</tr>
 </table>
 
 <h2>File Clerk Keys</h2>
@@ -598,8 +609,23 @@ state. Default - do not restart</td>
 </th>
 <th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
 </th>
+<tr><td><a NAME="max_threads">max_threads</a></td><td> Number of
+              threads processing requests concurrently
+	      </td>
+	   <td>Optional</td><td>50</td>
+</tr>
 </tr>
 
+<tr><td><a NAME="sequential_queue_size">sequential_queue_size</a></td><td>Size of
+              request queue processed sequentially
+	      </td>
+	   <td>Optional</td><td>100000</td>
+</tr>
+<tr><td><a NAME="parallel_queue_size">parallel_queue_size</a></td><td>Size of
+              request queue processed concurrently
+	      </td>
+	   <td>Optional</td><td>100000</td>
+</tr>
 <tr><td><a NAME="brand">brand</a></td><td>brand for bit file id to
 	      distinguish between systems</td>
 	   <td>Optional</td><td>""</td>
@@ -607,8 +633,26 @@ state. Default - do not restart</td>
 </table>
 
 <h2>Info Server Keys</h2>
-Uses only general keys (along with database keys which are the same
-      for file, volume clerks and info server).
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+<tr><td><a NAME="max_threads">max_threads</a></td><td> Number of
+              threads processing requests concurrently
+	      </td>
+	   <td>Optional</td><td>50</td>
+</tr>
+<tr><td><a NAME="parallel_queue_size">parallel_queue_size</a></td><td>Size of
+              request queue processed concurrently
+	      </td>
+	   <td>Optional</td><td>100000</td>
+</tr>
+</table>
 
 <h2>Database Keys</h2>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">

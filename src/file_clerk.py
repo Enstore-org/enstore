@@ -1139,9 +1139,9 @@ class FileClerkMethods(FileClerkInfoMethods):
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
 
-        self.sequentialQueueSize     = dbInfo.get('sequential_queue_size',SEQUENTIAL_QUEUE_SIZE)
-	self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
-	self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
+        self.sequentialQueueSize     = self.keys.get('sequential_queue_size',SEQUENTIAL_QUEUE_SIZE)
+	self.parallelQueueSize       = self.keys.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+	self.numberOfParallelWorkers = self.keys.get('max_threads',MAX_THREADS)
         self.max_connections         = self.numberOfParallelWorkers+1
 
         self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),

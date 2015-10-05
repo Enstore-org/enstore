@@ -85,9 +85,9 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 		file_clerk.MY_NAME = MY_NAME
 		volume_clerk.MY_NAME = MY_NAME
 
-		self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
-		self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
-		self.max_connections         =  self.numberOfParallelWorkers+1
+		self.parallelQueueSize       = self.keys.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+		self.numberOfParallelWorkers = self.keys.get('max_threads',MAX_THREADS)
+		self.max_connections         = self.numberOfParallelWorkers+1
 
 		self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host','localhost'),
 						  port=dbInfo.get('db_port',8888),
