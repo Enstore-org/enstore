@@ -1327,14 +1327,15 @@ def is_deleted_path(filepath):
 def is_migration_path(filepath):
     #Make sure this is a string.
     if type(filepath) != types.StringType:
-        raise TypeError("Expected string filename.",
-				e_errors.WRONGPARAMETER)
+        raise TypeError("Expected string filename.",e_errors.WRONGPARAMETER)
 
     dname, fname = os.path.split(filepath)
 
     #Is this good enough?  Or does something more stringent need to
     # be used.  Only check the directories (scans of the PNFS migration
     # DB were failing because they contained "Migration").
+    #
+    # Any directory with name "Migration" in the path will be considered as migration_path
     if MIGRATION_DB in dname.split("/"):
         return 1
 
@@ -7614,36 +7615,45 @@ def get_filenames(MY_TASK, job,
 #This function contains common code for cleanup between migration and
 # duplication.
 def cleanup_after_scan_common(MY_TASK, mig_path):
+
+    fmt = "migration path '%s' was not deleted: %s"
+
     try:
-        # rm the migration path.
-        os.stat(mig_path)
+        # Don't even try to remove file in mig_path if it is not a regular file
+        # Preserve old behaviour:
+        #   return success for directory, 
+        #   fail for other non regular files.
+        mode = os.stat(mig_path).st_mode
+        if stat.S_ISDIR(mode):
+            ok_log(MY_TASK, fmt % (mig_path, "mig_path is directory, skip remove()"))
+            return 0
+        elif not stat.S_ISREG(mode):
+            error_log(MY_TASK, fmt % (mig_path, "mig_path is not regular file"))
+            return 1
+
+        if not is_migration_path(mig_path):
+            msg0 = "it is not in Migration path as it failed is_migration_path() test"
+            error_log(MY_TASK, fmt % (mig_path,msg0))
+            return 1
+
+        # remove migration path. It is regular file in Migration path.
         try:
-            #If the file still exists, try deleting it.
             nullify_pnfs(mig_path)
             file_utils.remove(mig_path)
-
             ok_log(MY_TASK, "removed migration path %s" % (mig_path,))
         except (OSError, IOError), msg:
-            #If we got the errors that:
-            # 1) the file does not exist
-            # or
-            # 2) that the filename exists, but is no longer a
-            #    regular file (i.e. is a directory)
-            #then we don't need to worry.
+            # Old code. 
+            # When the mig_path:
+            #     1) does not exist
+            #     2) is no longer a regular file (i.e. is a directory)
+            # pass to OK return, otherwise report an error here:
             if msg.args[0] not in (errno.ENOENT, errno.EISDIR):
-                error_log(MY_TASK,
-                          "migration path %s was not deleted: %s" \
-                          % (mig_path, str(msg)))
+                error_log(MY_TASK, fmt % (mig_path,str(msg)))
                 return 1
     except (OSError, IOError), msg2:
-        if msg2.args[0] in (errno.ENOENT,):
-            #If the target we are trying to delete no longer
-            # exists, there is no problem.
-            pass
-        else:
-            error_log(MY_TASK,
-                      "migration path %s was not deleted: %s" \
-                      % (mig_path, str(msg)))
+        # Pass if mig_path does not exist, Otherwise report error
+        if not msg2.args[0] in (errno.ENOENT,):
+            error_log(MY_TASK,fmt % (mig_path, str(msg2)))
             return 1
 
     return 0
