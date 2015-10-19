@@ -1149,7 +1149,8 @@ class FileClerkMethods(FileClerkInfoMethods):
                                       user=dbInfo.get('dbuser',None),
                                       database=dbInfo.get('dbname',None),
                                       jou=jouHome,
-                                      max_connections=self.max_connections)
+                                      max_connections=self.max_connections,
+                                      max_idle=int(self.max_connections*0.9+0.5))
 
         self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
@@ -1473,11 +1474,13 @@ class FileClerkMethods(FileClerkInfoMethods):
             record["gid"] = ticket["gid"]
 
         # assigning it to database
-        self.filedb_dict[bfid] = record
-        Trace.log(e_errors.INFO, 'assigned: '+`record`)
-        ticket['status'] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
+        try:
+            self.filedb_dict.insert_new_record(bfid,record)
+            ticket['status'] = (e_errors.OK, None)
+        except Exception as e:
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, str(e))
+        finally:
+            self.reply_to_caller(ticket)
 
     #### DONE
     # modify_file_record() -- modify file record
@@ -1487,38 +1490,48 @@ class FileClerkMethods(FileClerkInfoMethods):
     # bfid must exist
 
     def modify_file_record(self, ticket):
-        bfid, record = self.extract_bfid_from_ticket(ticket)
+        bfid,record = self.extract_bfid_from_ticket(ticket)
         if not bfid:
             return #extract_bfid_from_ticket handles its own errors.
 
         # better log this
         Trace.log(e_errors.INFO, "start modifying "+`record`)
 
-        # modify the values
-        for k in ticket.keys():
-	    # can not change bfid!
-	    if k != 'bfid' and record.has_key(k):
-	        record[k] = ticket[k]
+        # can't change bfid, filter it out retaining
+        # only keys being modfied
+        updated_record = dict(filter(lambda i : i[0]  != 'bfid' and i[0] in record.keys(),
+                                     ticket.items()))
 
-        # assigning it to database
-        self.filedb_dict[bfid] = record
-        Trace.log(e_errors.INFO, 'modified to '+`record`)
-        ticket['status'] = (e_errors.OK, None)
-	self.reply_to_caller(ticket)
-	return
+        try:
+            r=self.filedb_dict.update_record(bfid,updated_record)
+            Trace.log(e_errors.INFO, 'modified to '+`updated_record`)
+	    ticket['status'] = (e_errors.OK, None)
+	except Exception as msg:
+	    ticket['status'] = (e_errors.ERROR, str(msg))
+	finally:
+	    self.reply_to_caller(ticket)
 
     def modify_file_records(self, ticket):
-        try:
-	    records = ticket["list"]
-	    for record in records:
+        records = ticket["list"]
+        del(ticket["list"])
+        ticket["list"]=[]
+        ticket["status"] = (e_errors.OK, None)
+        has_failure = False
+        bfid=None
+        for record in records:
+            try:
 	        bfid = record["bfid"]
-	        self.filedb_dict[bfid] = record
-	    ticket['status'] = (e_errors.OK, None)
-	except (IndexError, KeyError), msg:
-	    ticket['status'] = (e_errors.ERROR, msg)
-	finally:
-	    del(ticket["list"])
-	    self.reply_to_caller(ticket)
+                # we never update bfid, so yank it from dictionary
+                del(record["bfid"])
+                r=self.filedb_dict.update_record(bfid,record)
+                ticket["list"].append({ "bfid" : bfid, "status" : (e_errors.OK, None)})
+            except Exception as msg:
+                ticket["list"].append({ "bfid" : bfid, "status" : (e_errors.ERROR, str(msg))})
+                has_failure=True
+        if has_failure:
+            ticket["status"] = (e_errors.ERROR, "some of the records in the list failed to be updated, check the list")
+        self.reply_to_caller(ticket)
+
 
     #### DONE
     # update the database entry for this file - add the pnfs file id
@@ -2270,7 +2283,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         generic_server.GenericServer.__init__(self, csc, MY_NAME,
                                               function = self.handle_er_msg)
 
-        Trace.init(self.log_name)
+        Trace.init(self.log_name,"yes")
 
         FileClerkMethods.__init__(self, csc)
 
@@ -2430,7 +2443,7 @@ class FileClerkInterface(generic_server.GenericServerInterface):
     pass
 
 if __name__ == "__main__":
-    Trace.init(string.upper(MY_NAME))
+    Trace.init(string.upper(MY_NAME),"yes")
 
     # get the interface
     intf = FileClerkInterface()

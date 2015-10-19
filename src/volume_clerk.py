@@ -1098,7 +1098,8 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                           user=dbInfo.get('dbuser',None),
                                           database=dbInfo.get('dbname',None),
                                           jou=jouHome,
-                                          max_connections=self.max_connections)
+                                          max_connections=self.max_connections,
+                                          max_idle=int(self.max_connections*0.9+0.5))
 
         self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
@@ -3190,7 +3191,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         # basically, to make pychecker happy
         generic_server.GenericServer.__init__(self, csc, MY_NAME,
                                               function = self.handle_er_msg)
-        Trace.init(self.log_name)
+        Trace.init(self.log_name,"yes")
 
         VolumeClerkMethods.__init__(self, csc)
         #   pretend that we are the test system
@@ -3232,7 +3233,7 @@ class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
 
 if __name__ == "__main__":
-    Trace.init(string.upper(MY_NAME))
+    Trace.init(string.upper(MY_NAME),"yes")
 
     # get the interface
     intf = VolumeClerkInterface()

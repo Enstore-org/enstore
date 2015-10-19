@@ -94,13 +94,16 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 						  user=dbInfo.get('dbuser_reader','enstore_reader'),
 						  database=dbInfo.get('dbname','enstoredb'),
 						  auto_journal=0,
-						  max_connections=self.max_connections)
+						  max_connections=self.max_connections,
+						  max_idle=int(self.max_connections*0.9+0.5))
+
 		self.filedb_dict  = edb.FileDB(host=dbInfo.get('db_host','localhost'),
 					       port=dbInfo.get('db_port',8888),
 					       user=dbInfo.get('dbuser_reader','enstore_reader'),
 					       database=dbInfo.get('dbname','enstoredb'),
 					       auto_journal=0,
-					       max_connections=self.max_connections)
+					       max_connections=self.max_connections,
+					       max_idle=int(self.max_connections*0.9+0.5))
 
 		self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 		self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
@@ -565,7 +568,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 		    return
 
 if __name__ == '__main__':
-	Trace.init(string.upper(MY_NAME))
+	Trace.init(string.upper(MY_NAME),"yes")
 	intf = Interface()
 	csc = (intf.config_host, intf.config_port)
 	infoServer = Server(csc)
