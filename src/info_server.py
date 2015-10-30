@@ -133,18 +133,6 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 	    self.filedb_dict.close()
 	    self.volume_dict.close()
 
-
-	def reinit(self):
-		Trace.log(e_errors.INFO, "(Re)initializing server")
-
-		# stop the communications with the event relay task
-		self.event_relay_unsubscribe()
-
-		#Close the connections with the database.
-		self.close()
-
-		self.__init__(self.csc.server_address)
-
 	def info_error_handler(self, exc, msg, tb):
 		__pychecker__ = "unusednames=tb"
 		self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
