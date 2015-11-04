@@ -4187,10 +4187,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.gid = -1
         self.header_labels = "" # set it here to not have problems in assert
         if ticket.has_key('wrapper'):
-            uid = ticket['wrapper'].get('uid', -1)
-            gid = ticket['wrapper'].get('gid', -1)
-            self.uid = uid
-            self.gid = gid
+            self.uid = ticket['wrapper'].get('uid', -1)
+            self.gid = ticket['wrapper'].get('gid', -1)
         if self.method and self.method == "read_next" and self.udp_control_address:
             self.lm_address = self.udp_control_address
             self.lm_address_saved = self.lm_address
@@ -5531,17 +5529,27 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info['eod_cookie'] = eod
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
+        drive = "%s:%s" % (self.config['device'], self.config['serial_num'])
         fc_ticket = {  'location_cookie': loc_to_cookie(previous_eod+eod_increment),
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
-                       'complete_crc': complete_crc}
+                       'complete_crc': complete_crc,
+                       'gid': self.gid,
+                       'uid': self.uid,
+                       'pnfs_name0': self.current_work_ticket['outfilepath'],
+                       'pnfsid':  self.file_info['pnfsid'],
+                       'drive':  drive,
+                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'file_family_width': self.vol_info.get('file_family_width'),
+                       'mover_type': self.mover_type,
+                       'unique_id': self.current_work_ticket['unique_id'],
+}
         ##  HACK:  store 0 to database if mover is NULL
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
-        fc_ticket['gid'] = self.gid
-        fc_ticket['uid'] = self.uid
+
         #If it is an orginal of multiple copies, pass this along.
         copies = self.file_info.get('copies')
         if copies:
@@ -5555,7 +5563,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 0
             fc_ticket['original_bfid'] = original_bfid
 
-        fc_ticket['mover_type'] = self.mover_type
         fcc_reply = self.set_new_bitfile(fc_ticket)
         if not fcc_reply:
             return fcc_reply
@@ -7529,6 +7536,12 @@ class DiskMover(Mover):
         self.save_state = self.state
 
         self.unique_id = ticket['unique_id']
+        self.uid = -1
+        self.gid = -1
+        if 'wrapper' in ticket:
+            self.uid = ticket['wrapper'].get('uid', -1)
+            self.gid = ticket['wrapper'].get('gid', -1)
+
         try:
             self.lm_address = ticket['lm']['address']
         except KeyError:
@@ -8087,11 +8100,18 @@ class DiskMover(Mover):
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
-                       'complete_crc': complete_crc}
+                       'complete_crc': complete_crc,
+                       'gid': self.gid,
+                       'uid': self.uid,
+                       'pnfs_name0': self.current_work_ticket['outfilepath'],
+                       'pnfsid':  self.file_info['pnfsid'],
+                       'drive': "%s:%s" % (self.config['device'], self.config['serial_num']),
+                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'file_family_width': self.vol_info.get('file_family_width'),
+                       'mover_type': self.mover_type,
+                       'unique_id': self.current_work_ticket['unique_id'],
+}
 
-        #fc_ticket['gid'] = self.gid
-        #fc_ticket['uid'] = self.uid
-        #If it is an orginal of multiple copies, pass this along.
         copies = self.file_info.get('copies')
         if copies:
            fc_ticket['copies'] = copies
@@ -8136,9 +8156,6 @@ class DiskMover(Mover):
             return 0
 
         #Request the new bit file.
-        fc_ticket['mover_type'] = self.mover_type
-
-        fc_ticket['original_library'] = self.current_work_ticket.get('original_library', None)
         Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
         fcc_reply = self.set_new_bitfile(fc_ticket)
