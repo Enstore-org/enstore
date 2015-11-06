@@ -3078,7 +3078,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         buffer_empty_t = time.time()   #time when buffer empty has been detected
-        buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
+        buffer_empty_cnt = 0 # number of times buffer was consequtively empty
         nblocks = 0L
         bytes_written = 0
         # send a trigger message to the client
@@ -3498,7 +3498,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
         self.media_transfer_time = 0.
         buffer_full_t = 0   #time when buffer full has been detected
-        buffer_full_cnt = 0 # number of times buffer was cosequtively full
+        buffer_full_cnt = 0 # number of times buffer was consequtively full
         nblocks = 0
         header_size = 0 # to avoit a silly exception
         #Initialize thresholded transfer notify messages.
@@ -5114,9 +5114,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.error_times.pop(0)
             if len(self.error_times) >= self.max_failures:
                 if broken:
-                  after_dismount_function = self.offline
+                    after_dismount_function = self.offline
                 broken =  "max_failures (%d) per failure_interval (%d) reached" % (self.max_failures,
-                                                                                     self.failure_interval)
+                                                                                   self.failure_interval)
             ### network errors should not count toward rd_err, wr_err
             if self.mode == WRITE:
                 self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
@@ -5164,7 +5164,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.mode == ASSERT:
             return_here = False
-            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", MEDIA_VERIFY_FAILED))
+            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", "FTT_ENODEV", "FTT_ENOTAPE", MEDIA_VERIFY_FAILED))
                 or exc == e_errors.ENCP_GONE):
                 # stop assert
                 pass
