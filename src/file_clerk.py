@@ -1374,7 +1374,7 @@ class FileClerkMethods(FileClerkInfoMethods):
                 record["bfid"] = bfid
                 # last try failed, report
                 if not retries :
-                    Trace.alarm(e_errors.ERROR, "Failed to insert new file record with bfid {} : {}".format(bfid, str(e)))
+                    Trace.log(e_errors.ERROR, "Failed to insert new file record with bfid {} : {}".format(bfid, str(e)))
                     ticket["status"] = (e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
                     self.reply_to_caller(ticket)
                     return
@@ -1587,8 +1587,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         try:
             record=self.filedb_dict.update_record(bfid,record)
         except Exception as e:
-            Trace.alarm(e_errors.ERROR, "Failed to update file record with bfid {} : {}".format(bfid, str(e)))
-            ticket["status"] = (e_errors.ERROR, "Failed to update file record with bfid {}, see server log for details".format(bfid))
+            Trace.log(e_errors.ERROR, "set_pnfsid: Failed to update file record with bfid {} : {}".format(bfid, str(e)))
+            ticket["status"] = (e_errors.ERROR, "set_pnfsid: Failed to update file record with bfid {}, see server log for details".format(bfid))
             self.reply_to_caller(ticket)
             return
 
@@ -1609,136 +1609,198 @@ class FileClerkMethods(FileClerkInfoMethods):
 	return
 
     def open_bitfile(self, ticket):
-	    #
-	    # ticket contains only bfid
-	    #
-	    bfid, record = self.extract_bfid_from_ticket(ticket)
-	    if not bfid:
-		    return #extract_bfid_from_ticket handles its own errors.
-	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
-					   file_cache_status.CacheStatus.STAGING_REQUESTED,
-					   file_cache_status.CacheStatus.STAGING]:
-		    ticket["status"] = (e_errors.OK, None)
-		    self.reply_to_caller(ticket)
-		    return
-	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED;
-	    #
-	    # record change in DB
-	    #
-	    self.filedb_dict[bfid] = record
-	    ticket["status"] = (e_errors.OK, None)
-	    ticket["fc"] = record
-	    ticket["fc"]["disk_library"] = record["library"]
-	    if self.en_qpid_client :
-		    event = pe_client.evt_cache_miss_fc(ticket,record)
-		    try:
-			    self.en_qpid_client.send(event)
-		    except:
-			    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-	    self.reply_to_caller(ticket)
-	    return
+        """
+        Initiate disk cache file staging
+
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket containing bfid
+
+        """
+        bfid,record = self.extract_bfid_from_ticket(ticket)
+        if not bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+
+        cache_status = record.get("cache_status")
+        if cache_status in (file_cache_status.CacheStatus.CACHED,
+                            file_cache_status.CacheStatus.STAGING_REQUESTED,
+                            file_cache_status.CacheStatus.STAGING):
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            return
+        record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED;
+        try:
+            r=self.filedb_dict.update_record(bfid,{"cache_status" :  record["cache_status"]})
+        except  Exception as msg:
+            ticket['status'] = (e_errors.ERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
+
+        ticket["fc"] = record
+        ticket["fc"]["disk_library"] = record["library"]
+        ticket["status"] = (e_errors.OK, None)
+
+        if self.en_qpid_client :
+            event = pe_client.evt_cache_miss_fc(ticket,record)
+            try:
+                self.en_qpid_client.send(event)
+            except Exception as e:
+                Trace.log(e_errors.ERROR, "open_bitfile: failed to send cache miss event for bfid {} : {}".format(bfid,str(e)))
+                ticket["status"] = (e_errors.ERROR, "Failed to send cache miss event for bfid {}, see server log for details".format(bfid))
+                record["cache_status"] = cache_status
+                try:
+                    """
+                    set cache_status to original value, rolling back the change
+                    """
+                    r=self.filedb_dict.update_record(bfid,{"cache_status" :  record["cache_status"]})
+                except  Exception as msg:
+                    Trace.log(e_errors.ERROR, "open_bitfile: failed to rollback cache_status change for bfid {} : {}".format(bfid,str(msg)))
+                    pass
+        self.reply_to_caller(ticket)
 
     def open_bitfile_for_package(self, ticket):
-	    #
-	    # this function changes the status of package file and
-	    # we rely on DB trigger to change the status of all files in the package
-	    #
-	    bfid, record = self.extract_bfid_from_ticket(ticket)
-	    if not bfid:
-		    return #extract_bfid_from_ticket handles its own errors.
+        """
+        Initiate disk cache file staging
 
-	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
-					   file_cache_status.CacheStatus.STAGING_REQUESTED,
-					   file_cache_status.CacheStatus.STAGING]:
-		    ticket["status"] = (e_errors.OK, None)
-		    self.reply_to_caller(ticket)
-		    return
-	    #
-	    # check that this is indeed the package file. Package file
-	    #
-	    if bfid != record['package_id'] or \
-	       type(record['package_id']) == types.NoneType :
-		    ticket["status"] = (e_errors.ERROR, "This is not a package file")
-		    self.reply_to_caller(ticket)
-		    return
-	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
-	    self.filedb_dict[bfid] = record
-	    q3 = "select v.library from file f, volume v where v.id=f.volume and f.package_id = %s and f.deleted='n' and f.bfid!=f.package_id limit 1"
-	    ticket["status"] = (e_errors.OK, None)
-	    ticket["fc"] = record
-	    library=None
-	    try:
-		    library=self.filedb_dict.query_getresult(q3,(record["package_id"],))[0][0]
-	    except:
-		    ticket["status"] =  (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-		    self.reply_to_caller(ticket)
-		    return
-	    ticket["fc"]["disk_library"] = library
-	    self.reply_to_caller(ticket)
-	    #
-	    # update children + package in one go
-	    #
-	    t = time2timestamp(time.time())
-	    q1 = "update file set cache_status='%s' where package_id='%s' and deleted='n' and cache_status!='%s'"%(file_cache_status.CacheStatus.STAGING_REQUESTED,
-														   record["package_id"],
-														   file_cache_status.CacheStatus.CACHED)
-	    q2 = "update file set cache_mod_time='%s' where package_id='%s' and deleted='n' and cache_status='%s'"%(t,
-														    record["package_id"],
-														    file_cache_status.CacheStatus.CACHED)
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket containing bfid
+
+        """
+        #
+        # this function changes the status of package file and
+        # we rely on DB trigger to change the status of all files in the package
+        #
+        bfid, record = self.extract_bfid_from_ticket(ticket)
+        if not bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+
+        cache_status = record.get("cache_status")
+        if cache_status  in [file_cache_status.CacheStatus.CACHED,
+                             file_cache_status.CacheStatus.STAGING_REQUESTED,
+                             file_cache_status.CacheStatus.STAGING]:
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            return
+        #
+        # check that this is indeed the package file.
+        #
+        if bfid != record['package_id'] or \
+               type(record['package_id']) == types.NoneType :
+            ticket["status"] = (e_errors.ERROR, "This is not a package file")
+            self.reply_to_caller(ticket)
+            return
+
+        record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
+
+        try:
+            r=self.filedb_dict.update_record(bfid,{"cache_status" :  record["cache_status"]})
+        except  Exception as msg:
+            ticket['status'] = (e_errors.ERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
+
+        q = "select v.library from file f, volume v where v.id=f.volume and f.package_id = %s and f.deleted='n' and f.bfid!=f.package_id limit 1"
+        ticket["status"] = (e_errors.OK, None)
+        ticket["fc"] = record
+        library=None
+        try:
+            library=self.filedb_dict.query_getresult(q,(record["package_id"],))[0][0]
+        except:
+            ticket["status"] =  (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+            self.reply_to_caller(ticket)
+            return
+
+        ticket["fc"]["disk_library"] = library
+        self.reply_to_caller(ticket)
+
+        q1 = """
+        UPDATE file
+        SET cache_status = %s
+        WHERE package_id=%s
+          AND deleted='n'
+          AND cache_status not in (%s,%s)
+          """
+
+        q2 = """
+        UPDATE file
+        SET cache_mod_time = %s
+        WHERE package_id=%s
+          AND deleted='n'
+          AND cache_status=%s
+          """
+
+        t = time2timestamp(time.time())
+
+        try:
+
+            self.filedb_dict.update(q1,(file_cache_status.CacheStatus.STAGING_REQUESTED,
+                                        record["package_id"],
+                                        file_cache_status.CacheStatus.CACHED,
+                                        file_cache_status.CacheStatus.STAGING_REQUESTED))
+
+            self.filedb_dict.update(q2,(t,
+                                       record["package_id"],
+                                       file_cache_status.CacheStatus.CACHED))
+        except Exception as msg:
+            ticket['status'] = (e_errors.ERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
 
 
-	    for q in (q1,q2):
-		    self.filedb_dict.update(q)
+        if self.en_qpid_client :
+            event = pe_client.evt_cache_miss_fc(ticket,record)
+            try:
+                self.en_qpid_client.send(event)
+            except:
+                Trace.log(e_errors.ERROR, "open_bitfile_for_package: failed to send cache miss event for bfid {} : {}".format(bfid,str(sys.exc_info()[1])))
+                ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 
-	    if self.en_qpid_client :
-		    event = pe_client.evt_cache_miss_fc(ticket,record)
-		    self.en_qpid_client.send(event)
+        self.reply_to_caller(ticket)
 
     def set_children(self, ticket):
-	    #
-	    # this function operates on package file and modifies
-	    # their fields in db
-	    #
-	    bfid, record = self.extract_bfid_from_ticket(ticket)
-	    if not bfid:
-		    return #extract_bfid_from_ticket handles its own errors.
-	    #
-	    # check that this is indeed the package file. Package file
-	    #
-	    if bfid != record['package_id'] or \
-	       type(record['package_id']) == types.NoneType :
-		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
-		    self.reply_to_caller(ticket)
-		    return
-	    #
-	    # modify values for package file
-	    #
-	    for k in ticket.keys():
-		    if k != 'bfid' and record.has_key(k):
-			    record[k] = ticket[k]
-	    #
-	    # retrieve the children. Note that the query below retrieves the parent
-	    # as well
-	    #
-	    q = "select bfid from file where package_id = %s and deleted='n'"
-	    res = self.filedb_dict.query_getresult(q,(bfid,))
-	    file_records = []
-	    for i in res:
-		    child_record = self.filedb_dict[i[0]]
-		    #
-		    # modify values for files in package
-		    #
-		    for k in ticket.keys():
-			    if k != 'bfid' and record.has_key(k):
-				    child_record[k] = ticket[k]
-		    #
-		    # record change in db
-		    #
-		    self.filedb_dict[i[0]] = child_record
+        """
+        This function operates on a package file and modifies
+        its fields in DB
 
-	    ticket["status"] = (e_errors.OK, None)
-	    self.reply_to_caller(ticket)
-	    return
+        :type ticket: :obj:`dict`
+        :arg ticket: ticket received from file_clerk client
+
+        """
+
+        bfid, record = self.extract_bfid_from_ticket(ticket)
+        if not bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+        #
+        # check that this is indeed the package file.
+        #
+        if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+            ticket["status"] = (e_errors.ERROR, "This is no a package file")
+            self.reply_to_caller(ticket)
+            return
+        #
+        # modify values for package file
+        #
+        for k in ticket.keys():
+            if k != 'bfid' and record.has_key(k):
+                record[k] = ticket[k]
+        #
+        # retrieve the children. Note that the query below retrieves the parent
+        # as well
+        #
+        q = "select bfid from file where package_id = %s and deleted='n'"
+        res = self.filedb_dict.query_getresult(q,(bfid,))
+        file_records = []
+        for i in res:
+            try:
+                r=self.filedb_dict.update_record(i[0],record)
+            except Exception as e:
+                Trace.log(e_errors.ERROR, "set_children: failed to update file record for package_id {}, bfid {} : {}".format(bfid,i[0],str(e)))
+                ticket["status"] = (e_errors.ERROR, "set_children: failed to update file record for package_id {}, bfid {}, see server log for details".format(bfid,i[0]))
+                self.reply_to_caller(ticket)
+                return
+
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
 
     def swap_package(self, ticket) :
 	    #
@@ -1810,7 +1872,7 @@ class FileClerkMethods(FileClerkInfoMethods):
     #### DONE
     def set_crcs(self, ticket):
 
-        bfid, record = self.extract_bfid_from_ticket(ticket)
+        bfid = self.extract_bfid_from_ticket(ticket,check_exists = False)
         if not bfid:
             return #extract_bfid_from_ticket handles its own errors.
 
@@ -1823,15 +1885,15 @@ class FileClerkMethods(FileClerkInfoMethods):
             return #extract_value_from_ticket handles its own errors.
 
 
-        record["complete_crc"]=complete_crc
-        record["sanity_cookie"]=sanity_cookie
-        #record our changes to the database
-        self.filedb_dict[bfid] = record
-        ticket["status"]=(e_errors.OK, None)
-        #reply to caller with updated database values
-        record=self.filedb_dict[bfid]
-        ticket["complete_crc"]=record["complete_crc"]
-        ticket["sanity_cookie"]=record["sanity_cookie"]
+        try:
+            record=self.filedb_dict.update_record(bfid,{"complete_crc" : complete_crc,
+                                                        "sanity_cookie" : sanity_cookie})
+            ticket["complete_crc"]=record["complete_crc"]
+            ticket["sanity_cookie"]=record["sanity_cookie"]
+        except Exception as e:
+            Trace.log(e_errors.ERROR, "set_crcs : failed to update file record with bfid {} : {}".format(bfid, str(e)))
+            ticket["status"] = (e_errors.ERROR, str(e))
+
         self.reply_to_caller(ticket)
 
     #### DONE
@@ -1864,7 +1926,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         if record["deleted"] != deleted:
             record["deleted"] = deleted
-            self.filedb_dict[bfid] = record
+            try:
+                r=self.filedb_dict.update_record(bfid,{"deleted" : record["deleted"] })
+            except Exception as e:
+                Trace.log(e_errors.ERROR, "set_deleted : failed to update file record with bfid {} : {}".format(bfid, str(e)))
+                ticket["status"] = (e_errors.ERROR, str(e))
+                self.reply_to_caller(ticket)
+                return
 
         # take care of the copies
         copies = self._find_copies(bfid)
@@ -1874,8 +1942,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             if record:
                 if record["deleted"] != deleted:
                     record["deleted"] = deleted
-                    self.filedb_dict[i] = record
-
+                    r=self.filedb_dict.update_record(i,{"deleted" : record["deleted"]})
         ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
@@ -1970,12 +2037,43 @@ class FileClerkMethods(FileClerkInfoMethods):
     #### DONE
     def __delete_volume(self, vol):
         Trace.log(e_errors.INFO, 'marking files of volume %s as deleted'%(vol))
-        bfids = self.get_all_bfids(vol)
-        for bfid in bfids:
-            record = self.filedb_dict[bfid]
-            if record['deleted'] != 'yes':
-                record['deleted'] = 'yes'
-                self.filedb_dict[bfid] = record
+        #
+        # query that marks deleted all packaged files on a volume
+        #
+        q1 = """
+        UPDATE file
+        SET deleted='y'
+        WHERE package_id IN
+            (SELECT f.bfid
+             FROM file f,
+                  volume v
+             WHERE v.id=f.volume
+               AND v.label=%s)
+          AND package_id IS DISTINCT FROM bfid
+          AND deleted != 'y'
+          """
+        #
+        # query that marks deleted all direct files on a volume
+        #
+        q2 = """
+        UPDATE file
+        SET deleted='y'
+        WHERE volume IN
+            (SELECT id
+             FROM volume
+             WHERE label=%s)
+          AND deleted != 'y'
+          """
+
+        #
+        # queries run consecutively b/c
+        # I have noticed that performance
+        # of combined query to be slow
+
+
+        for q in (q1,q2):
+            res = self.filedb_dict.update(q,(vol,))
+
         Trace.log(e_errors.INFO, 'all files of volume %s are marked deleted'%(vol))
         return
 
