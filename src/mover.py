@@ -7643,6 +7643,10 @@ class DiskMover(Mover):
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
+        ic_conf = self.csc.get("info_server")
+        #self.infoc = info_client.infoClient(self.csc,
+        #                                    server_address=(ic_conf['host'],
+        #                                                    ic_conf['port']))
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = self.current_volume
         self.current_location = 0L
@@ -7766,6 +7770,9 @@ class DiskMover(Mover):
         """
 
         info = self.fcc.bfid_info(self.file_info['bfid'])
+        if not e_errors.is_ok(info):
+            Trace.log(e_errors.ERROR, "stage_file: file clerk returned %s"%(info,))
+            return None
         cache_status = info['cache_status']
         if cache_status != file_cache_status.CacheStatus.CACHED:
             Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
@@ -7775,7 +7782,6 @@ class DiskMover(Mover):
             if cache_status in (file_cache_status.CacheStatus.PURGING_REQUESTED,):
                 # There were lots of cases when files do not get purged leaving them
                 # in this intermediate state and preventing from being transferred immediately.
-                info = self.fcc.bfid_info(self.file_info['bfid'])
 
                 # Check if file is still in cache:
                 if os.path.exists(info['cache_location']):
@@ -7807,6 +7813,9 @@ class DiskMover(Mover):
             open_bitfile_sent = False
             while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
+                if not e_errors.is_ok(info):
+                    Trace.log(e_errors.ERROR, "stage_file1: file clerk returned %s"%(info,))
+                    return None
                 if info['cache_status'] in (file_cache_status.CacheStatus.PURGING_REQUESTED,
                                             file_cache_status.CacheStatus.PURGING):
                     # looks as there was no request to open bitfile
