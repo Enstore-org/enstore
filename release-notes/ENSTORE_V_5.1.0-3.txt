@@ -1,0 +1,189 @@
+commit fa5f20f4394209e5d5274bddfd203f4e15bef83a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Sep 25 15:13:48 2015 -0500
+
+    Version 5.1.0
+    Release 3
+
+A	release-notes/ENSTORE_V_5.1.0-2.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit c4829667a2d5fe710d85bc597aa43ce1cab5c364
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Sep 24 15:47:58 2015 -0500
+
+        enstore tried to mount already mounted volume.
+        It has been observed again that there could more than one mount request
+        for the same mount which leads to the volume set to NOACCESS.
+        This is the result of a timeout and retry in mover request to library manager.
+        As a result the library manager removes just submitted request from the list
+        of active requests and sends request for the same volume to a different mover.
+        This change should fix the problem.
+        http://srm.fnal.gov/reviews/r/300/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=456
+
+M	src/library_manager.py
+M	src/mover.py
+
+commit 8bc07a13a6a8a91ef4b5ef96b495d3c37bdd8fb6
+Merge: fca6cb6 ea5fa4f
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Sep 18 17:03:01 2015 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit fca6cb645f109ec635d127078ed01b1cc8f57b0c
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Sep 18 17:01:47 2015 -0500
+
+        do not fall back to encp from SFA on read if untar failed. Let dCache retry
+        RB : http://srm/reviews/r/296/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1688
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit ea5fa4f6267712b3aab800a87c3fe3231687405f
+Merge: 6252111 4867fae
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Sep 18 11:33:45 2015 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 6252111cf9cad2c822e25ef0b504c784282545e3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Sep 18 11:31:49 2015 -0500
+
+    Instead of failing just skip non existing file and proceed with
+    building the package.
+    Send an alarm regarding non existing file.
+    http://srm.fnal.gov/reviews/r/298/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1691
+
+M	src/cache/servers/migrator.py
+
+commit 4867faeda7ddff84521f24f9c3bc86e851dfdb34
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 16 17:03:12 2015 -0500
+
+        Disk movers went into error state because the "address" in "vc" subticket
+        was the address of some other disk mover instead of volume clerk on encp retry.
+        The ticket is coming from encp and it is not clear where the wrong address
+        is coming from initially: encp or disk mover. This patch fixes the ticket in the library manager.
+        http://srm.fnal.gov/reviews/r/299/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1678
+
+M	src/library_manager.py
+
+commit 6a910d33acb46aa2fd45b0cfafae0c2ab72bfd77
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Sep 16 12:00:46 2015 -0500
+
+    execute set_pnfsid in parallel
+    RB : http://srm/reviews/r/297/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1690
+
+M	src/edb.py
+M	src/file_clerk.py
+
+commit 9d954d775a3b1f88ae527dac46f684f84fcdcaca
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Sep 11 18:14:04 2015 -0500
+
+        fail real-encp fast on files with names longer than 200 characters. Otherwise
+        encp crashes kernel on pool nodes
+    
+    	RB : http://srm/reviews/r/292/
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit 537fa50493b4a9cb53185cfd56c98b047158e9e7
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 9 15:08:34 2015 -0500
+
+        Restart mover using local command.
+        There is no need to use "enstore Estart ..." command to start mover locally.
+        Use "enstore start ..." command instead.
+        http://srm.fnal.gov/reviews/r/294/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1677
+
+M	src/mover.py
+
+commit 7fe775a7a2815a0cf0bb3c6bc267100a3e4c9698
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 9 12:56:07 2015 -0500
+
+        Bug fix: fix volume assert.
+        Some time ago the default crc seed was changed from 0 to 1.
+        The corresponding change was done in the the crc calculation on read,
+        which always calculates crc with seed 0 and converts it seeded 1 crc
+        in the case when 0 seeded crc does not compare with crc in the database.
+        The change was not done for asserts though.
+        This change fixed the assert failure.
+        http://srm.fnal.gov/reviews/r/293/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1675
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1685
+
+M	src/mover.py
+
+commit e831c389fd69c07d6c1d5993eb2a6b041a0533e3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 9 12:47:13 2015 -0500
+
+        Fix "No reply address...." in reply to caller messages where found.
+        This is done by returning modified request ticket, which already
+        contains reply address, instead of sending a newly created ticket.
+        http://srm.fnal.gov/reviews/r/291/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1693
+
+M	src/alarm_server.py
+M	src/configuration_server.py
+M	src/media_changer.py
+
+commit 2720215ac7e0eb51038cb337ebc681faba897181
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Sep 3 16:22:28 2015 -0500
+
+        Fix mod_config --policy.
+        udp communication changes result in some requests returning additional information. As a result some commands return unexpected values. This change is to fix a problem in mod_config.
+        http://srm.fnal.gov/reviews/r/290/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1681
+
+M	sbin/mod_config
+
+commit 92dedeb0ab3bf993914be9c8a575afef19f14f95
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Sep 2 11:41:47 2015 -0500
+
+        fix format statement in case of non time axis
+        fix plot2 function. It was broken due to line breaks in formatted string
+
+M	src/histogram.py
+
+commit 528eef7dc1011f57364c9f48c7118c901bc18893
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Aug 19 15:59:59 2015 -0500
+
+    remove checks if file is in enstore if encp has failed.
+    It has proven to be dangerous due to a race condition between
+    bfid_info calls and set_deleted calls that can happen during
+    file_clerk timeouts
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit 58a7160af1d6b0ef9657f8a646b4869424bf3dd2
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Tue Aug 18 11:40:32 2015 -0500
+
+    For finding xlog-pack to write to tape, used -newermc instead of -newer.
+    
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1661
+    http://srm.fnal.gov/reviews/r/286/diff/4/#index_header
+
+M	sbin/backup2Tape
+
+commit 5eb3b9c94bb599c30556116fdc85719fe3a7bc51
+Merge: dc1d702 a263a67
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Aug 10 14:01:26 2015 -0500
+
+    Merge branch 'release/5.1.0-2' into develop
