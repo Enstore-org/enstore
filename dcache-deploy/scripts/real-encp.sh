@@ -344,7 +344,7 @@ except:
 	   # get package pnfsid
 	   #
 	   package_pnfsid=`enstore info --file ${package_id} | grep pnfsid | sed -e "s/[[:punct:]]//g" | awk '{ print $NF}'`
-	   package_path=`pathfinder ${package_pnfsid}`
+	   package_path=`cat "/pnfs/fs/.(pathof)(${package_pnfsid})"`
 	   #
 	   # strip leading slash from location cookie
 	   #
@@ -432,7 +432,8 @@ elif [ "$command" = "put" ] ; then
     CMD=""
     if [ ${npathtypesok} -ne 0 -a $OVERRIDE_PATH -eq 1 ]; then
         override=1; override_msg=" overriding path "
-	CMD="$ENCP $options $wrapper --pnfs-mount $pnfs_root --shortcut --override-path $si_path --put-cache $pnfsid $filepath"
+	destination_path=`cat "/pnfs/fs/.(pathof)(${pnfsid})"`
+	CMD="$ENCP $options $wrapper --pnfs-mount $pnfs_root --shortcut --override-path ${destination_path} --put-cache $pnfsid $filepath"
         say p9 $CMD
     else
         override=0; override_msg=" "

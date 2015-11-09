@@ -11,7 +11,7 @@ fi
 for i in `ls -vI \*.\*`; do
   t0=`date +'%s'`
   echo "`date` Group $i" >> $output
-  . $i |tee -a $output 2>&1
+  . ./$i |tee -a $output 2>&1
   echo
   echo
   if [ "$icap" = "$ocap" ]; then

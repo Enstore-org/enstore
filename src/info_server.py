@@ -85,22 +85,25 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 		file_clerk.MY_NAME = MY_NAME
 		volume_clerk.MY_NAME = MY_NAME
 
-		self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
-		self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
-		self.max_connections         =  self.numberOfParallelWorkers+1
+		self.parallelQueueSize       = self.keys.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+		self.numberOfParallelWorkers = self.keys.get('max_threads',MAX_THREADS)
+		self.max_connections         = self.numberOfParallelWorkers+1
 
 		self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host','localhost'),
 						  port=dbInfo.get('db_port',8888),
 						  user=dbInfo.get('dbuser_reader','enstore_reader'),
 						  database=dbInfo.get('dbname','enstoredb'),
 						  auto_journal=0,
-						  max_connections=self.max_connections)
+						  max_connections=self.max_connections,
+						  max_idle=int(self.max_connections*0.9+0.5))
+
 		self.filedb_dict  = edb.FileDB(host=dbInfo.get('db_host','localhost'),
 					       port=dbInfo.get('db_port',8888),
 					       user=dbInfo.get('dbuser_reader','enstore_reader'),
 					       database=dbInfo.get('dbname','enstoredb'),
 					       auto_journal=0,
-					       max_connections=self.max_connections)
+					       max_connections=self.max_connections,
+					       max_idle=int(self.max_connections*0.9+0.5))
 
 		self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 		self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
@@ -129,18 +132,6 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 	def close(self):
 	    self.filedb_dict.close()
 	    self.volume_dict.close()
-
-
-	def reinit(self):
-		Trace.log(e_errors.INFO, "(Re)initializing server")
-
-		# stop the communications with the event relay task
-		self.event_relay_unsubscribe()
-
-		#Close the connections with the database.
-		self.close()
-
-		self.__init__(self.csc.server_address)
 
 	def info_error_handler(self, exc, msg, tb):
 		__pychecker__ = "unusednames=tb"
@@ -565,7 +556,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 		    return
 
 if __name__ == '__main__':
-	Trace.init(string.upper(MY_NAME))
+	Trace.init(string.upper(MY_NAME),"yes")
 	intf = Interface()
 	csc = (intf.config_host, intf.config_port)
 	infoServer = Server(csc)

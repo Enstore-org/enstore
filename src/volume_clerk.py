@@ -1089,16 +1089,17 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
 
-        self.parallelQueueSize       = dbInfo.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
-        self.numberOfParallelWorkers = dbInfo.get('max_threads',MAX_THREADS)
-        self.max_connections         =  self.numberOfParallelWorkers+1
+        self.parallelQueueSize       = self.keys.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
+        self.numberOfParallelWorkers = self.keys.get('max_threads',MAX_THREADS)
+        self.max_connections         = self.numberOfParallelWorkers+1
 
         self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host',None),
                                           port=dbInfo.get('db_port',None),
                                           user=dbInfo.get('dbuser',None),
                                           database=dbInfo.get('dbname',None),
                                           jou=jouHome,
-                                          max_connections=self.max_connections)
+                                          max_connections=self.max_connections,
+                                          max_idle=int(self.max_connections*0.9+0.5))
 
         self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
@@ -3190,7 +3191,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         # basically, to make pychecker happy
         generic_server.GenericServer.__init__(self, csc, MY_NAME,
                                               function = self.handle_er_msg)
-        Trace.init(self.log_name)
+        Trace.init(self.log_name,"yes")
 
         VolumeClerkMethods.__init__(self, csc)
         #   pretend that we are the test system
@@ -3232,7 +3233,7 @@ class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
 
 if __name__ == "__main__":
-    Trace.init(string.upper(MY_NAME))
+    Trace.init(string.upper(MY_NAME),"yes")
 
     # get the interface
     intf = VolumeClerkInterface()

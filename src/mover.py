@@ -3078,7 +3078,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         buffer_empty_t = time.time()   #time when buffer empty has been detected
-        buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
+        buffer_empty_cnt = 0 # number of times buffer was consequtively empty
         nblocks = 0L
         bytes_written = 0
         # send a trigger message to the client
@@ -3498,7 +3498,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
         self.media_transfer_time = 0.
         buffer_full_t = 0   #time when buffer full has been detected
-        buffer_full_cnt = 0 # number of times buffer was cosequtively full
+        buffer_full_cnt = 0 # number of times buffer was consequtively full
         nblocks = 0
         header_size = 0 # to avoit a silly exception
         #Initialize thresholded transfer notify messages.
@@ -4187,10 +4187,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.gid = -1
         self.header_labels = "" # set it here to not have problems in assert
         if ticket.has_key('wrapper'):
-            uid = ticket['wrapper'].get('uid', -1)
-            gid = ticket['wrapper'].get('gid', -1)
-            self.uid = uid
-            self.gid = gid
+            self.uid = ticket['wrapper'].get('uid', -1)
+            self.gid = ticket['wrapper'].get('gid', -1)
         if self.method and self.method == "read_next" and self.udp_control_address:
             self.lm_address = self.udp_control_address
             self.lm_address_saved = self.lm_address
@@ -5116,9 +5114,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.error_times.pop(0)
             if len(self.error_times) >= self.max_failures:
                 if broken:
-                  after_dismount_function = self.offline
+                    after_dismount_function = self.offline
                 broken =  "max_failures (%d) per failure_interval (%d) reached" % (self.max_failures,
-                                                                                     self.failure_interval)
+                                                                                   self.failure_interval)
             ### network errors should not count toward rd_err, wr_err
             if self.mode == WRITE:
                 self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
@@ -5166,7 +5164,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.mode == ASSERT:
             return_here = False
-            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", MEDIA_VERIFY_FAILED))
+            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", "FTT_ENODEV", "FTT_ENOTAPE", MEDIA_VERIFY_FAILED))
                 or exc == e_errors.ENCP_GONE):
                 # stop assert
                 pass
@@ -5531,17 +5529,27 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info['eod_cookie'] = eod
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
+        drive = "%s:%s" % (self.config['device'], self.config['serial_num'])
         fc_ticket = {  'location_cookie': loc_to_cookie(previous_eod+eod_increment),
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
-                       'complete_crc': complete_crc}
+                       'complete_crc': complete_crc,
+                       'gid': self.gid,
+                       'uid': self.uid,
+                       'pnfs_name0': self.current_work_ticket['outfilepath'],
+                       'pnfsid':  self.file_info['pnfsid'],
+                       'drive':  drive,
+                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'file_family_width': self.vol_info.get('file_family_width'),
+                       'mover_type': self.mover_type,
+                       'unique_id': self.current_work_ticket['unique_id'],
+}
         ##  HACK:  store 0 to database if mover is NULL
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
-        fc_ticket['gid'] = self.gid
-        fc_ticket['uid'] = self.uid
+
         #If it is an orginal of multiple copies, pass this along.
         copies = self.file_info.get('copies')
         if copies:
@@ -5555,7 +5563,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 0
             fc_ticket['original_bfid'] = original_bfid
 
-        fc_ticket['mover_type'] = self.mover_type
         fcc_reply = self.set_new_bitfile(fc_ticket)
         if not fcc_reply:
             return fcc_reply
@@ -7529,6 +7536,12 @@ class DiskMover(Mover):
         self.save_state = self.state
 
         self.unique_id = ticket['unique_id']
+        self.uid = -1
+        self.gid = -1
+        if 'wrapper' in ticket:
+            self.uid = ticket['wrapper'].get('uid', -1)
+            self.gid = ticket['wrapper'].get('gid', -1)
+
         try:
             self.lm_address = ticket['lm']['address']
         except KeyError:
@@ -7630,6 +7643,10 @@ class DiskMover(Mover):
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
+        ic_conf = self.csc.get("info_server")
+        #self.infoc = info_client.infoClient(self.csc,
+        #                                    server_address=(ic_conf['host'],
+        #                                                    ic_conf['port']))
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = self.current_volume
         self.current_location = 0L
@@ -7753,6 +7770,9 @@ class DiskMover(Mover):
         """
 
         info = self.fcc.bfid_info(self.file_info['bfid'])
+        if not e_errors.is_ok(info):
+            Trace.log(e_errors.ERROR, "stage_file: file clerk returned %s"%(info,))
+            return None
         cache_status = info['cache_status']
         if cache_status != file_cache_status.CacheStatus.CACHED:
             Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
@@ -7762,7 +7782,6 @@ class DiskMover(Mover):
             if cache_status in (file_cache_status.CacheStatus.PURGING_REQUESTED,):
                 # There were lots of cases when files do not get purged leaving them
                 # in this intermediate state and preventing from being transferred immediately.
-                info = self.fcc.bfid_info(self.file_info['bfid'])
 
                 # Check if file is still in cache:
                 if os.path.exists(info['cache_location']):
@@ -7794,6 +7813,9 @@ class DiskMover(Mover):
             open_bitfile_sent = False
             while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
+                if not e_errors.is_ok(info):
+                    Trace.log(e_errors.ERROR, "stage_file1: file clerk returned %s"%(info,))
+                    return None
                 if info['cache_status'] in (file_cache_status.CacheStatus.PURGING_REQUESTED,
                                             file_cache_status.CacheStatus.PURGING):
                     # looks as there was no request to open bitfile
@@ -8087,11 +8109,18 @@ class DiskMover(Mover):
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
-                       'complete_crc': complete_crc}
+                       'complete_crc': complete_crc,
+                       'gid': self.gid,
+                       'uid': self.uid,
+                       'pnfs_name0': self.current_work_ticket['outfilepath'],
+                       'pnfsid':  self.file_info['pnfsid'],
+                       'drive': "%s:%s" % (self.config['device'], self.config['serial_num']),
+                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'file_family_width': self.vol_info.get('file_family_width'),
+                       'mover_type': self.mover_type,
+                       'unique_id': self.current_work_ticket['unique_id'],
+}
 
-        #fc_ticket['gid'] = self.gid
-        #fc_ticket['uid'] = self.uid
-        #If it is an orginal of multiple copies, pass this along.
         copies = self.file_info.get('copies')
         if copies:
            fc_ticket['copies'] = copies
@@ -8136,9 +8165,6 @@ class DiskMover(Mover):
             return 0
 
         #Request the new bit file.
-        fc_ticket['mover_type'] = self.mover_type
-
-        fc_ticket['original_library'] = self.current_work_ticket.get('original_library', None)
         Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
         fcc_reply = self.set_new_bitfile(fc_ticket)

@@ -168,7 +168,7 @@ remaining as \"copies remaining\",
 active_file_copying.time as \"waiting since\"
 from active_file_copying
 left join file_copies_map on active_file_copying.bfid = file_copies_map.bfid
-where remaining > 0 and exists
+where remaining > 0 and time < CURRENT_TIMESTAMP - interval '24 hours' and exists
 ( select 1 from file where file.bfid = active_file_copying.bfid and file.deleted='n')
 order by time"  >> $temp_file 2>&1
 
