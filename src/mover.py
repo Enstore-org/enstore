@@ -2810,26 +2810,31 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         return rc
 
-    def send_client_update(self, percent_completed):
+    def send_client_update(self):
         """
         Send to client (encp) updated status if selective CRC check runs too long
         to avoid encp timeouts.
 
-        :type percent_completed: :obj:`float`
-        :arg percent_completed: completed part of a file crc check
         """
 
         if not self.client_update_enabled(self.current_work_ticket):
             return
-        Trace.trace(20, "send_client_update: percent done %s"%(percent_completed,))
-        self.current_work_ticket['status'] = (e_errors.MOVER_BUSY, percent_completed)
+        if self.crc_check_percent_completed <= 0:
+            # This can happen during rewind.
+            # Encp interrupts transfer if it receives the same percentage.
+            # To avoid such cases update self.crc_check_percent_completed every time
+            # self.crc_check_percent_complete can not be 0. If it is, encp interrupts transfer.
+
+            self.crc_check_percent_completed -= 1
+        Trace.trace(20, "send_client_update: percent done %s"%(self.crc_check_percent_completed,))
+        self.current_work_ticket['status'] = (e_errors.MOVER_BUSY,  self.crc_check_percent_completed)
         Trace.log(e_errors.INFO, "Sending update to client: %s"%(self.current_work_ticket['status'],))
         try:
             callback.write_tcp_obj(self.control_socket, self.current_work_ticket)
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_update: %s" % (detail,))
-
+            self.encp_gone_during_crc_check = True
 
     def selective_crc_check(self):
         """
@@ -2838,6 +2843,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
 
         failed = 0
+        self.encp_gone_during_crc_check = False
         save_location = self.position_for_crc_check()
         if self.tr_failed:
             # if self.position_for_crc_check fails self.tr_failed will be set
@@ -2863,7 +2869,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         total_block_counter = 0L
         time_started = time.time()
         last_percent_done = 0
+        Trace.log(e_errors.INFO, "crc check starting")
+
         while self.bytes_read < bytes_to_read:
+            if self.encp_gone_during_crc_check:
+                Trace.log(e_errors.INFO, "crc check interrupted")
+                self.remove_interval_func(self.send_client_update)
+                self.transfer_failed(e_errors.ENCP_GONE,  "crc check interrupted", error_source=NETWORK)
+                return
 
             nbytes = min(bytes_to_read - self.bytes_read, self.buffer.blocksize)
             self.buffer.bytes_for_crc = nbytes
@@ -2893,7 +2906,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     else:
                         err_source = UNKNOWN
                     self.transfer_failed(detail, error_source=err_source)
-
                 failed = 1
                 break
             except:
@@ -2922,18 +2934,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             total_block_counter += 1
             if block_counter == 2000:
-                percent_done = int(self.bytes_read*100 / self.bytes_to_write)
-                if percent_done - last_percent_done >= 5:
+                self.crc_check_percent_completed = int(self.bytes_read*100 / self.bytes_to_write)
+                if self.crc_check_percent_completed - last_percent_done >= 5:
                     Trace.notify("transfer %s %s %s media %s %.3f %s" %
                                  (self.shortname, -self.bytes_read,
                                   bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
-                    last_percent_done = percent_done
-                now = time.time()
-                if now - time_started >= 14*60: # encp waits for 15 minutes before re-trying the transfer
-                    # send update message to client
-                    self.send_client_update(percent_done)
-                    time_started = now
+                    last_percent_done = self.crc_check_percent_completed
                 block_counter = 0
             else:
                 block_counter += 1
@@ -3453,7 +3460,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if self.check_written_file() and self.driver_type == 'FTTDriver':
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
+                self.crc_check_percent_completed = 0
+                self.add_interval_func(self.send_client_update,  14*60) # send more often than encp retry interval (15 min)
                 self.selective_crc_check()
+                self.remove_interval_func(self.send_client_update)
                 if self.tr_failed:
                     return
 
@@ -5618,13 +5628,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.control_socket == None:
             return
         ticket['status'] = (status, error_info)
-        Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket))
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket['status'],))
-        try:
-            callback.write_tcp_obj(self.control_socket, ticket)
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
+        if ticket['status'][0] != e_errors.ENCP_GONE:
+            try:
+                callback.write_tcp_obj(self.control_socket, ticket)
+            except:
+                exc, detail, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
 
         if ((self.method and self.method != 'read_next') or
             (self.method == None)):
