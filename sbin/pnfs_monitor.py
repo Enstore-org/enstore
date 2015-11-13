@@ -48,6 +48,10 @@ def print_yes_no(value):
 HEADER_FORMAT="{0:^20} | {1:^36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:^14} | {7:} \n"
 FORMAT ="{0:<20} | {1:<36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:>14} | {7:<} \n"
 
+Trace.init("PNFS_MONITOR")
+
+
+
 def print_header(f):
      #f.write(FORMAT%("date", "pnfsid", "layer1", "layer2", "layer4", "path"))
      f.write(HEADER_FORMAT.format("date", "pnfsid", "layer1", "layer2", "layer4", "pools","size [bytes]","path"))
@@ -198,8 +202,15 @@ if __name__ == "__main__":
                                       pools,
                                       isize,
                                       path))
-                if pnfsid not in pnfsids:
-                    insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
+                if isize == 0 :
+                    try:
+                        os.unlink(path)
+                    except Exception as e:
+                        Trace.log(e_errors.ERROR, "Failed to remove file {}, {} ".format(path,str(e)))
+                        pass
+                else:
+                    if pnfsid not in pnfsids:
+                        insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
                 continue
             if layer2 :
                 for part in layer2.split('\n'):
@@ -236,10 +247,16 @@ if __name__ == "__main__":
         sys.stderr.flush()
         failed=True
         pass
-
     f.close()
     if not failed:
-        cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
+        cmd="$ENSTORE_DIR/sbin/enrcp {} {}:{}".format(f.name,html_host,html_dir)
+        rc = os.system(cmd)
+        if rc :
+            txt = "Failed to execute command %s\n.\n"%(cmd,)
+            sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : "+txt+"\n")
+            sys.stderr.flush()
+            sys.exit(1)
+        cmd="$ENSTORE_DIR/sbin/enrcp {} {}:{}/{}_{}".format(f.name,html_host,html_dir,os.path.basename(f.name),time.strftime("%Y-%m-%d",time.localtime(time.time())))
         rc = os.system(cmd)
         if rc :
             txt = "Failed to execute command %s\n.\n"%(cmd,)
