@@ -22,21 +22,46 @@ import time
 #
 # create table files_with_no_layers (ipnfsid varchar(36) PRIMARY KEY );
 #
-QUERY="select t_inodes.ipnfsid, t_inodes.isize, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
-       "from t_inodes  left outer join t_level_4 l4 on (l4.ipnfsid=t_inodes.ipnfsid) "+\
-       "left outer join t_level_1 l1 on (l1.ipnfsid=t_inodes.ipnfsid) "+\
-       "left outer join  t_level_2 l2 on (l2.ipnfsid=t_inodes.ipnfsid) "+\
-       "where t_inodes.itype=32768 and t_inodes.iio=0  and "+\
-       "((t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours' and "+\
-       "t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours') or t_inodes.ipnfsid in('%s')) order by t_inodes.imtime"
+QUERY="""
+SELECT t_inodes.ipnfsid,
+       t_inodes.isize,
+       inode2path(t_inodes.ipnfsid) AS path,
+       t_inodes.imtime,
+       l1.ipnfsid AS layer1,
+       encode(l2.ifiledata,'escape') AS layer2,
+       l4.ipnfsid AS layer4
+FROM t_inodes
+LEFT OUTER JOIN t_level_4 l4 ON (l4.ipnfsid=t_inodes.ipnfsid)
+LEFT OUTER JOIN t_level_1 l1 ON (l1.ipnfsid=t_inodes.ipnfsid)
+LEFT OUTER JOIN t_level_2 l2 ON (l2.ipnfsid=t_inodes.ipnfsid)
+WHERE t_inodes.itype=32768
+  AND t_inodes.iio=0
+  AND t_inodes.isize>0
+  AND ((t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours'
+        AND t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours')
+       OR t_inodes.ipnfsid IN('{}'))
+ORDER BY t_inodes.imtime
+"""
 
-QUERY1="select t_inodes.ipnfsid, t_inodes.isize, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
-       "from t_inodes  left outer join t_level_4 l4 on (l4.ipnfsid=t_inodes.ipnfsid) "+\
-       "left outer join t_level_1 l1 on (l1.ipnfsid=t_inodes.ipnfsid) "+\
-       "left outer join  t_level_2 l2 on (l2.ipnfsid=t_inodes.ipnfsid) "+\
-       "where t_inodes.itype=32768 and t_inodes.iio=0  and "+\
-       "(t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours' and "+\
-       "t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours') order by t_inodes.imtime"
+QUERY1="""
+SELECT t_inodes.ipnfsid,
+       t_inodes.isize,
+       inode2path(t_inodes.ipnfsid) AS path,
+       t_inodes.imtime,
+       l1.ipnfsid AS layer1,
+       encode(l2.ifiledata,'escape') AS layer2,
+       l4.ipnfsid AS layer4
+FROM t_inodes
+LEFT OUTER JOIN t_level_4 l4 ON (l4.ipnfsid=t_inodes.ipnfsid)
+LEFT OUTER JOIN t_level_1 l1 ON (l1.ipnfsid=t_inodes.ipnfsid)
+LEFT OUTER JOIN t_level_2 l2 ON (l2.ipnfsid=t_inodes.ipnfsid)
+WHERE t_inodes.itype=32768
+  AND t_inodes.iio=0
+  AND t_inodes.isize>0
+  AND (t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours'
+                        AND t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours')
+ORDER BY t_inodes.imtime
+"""
 
 def print_yes_no(value):
     if not value:
@@ -160,7 +185,7 @@ if __name__ == "__main__":
                     #
                     insert("monitor","enstore","delete from files_with_no_layers where ipnfsid in ('%s')"%(string.join(diff,"','")))
                 if len(intersection) > 0:
-                    res = select("chimera","enstore",QUERY%string.join(intersection,"','"))
+                    res = select("chimera","enstore",QUERY.format(string.join(intersection,"','")))
                 else:
                     res = select("chimera","enstore",QUERY1)
             else:
@@ -181,11 +206,11 @@ if __name__ == "__main__":
             layer4 = row['layer4']
             isize  = row['isize']
             path   = row['path']
-            if layer1 and layer2 and layer4 :
+            if ( layer1 and layer2 and layer4 ) or isize == 0 :
                 if pnfsid in pnfsids:
                     insert("monitor","enstore","delete from files_with_no_layers where ipnfsid='%s'"%(pnfsid,))
                 continue
-            if not layer2 and not layer4 and not layer1 :
+            if not layer2 and not layer4 and not layer1 and isize > 0 :
                 pres = select("chimera","enstore","select ilocation from t_locationinfo where ipnfsid='%s' and itype=1"%(pnfsid,))
                 pools=""
                 if len(pres) > 0:
@@ -202,15 +227,8 @@ if __name__ == "__main__":
                                       pools,
                                       isize,
                                       path))
-                if isize == 0 :
-                    try:
-                        os.unlink(path)
-                    except Exception as e:
-                        Trace.log(e_errors.ERROR, "Failed to remove file {}, {} ".format(path,str(e)))
-                        pass
-                else:
-                    if pnfsid not in pnfsids:
-                        insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
+                if pnfsid not in pnfsids:
+                    insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
                 continue
             if layer2 :
                 for part in layer2.split('\n'):
