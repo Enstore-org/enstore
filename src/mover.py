@@ -5550,7 +5550,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                        'pnfs_name0': self.current_work_ticket['outfilepath'],
                        'pnfsid':  self.file_info['pnfsid'],
                        'drive':  drive,
-                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'original_library': self.current_work_ticket.get('original_library'),
                        'file_family_width': self.vol_info.get('file_family_width'),
                        'mover_type': self.mover_type,
                        'unique_id': self.current_work_ticket['unique_id'],
@@ -5560,7 +5560,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
 
-        #If it is an orginal of multiple copies, pass this along.
+        #If it is an original of multiple copies, pass this along.
         copies = self.file_info.get('copies')
         if copies:
            fc_ticket['copies'] = copies
@@ -8125,7 +8125,7 @@ class DiskMover(Mover):
                        'pnfs_name0': self.current_work_ticket['outfilepath'],
                        'pnfsid':  self.file_info['pnfsid'],
                        'drive': "%s:%s" % (self.config['device'], self.config['serial_num']),
-                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'original_library': self.current_work_ticket.get('original_library'),
                        'file_family_width': self.vol_info.get('file_family_width'),
                        'mover_type': self.mover_type,
                        'unique_id': self.current_work_ticket['unique_id'],
