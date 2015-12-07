@@ -74,7 +74,7 @@ def move_file(input_filename, output_filename, intf):
     if not os.path.isfile(input_filename):
         print_error(e_errors.USERERROR, "Source file is not a file.")
         sys.exit(1)
-        
+
     #Check the output file.
 
     #If the output file is a directory, append the filename to it.
@@ -303,7 +303,7 @@ def move_file(input_filename, output_filename, intf):
         directory_file_family = new_dir_sfs.get_file_family()
     else:
         directory_file_family = None
-                        
+
     try:
         #Attempt to rename the file.  This can work if the input and
         # output targets are under the same mount point.
@@ -318,7 +318,7 @@ def move_file(input_filename, output_filename, intf):
         # is currently called an error, but may need to be implemented
         # in the future.
 
-        
+
         #If the rename was between two different pnfs database areas, then we
         # we see the error EPERM.  The following is not done atomically,
         # but there is no other way.  This involves creating a new file
@@ -434,14 +434,14 @@ def move_file(input_filename, output_filename, intf):
                             "%s layer %s update failed: %s" % \
                             (sfs.print_id, i, str(msg)))
                 sys.exit(1)
-                    
+
     if out_fd: #If the rename failed and we did it the hard way.
 
         #The file size, permissions, last access/modification time and
         # ownership must all be reset.
         #Note: Ownership must be last, otherwise the permissions to set
         # the rest won't be there.
-        
+
         try:
             new_sfs.set_file_size(file_info['size'])
         except OSError, msg:
@@ -464,7 +464,7 @@ def move_file(input_filename, output_filename, intf):
                         "File access and modification time update failed: %s" \
                         % str(msg))
             sys.exit(1)
-            
+
         try:
             file_utils.chown(output_filename,
                      sfs.pstat[stat.ST_UID], sfs.pstat[stat.ST_GID])
@@ -476,7 +476,7 @@ def move_file(input_filename, output_filename, intf):
 
         # If the file was rename()ed we must set the permissions back.
         # They would have been modified if the original file was read-only.
-        
+
         try:
             if file_utils.get_stat(output_filename)[stat.ST_MODE] \
                    != sfs.pstat[stat.ST_MODE]:
@@ -493,11 +493,29 @@ def move_file(input_filename, output_filename, intf):
     # the prevous steps fail in setting the pnfs information, the
     # delete_at_exit cleanup will undo the changes.  After changing the
     # file database there is no going back.
+
+
     fc_reply = fcc.set_pnfsid(fc_ticket)
     if not e_errors.is_ok(fc_reply):
         print_error(fc_reply['status'][0],
                     "File clerk update failed: %s" % fc_reply['status'][1])
 
+        sys.stderr.flush()
+        sys.exit(1)
+
+    fc_reply = fcc.find_copies(fc_ticket["fc"]["bfid"])
+    failed_bfids = []
+    if e_errors.is_ok(fc_reply):
+        for bfid in fc_reply.get("copies"):
+            update_ticket={}
+            update_ticket["bfid"] = bfid
+            update_ticket["pnfs_name0"] = fc_ticket["fc"]["pnfs_name0"]
+            reply = fcc.modify(update_ticket)
+            if not e_errors.is_ok(reply):
+                failed_bfids.append({"bfid" : bfid, "status" : (reply['status'][0], reply['status'][1])})
+
+    if len(failed_bfids) > 0 :
+        map(lambda x : print_error(x["status"][0],"File clerk update of copy {} failed: {}".format(x["bfid"],x["status"][1])),failed_bfids)
         sys.stderr.flush()
         sys.exit(1)
 
@@ -568,7 +586,7 @@ class EnmvInterface(option.Interface):
             print description
             self.print_usage(message)
             sys.exit(1)
-            
+
         self.input = [enstore_functions2.fullpath(self.args[0])[1]]
         self.output = [enstore_functions2.fullpath(self.args[1])[1]]
 
@@ -619,7 +637,7 @@ def main(intf):
 
     for i in range(len(intf.input)):
         move_file(intf.input[i], intf.output[i], intf)
-    
+
 
 def do_work(intf):
 
@@ -639,7 +657,7 @@ def do_work(intf):
         Trace.handle_error(exc, msg, tb)
         del tb  #Avoid resource leak.
         delete_at_exit.quit(1)
-        
+
 
 if __name__ == '__main__':
     delete_at_exit.setup_signal_handling()

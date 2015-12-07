@@ -1348,7 +1348,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # and use get_path function to retrieve the fully qualified path
         if is_access_name(filename):
             chimeraid = os.path.basename(filename)[10:-1]
-            filename = self.get_path(chimeraid)
+            filename = self.get_path(chimeraid)[0]
 
         self.writelayer(1,"", filename)
         self.writelayer(2,"", filename)
