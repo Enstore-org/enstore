@@ -7280,7 +7280,7 @@ class DiskMover(Mover):
             if self.check_written_file():
                 self.tape_driver.close()
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
-                have_tape = self.tape_driver.open(self.file, READ)
+                have_tape = self.tape_driver.open(self.tmp_file, READ)
                 if have_tape != 1:
                     Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
 
