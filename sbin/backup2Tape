@@ -108,6 +108,12 @@ VAULT=${filePath}/BackupToTape
 if [ ! -d $VAULT ]; then mkdir $VAULT; fi
 BACKUP_LOG=${VAULT}/backup_log;     export BACKUP_LOG
 PNFS=`find ${filePath} -name "pnfs-backup*" | grep -v xlogs` #strip xlogs
+
+if [ "${PNFS:-undefined}" = "undefined" ]; then
+    list "Could not find pnfs-backup* in filePath ${filePath:-undefined}"
+    exit 1
+fi
+
 ENSTORE=${filePath}/enstore-backup
 ENSTORELOG=${filePath}/enstore-log-backup
 QUIT=$VAULT/QUIT
