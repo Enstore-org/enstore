@@ -14,3 +14,4 @@ enstore volume --delete CA2904
 cd /pnfs/grau/ait/
 for i in 1 2 3; do mkdir jon$i; cd jon$i; pcmd file_family jon-ait-$i; cd ..; done
 cd $ENSTORE_DIR/test
+
