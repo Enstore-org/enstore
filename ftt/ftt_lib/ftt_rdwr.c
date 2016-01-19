@@ -13,6 +13,8 @@ int ftt_translate_error_WIN();
 #include <unistd.h>
 #endif
 
+extern int errno;
+
 int	 ftt_describe_error();
 
 int
@@ -53,7 +55,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
     CKOK(d,"ftt_read",0,0);
     CKNULL("ftt_descriptor", d);
     CKNULL("data buffer pointer", buf);
-    
+
     if ( 0 != (d->scsi_ops & FTT_OP_READ)) {
 	DEBUG4(stderr, "SCSI pass-thru\n");
 	d->last_operation = FTT_OP_READ;
@@ -62,12 +64,12 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 	} else {
 		ftt_set_transfer_length(ftt_cdb_read,length/d->default_blocksize);
 	}
-	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6, 
+	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6,
 				(unsigned char*)buf, length, 60, 0);
 	res = ftt_describe_error(d, FTT_OPN_READ, "ftt_read", res, res, "a read SCSI command", 1);
-    
+
 	} else {
-	
+
 		DEBUG4(stderr,"System Call\n");
 		if (0 != (d->last_operation &(FTT_OP_WRITE|FTT_OP_WRITEFM)) &&
 			0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
@@ -86,9 +88,9 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 			/* we read past end of tape, prevent further confusion on AIX */
 			d->unrecovered_error = 1;
 		}
-#else 
+#else
 		{ /* ---------------- this is the WIN-NT part -----------------*/
-			DWORD	nread,Lerrno;	
+			DWORD	nread,Lerrno;
 			if ( ! ReadFile((HANDLE)d->file_descriptor,(LPVOID)buf,(DWORD)length,&nread,0) ) {
 				Lerrno = GetLastError();
 				if ( Lerrno == ERROR_FILEMARK_DETECTED ) {
@@ -102,8 +104,8 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 			res = (int)nread;
 		}
 #endif
-	
-	
+
+
 		}
     if (0 == res) { /* end of file */
 	if( d->flags & FTT_FLAG_FSF_AT_EOF){
@@ -153,7 +155,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
     int blockno;
     static ftt_stat_buf		statbuf = NULL;
     char	*peot;
-    char 	*eom; 	
+    char 	*eom;
 
     CKOK(d,"ftt_write",1,0);
     CKNULL("ftt_descriptor", d);
@@ -174,7 +176,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	} else {
 		ftt_set_transfer_length(ftt_cdb_write,length/d->default_blocksize);
 	}
-	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6, 
+	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6,
 				(unsigned char *)buf, length, 60,1);
         if (res == -1) {
         }
@@ -195,22 +197,40 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 #ifndef WIN32
 
 		res = write(d->file_descriptor, buf, length);
-                if (res == -1) {
-                   status = ftt_get_stats (d, statbuf);
-                   eom = ftt_extract_stats (statbuf,16);
-                   peot = ftt_extract_stats (statbuf,17);
+		if (res == -1) {
+		  DEBUG4(stderr,"ERRNO %d\n", errno);
+		  if (errno == ENOSPC) {
+			ftt_errno = FTT_ENOSPC;
+			return res;
+		  }
+		  else if (errno == EFAULT) {
+			ftt_errno = FTT_EFAULT;
+			return res;
+		  }
+		  else {
+		    // the problem with ftt_errno is that its value does not correspond to values of errno
+		    ftt_errno = errno+200;
+		    return res;
+		  }
+		  // I know that this part of code is unreacheable.
+		  // I just leave it here for documenting what it was before.
+		  d->writelo= 0;
+		  d->writekb = 0;
+		  status = ftt_get_stats (d, statbuf); // this, for instance, is dangerous as it causes attempt to write fm
+		  eom = ftt_extract_stats (statbuf,16);
+		  peot = ftt_extract_stats (statbuf,17);
 
-                   if (peot[0] == '1' || eom[0] == '1') {
-                      status = ftt_skip_fm (d, -1);
-                      status = ftt_skip_fm (d, 1);
-                      res = 0;
-                   }
-                }
+		  if (peot[0] == '1' || eom[0] == '1') {
+			status = ftt_skip_fm (d, -1);
+			status = ftt_skip_fm (d, 1);
+			res = 0;
+		  }
+		}
 
 		res = ftt_translate_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write() system call",0);
 #else
 		{ /* ---------------- this is the WIN-NT part -----------------*/
-			DWORD	nwrt;	
+			DWORD	nwrt;
 
 			if ( !  WriteFile((HANDLE)d->file_descriptor,(LPVOID)buf,(DWORD)length,&nwrt,0 )) {
 				ftt_translate_error_WIN(d, FTT_OPN_READ, "ftt_write",
@@ -220,7 +240,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 			res = (int)nwrt;
 		}
 #endif
-	
+
 	}
     if (res > 0) {
 	d->writelo += res;

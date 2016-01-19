@@ -3248,17 +3248,26 @@ class Mover(dispatching_worker.DispatchingWorker,
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
                 # bail out gracefuly
-
-                # set volume to readlonly
-                self.vcc.set_system_readonly(self.current_volume)
-                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
-                            (self.current_volume,))
-                # also set volume to NOACCESS, so far
-                # no alarm is needed here because it is send by volume clerk
-                # when it sets a volume to NOACCESS
-                self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
-                # log all running proceses
-                self.log_processes(logit=1)
+                if str(detail) == 'FTT_ENOSPC':
+                    # no space left on tape
+                    Trace.log(e_errors.INFO, "No sace left on %s. Setting to full"%(self.current_volume,))
+                    ret = self.vcc.set_remaining_bytes(self.current_volume, 0, self.vol_info['eod_cookie'])
+                    if ret['status'][0] != e_errors.OK or ret['eod_cookie'] != self.vol_info['eod_cookie']:
+                        Trace.alarm(e_errors.ERROR, "set_remaining_bytes failed", ret)
+                        self.set_volume_noaccess(self.current_volume, "Failed to update volume information. See log for details")
+                        Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
+                                    (self.current_volume, self.vol_info['eod_cookie']))
+                else:
+                    # set volume to readlonly
+                    self.vcc.set_system_readonly(self.current_volume)
+                    Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
+                                (self.current_volume,))
+                    # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
+                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
+                    # log all running proceses
+                    self.log_processes(logit=1)
 
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
@@ -5628,6 +5637,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.control_socket == None:
             return
         ticket['status'] = (status, error_info)
+        Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket))
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket['status'],))
         if ticket['status'][0] != e_errors.ENCP_GONE:
             try:
