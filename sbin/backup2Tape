@@ -286,7 +286,6 @@ rm -f $ENSTORELOG_FILES
 find $ENSTORELOG -follow -daystart -mtime +30 -exec rm -fr {} \;
 find $ENSTORELOG -follow -daystart -name "DEBUGLOG*" -mtime +10 -exec rm -fr {} \;
 
-
 #### Billing DB backup ####################################################
 
 BILLING_FILES=$VAULT/billing.files
@@ -309,6 +308,30 @@ done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $BILLING_FILES
 find ${filePath}/billing-backup -type f $find_options  -name "*sql*" -exec rm -fr {} \;
+
+#### CMS chimera DB backup ####################################################
+
+CMSCHIMERA_FILES=$VAULT/cmschimera.files
+rm -f $CMSCHIMERA_FILES
+if [ ! -d ${filePath}/pnfs-backup-cms ]; then
+    mkdir  ${filePath}/pnfs-backup-cms
+fi
+find ${filePath}/pnfs-backup-cms -type f $find_options  -name "*.dmp"  > $CMSCHIMERA_FILES
+lines=`wc -l $CMSCHIMERA_FILES | awk '{print $1}'`
+list ""
+list "Cms chimera backup: $lines files to backup to tape"
+doit "cat $CMSCHIMERA_FILES"
+list ""
+counter=0
+cat $CMSCHIMERA_FILES| while read file; do
+  counter=`expr $counter + 1`;
+  list "$counter of $lines cmsc himera files: $file"
+  saveit $file
+  rm -f $file
+done
+if [ -f $QUIT ]; then exit 1; fi
+
+rm -f $CMSCHIMERA_FILES
 
 ############################################################################
 
