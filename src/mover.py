@@ -1041,24 +1041,26 @@ class Mover(dispatching_worker.DispatchingWorker,
         f.write("=========================================\n")
         f.close()
 
-    def set_new_bitfile(self, request):
+    def set_new_bitfile(self, fc_ticket, vc_ticket):
         """
         Mover requests to create a new record in file table after file was written to media
         by sending ``new_bit_file`` ``work`` to file clerk.
 
-        :type request: :obj:`dict`
-        :arg request: parameters needed to fill in the new record in file table
+        :type fc_ticket: :obj:`dict`
+        :arg fc_ticket: file info part of ticket
+        :type vc_ticket: :obj:`dict`
+        :arg fc_ticket: volume info part of ticket
         :rtype: :obj:`dict` reply from file clerk (or file clerk client in case of time-out)
 
         """
 
-        Trace.log(e_errors.INFO,"new bitfile request %s"%(request))
+        request = {'work':"new_bit_file",
+                   'fc'  : fc_ticket,
+                   'vc'  : vc_ticket,
+                   }
+        Trace.log(e_errors.INFO,"new bitfile request %s "%(request,))
         for i in range(2):
-            fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
-                                               'fc'  : request
-                                               },
-                                              timeout = 60,
-                                              retry = 0)
+            fcc_reply = self.fcc.new_bit_file(request, timeout = 60, retry = 0)
             Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
             if fcc_reply['status'][0] == e_errors.OK:
                 break
@@ -1068,11 +1070,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 else:
                     if i == 0:
-                        Trace.log(e_errors.INFO,"re-trying new bitfile request %s"%(request))
+                        Trace.log(e_errors.INFO,"re-trying new bitfile request %s "%(request))
                     else:
                         Trace.log(e_errors.INFO,"re-try failed %s"%(fcc_reply))
                         return
-        if fcc_reply['fc']['location_cookie'] != request['location_cookie']:
+        if fcc_reply['fc']['location_cookie'] != request['fc']['location_cookie']:
             Trace.log(e_errors.ERROR,
                        "error assigning new bfid requested: %s returned %s"%(request, fcc_reply))
             return
@@ -5582,7 +5584,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 0
             fc_ticket['original_bfid'] = original_bfid
 
-        fcc_reply = self.set_new_bitfile(fc_ticket)
+        fcc_reply = self.set_new_bitfile(fc_ticket, self.vol_info)
         if not fcc_reply:
             return fcc_reply
         ## HACK: restore crc's before replying to caller
@@ -8134,12 +8136,12 @@ class DiskMover(Mover):
                        'uid': self.uid,
                        'pnfs_name0': self.current_work_ticket['outfilepath'],
                        'pnfsid':  self.file_info['pnfsid'],
-                       'drive': "%s:%s" % (self.config['device'], self.config['serial_num']),
+                       'drive': "%s:%s" % (self.current_work_ticket['mover']['device'], self.config['serial_num']),
                        'original_library': self.current_work_ticket.get('original_library'),
                        'file_family_width': self.vol_info.get('file_family_width'),
                        'mover_type': self.mover_type,
                        'unique_id': self.current_work_ticket['unique_id'],
-}
+                       }
 
         copies = self.file_info.get('copies')
         if copies:
@@ -8187,7 +8189,7 @@ class DiskMover(Mover):
         #Request the new bit file.
         Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
-        fcc_reply = self.set_new_bitfile(fc_ticket)
+        fcc_reply = self.set_new_bitfile(fc_ticket, self.vol_info)
         if not fcc_reply:
             return fcc_reply
         ## HACK: restore crc's before replying to caller
