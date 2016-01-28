@@ -100,24 +100,30 @@ def __my_gethostbyaddr(addr):
     try_count = 0
     while try_count < 60:
         try:
-            return socket.gethostbyaddr(addr)
+            rc = socket.gethostbyaddr(addr)
+            Trace.trace(19, "__my_gethostbyaddr: socket.gethostbyaddr returned %s"%(rc,)) 
+            return rc
         except socket.error, msg:
             #One known way to get here is to run out of file
             # descriptors.  I'm sure there are others.
             this_errno = msg.args[0]
+            Trace.trace(19, "__my_gethostbyaddr: socket.error %s"%(msg,)) 
             if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
                 try_count = try_count + 1
                 time.sleep(1)
             else:
-                return None
+                break
         except (socket.gaierror, socket.herror), msg:
             this_herrno = msg.args[0]
+            Trace.trace(19, "__my_gethostbyaddr: exception %s"%(this_herrno,))
             if this_herrno == socket.EAI_AGAIN:
                 try_count = try_count + 1
                 time.sleep(1)
             else:
-                return None
-
+                break
+        except Exception as e:
+            Trace.trace(19, "__my_gethostbyaddr: Exception %s"%(str(e),))
+            break
     return None
 
 def __my_gethostbyname(name):
@@ -346,6 +352,10 @@ if __name__ == "__main__":
     for ip in gethostinfo()[2]:
         print ip, "->", address_to_name(ip), "->", interface_name(ip)
     print gethostinfo()[0], "->", name_to_address(gethostinfo()[0])
+    for level in range(1,20):
+        Trace.print_levels[level]=1
+    print __my_gethostbyaddr('')
+    print __my_gethostbyaddr('aaa')
     
 
 
