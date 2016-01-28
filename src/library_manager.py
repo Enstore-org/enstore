@@ -2229,15 +2229,17 @@ class LibraryManagerMethods:
 
             if wr_en >= permitted:
                 if self.process_for_bound_vol and self.process_for_bound_vol in vol_veto_list:
-                    # check if there are volumes in bound state
+                    # Check if there are volumes in bound or dismount state
                     # in veto list and if yes (they are not active),
-                    # allow this request go to avoid dismount of the current volume
-                    # do not check if volume bound for the current request does not
-                    # belong to volume family of selected request
+                    # allow this request go to avoid dismount of the current volume.
+                    # Volume can be in dismount state for a long period and if we skip request
+                    # for the current volume just for this reason the current volume also gets dismounted.
+                    # Do not check if volume bound for the current request does not
+                    # belong to volume family of selected request.
                     for vol in vol_veto_list:
                         if vol != self.process_for_bound_vol:
                             volume_state = self.volumes_at_movers.get_vol_state(vol)
-                            if volume_state == "HAVE_BOUND" and last_work == "WRITE":
+                            if volume_state in  ("HAVE_BOUND", "DISMOUNT_WAIT") and last_work == "WRITE":
                                 permitted = permitted + 1
                                 break
 
