@@ -35,7 +35,6 @@ import copy
 import platform
 import types
 
-
 # enstore modules
 
 import configuration_client
@@ -3835,13 +3834,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['size'] = self.bytes_read
                         self.file_info['sanity_cookie'] = sanity_cookie
                         self.file_info['complete_crc'] = self.buffer.complete_crc
-                        self.file_info['drive'] = "%s:%s" % (self.config['device'], self.config['serial_num'])
+                        self.file_info['drive'] = "%s:%s" % (self.current_work_ticket['mover']['device'], self.config['serial_num'])
                         self.file_info['pnfsid'] = None
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
                         self.file_info['gid'] = self.gid
                         self.file_info['uid'] = self.uid
                         self.file_info['mover_type'] = self.mover_type
-
 
                         ret = self.fcc.create_bit_file(self.file_info)
                         # update file info
@@ -5550,7 +5548,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info['eod_cookie'] = eod
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
-        drive = "%s:%s" % (self.config['device'], self.config['serial_num'])
         fc_ticket = {  'location_cookie': loc_to_cookie(previous_eod+eod_increment),
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
@@ -5560,7 +5557,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                        'uid': self.uid,
                        'pnfs_name0': self.current_work_ticket['outfilepath'],
                        'pnfsid':  self.file_info['pnfsid'],
-                       'drive':  drive,
+                       'drive': "%s:%s" % (self.current_work_ticket['mover']['device'], self.config['serial_num']),
                        'original_library': self.current_work_ticket.get('original_library'),
                        'file_family_width': self.vol_info.get('file_family_width'),
                        'mover_type': self.mover_type,
