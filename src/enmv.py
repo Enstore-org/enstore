@@ -495,7 +495,7 @@ def move_file(input_filename, output_filename, intf):
     # file database there is no going back.
 
 
-    fc_reply = fcc.set_pnfsid(fc_ticket)
+    fc_reply = fcc.modify(fc_ticket["fc"])
     if not e_errors.is_ok(fc_reply):
         print_error(fc_reply['status'][0],
                     "File clerk update failed: %s" % fc_reply['status'][1])

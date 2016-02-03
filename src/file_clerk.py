@@ -1113,7 +1113,12 @@ class FileClerkMethods(FileClerkInfoMethods):
 										self.amqp_broker_dict['port']),
 									       fc_queue,
 									       pe_queue)
-				self.en_qpid_client.start()
+                                try:
+                                    self.en_qpid_client.start()
+                                except:
+                                    exc, msg = sys.exc_info()[:2]
+                                    Trace.alarm(e_errors.ALARM, "file_clerk failed to start, failed to connect to qpid server, reason: {}".format(str((str(exc), str(msg)))))
+                                    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 			else:
 				if dispatcher_conf :
 					Trace.log(e_errors.INFO,  dispatcher_conf["status"][1])
@@ -1192,6 +1197,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 				   "open_bitfile_for_package",
                                    "bfid_info",
                                    "modify_file_records",
+                                   "modify_file_record",
                                    "swap_package",
                                    "new_bit_file",
                                    "set_pnfsid") :
@@ -1280,23 +1286,29 @@ class FileClerkMethods(FileClerkInfoMethods):
         # input ticket is a file clerk part of the main ticket
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
-        record = {'pnfsid':'','drive':'','pnfs_name0':'','deleted':'unknown'}
 
-        record["external_label"]   = ticket["fc"]["external_label"]
-        record["location_cookie"]  = ticket["fc"]["location_cookie"]
-        record["size"]             = ticket["fc"]["size"]
-        record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
-        record["complete_crc"]     = ticket["fc"]["complete_crc"]
-	record["original_library"] = ticket["fc"].get("original_library",None)
-        if ticket["fc"].get("mover_type",None) == "DiskMover":
+        ticket["status"] = (e_errors.OK, None)
+
+        keys=("location_cookie",
+              "size",
+              "sanity_cookie",
+              "external_label",
+              "complete_crc",
+              "gid",
+              "uid",
+              "pnfs_name0",
+              "pnfsid",
+              "drive",
+              "original_library",
+              "file_family_width")
+
+        record = dict(filter(lambda i : i[0] in keys, ticket["fc"].iteritems()))
+        record["deleted"]="no"
+
+        if "mover_type" in ticket["fc"] and ticket["fc"].get("mover_type") == "DiskMover":
             record["cache_location"] = record["location_cookie"]
-
-
-        # uid and gid
-        if ticket["fc"].has_key("uid"):
-            record["uid"] = ticket["fc"]["uid"]
-        if ticket["fc"].has_key("gid"):
-            record["gid"] = ticket["fc"]["gid"]
+            record["cache_status"]   = file_cache_status.CacheStatus.CACHED
+            record["cache_mod_time"] = time2timestamp(time.time())
 
         # does it have bfid?
         if ticket["fc"].has_key("bfid"):
@@ -1356,10 +1368,6 @@ class FileClerkMethods(FileClerkInfoMethods):
                 return
 
         record["bfid"] = bfid
-	now = time.time()
-	if ticket["fc"].get("mover_type",None) == "DiskMover":
-		record["cache_status"] = file_cache_status.CacheStatus.CREATED
-		record["cache_mod_time"] = time2timestamp(now)
 
         # insert record
         is_inserted=False
@@ -1396,10 +1404,31 @@ class FileClerkMethods(FileClerkInfoMethods):
                 self.reply_to_caller(ticket)
                 return
 
+        # take care of the copy count
+        original = self._find_original(bfid)
+        if original:
+            with self.copy_lock:
+                self._made_copy(original)
+	#
+	# send event to PE
+	#
+
+	if self.en_qpid_client :
+            if "mover_type" in ticket["fc"] and ticket["fc"].get("mover_type") == "DiskMover":
+
+                try:
+                    record["storage_group"] = ticket["vc"]["storage_group"]
+                    record["file_family"]   = ticket["vc"]["file_family"]
+                    record["wrapper"]       = ticket["vc"]["wrapper"]
+                    event = pe_client.evt_cache_written_fc(ticket,record)
+                    self.en_qpid_client.send(event)
+                except:
+                    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+
         ticket["fc"]["bfid"] = bfid
-        ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,'new_bit_file bfid=%s'%(bfid,))
+	Trace.trace(12,'new_bit_file %s'%(ticket,))
         return
 
     #### DONE
@@ -1533,77 +1562,23 @@ class FileClerkMethods(FileClerkInfoMethods):
         self.reply_to_caller(ticket)
 
 
-    #### DONE
-    # update the database entry for this file - add the pnfs file id
     def set_pnfsid(self, ticket):
+        """
+        functinality of set_pnfsid call is moved to new_bit_file call
+        this call is retained for backward compatibility with older encp
 
-        bfid  = self.extract_bfid_from_ticket(ticket.get('fc', {}),check_exists = False)
-        if not bfid:
-            return #extract_bfid_from_ticket handles its own errors.
+        set_pnfsid is used in encp and enmv
 
-        pnfsid = self.extract_value_from_ticket('pnfsid', ticket.get('fc', {}))
-        if not pnfsid:
-            return #extract_value_from_ticket handles its own errors.
+        call to set_pnfsid from encp contains unique_id key
+        whereas enmv does not.
 
-        ticket["status"] = (e_errors.OK, None)
-        record={}
+        """
 
-        # temporary workaround - sam doesn't want to update encp too often
-        pnfsvid = ticket["fc"].get("pnfsvid")
-        pnfs_name0 = ticket["fc"].get("pnfs_name0")
-
-        # start (10/18/00) adding which drive we used to write the file
-        drive = ticket["fc"].get("drive","unknown:unknown")
-
-        # start (7/26/2004) adding which user wrote the file
-        uid = ticket["fc"].get("uid", None)
-        gid = ticket["fc"].get("gid", None)
-
-        # add the pnfsid
-        record["pnfsid"] = pnfsid
-        record["drive"] = drive
-        # temporary workaround - see above
-        if pnfsvid != None:
-            record["pnfsvid"] = pnfsvid
-        if pnfs_name0 != None:
-            record["pnfs_name0"] = pnfs_name0
-        if uid != None:
-            record["uid"] = uid
-        if gid != None:
-            record["gid"] = gid
-        record["deleted"] = "no"
-	record["original_library"] = ticket["fc"].get("original_library",None)
-	record["file_family_width"] = ticket["fc"].get("file_family_width",None)
-	if ticket["fc"].get("mover_type",None) == "DiskMover":
-		record["cache_status"] = file_cache_status.CacheStatus.CACHED
-
-        # take care of the copy count
-        original = self._find_original(bfid)
-        if original:
-            with self.copy_lock:
-                self._made_copy(original)
-
-	# record our changes
-        try:
-            record=self.filedb_dict.update_record(bfid,record)
-        except Exception as e:
-            Trace.log(e_errors.ERROR, "set_pnfsid: Failed to update file record with bfid {} : {}".format(bfid, str(e)))
-            ticket["status"] = (e_errors.ERROR, "set_pnfsid: Failed to update file record with bfid {}, see server log for details".format(bfid))
+        if "unique_id" in ticket["fc"] :
+            ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
-            return
-
-	#
-	# send event to PE
-	#
-	if self.en_qpid_client :
-		if ticket["fc"].get("mover_type",None) == "DiskMover":
-			event = pe_client.evt_cache_written_fc(ticket,record)
-			try:
-				self.en_qpid_client.send(event)
-			except:
-				ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-
-	self.reply_to_caller(ticket)
+        else:
+            self.modify_file_record(ticket["fc"])
 
 	Trace.trace(12,'set_pnfsid %s'%(ticket,))
 	return
