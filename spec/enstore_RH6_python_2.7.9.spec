@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 5.1.1
-Release: 1
+Version: 5.1.2
+Release: 0
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -156,7 +156,7 @@ echo export FTT_DIR >> /tmp/enstore-setup
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 . /tmp/enstore-setup
-mv $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
+mv $ENSTORE_DIR/ftt $FTT_DIR
 #chown -R enstore.enstore /home/enstore
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
@@ -230,6 +230,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Wed Feb 10 2016  <moibenko@fnal.gov> -
+- new release 5.1.2, release 0.
 * Mon Nov 09 2015  <moibenko@fnal.gov> -
 - new release 5.1.1, release 1.
 * Mon Nov 09 2015  <moibenko@fnal.gov> -
