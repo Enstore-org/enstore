@@ -1,0 +1,191 @@
+commit 5f2ceec20ad11d0f1ce364b83466efa2b4cf1e46
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 9 16:09:05 2015 -0600
+
+    Release 5.1.1-1
+
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 3f3308fa224b9c33f4b5939772f5360d76a843e4
+Merge: aea91ec 2f6706b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 9 15:53:23 2015 -0600
+
+    Merge branch 'release/5.1.1-0' into develop
+
+commit 2f6706b1bcfe7cefaa6f92d712ad93aab7134c8d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 9 15:51:58 2015 -0600
+
+    New release 5.1.1-0
+
+A	release-notes/ENSTORE_V_5.1.0-3.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit aea91ec97e0240f006e307b5e8125da272bfb5f7
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Nov 9 15:04:51 2015 -0600
+
+        file_clerk: drop usage of
+
+              filedb_duct[bfid] = record
+
+        to update/insert file records. Above usage is dangerous in
+        multi-threaded application and also inefficient (instead of just an
+        update a select is aways called as well)
+
+        RB : http://srm/reviews/r/309/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1714
+
+M	src/file_clerk.py
+
+commit ad316f7ce9dd2777461196f5b979b025ebc98fad
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 9 13:38:12 2015 -0600
+
+        Bug fix: Check information returned by bfid_info call.
+        The check of bfid_info call was missing.
+
+        http://srm.fnal.gov/reviews/r/312/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1719
+
+M	src/mover.py
+
+commit b587db42f1415f78d627cec5fb609fa9573598da
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Nov 6 08:44:46 2015 -0600
+
+    Stop volume assert if "FTT_ENODEV", "FTT_ENOTAPE" happened.
+    These errors indicate errors, encountering which we do not want to proceed.
+    One of such cases was reported in corresponding bugzilla ticket.
+
+    http://srm.fnal.gov/reviews/r/311/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1718
+
+M	src/mover.py
+
+commit a8e9c4eacfc8ea5c24143d03b3c3ba8e72b86e6a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Nov 4 14:41:07 2015 -0600
+
+        Add information to new_bit_file ticket, necessary to replace set_pnfsid call in
+        encp.
+        This additional information does not affect the current server side
+        new_bit_file implementation.
+
+        http://srm.fnal.gov/reviews/r/310/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1715
+
+M	src/mover.py
+
+commit d219e600a43a74606755c60a16828ab97fa21456
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Oct 30 16:46:56 2015 -0500
+
+        Remove reinit in info_server.
+        Investigation of info server stopping sending heartbeat showed that info server stops sending heartbeat after configuration was reloaded.
+        Reload of configuration causes the reinit() call. Reinit as implemented in info_server is very dangerous and may lead to unpredictable info server behaviour.
+        So, it was just removed after consulting with Dmitry.
+
+        http://srm.fnal.gov/reviews/r/308/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1713
+
+M	src/info_server.py
+
+commit 1bafb25a7931d8fc82b4885ee6aca97a28618a5a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Oct 30 15:14:39 2015 -0500
+
+        Generate Failed Multiple Copies Remaining with 24 hours delay to avoid false positives.
+        http://srm.fnal.gov/reviews/r/307/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1709
+
+M	sbin/multiple_copy_summary
+
+commit df05f1092bc4d4ae16bdf14813035ecb9babb000
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Oct 19 12:43:47 2015 -0500
+
+         use .(pathof)(pnfsid) to determine absolute file path
+         pass full path to encp
+
+         RB : http://srm/reviews/r/303/
+         BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1697
+
+    commit 7b36b756769feea3bda39d6db1206123878cf9d7
+    Author: Dmitry Litvintsev <litvinse@fnal.gov>
+    Date:   Mon Oct 5 14:57:48 2015 -0500
+
+        use file path determined from PNFSID rather than
+        the one supplied it pool code. NB, makes assuption that
+        on pool nodes the PNFS is mounted "right".
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit 8a13ef4fdee3a9594a59cb507577c6e318f82d15
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Oct 19 12:36:46 2015 -0500
+
+        1) require max_idle connections to be 90% of max total for file_clerk and volume_clerk and 50% for info_server
+        2) improve modify_file_record(s) functions
+
+         RB : http://srm/reviews/r/304/
+         BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1700
+
+M	src/file_clerk.py
+M	src/info_server.py
+M	src/volume_clerk.py
+
+commit 685070d78091f36b77e90ac1191f474ccdf1ccce
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Mon Oct 19 12:09:06 2015 -0500
+
+    BZ 1708: do not remove file in cleanup_after_scan() if it is not in migration path
+
+    - add check if the migration path argument is really in migration path and refuse to remove if the test fails.
+    - do not try to delete non-regular files. Old code logs a lot of dirctory not deleted error messages, it is scary.
+    - fix bug in exceptions processing: undefined msg exception used to report error (shall be msg2)
+    - refactor
+
+M	src/migrate_chimera.py
+
+commit e146f697d02996ed1bebb2774b14215c6a859ade
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Oct 15 17:00:22 2015 -0500
+
+        Tab flipping problem in SLF6, /bin/sh sourcing changed.
+        http://srm.fnal.gov/reviews/r/305/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1686
+
+M	src/flip_tab_acsls.sh
+
+commit 8279cde2f9504f9368e3a8f5ece59d2b7b313f3d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Oct 5 11:19:00 2015 -0500
+
+        extract value of max_threads from server config piece, rather than
+        databsae config piece
+
+    	BZ : http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1696
+            RB : http://srm/reviews/r/302/
+
+M	etc/config_params.html
+M	src/file_clerk.py
+M	src/info_server.py
+M	src/volume_clerk.py
+
+commit 1ad1ddfe05d5ad4ec4654a1eb342174b7c701ae2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Sep 28 13:01:50 2015 -0500
+
+        Remove r_a from reply in client.
+        r_a - reply address is used to confirm that reply from server comes
+        to correct address. This entry may affect some clients relying on the
+        content of the reply.
+        One such case was mod_config. To avoid such cases and simply make
+        response on the terminal looking the same remove 'r_a' key from reply
+        when processes.
+        http://srm.fnal.gov/reviews/r/301/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1695
+
+M	src/udp_client.py
