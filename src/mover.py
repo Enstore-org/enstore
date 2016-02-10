@@ -35,7 +35,6 @@ import copy
 import platform
 import types
 
-
 # enstore modules
 
 import configuration_client
@@ -865,7 +864,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.send_update_cnt = 0 # send lm_update if this counter is 0
         self.control_socket = None
         self.lock_file_info = 0   # lock until file info is updated
-        self.read_tape_running = 0 # use this to synchronize read and network threads
+        self.read_tape_done = threading.Event() # use this to synchronize read and network threads
         self.stream_w_flag = 0    # this flag is set when before stream_write is called
         self.vc_address = None  # volume clerk address. Used in LM to identify volume clerk. Needed for sharing movers and
         # LMs across systems
@@ -1041,24 +1040,26 @@ class Mover(dispatching_worker.DispatchingWorker,
         f.write("=========================================\n")
         f.close()
 
-    def set_new_bitfile(self, request):
+    def set_new_bitfile(self, fc_ticket, vc_ticket):
         """
         Mover requests to create a new record in file table after file was written to media
         by sending ``new_bit_file`` ``work`` to file clerk.
 
-        :type request: :obj:`dict`
-        :arg request: parameters needed to fill in the new record in file table
+        :type fc_ticket: :obj:`dict`
+        :arg fc_ticket: file info part of ticket
+        :type vc_ticket: :obj:`dict`
+        :arg fc_ticket: volume info part of ticket
         :rtype: :obj:`dict` reply from file clerk (or file clerk client in case of time-out)
 
         """
 
-        Trace.log(e_errors.INFO,"new bitfile request %s"%(request))
+        request = {'work':"new_bit_file",
+                   'fc'  : fc_ticket,
+                   'vc'  : vc_ticket,
+                   }
+        Trace.log(e_errors.INFO,"new bitfile request %s "%(request,))
         for i in range(2):
-            fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
-                                               'fc'  : request
-                                               },
-                                              timeout = 60,
-                                              retry = 0)
+            fcc_reply = self.fcc.new_bit_file(request, timeout = 60, retry = 0)
             Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
             if fcc_reply['status'][0] == e_errors.OK:
                 break
@@ -1068,11 +1069,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 else:
                     if i == 0:
-                        Trace.log(e_errors.INFO,"re-trying new bitfile request %s"%(request))
+                        Trace.log(e_errors.INFO,"re-trying new bitfile request %s "%(request))
                     else:
                         Trace.log(e_errors.INFO,"re-try failed %s"%(fcc_reply))
                         return
-        if fcc_reply['fc']['location_cookie'] != request['location_cookie']:
+        if fcc_reply['fc']['location_cookie'] != request['fc']['location_cookie']:
             Trace.log(e_errors.ERROR,
                        "error assigning new bfid requested: %s returned %s"%(request, fcc_reply))
             return
@@ -1711,6 +1712,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         elif crc_control != None:
             Trace.log(e_errors.ERROR, "Ignoring invalid 'read_crc_control' value of %s found in configuration. Allowed values are 0 or 1. Using default value of 0 ('calculate CRC when reading from memory')."%(crc_control,))
+        self.read_error_recovery_timeout = float(self.config.get("read_error_recovery_timeout", 20*60))
 
         self._reinit() # pickup whatever reinit provides
         drive_rate_threshold =  self.config.get("drive_rate_threshold", None)
@@ -2810,26 +2812,31 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         return rc
 
-    def send_client_update(self, percent_completed):
+    def send_client_update(self):
         """
         Send to client (encp) updated status if selective CRC check runs too long
         to avoid encp timeouts.
 
-        :type percent_completed: :obj:`float`
-        :arg percent_completed: completed part of a file crc check
         """
 
         if not self.client_update_enabled(self.current_work_ticket):
             return
-        Trace.trace(20, "send_client_update: percent done %s"%(percent_completed,))
-        self.current_work_ticket['status'] = (e_errors.MOVER_BUSY, percent_completed)
+        if self.crc_check_percent_completed <= 0:
+            # This can happen during rewind.
+            # Encp interrupts transfer if it receives the same percentage.
+            # To avoid such cases update self.crc_check_percent_completed every time
+            # self.crc_check_percent_complete can not be 0. If it is, encp interrupts transfer.
+
+            self.crc_check_percent_completed -= 1
+        Trace.trace(20, "send_client_update: percent done %s"%(self.crc_check_percent_completed,))
+        self.current_work_ticket['status'] = (e_errors.MOVER_BUSY,  self.crc_check_percent_completed)
         Trace.log(e_errors.INFO, "Sending update to client: %s"%(self.current_work_ticket['status'],))
         try:
             callback.write_tcp_obj(self.control_socket, self.current_work_ticket)
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_update: %s" % (detail,))
-
+            self.encp_gone_during_crc_check = True
 
     def selective_crc_check(self):
         """
@@ -2838,6 +2845,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
 
         failed = 0
+        self.encp_gone_during_crc_check = False
         save_location = self.position_for_crc_check()
         if self.tr_failed:
             # if self.position_for_crc_check fails self.tr_failed will be set
@@ -2863,7 +2871,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         total_block_counter = 0L
         time_started = time.time()
         last_percent_done = 0
+        Trace.log(e_errors.INFO, "crc check starting")
+
         while self.bytes_read < bytes_to_read:
+            if self.encp_gone_during_crc_check:
+                Trace.log(e_errors.INFO, "crc check interrupted")
+                self.remove_interval_func(self.send_client_update)
+                self.transfer_failed(e_errors.ENCP_GONE,  "crc check interrupted", error_source=NETWORK)
+                return
 
             nbytes = min(bytes_to_read - self.bytes_read, self.buffer.blocksize)
             self.buffer.bytes_for_crc = nbytes
@@ -2893,7 +2908,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     else:
                         err_source = UNKNOWN
                     self.transfer_failed(detail, error_source=err_source)
-
                 failed = 1
                 break
             except:
@@ -2922,18 +2936,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             total_block_counter += 1
             if block_counter == 2000:
-                percent_done = int(self.bytes_read*100 / self.bytes_to_write)
-                if percent_done - last_percent_done >= 5:
+                self.crc_check_percent_completed = int(self.bytes_read*100 / self.bytes_to_write)
+                if self.crc_check_percent_completed - last_percent_done >= 5:
                     Trace.notify("transfer %s %s %s media %s %.3f %s" %
                                  (self.shortname, -self.bytes_read,
                                   bytes_to_read, self.buffer.nbytes(), time.time(), self.draining))
 
-                    last_percent_done = percent_done
-                now = time.time()
-                if now - time_started >= 14*60: # encp waits for 15 minutes before re-trying the transfer
-                    # send update message to client
-                    self.send_client_update(percent_done)
-                    time_started = now
+                    last_percent_done = self.crc_check_percent_completed
                 block_counter = 0
             else:
                 block_counter += 1
@@ -3241,17 +3250,26 @@ class Mover(dispatching_worker.DispatchingWorker,
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
                 # bail out gracefuly
-
-                # set volume to readlonly
-                self.vcc.set_system_readonly(self.current_volume)
-                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
-                            (self.current_volume,))
-                # also set volume to NOACCESS, so far
-                # no alarm is needed here because it is send by volume clerk
-                # when it sets a volume to NOACCESS
-                self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
-                # log all running proceses
-                self.log_processes(logit=1)
+                if str(detail) == 'FTT_ENOSPC':
+                    # no space left on tape
+                    Trace.log(e_errors.INFO, "No sace left on %s. Setting to full"%(self.current_volume,))
+                    ret = self.vcc.set_remaining_bytes(self.current_volume, 0, self.vol_info['eod_cookie'])
+                    if ret['status'][0] != e_errors.OK or ret['eod_cookie'] != self.vol_info['eod_cookie']:
+                        Trace.alarm(e_errors.ERROR, "set_remaining_bytes failed", ret)
+                        self.set_volume_noaccess(self.current_volume, "Failed to update volume information. See log for details")
+                        Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
+                                    (self.current_volume, self.vol_info['eod_cookie']))
+                else:
+                    # set volume to readlonly
+                    self.vcc.set_system_readonly(self.current_volume)
+                    Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
+                                (self.current_volume,))
+                    # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
+                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
+                    # log all running proceses
+                    self.log_processes(logit=1)
 
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
@@ -3453,7 +3471,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if self.check_written_file() and self.driver_type == 'FTTDriver':
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
+                self.crc_check_percent_completed = 0
+                self.add_interval_func(self.send_client_update,  14*60) # send more often than encp retry interval (15 min)
                 self.selective_crc_check()
+                self.remove_interval_func(self.send_client_update)
                 if self.tr_failed:
                     return
 
@@ -3478,7 +3499,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Read file from tape.
 
         """
-        self.read_tape_running = 1 # use this to synchronize read and network threads
+        self.read_tape_done.clear() # use this to synchronize read and network threads
 
         if self.driver_type == 'FTTDriver':
             self.update_tape_stats()
@@ -3556,7 +3577,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     buffer_full_t = now
                     if (buffer_full_cnt >= self.max_in_state_cnt) or network_slow:
                         msg = "data transfer to client stuck. Client host %s. Breaking connection"%(self.current_work_ticket['wrapper']['machine'][1],)
-                        self.read_tape_running = 0
+                        self.read_tape_done.set()
+
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                         return
                     buffer_full_cnt = buffer_full_cnt + 1
@@ -3601,7 +3623,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         err_source = UNKNOWN
                     self.transfer_failed(detail, error_source=err_source)
 
-                self.read_tape_running = 0
+                self.read_tape_done.set()
                 failed = 1
                 Trace.trace(24, "MODE %s"%(mode_name(self.mode),))
                 if self.mode == ASSERT:
@@ -3631,7 +3653,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     elif detail == 'FTT_EBLANK':
                         Trace.log(e_errors.INFO, "perhaps EOT.Current Location %s Previous location %s"%
                                   (self.current_location, prev_loc))
-                        self.read_tape_running = 0
+                        self.read_tape_done.set()
                         self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
                         failed = 1
                         break
@@ -3639,14 +3661,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     else:
                         Trace.log(e_errors.ERROR, "Read failed. Current Location %s Previous location %s"%
                                   (self.current_location, prev_loc))
-                        self.read_tape_running = 0
+                        self.read_tape_done.set()
+
                         self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
 
                 else:
                     Trace.trace(33,"Exception %s %s"%(e_errors.READ_ERROR,str(detail)))
-                    self.read_tape_running = 0
+                    self.read_tape_done.set()
+
                     self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                     failed = 1
                     break
@@ -3654,7 +3678,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 exc, detail,tb = sys.exc_info()
                 Trace.trace(33,"Exception %s %s"%(str(exc),str(detail)))
                 Trace.handle_error(exc, detail, tb)
-                self.read_tape_running = 0
+                self.read_tape_done.set()
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
@@ -3663,7 +3687,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if bytes_read == 0 and self.method == 'read_next':
                     pass
                 else:
-                    self.read_tape_running = 0
+                    self.read_tape_done.set()
                     self.transfer_failed(e_errors.READ_ERROR, "read returns %s" % (bytes_read,),
                                          error_source=TAPE)
                     failed = 1
@@ -3683,7 +3707,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         header_size = self.wrapper.header_size(b0)
                     except (TypeError, ValueError), msg:
                         Trace.log(e_errors.ERROR,"Invalid header %s" %(b0[:self.wrapper.min_header_size]))
-                        self.read_tape_running = 0
+                        self.read_tape_done.set()
                         self.transfer_failed(e_errors.READ_ERROR, "Invalid file header", error_source=TAPE)
                         ##XXX NB: the client won't necessarily see this message since it's still trying
                         ## to recieve data on the data socket
@@ -3785,15 +3809,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
         if self.tr_failed:
-            self.read_tape_running = 0
+            self.read_tape_done.set()
             Trace.trace(127,"read_tape: tr_failed %s"%(self.tr_failed,))
             return
         if failed:
-            self.read_tape_running = 0
+            self.read_tape_done.set()
             return
         if do_crc:
             if self.tr_failed:
-                self.read_tape_running = 0
+                self.read_tape_done.set()
                 return # do not calculate CRC if net thead detected a failed transfer
             complete_crc = self.file_info.get('complete_crc',None)
             bfid = self.file_info.get('bfid',None)
@@ -3814,13 +3838,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['size'] = self.bytes_read
                         self.file_info['sanity_cookie'] = sanity_cookie
                         self.file_info['complete_crc'] = self.buffer.complete_crc
-                        self.file_info['drive'] = "%s:%s" % (self.config['device'], self.config['serial_num'])
+                        self.file_info['drive'] = "%s:%s" % (self.current_work_ticket['mover']['device'], self.config['serial_num'])
                         self.file_info['pnfsid'] = None
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
                         self.file_info['gid'] = self.gid
                         self.file_info['uid'] = self.uid
                         self.file_info['mover_type'] = self.mover_type
-
 
                         ret = self.fcc.create_bit_file(self.file_info)
                         # update file info
@@ -3828,12 +3851,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.INFO, "updated file info %s"%(ret,)) ## Remove when fixed
                         if ret['status'][0] != e_errors.OK:
                             Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(ret,))
-                            self.read_tape_running = 0
+                            self.read_tape_done.set()
                             self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
                             return
                         if ret['fc']['bfid'] == None:
                             Trace.log(e_errors.ERROR,"FC returned None for bfid %s"%(ret,))
-                            self.read_tape_running = 0
+                            self.read_tape_done.set()
                             self.transfer_failed(e_errors.ERROR,"FC returned None for bfid")
                         self.file_info.update(ret['fc'])
                         self.current_work_ticket['fc'].update(self.file_info)
@@ -3855,7 +3878,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                            self.vol_info['remaining_bytes'],
                                                            self.vol_info['eod_cookie'])
                         if ret['status'][0] != e_errors.OK:
-                            self.read_tape_running = 0
+                            self.read_tape_done.set()
                             self.set_volume_noaccess(self.current_volume, "Failed to update volume information. See log for details")
                             Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                         (self.current_volume, self.vol_info['eod_cookie']))
@@ -3873,7 +3896,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if self.tr_failed:
                         Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
                                   (self.buffer.complete_crc, complete_crc))
-                        self.read_tape_running = 0
+                        self.read_tape_done.set()
                         return  # do not raise alarm if net thead detected a failed transfer
                     crc_error = 1
                     # try 1 based crc
@@ -3897,7 +3920,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                          'external_label':self.current_work_ticket['vc']['external_label'],
                                          'complete_crc':complete_crc, 'buffer_crc':self.buffer.complete_crc,
                                          '_bytes_read':self.file_info['size']})
-                        self.read_tape_running = 0
+                        self.read_tape_done.set()
                         self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                         return
 
@@ -3923,7 +3946,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.assert_return = e_errors.OK
         #####
 
-        self.read_tape_running = 0
+        self.read_tape_done.set()
 
     def write_client(self):
         """
@@ -4071,19 +4094,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return
             self.network_write_active = (self.bytes_written_last != self.bytes_written)
             self.bytes_written_last = self.bytes_written
-        if self.read_tape_running != 0:
-            # this is for the cases when transfer has completed
-            # but tape thread did not exit for some reason
-            # usually this happens with DLT tapes
-            Trace.log(e_errors.INFO, "write_client waits for tape thread to exit")
-            time_to_sleep = 20
-            if self.config['product_id'].find("DLT") != -1:
-                # for dlt drives make it bigger
-                time_to_sleep = 300
-            for i in range(time_to_sleep):
-                if self.read_tape_running == 0:
-                    break
-                time.sleep(1)
+
+        # This is for the cases when transfer has completed
+        # but tape thread did not exit for some reason.
+        # Usually this is due to read error recovery.
+        # The maximal recommended by oracle timeout is 20 min.
+        Trace.log(e_errors.INFO, "write_client waits for tape thread to exit it may take up to %s min"%(self.read_error_recovery_timeout/60,))
+        if self.read_tape_done.wait(self.read_error_recovery_timeout):
+            self.read_tape_done.clear()
+            Trace.log(e_errors.INFO, "write_client detected tape theard termination signal")
+        else:
+            Trace.log(e_errors.ERROR, "write_client exits, but tape thread termination signal was not recieved")
+
         # this is for crc check in ASSERT mode
         # do not call transfer_completed
         # it will be done by volume_assert
@@ -5529,7 +5551,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info['eod_cookie'] = eod
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
-        drive = "%s:%s" % (self.config['device'], self.config['serial_num'])
         fc_ticket = {  'location_cookie': loc_to_cookie(previous_eod+eod_increment),
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
@@ -5539,8 +5560,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                        'uid': self.uid,
                        'pnfs_name0': self.current_work_ticket['outfilepath'],
                        'pnfsid':  self.file_info['pnfsid'],
-                       'drive':  drive,
-                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'drive': "%s:%s" % (self.current_work_ticket['mover']['device'], self.config['serial_num']),
+                       'original_library': self.current_work_ticket.get('original_library'),
                        'file_family_width': self.vol_info.get('file_family_width'),
                        'mover_type': self.mover_type,
                        'unique_id': self.current_work_ticket['unique_id'],
@@ -5550,7 +5571,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
 
-        #If it is an orginal of multiple copies, pass this along.
+        #If it is an original of multiple copies, pass this along.
         copies = self.file_info.get('copies')
         if copies:
            fc_ticket['copies'] = copies
@@ -5563,7 +5584,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 0
             fc_ticket['original_bfid'] = original_bfid
 
-        fcc_reply = self.set_new_bitfile(fc_ticket)
+        fcc_reply = self.set_new_bitfile(fc_ticket, self.vol_info)
         if not fcc_reply:
             return fcc_reply
         ## HACK: restore crc's before replying to caller
@@ -5620,11 +5641,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['status'] = (status, error_info)
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket))
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket['status'],))
-        try:
-            callback.write_tcp_obj(self.control_socket, ticket)
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
+        if ticket['status'][0] != e_errors.ENCP_GONE:
+            try:
+                callback.write_tcp_obj(self.control_socket, ticket)
+            except:
+                exc, detail, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
 
         if ((self.method and self.method != 'read_next') or
             (self.method == None)):
@@ -7270,7 +7292,7 @@ class DiskMover(Mover):
             if self.check_written_file():
                 self.tape_driver.close()
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
-                have_tape = self.tape_driver.open(self.file, READ)
+                have_tape = self.tape_driver.open(self.tmp_file, READ)
                 if have_tape != 1:
                     Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
 
@@ -8114,12 +8136,12 @@ class DiskMover(Mover):
                        'uid': self.uid,
                        'pnfs_name0': self.current_work_ticket['outfilepath'],
                        'pnfsid':  self.file_info['pnfsid'],
-                       'drive': "%s:%s" % (self.config['device'], self.config['serial_num']),
-                       'orginal_library': self.current_work_ticket.get('orginal_library'),
+                       'drive': "%s:%s" % (self.current_work_ticket['mover']['device'], self.config['serial_num']),
+                       'original_library': self.current_work_ticket.get('original_library'),
                        'file_family_width': self.vol_info.get('file_family_width'),
                        'mover_type': self.mover_type,
                        'unique_id': self.current_work_ticket['unique_id'],
-}
+                       }
 
         copies = self.file_info.get('copies')
         if copies:
@@ -8167,7 +8189,7 @@ class DiskMover(Mover):
         #Request the new bit file.
         Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
-        fcc_reply = self.set_new_bitfile(fc_ticket)
+        fcc_reply = self.set_new_bitfile(fc_ticket, self.vol_info)
         if not fcc_reply:
             return fcc_reply
         ## HACK: restore crc's before replying to caller

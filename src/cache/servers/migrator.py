@@ -830,7 +830,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     else:
                         Trace.log(DEBUGLOG, "File was not included into package %s archive_status %s"%
                                   (rec['bfid'], rec['archive_status']))
-                        if rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:
+                        if rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED or rec['deleted'] == 'yes':
                             components_to_remove.append(component)
 
                 except Exception, detail:

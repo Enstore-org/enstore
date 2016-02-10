@@ -1,0 +1,29 @@
+#!/bin/sh
+# source this file to use defined functions
+krbdir="/usr/krb5/bin"
+enstorekt_path="/fnal/ups/kt/enstorekt"
+get_krb5_ticket() {
+echo "get_krb5_ticket"
+if [ -d $krbdir -a -f $enstorekt_path ];
+then
+    user=`whoami`
+    # we are kerberized
+    thisHost=`hostname --fqdn`
+    OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
+    KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
+    if [ "$user" = "root" ]; then
+	${krbdir}/kinit -k host/${thisHost}
+    elif [ "$user" = "enstore" ]; then
+	${krbdir}/kinit -k -t $enstorekt_path enstore/cd/${thisHost}
+    fi
+fi
+}
+
+destroy_krb5_ticket() {
+if [ -d $krbdir -a -f $enstorekt_path ];
+then
+    # we are kerberized
+    ${krbdir}/kdestroy
+fi
+}
+

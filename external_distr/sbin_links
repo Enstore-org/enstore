@@ -1,5 +1,5 @@
 # list of enstore servers
-# to use when creating or 
+# to use when creating or
 # updating symbolic links
 # run it through grep -v "#"
 accounting_server
@@ -7,7 +7,6 @@ alarm_server
 configuration_server
 drivestat_server
 event_relay
-file_clerk
 info_server
 inquisitor
 library_manager

@@ -66,8 +66,12 @@ class QPIDConfigurator:
         self.queues.append(command)
 
         broker = (broker_config['host'], broker_config['port'])
+        sasl_mechanism = broker_config.get('sasl-mechanism')
         for queue in self.queues:
-            rc = cmc.EnQpidClient(broker, myaddr=None, target=queue)
+            rc = cmc.EnQpidClient(broker,
+                                  myaddr=None,
+                                  target=queue,
+                                  authentication=sasl_mechanism)
             if rc:
                 rc.start()
                 rc.stop()

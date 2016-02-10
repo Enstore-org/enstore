@@ -502,6 +502,9 @@ state. Default - do not restart</td>
 	      Factor used to calculate remaining bytes based on the capacity:
 	      (remaining = remaining_factor*capacity)</td>
 	   <td>Optional</td><td>0.01</td>
+<tr><td><a NAME="read_error_recovery_timeout">read_error_recovery_timeout</a></td><td>
+	      When read error happens tape drive tries to recover data. Recovery may take up to 30 min, but usually 20 min. This parameter controls recovery during read, so that mover just waits for read tape compeletion up to specified time</td>
+	   <td>Optional(sec)</td><td>20*60.</td>
 
 </tr>
 </table>

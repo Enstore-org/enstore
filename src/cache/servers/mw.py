@@ -55,7 +55,7 @@ class MigrationWorker(object):
         @param name: name - migration worker name
         @type conf: dict
         @param conf: configuration dictionary (partial) received from Configuration Server or else
-        
+
         conf["server"] - configuration of this server
         conf["amqp"] - configuration of amqp, such as qpid broker, else
         conf["file_clerk"]
@@ -73,9 +73,9 @@ class MigrationWorker(object):
         self.trace.debug("extract configuration")
         try:
             self.name = name
-            
+
             self.trace.debug("name=%s, conf=%s", name, conf)
-            
+
             cfb = conf['amqp']['broker']
             cfs = conf['server']
             amq_broker = (cfb['host'],cfb['port'])
@@ -87,13 +87,16 @@ class MigrationWorker(object):
             # @todo - configuraion error, raise exception
 
         self.trace.debug("create clients")
-        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=queue_work, target=queue_reply)
+        self.qpid_client = cmc.EnQpidClient(amq_broker,
+                                            myaddr=queue_work,
+                                            target=queue_reply,
+                                            authentication=cfb.get('sasl-mechanism'))
         self.trace.debug("qpid_client: %s", dir(self.qpid_client))
         self.trace.debug("reading commands from '%s', replying to '%s'", queue_work, queue_reply )
         # start it here
         #self.start()
         #XXX self.qpid_client.add_receiver("work",queue_work)
-        
+
         ### self.pool = Pool(processes=MAX_PROCESSES) # pool of worker processes
 
     def set_handler(self, message_type, handler_method):
@@ -104,7 +107,7 @@ class MigrationWorker(object):
         else:
             raise e_errors.EnstoreError(None, "Worker is not defined", e_errors.WRONGPARAMETER)
         self.trace.debug("set_handler handlesrs after %s"%(self.handlers,))
-        
+
     def _fetch_message(self, receiver):
         self.trace.debug("fetch_message")
         try:
@@ -120,13 +123,13 @@ class MigrationWorker(object):
             return None
 
     def _ack_message(self, msg):
-        #self.qpid_client.ssn.acknowledge(msg)         
+        #self.qpid_client.ssn.acknowledge(msg)
         try:
             self.trace.debug("_ack_message(): sending acknowledge %s", msg)
-            self.qpid_client.ssn.acknowledge(msg)         
+            self.qpid_client.ssn.acknowledge(msg)
         except:
             exc, emsg = sys.exc_info()[:2]
-            self.trace.debug("_ack_message(): Can not send auto acknowledge for the message. Exception e=%s msg=%s", str(exc), str(emsg))    
+            self.trace.debug("_ack_message(): Can not send auto acknowledge for the message. Exception e=%s msg=%s", str(exc), str(emsg))
             self.trace.exception("_ack_message(): stack dump follows")
             pass
 
@@ -141,7 +144,7 @@ class MigrationWorker(object):
 # - handler processes message m
 # - handler "consumes" message, if it returns None - I'll ack the message to sender
 #   if handler returns not None, it is handler's responsibility to ack message. AMQP broker will resent message if the message is not acked.
-# - redelivered message have property redelivered = True  
+# - redelivered message have property redelivered = True
 # - sender supposed to set correlation_id unique for the message
 #
 # Normal course of action:
@@ -163,11 +166,11 @@ class MigrationWorker(object):
                 self._send_reply(reply)
                 self.trace.debug("worker_purge() reply sent, reply=%s", reply)
             except Exception, e:
-                self.trace.exception("worker_purge(), sending reply, exception")         
+                self.trace.exception("worker_purge(), sending reply, exception")
         except:
             self.trace.exception("worker %s, correlation_id=%s",mt.MWC_PURGE,correlation_id)
         finally:
-            # @todo delete it in main, or do periodic cleanup 
+            # @todo delete it in main, or do periodic cleanup
             del self.work_dict[correlation_id]
 
     # work messages
@@ -184,7 +187,7 @@ class MigrationWorker(object):
     #def handler_archive(self, m):
     def handler_archive(self,m):
         self.trace.debug("handler_archive:message %s %s", m, self.work_dict)
-        self.trace.debug("handler_archive: content %s", m.content)  
+        self.trace.debug("handler_archive: content %s", m.content)
 
     def handler_stage(self,m):
         self.trace.debug("process %s message %s",mt.MWC_STAGE,m)
@@ -194,36 +197,36 @@ class MigrationWorker(object):
         self.trace.debug("process %s message %s",mt.MWC_STATUS,m)
 
     # map message type to processor
-    
+
     handlers = {mt.MWC_PURGE : handler_purge,
                 mt.MWC_ARCHIVE : handler_archive,
                 mt.MWC_STAGE : handler_stage,
                 mt.MWC_STATUS : handler_status,
     }
-    
+
     def handle_message(self,m):
         self.trace.debug("handle message called %s %s", m.correlation_id, m.redelivered)
         # ack message here
         # retries are hadled at the higher level
         # of piers transaction
-        self._ack_message(m)        
+        self._ack_message(m)
         # @todo : check "type" present and is string or unicode
         cmd_type = m.properties["en_type"]
         try:
             h = self.handlers[cmd_type]
         except KeyError:
             raise cache.errors.EnCacheWrongCommand(cmd_type)
-        
+
         self.trace.debug("handle message - type,handle=%s,%s", cmd_type,h)
         # can use these to exclude redelivered messages
         correlation_id = m.correlation_id
         redelivered = m.redelivered
-        
+
         # @todo check if message is on heap for processing
         if redelivered :
             if self.work_dict.has_key(correlation_id):
                 return False
-        
+
         try:
             #ret = h(self,m)
             self.trace.debug("handle message - calling%s", h)
@@ -234,10 +237,10 @@ class MigrationWorker(object):
             # Allow to re-process it
             del(self.work_dict[correlation_id])
             ret = False
-        
+
         self.trace.debug("handle message - returning %s",ret)
         return ret
-        
+
     def serve_qpid(self, receiver):
         """
         read qpid messages from queue
@@ -257,7 +260,7 @@ class MigrationWorker(object):
                 # debug HACK to use spout messages
                 try:
                     message.correlation_id = message.properties["spout-id"]
-                    self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id ) 
+                    self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id )
                 except:
                     pass
                 #end DEBUG hack
@@ -269,16 +272,16 @@ class MigrationWorker(object):
                     # message gets acked before starting handler
                     # to avoid unnecessary repeats
                     # due to timeout expiration
-                    self.trace.debug("message processed correlation_id=%s, do_ack=%s", message.correlation_id, do_ack )   
+                    self.trace.debug("message processed correlation_id=%s, do_ack=%s", message.correlation_id, do_ack )
                 except Exception,e:
                     # @todo - print exception type cleanly
                     self.log.error("can not process message. Exception %s. Original message = %s",e,message)
-             
+
                 # Acknowledge ORIGINAL ticket thus we will not get it again
                 if do_ack:
                     self._ack_message(message)
 
-        # try / while 
+        # try / while
         finally:
             self.qpid_client.stop()
 
@@ -286,31 +289,31 @@ class MigrationWorker(object):
         self.qpid_client.start()
         # add receiver for Migration Dispatcher commands
         self.qpid_command_receiver = self.qpid_client.add_receiver("mw_qpid_interface", self.queue_in)
-        
+
         # start servers in separate threads
-        self.srv_thread = threading.Thread(target=self.serve_qpid,  name="Request Server", args=[self.qpid_client.rcv_default]) 
+        self.srv_thread = threading.Thread(target=self.serve_qpid,  name="Request Server", args=[self.qpid_client.rcv_default])
         self.srv_thread.start()
 
-        self.cmd_srv_thread = threading.Thread(target=self.serve_qpid,  name="MD Commmand Server", args=[self.qpid_command_receiver]) 
+        self.cmd_srv_thread = threading.Thread(target=self.serve_qpid,  name="MD Commmand Server", args=[self.qpid_command_receiver])
         self.cmd_srv_thread.start()
 
-        
+
     def stop(self):
-        # tell serving thread to stop and wait until it finish    
+        # tell serving thread to stop and wait until it finish
         self.shutdown = True
-        
+
         self.qpid_client.stop()
         self.srv_thread.join()
         self.cmd_srv_thread.join()
-       
-if __name__ == "__main__":    
+
+if __name__ == "__main__":
 
     # Test Unit
     import cache.en_logging.config_test_unit
-    
+
     #cache.en_logging.config_test_unit.set_logging_console()
     cache.en_logging.config_test_unit.set_logging_enstore(name="MW_UNIT_TEST")
-    
+
     name = "mw_123"
     conf = {"amqp": {
                 "broker" : {
@@ -330,7 +333,7 @@ if __name__ == "__main__":
 
     l_trace = logging.getLogger('trace.encache.%s' % name)
     l_trace.debug("start unit test")
-    
+
     try:
         # instantiate MigrationWorker server
         mw = MigrationWorker(name,conf)
@@ -339,7 +342,7 @@ if __name__ == "__main__":
     except:
         l_trace.debug("Can't instantiate MigrationWorker, exiting")
         sys.exit(1)
-        
+
     # stop mw server if there was keyboard interrupt
     while not mw.finished :
         try:
@@ -348,6 +351,6 @@ if __name__ == "__main__":
             print "Keyboard interrupt at main thread"
             mw.stop()
             break
-    
+
     del mw
     print "mw finished"
