@@ -19,7 +19,16 @@ then
    setup enstore
 fi
 
-EXE=$QPID_DIR/sbin/qpidd
+# if qpid_broker is called as service (service qpid_broker start
+# HOSTNAME gets reset, so declare it here explicitely.
+if [ "${HOSTNAME:-}" = "" ];
+then
+    HOSTNAME=`hostname --fqdn`
+    export HOSTNAME
+fi
+export KRB5_KTNAME=/etc/qpidd.keytab
+
+EXE=/usr/sbin/qpidd
 RUN_DIR=/var/run/qpidd
 LOG_DIR=/var/log/qpidd
 
@@ -43,17 +52,19 @@ start)
         echo $CMD
         $CMD
 	sleep 5
+	. $ENSTORE_DIR/sbin/krb5_ticket_sourceme
 	$ENSTORE_DIR/src/cache/messaging/enstore_qpid_config.py
+	destroy_krb5_ticket
 	;;
 restart)
 	$0 stop 2>/dev/null
 	$0 start
 	;;
-status) 
+status)
 
         out=`${EXE} -c 2>/dev/null`
 	RC=$?
-	case "$RC" in 
+	case "$RC" in
           0)
             echo "qpidd (pid ${out}) is running"
           ;;
@@ -70,7 +81,7 @@ status)
                 # re-run status check to capture stderr
                 err=`${EXE} -c 2>&1`
                 if [[ $err = *"Unexpected error: Can't open log file:"* ]]
-                then 
+                then
                     echo "Script shall be run by root. ${err}"
                 else
                     echo "qpidd stopped"

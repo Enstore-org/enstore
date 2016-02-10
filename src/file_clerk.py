@@ -1101,6 +1101,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 		self.amqp_broker_dict = self.csc.get(AMQP_BROKER,None)
 		if self.amqp_broker_dict and self.amqp_broker_dict["status"][0] == e_errors.OK :
 			dispatcher_conf = self.csc.get('dispatcher', None)
+                        authentication_mechanism = self.amqp_broker_dict.get('sasl-mechanism')
 			if dispatcher_conf and dispatcher_conf["status"][0] == e_errors.OK :
 				try:
 					cache.en_logging.en_logging.set_logging(self.log_name)
@@ -1112,7 +1113,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 				self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
 										self.amqp_broker_dict['port']),
 									       fc_queue,
-									       pe_queue)
+									       pe_queue,
+                                                                               authentication=authentication_mechanism)
                                 try:
                                     self.en_qpid_client.start()
                                 except:

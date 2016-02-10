@@ -132,14 +132,27 @@ class MigrationDispatcher():
             q_rd = "%s; {create: always}"%(queue_read,)
             q_p = "%s; {create: always}"%(queue_purge,)
         q_r = "%s; {create:always}"%(queue_reply,)
-        self.qpid_client_write = cmc.EnQpidClient(amq_broker, myaddr=q_r, target=q_wr)
-        self.qpid_client_read = cmc.EnQpidClient(amq_broker, myaddr=None, target=q_rd)
-        self.qpid_client_purge = cmc.EnQpidClient(amq_broker, myaddr=None, target=q_p)
+        self.qpid_client_write = cmc.EnQpidClient(amq_broker,
+                                                  myaddr=q_r,
+                                                  target=q_wr,
+                                                  authentication=broker.get('sasl-mechanism'))
+        self.qpid_client_read = cmc.EnQpidClient(amq_broker,
+                                                 myaddr=None,
+                                                 target=q_rd,
+                                                 authentication=broker.get('sasl-mechanism'))
+
+        self.qpid_client_purge = cmc.EnQpidClient(amq_broker,
+                                                  myaddr=None,
+                                                  target=q_p,
+                                                  authentication=broker.get('sasl-mechanism'))
         self.qpid_client_write.start()
         self.qpid_client_read.start()
         self.qpid_client_purge.start()
 
-        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=q_r, target=q_wr)
+        self.qpid_client = cmc.EnQpidClient(amq_broker,
+                                            myaddr=q_r,
+                                            target=q_wr,
+                                            authentication=broker.get('sasl-mechanism'))
 
         # start it here
         self.start()
