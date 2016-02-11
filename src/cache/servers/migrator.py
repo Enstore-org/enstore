@@ -403,7 +403,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
 
         Trace.init(self.log_name, 'yes')
-        self._do_print({'levels':range(5, 400)})
+        #self._do_print({'levels':range(5, 400)})
         try:
             self.load_configuration()
         except:
@@ -600,7 +600,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.alarm(e_errors.ERROR, "File %s does not exist in cache. It will be skipped, but please investigate"%(cache_file_path))
         if len(cache_file_list) == 0:
             return None
-        else: 
+        else:
             # Create a special file containing the names
             # of file as known in the namespace.
             # This file can be used for metadate recovery.
