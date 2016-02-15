@@ -4099,8 +4099,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         # but tape thread did not exit for some reason.
         # Usually this is due to read error recovery.
         # The maximal recommended by oracle timeout is 20 min.
-        Trace.log(e_errors.INFO, "write_client waits for tape thread to exit it may take up to %s min"%(self.read_error_recovery_timeout/60,))
-        if self.read_tape_done.wait(self.read_error_recovery_timeout):
+        if self.mover_type != enstore_constants.DISK_MOVER and self.read_tape_done.wait(self.read_error_recovery_timeout):
+            Trace.log(e_errors.INFO, "write_client waits for tape thread to exit it may take up to %s min"%(self.read_error_recovery_timeout/60,))
             self.read_tape_done.clear()
             Trace.log(e_errors.INFO, "write_client detected tape theard termination signal")
         else:
