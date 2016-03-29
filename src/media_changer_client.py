@@ -224,6 +224,13 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket)
         return rt
 
+    def displaydrive(self, drive):
+        ticket = {'work' : 'displaydrive',
+                  'drive' : drive,
+                  }
+        rt = self.send(ticket)
+        return rt
+
     def list_drives(self, rcv_timeout = 0, rcv_tries = 0):
         ticket = {'work' : 'list_drives',
                   }
@@ -318,6 +325,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.drive = 0
         self.show = 0
         self.show_drive = 0
+        self.display = 0
         self.show_robot = 0
         self.show_volume = 0
         self.list_drives = 0
@@ -437,6 +445,16 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                            option.VALUE_USAGE:option.REQUIRED,
                            option.FORCE_SET_DEFAULT:option.FORCE,
                            },
+        option.DISPLAY:{option.HELP_STRING:"",
+                        option.DEFAULT_VALUE:option.DEFAULT,
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.VALUE_USAGE:option.IGNORED,
+                        option.USER_LEVEL:option.ADMIN,
+                        option.VALUE_NAME:"drive",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.FORCE_SET_DEFAULT:option.FORCE,
+                        },
         option.SHOW_ROBOT:{option.HELP_STRING:"",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
@@ -584,6 +602,12 @@ def do_work(intf):
                   (intf.drive, drive_info['state'],
                    drive_info.get("status", ""), drive_info['type'],
                    drive_info['volume'])
+    elif intf.display:
+        ticket = mcc.displaydrive(intf.drive)
+        if e_errors.is_ok(ticket) and ticket.get("drive_info", None):
+            drive_info = ticket['drive_info']
+            print "%12s %15s" % ("name", 'Wwn')
+            print "%12s %20s" % (drive_info['drive'], drive_info['Wwn'])
     elif intf.list_drives:
         ticket = mcc.list_drives()
         if e_errors.is_ok(ticket) and ticket.get("drive_list", None):

@@ -99,7 +99,7 @@ def bound_max_work(unbound_max_work):
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                          generic_server.GenericServer):
 
-    query_functions = ["getVolState", "getDriveState", "listDrives",
+    query_functions = ["displayDrive", "getVolState", "getDriveState", "listDrives",
 		       "listVolumes", "listVolumes2", "listClean",
 		       "listSlots"]
     work_functions = ["mount", "dismount", "insert", "eject", "cleanCycle",
@@ -325,6 +325,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	return rtn
 
     # wrapper method for client - server communication
+    def displaydrive(self, ticket):
+        ticket['function'] = "displayDrive"
+        rtn = self.DoWork( self.displayDrive, ticket)
+	return rtn
+
+    # wrapper method for client - server communication
     def robotQuery(self,ticket):
         # Don't retry this query or wait for the work queue to fit it in,
 	# we want to know current status now.
@@ -398,6 +404,14 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def getDriveState(self, ticket):
         __pychecker__ = "no-argsused"
         return (e_errors.OK, 0, None, "")
+
+    # displayDrive for the drive; default overridden for other media changers
+    def displayDrive(self, ticket):
+        """
+	Used to get drive WWN
+	"""
+        __pychecker__ = "no-argsused"
+        return (e_errors.ERROR, 0, None, "Not implemented")
 
     def query_robot(self, ticket):
         __pychecker__ = "no-argsused"
@@ -541,7 +555,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    common_message = "%s %s" % \
 			     (ticket['function'],
 			      ticket['external_label'])
-	elif ticket['function'] in ("getDriveState",):
+	elif ticket['function'] in ("display_drive", "getDriveState"):
 	    common_message = "%s %s" % \
 			     (ticket['function'],
 			      ticket['drive'])
@@ -1671,6 +1685,18 @@ class STK_MediaLoader(MediaLoaderMethods):
 	ticket['drive_info'] = drive_info
 	return rt[0], rt[1], rt[3], rt[4]
 
+    def displayDrive(self, ticket):
+        """
+	Used to get drive WWN
+	"""
+	drive = ticket['drive']
+	rt = self.retry_function(self.display_drive, drive)
+	#Update the ticket with additional information.
+	drive_info = {}
+	drive_info['drive'], drive_info['Wwn'] = rt[2].split()
+	ticket['drive_info'] = drive_info
+	return rt[0], rt[1], rt[3], rt[4]
+
 
     #FIXME - what the devil is this?
     def getVolState(self, ticket):
@@ -2364,6 +2390,37 @@ class STK_MediaLoader(MediaLoaderMethods):
             msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,answer)
             Trace.log(e_errors.ERROR, msg)
             return ("ERROR", E, answer, '', msg)
+
+    def display_drive(self,drive):
+
+        # build the command, and what to look for in the response
+        command = "display drive %s -f wwn" % (drive,)
+        answer_lookfor = "%s " % (drive,)
+
+        # execute the command and read the response
+        status,response, delta = self.timed_command(command,4,60)
+        if status != 0:
+            E=4
+            msg = "DISPLAY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        # got response, parse it and put it into the standard form
+        answer = string.strip(response[3])
+        answer = string.replace(answer,', ',',') # easier to part drive id
+	# the format of the answer is like:
+	# 2    2    1      12     50.01.04.f0.00.a2.b5.06
+	# convert it to what we expect
+	answer = ' '.join(answer.translate(None, string.whitespace[:5]).split()).replace(' ', ',',3)
+        if answer.find(answer_lookfor,0) != 0:
+            E=5
+            msg = "DISPLAY_DRIVE %i: %s => %i,%s" % (E,command,status,answer)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, answer, '', msg)
+	else:
+	    msg=''	
+            Trace.log(e_errors.INFO, msg)
+            return (e_errors.OK,0,answer, '', msg) # mounted and in use
 
     def mount(self, volume, drive, media_type="", view_first=1, ticket = {}):
 
