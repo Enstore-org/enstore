@@ -237,19 +237,51 @@ def check_db(check_dir):
         query = "select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path, archive_status from file, \
         volume where file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n'"
 
-        sg_query = "SELECT v.storage_group, v.file_family, "+\
-                   "CASE WHEN f.package_id <> f.bfid and f.package_id is not null "+\
-                   "THEN (select label from file, volume where volume.id=file.volume and file.bfid=f.package_id) "+\
-                   "ELSE v.label "+\
-                   "END as volume, "+\
-                   "CASE when f.package_id <> f.bfid and f.package_id is not null "+\
-                   "THEN (select location_cookie from file where bfid=f.package_id) "+\
-                   "ELSE f.location_cookie "+\
-                   "END as location_cookie, "+\
-                   "f.bfid, f.size, f.crc, f.pnfs_id, f.pnfs_path, f.archive_status "+\
-                   "FROM file f, volume v "+\
-                   "WHERE f.volume=v.id and v.system_inhibit_0 != 'DELETED' and f.deleted = 'n' and v.storage_group='%s' "+\
-                   "ORDER by v.file_family, volume, location_cookie"
+        sg_query = """
+        SELECT v.storage_group,
+              v.file_family,
+               CASE
+                   WHEN f.package_id <> f.bfid
+                        AND f.package_id IS NOT NULL THEN
+                          (SELECT label
+                           FROM file,
+                                volume
+                           WHERE volume.id=file.volume
+                             AND file.bfid=f.package_id)
+                   ELSE v.label
+               END AS volume,
+               CASE
+                   WHEN f.package_id <> f.bfid
+                        AND f.package_id IS NOT NULL THEN
+                          (SELECT location_cookie
+                           FROM file
+                           WHERE bfid=f.package_id)
+                   ELSE f.location_cookie
+               END AS location_cookie,
+               f.bfid,
+               f.size,
+               f.crc,
+               f.pnfs_id,
+               f.pnfs_path,
+               coalesce(f.archive_status,'None') as archive_status,
+               CASE
+                   WHEN f.package_id <> f.bfid
+                        AND f.package_id IS NOT NULL THEN
+                          (SELECT pnfs_id
+                           FROM file
+                           WHERE bfid=f.package_id)
+                   ELSE 'None'
+               END AS package_pnfsid
+        FROM file f,
+             volume v
+        WHERE f.volume=v.id
+          AND v.system_inhibit_0 != 'DELETED'
+          AND f.deleted = 'n'
+          AND v.storage_group='%s'
+        ORDER BY v.file_family,
+                 volume,
+                 location_cookie
+        """
 
 
 	cmd = "psql -d backup -A -F ' ' -c \"%s\" >> %s"%(query,out_file,)
