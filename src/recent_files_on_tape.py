@@ -17,6 +17,7 @@ import sys
 import os
 import pg
 import errno
+import shutil
 
 # enstore modules
 import option
@@ -104,7 +105,15 @@ def make_recent_file(storage_group,
 	os.system(cmd)
 
 	if os.access(out_file, os.F_OK):
-		os.remove(out_file)
+		f_stat=os.stat(out_file)
+		time_tuple=time.localtime(f_stat.st_mtime)
+		Y =  str(time_tuple.tm_year)
+		m = "{0:02d}".format(time_tuple.tm_mon)
+		d = "{0:02d}".format(time_tuple.tm_mday)
+		save_dir=os.path.join(out_dir,Y,m,d)
+		if not os.path.exists(save_dir):
+			os.makedirs(save_dir)
+		shutil.move(out_file,save_dir)
 
 	try:
 		os.rename(temp_file, out_file)   #Do the temp file swap.
