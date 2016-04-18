@@ -35,13 +35,13 @@ LEFT OUTER JOIN t_level_4 l4 ON (l4.ipnfsid=t_inodes.ipnfsid)
 LEFT OUTER JOIN t_level_1 l1 ON (l1.ipnfsid=t_inodes.ipnfsid)
 LEFT OUTER JOIN t_level_2 l2 ON (l2.ipnfsid=t_inodes.ipnfsid)
 LEFT OUTER JOIN t_retention_policy rp ON (rp.ipnfsid=t_inodes.ipnfsid)
-WHERE t_inodes.itype=32768
+WHERE (t_inodes.itype=32768
   AND t_inodes.iio=0
   AND t_inodes.isize>0
   AND ( l4 is NULL OR l1 is NULL OR l2 is NULL )
   AND ((t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours'
-        AND t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours')
-       OR t_inodes.ipnfsid IN('{}'))
+        AND t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours')))
+       OR t_inodes.ipnfsid IN('{}')
 ORDER BY t_inodes.imtime
 """
 
