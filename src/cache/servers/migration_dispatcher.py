@@ -492,6 +492,7 @@ class MigrationDispatcher():
             send_queue = self.queue_purge
             client = self.qpid_client_purge
         elif item.list_object.list_type == mt.CACHE_WRITTEN:
+            time.sleep(15)
             send_queue = self.queue_write
             client = self.qpid_client_write
         else:

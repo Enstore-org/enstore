@@ -52,9 +52,11 @@ start)
         echo $CMD
         $CMD
 	sleep 5
-	. $ENSTORE_DIR/sbin/krb5_ticket_sourceme
-	$ENSTORE_DIR/src/cache/messaging/enstore_qpid_config.py
-	destroy_krb5_ticket
+	su - enstore -c ". /usr/local/etc/setups.sh ;\
+	. $ENSTORE_DIR/sbin/krb5_ticket_sourceme; \
+	get_krb5_ticket; \
+	$ENSTORE_DIR/src/cache/messaging/enstore_qpid_config.py; \
+	destroy_krb5_ticket;"
 	;;
 restart)
 	$0 stop 2>/dev/null
