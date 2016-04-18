@@ -67,7 +67,7 @@ class EnQpidClient:
         self.password = password
         self.authentication = authentication
         if self.authentication not in ALLOWED_SASL_MECHANISM:
-            raise EnQpidError('Only %s machanisms are allowed'%(ALLOWED_SASL_MECHANISM))
+            raise EnQpidError('Declared authentication mechanism %s is not in the list of allowed: %s'%(self.authentication, ALLOWED_SASL_MECHANISM,))
         if self.authentication == 'PLAIN' and self.user is None:
             self.user = 'guest'
             self.password = 'guest'
