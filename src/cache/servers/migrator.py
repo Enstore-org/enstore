@@ -185,63 +185,6 @@ def _check_packaged_files(archive_area, package, tar_blocking_factor=20):
 
     sys.exit(str(int(check_result))) # process must return a string value
 
-# check and set name space tags
-# @param directory - destination directory
-# @param library_tag - library tag
-# @param sg_tag - storage group
-# @param ff_tag - file family tag
-# @param ff_wrapper_tag - file family wrapper tag
-# @param ff_width_tag - file family width tag
-# @param fsize - file size
-# exit code resulting file family wrapper
-def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag, fsize):
-    tag = namespace.Tag(directory)
-    try:
-        cl = tag.readtag("library")[0]
-    except IOError,detail:
-        if detail.errno == errno.ENOENT:
-            cl = ""
-    if cl != library_tag:
-        Trace.trace(10, "ns_tags: library tag: %s"%(library_tag,))
-        tag.writetag("library", library_tag)
-    try:
-        csg = tag.readtag("storage_group")[0]
-    except IOError,detail:
-        if detail.errno == errno.ENOENT:
-            csg = ""
-    if csg != sg_tag:
-        Trace.trace(10, "ns_tags: SG tag: %s"%(sg_tag,))
-        tag.writetag("storage_group", sg_tag)
-    try:
-        cff = tag.readtag("file_family")[0]
-    except IOError,detail:
-        if detail.errno == errno.ENOENT:
-            cff = ""
-    if cff != ff_tag:
-        Trace.trace(10, "ns_tags: FF tag: %s"%(ff_tag,))
-        tag.writetag("file_family", ff_tag)
-    try:
-        cffwr = tag.readtag("file_family_wrapper")[0]
-    except IOError,detail:
-        if detail.errno == errno.ENOENT:
-            cffwr = ""
-    if fsize > MAX_CPIO_FILE_SIZE and ff_wrapper_tag == "cpio_odc":
-        ff_wrapper_tag = "cern"
-    if cffwr != ff_wrapper_tag:
-        Trace.trace(10, "ns_tags: FF wrapper tag: %s"%(ff_wrapper_tag,))
-        # Do not set wrapper tag, just return it to be used as encp option.
-        # This is done to not interfere with other migrators writing into the same directory
-    try:
-        cffw = int(tag.readtag("file_family_width")[0])
-    except Exception, detail:
-        Trace.trace(10, "Exception reading file_family_width tag %s"%(detail,))
-        cffw = ff_width_tag
-    Trace.trace(10, "ns_tags: FF width tag: %s(%s). Was %s(%s)"%(ff_width_tag,type(ff_width_tag), cffw, type(cffw)))
-    if cffw < ff_width_tag:
-        tag.writetag("file_family_width", ff_width_tag)
-    return ff_wrapper_tag
-
-
 class StorageArea():
     """
     This class is needed to effectively work with
@@ -799,7 +742,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         components_to_remove = []
         self.src_dirs = []
         self.state = PREPARING_PACKAGING
-        file_family_width = 0
+        file_family_width = 1
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
@@ -965,18 +908,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             output_library_tag_str.join(self.output_library_tag)
         Trace.trace(10, "write_to_tape: dst library tag: %s"%(output_library_tag_str,))
         fstats = os.stat(src_file_path)
-        try:
-            ff_wrapper = ns_tags(tmp_dst_dir,
-                                 output_library_tag_str,
-                                 rec['storage_group'],
-                                 rec['file_family'],
-                                 rec['wrapper'],
-                                 file_family_width,
-                                 fstats[stat.ST_SIZE])
-        except:
-            Trace.handle_error()
-            return False
-
+        ff_wrapper = rec['wrapper']
+        if fstats[stat.ST_SIZE]> MAX_CPIO_FILE_SIZE and ff_wrapper == "cpio_odc":
+            ff_wrapper = "cern"
         dst_file_path = os.path.join(tmp_dst_dir, dst_package_fn)
         Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
         self.status_dict['current_migration_file'] = dst_file_path
@@ -1002,8 +936,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         args = ["encp", "--threaded"]
         if self.delayed_dismount:
             args.extend(("--delayed-dismount", str(self.delayed_dismount)))
-        args.extend(("--file-family-wrapper", ff_wrapper, "--delpri", self.delta_pri, src_file_path, dst_file_path))
-        Trace.trace(10, "write_to_tape: sending %s"%(args,))
+        args.extend(("--storage-group", rec['storage_group'],
+                     "--file-family", rec['file_family'],
+                     "--file-family-width", str(file_family_width),
+                     "--file-family-wrapper", ff_wrapper,
+                     "--library", output_library_tag_str,
+                     "--delpri", self.delta_pri,
+                     src_file_path,
+                     dst_file_path))
+        Trace.log(e_errors.INFO, "write_to_tape: sending %s"%(args,))
         encp = encp_wrapper.Encp()
         # call encp
         self.state = WRITING_TO_TAPE
