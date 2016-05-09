@@ -183,6 +183,7 @@ class RawUDP:
     def get(self):
         _print(self.d_o, "GET")
         rc = None
+        Trace.trace(6,  "GET Queue size %s"%(self.queue_size_p.value,))
 
         if self.use_queue:
             message = self.queue.get(True, self.rcv_timeout)

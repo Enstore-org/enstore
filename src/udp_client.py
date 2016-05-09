@@ -134,33 +134,31 @@ class UDPClient:
     def fileno(self):
         return self.get_tsd().socket.fileno()
 
-    def protocolize( self, text ):
+    def protocolize( self, data ):
         """
         Protocolize the message.
 
-        :type text: :obj:`str`
+        :type data: :obj:`dict`
         :arg text: message content
         :rtype: :obj:`tuple` (:obj:`txt` - message, :obj:`long` - message number)
         """
         tsd = self.get_tsd()
-
         tsd.txn_counter = tsd.txn_counter + 1
-
-        # CRC text
-        #body = `(tsd.ident, tsd.txn_counter, text)`
-        #ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
-        #body = udp_common.r_repr((ident, tsd.txn_counter, text))
-        body = udp_common.r_repr((tsd.ident, tsd.txn_counter, text))
+        """
+        add message creation timestamp
+        """
+        if type(data) == types.DictType:
+            data["send_ts"] = time.time()
+        body = udp_common.r_repr((tsd.ident, tsd.txn_counter, data))
         crc = checksum.adler32(0L, body, len(body))
-
-        # stringify message and check if it is too long
-        #message = `(body, crc)`
+        """
+        stringify message and check if it is too long
+        """
         message = udp_common.r_repr((body, crc))
 
         if len(message) > TRANSFER_MAX:
             errmsg="send:message too big, size=%d, max=%d" %(len(message),TRANSFER_MAX)
             Trace.log(e_errors.ERROR, errmsg)
-            #raise errno.errorcode[errno.EMSGSIZE],errmsg
             raise e_errors.EnstoreError(errno.EMSGSIZE, errmsg,
                                         e_errors.NET_ERROR)
 
@@ -173,7 +171,7 @@ class UDPClient:
         waiting rcv_timeout seconds for reply.
         A value of 0 for max_send means retry forever.
 
-        :type data: :obj:`str`
+        :type data: :obj:`dict`
         :arg data: data to send
         :type dst: :obj:`tuple`
         :arg dst: (destination host, destination port)

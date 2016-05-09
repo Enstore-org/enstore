@@ -594,6 +594,11 @@ class UDPServer:
         try:
             Trace.trace(16, "udp_server (reply%s): to %s: request_dict %s" %
                         (with_interface, reply_address, current_id))
+
+            payload = list_copy[1]
+            dt=list_copy[2]-payload.get("send_ts",0)
+            Trace.trace(6, "client_id %s: latency %s" %
+                        (current_id,str(dt)))
             send_socket.sendto(wrapped_list, reply_address)
         except:
             ### A long message can now be handled by generic_client and
