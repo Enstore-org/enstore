@@ -23,6 +23,7 @@ for m in migrators:
            disk_libraries.append(m['disk_library'])
 dl = " "
 ls = dl.join(disk_libraries)
+print "CMD %s %s"%("$ENSTORE_DIR/src/purge_files.py -p %s",ls)
 
-rc = enstore_functions2.shell_command2("$ENSTORE_DIR/src/purge_files.py -p %s"%(ls,))
+rc = enstore_functions2.shell_command2("source $ENSTORE_DIR/sbin/krb5_ticket_sourceme; get_krb5_ticket; $ENSTORE_DIR/src/purge_files.py -p %s;destroy_krb5_ticket"%(ls,))
 sys.exit(rc[0])

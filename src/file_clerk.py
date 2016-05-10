@@ -133,10 +133,12 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                       (MY_NAME, self.keys['status'][0], self.keys['status'][1])
             Trace.log(e_errors.ERROR, message)
             sys.exit(1)
-
         #Setup the ability to handle requests.
+        self.use_raw_input = self.keys.get('use_raw_input')
         dispatching_worker.DispatchingWorker.__init__(
-            self, (self.keys['hostip'], self.keys['port']))
+            self, (self.keys['hostip'], self.keys['port']),
+            use_raw=self.use_raw_input)
+
 
     ####################################################################
 
@@ -2370,6 +2372,9 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                                                   MY_NAME,
                                                                   self.keys)
 
+        my_config = self.csc.get(MY_NAME)
+        self.use_raw_input = my_config.get('use_raw_input')
+
         self.set_error_handler(self.file_error_handler)
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
@@ -2385,6 +2390,34 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 	self.check_archiving_files_in_transition_thread = threading.Thread(target=self.check_archiving_files_in_transition)
 	self.check_archiving_files_in_transition_thread.start()
 
+    # overriden from dispatching_worker
+    def serve_forever(self):
+        """Handle one request at a time until doomsday, unless we are in a child process"""
+        ###XXX should have a global exception handler here
+        count = 0
+        if self.use_raw_input:
+            # prepare raw input
+            Trace.log(e_errors.INFO, "Will be using raw input")
+            self.set_out_file()
+            self.raw_requests.set_caller_name(self.name)
+            self.raw_requests.set_use_queue()
+            # start receiver thread or process
+            self.raw_requests.receiver()
+
+        while not self.is_child:
+            self.do_one_request()
+            self.collect_children()
+            count = count + 1
+            #if count > 100:
+            if count > 20:
+                self.purge_stale_entries()
+                count = 0
+
+        if self.is_child:
+            Trace.trace(6,"serve_forever, child process exiting")
+            os._exit(0) ## in case the child process doesn't explicitly exit
+        else:
+            Trace.trace(6,"serve_forever, shouldn't get here")
 
     def get_files_in_transition(self, all=None):
         if all:
@@ -2520,15 +2553,11 @@ class FileClerkInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME),"yes")
 
-    # get the interface
     intf = FileClerkInterface()
-
-    # get a file clerk
     fc = FileClerk((intf.config_host, intf.config_port))
     fc.handle_generic_commands(intf)
 
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
-
     while 1:
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")

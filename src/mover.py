@@ -1515,6 +1515,101 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   write_prot,
                                   self.name)
 
+    def fetch_tape_device(self):
+        """
+        Tape device is /dev/rmt/tps<n>d<m>n.
+        Search for such pattern
+
+        :rtype: :obj:`str` or None - tape device
+        """
+        cmd = "ls /dev/rmt/tps*d*n"
+        result =  enstore_functions2.shell_command2(cmd)
+        if result[0] == 0:
+            lines = result[1].split()
+            if len(lines) == 1:
+                return lines[0]
+            else:
+                Trace.alarm(e_errors.ERROR,"Non existing or ambiguous device in /dev/rmt: %s"%(result,))
+        else:
+               Trace.alarm(e_errors.ERROR,"Device search returned %s"%(result[2],))
+
+        return None
+
+    def get_tape_device(self):
+        """
+        Devices change on each reboot since SLF6.
+        To map location in the SL robot with correct tape driver get wwn from media changer and lookup device
+        in /dev/tape.
+        This approach needs a binding between tps and nst, which is implemented outside of mover.py
+        :rtype: :obj:`str` or None - tape device
+
+        Implemented for STK only
+        """
+
+        mcc_reply = self.mcc.displaydrive(self.mc_device)
+        if not e_errors.is_ok(mcc_reply):
+            return self.fetch_tape_device()
+
+        if self.mc_keys.has_key('type') and self.mc_keys['type'] == 'STK_MediaLoader':
+            # drive_info example:
+            # {'Wwn': '50.01.04.f0.00.a2.b4.b2', 'drive': '2,3,1,15'}
+            wwn = int("0x%s"%(mcc_reply['drive_info']['Wwn'].replace('.','')),16)+1 # according to STK documentation wwn must be reported Wwn+1
+        else: # here should be other MC types
+            wwn = int("0x%s"%(mcc_reply['drive_info']['Wwn'].replace('.','')),16)+1  # jsut set it the same as for STK library so far
+
+       # find the nst reference
+        cmd = "ls -l /dev/tape/by-path | grep %0x  | grep nst"%(wwn,)
+        result =  enstore_functions2.shell_command2(cmd)
+        if result[0] == 0:
+            lines = result[1].split()
+            n1 = lines[-1:]
+            nst_device = lines[-1:][0].split('/')[-1:][0]
+            nst_num = int(nst_device[-1:])
+
+            rmt_dir = '/dev/rmt'
+            ftt_tape = '/dev/rmt/tps%sd0n'%(nst_num,)
+            # make symlink
+            if not os.path.exists(rmt_dir):
+                try:
+                    os.makedirs(rmt_dir)
+                except:
+                    Trace.handle_error()
+                    Trace.alarm(e_errors.ERROR, "Can not create %s"%(rmt_dir,))
+                    return None
+            try:
+                os.remove(ftt_tape)
+            except:
+                pass # file could be not existing, which will cause exception, but we do not care
+
+            Trace.log(e_errors.INFO, 'symlinking: /dev/nst%s to %s'%(nst_num,ftt_tape))
+            os.symlink('/dev/nst%s'%(nst_num,), ftt_tape)
+
+            # find the sg device
+            cmd = "sg_map -st | grep %s"%(nst_device,)
+            result =  enstore_functions2.shell_command2(cmd)
+            if result[0] == 0:
+                sg_dev = result[1].split()[0]
+                sc_dir = 'dev/sc'
+                ftt_sc =  '/dev/sc/sc%sd0'%(nst_num,)
+                # make symlink
+                if not os.path.exists(sc_dir):
+                    try:
+                        os.makedirs(sc_dir)
+                    except:
+                        Trace.handle_error()
+                        Trace.alarm(e_errors.ERROR, "Can not create %s"%(sc_dir,))
+                        return None
+                try:
+                    os.remove(ftt_sc)
+                except:
+                    pass # file could be not existing, which will cause exception, but we do not care
+                Trace.log(e_errors.INFO, 'symlinking: %s %s'%(sg_dev, ftt_sc))
+                os.symlink(sg_dev, ftt_sc)
+                return ftt_tape
+            else:
+                Trace.alarm(e_errors.ERROR,"Device search returned %s"%(result[2],))
+        return None
+
     def start(self):
         """
         Set up the mover configuration received from configuration server and
@@ -1547,21 +1642,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         Trace.log(e_errors.INFO, "starting mover %s. MAX_BUFFER=%s MB" % (self.name, MAX_BUFFER/MB))
 
-        self.config['device'] = os.path.expandvars(self.config['device'])
+        device  =  self.config.get('device')
+        if device:
+            self.config['device'] = os.path.expandvars(device)
+
         self.state = IDLE
         self.force_clean = 0
-        # check if device exists
-        if not os.path.exists(self.config['device']):
-            if isinstance(self, DiskMover):
-                # try to create disk data directory
-                try:
-                    os.makedirs(self.config['device'], 0755)
-                except OSError, detail:
-                    if detail[0] != errno.EEXIST:
-                        raise OSError(detail)
-            else:
-                Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
-                sys.exit(-1)
 
         #################################
         ### Mover type dependent settings
@@ -1576,6 +1662,20 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mover_type = self.config.get('type', enstore_constants.DISK_MOVER)
             self.max_rate = self.config.get('max_rate', 100*MB) #XXX
             self.ip_map = self.config.get('ip_map','cluster_fs')
+
+            # check if device exists
+            if self.config.get('device'):
+                if not os.path.exists(self.config['device']):
+                    # try to create disk data directory
+                    try:
+                        os.makedirs(self.config['device'], 0755)
+                    except OSError, detail:
+                        if detail[0] != errno.EEXIST:
+                            raise OSError(detail)
+            else:
+                Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
+                sys.exit(-1)
+
             # for cluster fs all files are available for any disk mover
             # Temporary file for write operations.
             # The data is written into this file.
@@ -1609,14 +1709,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.ip_map = self.config.get('ip_map','')
             self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                                self.config['media_changer'])
-            mc_keys = self.csc.get(self.mcc.media_changer)
+            self.mc_keys = self.csc.get(self.mcc.media_changer)
             # STK robot can eject tape by either sending command directly to drive or
             # by pushing a corresponding button
-            if mc_keys.has_key('type') and mc_keys['type'] == 'STK_MediaLoader':
+            if self.mc_keys.has_key('type') and self.mc_keys['type'] == 'STK_MediaLoader':
                 self.can_force_eject = 1
             else:
                 self.can_force_eject = 0
-
 
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, self.name, self.config)
@@ -1654,7 +1753,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
 
         self.asc = accounting_client.accClient(self.csc, self.logname)
-
 
         self.config['name']=self.name
         self.config['product_id']='Unknown'
@@ -1713,6 +1811,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif crc_control != None:
             Trace.log(e_errors.ERROR, "Ignoring invalid 'read_crc_control' value of %s found in configuration. Allowed values are 0 or 1. Using default value of 0 ('calculate CRC when reading from memory')."%(crc_control,))
         self.read_error_recovery_timeout = float(self.config.get("read_error_recovery_timeout", 20*60))
+
+        if not self.config.get('device') :
+            # try to deduce device for tape mover
+            self.config['device'] = self.get_tape_device()
+            if self.config['device'] :
+                Trace.log(e_errors.INFO, "Dynamically picked device %s"%(self.config['device'],))
+            else:
+                Trace.alarm(e_errors.ALARM, "Cannot start. No device was found")
+                sys.exit(-1)
 
         self._reinit() # pickup whatever reinit provides
         drive_rate_threshold =  self.config.get("drive_rate_threshold", None)
@@ -4099,8 +4206,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         # but tape thread did not exit for some reason.
         # Usually this is due to read error recovery.
         # The maximal recommended by oracle timeout is 20 min.
-        Trace.log(e_errors.INFO, "write_client waits for tape thread to exit it may take up to %s min"%(self.read_error_recovery_timeout/60,))
-        if self.read_tape_done.wait(self.read_error_recovery_timeout):
+        if self.mover_type != enstore_constants.DISK_MOVER and self.read_tape_done.wait(self.read_error_recovery_timeout):
+            Trace.log(e_errors.INFO, "write_client waits for tape thread to exit it may take up to %s min"%(self.read_error_recovery_timeout/60,))
             self.read_tape_done.clear()
             Trace.log(e_errors.INFO, "write_client detected tape theard termination signal")
         else:

@@ -10,7 +10,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: mt-st
+Requires: mt-st,sg3_utils
 
 %global _missing_build_ids_terminate_build 0
 %define debug_package %{nil}
@@ -53,8 +53,8 @@ cp -rp $pydir/* Python
 rm -rf $PYTHON_DIR/*.tgz
 rm -rf Python/*.tgz
 #fttdir=`rpm -ql ftt | head -1`
-FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/FTT
-mv $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
+FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
+#mv $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
 #mkdir -p $FTT_DIR
 #mkdir -p FTT
 #cp -rp $fttdir/* $FTT_DIR
@@ -88,8 +88,9 @@ echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-9.2/bin:"$"PATH >> /tmp/ensto
 
 %build
 . /tmp/enstore-setup
-echo "BUILD"
+echo "BUILD RPM"
 pushd .
+
 cd $FTT_DIR/ftt_lib
 rm -f ftt_mtio.h # do not know how did it get here
 make clean
@@ -156,7 +157,9 @@ echo export FTT_DIR >> /tmp/enstore-setup
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 . /tmp/enstore-setup
-mv $ENSTORE_DIR/ftt $FTT_DIR
+rm -rf $FTT_DIR
+ln -s $ENSTORE_DIR/ftt $FTT_DIR
+
 #chown -R enstore.enstore /home/enstore
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
@@ -217,6 +220,10 @@ $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh $1
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 
+%postun
+export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
+rm -rf $ENSTORE_DIR
+
 %files
 %defattr(-,enstore,enstore,-)
 %doc
@@ -230,6 +237,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Tue May 10 2016  <moibenko@fnal.gov> -
+- new release 5.1.3, release 0.
 * Wed Feb 10 2016  <moibenko@fnal.gov> -
 - new release 5.1.2, release 0.
 * Mon Nov 09 2015  <moibenko@fnal.gov> -
