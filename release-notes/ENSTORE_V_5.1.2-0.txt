@@ -1,0 +1,311 @@
+commit af9a27adff7f49fb5e08094fb50230dcd5e138d6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Feb 10 10:14:17 2016 -0600
+
+    version 5.1.2
+    release 0
+
+A	release-notes/ENSTORE_V_5.1.1-1.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 5c49c0f691e14a85c15f58f5f992451e5bb23599
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Feb 10 09:53:44 2016 -0600
+
+        Changes required to enable kerberized authentication with qpidd.
+        Wrappers are introduced to resolve issues with generation of krb5 ticket.
+        There is in no production code in python to do this.
+        This changes are done to resolve INC000000653448.
+
+        http://srm.fnal.gov/reviews/r/331/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1747
+
+M	external_distr/file_aggregation_links
+M	external_distr/sbin_links
+M	external_distr/update_sym_links.sh
+A	sbin/dispatcher_wrapper
+A	sbin/file_clerk_wrapper
+A	sbin/krb5_ticket_sourceme
+A	sbin/migrator_wrapper
+M	sbin/qpid_broker
+M	src/cache/messaging/client.py
+M	src/cache/messaging/enstore_qpid_config.py
+M	src/cache/servers/migration_dispatcher.py
+M	src/cache/servers/mw.py
+M	src/file_clerk.py
+
+commit 53207cd2e20aeb71aec5860c3a3f92d55bb80b81
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Feb 5 12:59:25 2016 -0600
+
+        Allow migrator to proceed if file was deleted.
+        If file is marked deleted after it was submitted to migration dispather and the marked deleted migrator error out.
+        This patch allows migration to proceed.
+
+        http://srm.fnal.gov/reviews/r/330/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1746
+
+M	src/cache/servers/migrator.py
+
+commit 9a7bf59bb9d586ecd9fcc82c6321345bafbddccd
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Feb 3 09:55:08 2016 -0600
+
+        move functionality of set_pnfsid into new_bit_file.
+        RB : http://srm/reviews/r/323/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1739
+
+M	src/encp.py
+M	src/enmv.py
+M	src/file_clerk.py
+
+commit ef1d24674d682905302efc0280153efa94f14386
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jan 29 15:03:43 2016 -0600
+
+        Increase timeot for read tape to complete.
+        If tape drive goes into read recovery procedure it may take up to 30
+        (usually 20) to complete according to Oracle engineers.
+        If this happens mover just need to wait tape_thread completion up to
+        the specified timeout.
+        http://srm.fnal.gov/reviews/r/329/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1718
+
+M	etc/config_params.html
+M	src/mover.py
+
+commit cf1e5a484007e41069fa4fb81c14a53f998f9d4e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jan 29 10:55:26 2016 -0600
+
+        Changes to add missing entries into new_bitfile ticket to deprecate set_pnfsid and move its functionality to new_bitfile request.
+        Fixed drive for tape mover.
+        http://srm.fnal.gov/reviews/r/327/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1744
+
+M	src/mover.py
+
+commit 9ce52e6c1eb332b80f6490c5bb2f2fb8eb977384
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jan 28 09:42:01 2016 -0600
+
+        __my_gethostbyaddr returns None in some cases which needs to get detailed.
+        http://srm.fnal.gov/reviews/r/326/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1743
+
+M	src/hostaddr.py
+
+commit 31628544b282d8bbce32a7646334078befc71427
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jan 28 09:26:43 2016 -0600
+
+        It was noticed that movers with mounted volumes do not receive work
+        from library manager for requests for the same file family with different
+        file family width, resulting in all volumes dismounted even if there are
+        write requests pending for this file family.
+        Investigation showed that if one volume for a given file family is
+        in DISMOUNT_WAIT the library manager will not release work for the volume with the same file family for HAVE_BOUND mover request from mover.
+        Then such mover retries HAVE_BOUND and does not get work again
+        until retry period ends and the mover starts dismounting, which
+        in turn may take time longer than another mover can hold another
+        tape in HAVE_BOUND state.
+        This patch fixes this problem.
+        http://srm.fnal.gov/reviews/r/328/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1745
+
+M	src/library_manager.py
+
+commit 64658a86d981e7bf0878b8006ce0c244db07dc29
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jan 25 11:04:02 2016 -0600
+
+    Additional changes to add missing entries into new_bitfile
+    ticket to deprecate set_pnfsid and move its functionality to
+    new_bitfile request.
+    http://srm.fnal.gov/reviews/r/327/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1744
+
+M	src/mover.py
+
+commit f3f401a9353960aaba3b331c9de62fc57cc99d16
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jan 21 16:37:23 2016 -0600
+
+        backup CMS chimera dump files
+        RB : http://srm/reviews/r/325/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1742
+
+M	sbin/backup2Tape
+
+commit bfa0dba092318dfcc923f20177a16bd8155571c2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jan 21 16:33:56 2016 -0600
+
+    Updated document
+
+M	doc/guides/Enstore_Administrator_Guide.odm
+
+commit 44089a56026aaed5ba5048e41a265039ff8496e7
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Jan 20 17:48:46 2016 -0600
+
+    Changed date
+
+M	doc/guides/Enstore_Administrator_Guide.pdf
+M	doc/guides/booktitle_admin.odt
+
+commit 1091039cb9af588ed40f588dac86b4af09143016
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Jan 20 17:42:24 2016 -0600
+
+    Updated installation istructions
+
+M	doc/guides/Enstore_Administrator_Guide.odm
+M	doc/guides/Enstore_Administrator_Guide.pdf
+M	doc/guides/booktitle_admin.odt
+M	doc/guides/installation.odt
+
+commit 984f611625350f9f5a4f02eb1813219d984db036
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Jan 19 17:15:20 2016 -0600
+
+        If NO_SPACE is reported by OS ftt did not detect it correctly,
+        but rather tried to get stats which causes attempt to write file mark,
+        causing even more problems.
+        This patch fixes this problem.
+        http://srm.fnal.gov/reviews/r/324/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1592
+
+M	ftt/ftt_lib/ftt_rdwr.c
+M	src/mover.py
+
+commit 32ff728198bca7458de5308aa8b718aaad458068
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Dec 17 13:03:00 2015 -0600
+
+        schedule execution of recent_file_listing_cms cron to run twice daily
+         RB : http://srm/reviews/r/321/
+         BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1735
+
+M	crontabs/enstore_db
+M	crontabs/inventory.cms
+
+commit cf3552c5d3eeb8ec2663114894e0d9784c9ddd6d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Dec 17 13:00:50 2015 -0600
+
+        check if PNFS variable is defined
+          RB : http://srm/reviews/r/322/
+          BZ : http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1737
+
+M	sbin/backup2Tape
+
+commit 451fdd2a19d5f2c63f5a26b93b222464dcee7955
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Dec 9 13:57:55 2015 -0600
+
+        Bug fix: fix crc check for disk mover.
+        http://srm.fnal.gov/reviews/r/320/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1733
+
+M	src/mover.py
+
+commit 64a58686dafa01a3ed0b161802e77530692fe06f
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Dec 7 11:48:46 2015 -0600
+
+        improve performance of pnfs_monitor script:
+
+        two queries executed by pnfs_monitor run long mainly because they were calculating
+        path for all the entries created between 49 and 24 hours ago. This is a lot of extra work.
+        Changed query such that:
+
+          1) select only entries with layers missing (in contrast to selecting everything and then
+             filtering out based on presence / absence of layers
+          2) remove inode2path( ) function all from the long query and instead move it to a place
+             in code where we collect output where ostensibly we have far less entries to process
+          3) take into account file retention policy when deciding if file volatile or not
+
+          RB : http://srm/reviews/r/318/
+          BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1731
+
+    commit 3e25eb21e297c1eeaa91d00e9f56d3382e501345
+    Author: Dmitry Litvintsev <litvinse@fnal.gov>
+    Date:   Sat Dec 5 20:34:08 2015 -0600
+
+        improve performance of pnfs_monitor script
+
+M	sbin/pnfs_monitor.py
+
+commit 4de9ea9726eb1523922cc8946eb4b2f4763a9f7f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Dec 7 11:21:34 2015 -0600
+
+    original_library key was misspelled.
+    http://srm.fnal.gov/reviews/r/319/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1732
+
+M	src/mover.py
+
+commit 62655128a1594f4804b5d7cb0798b3d8414e8e69
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Dec 4 14:56:29 2015 -0600
+
+        do not report NNN zero length files
+
+        RB: http://srm/reviews/r/316/
+        BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1723
+
+M	sbin/pnfs_monitor.py
+
+commit 67f144f17928aaba0b0071510fc528897edb881e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Nov 25 16:23:25 2015 -0600
+
+        fix enmv for files with multiple copies
+
+        RB : http://srm/reviews/r/317/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1728
+
+M	src/enmv.py
+
+commit 94ceb9028259c90ebd7f5d6e4c360b69955b46f3
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Nov 13 16:57:11 2015 -0600
+
+        remove no layer, zero length file
+        RB : http://srm/reviews/r/313/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1721
+
+M	sbin/pnfs_monitor.py
+
+commit d396d54691e5c36b79d81f7ee6ab20665033f373
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Nov 13 11:30:35 2015 -0600
+
+        fix file cleanup on encp interrupt
+
+        RB : http://srm/reviews/r/315/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1722
+
+M	src/chimera.py
+
+commit f9a058457ddd26c0122d522bb9df56da0bfd6800
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Nov 13 11:20:42 2015 -0600
+
+        Fix mover - encp communication during crc check.
+        The implementation of communication during CRC check for large files did not
+        take into account the period when mover rewinds the tape. Now it is fixed.
+        The second change is the interruption of crc check when encp is gone.
+        http://srm.fnal.gov/reviews/r/314/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1720
+
+M	src/mover.py
+
+commit 270a6d93021ba1075b29a6d6376788db19bb5ca1
+Merge: 3f3308f 5f2ceec
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 9 16:10:24 2015 -0600
+
+    Merge branch 'release/5.1.1-1' into develop

@@ -10,7 +10,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: mt-st
+Requires: mt-st,sg3_utils
 
 %global _missing_build_ids_terminate_build 0
 %define debug_package %{nil}
@@ -237,6 +237,8 @@ rm -rf $ENSTORE_DIR
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Tue May 10 2016  <moibenko@fnal.gov> -
+- new release 5.1.3, release 0.
 * Wed Feb 10 2016  <moibenko@fnal.gov> -
 - new release 5.1.2, release 0.
 * Mon Nov 09 2015  <moibenko@fnal.gov> -
