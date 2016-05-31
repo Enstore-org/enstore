@@ -76,7 +76,7 @@ ftt_free_stat(ftt_stat_buf b) {
     return 0;
 }
 
-int 
+int
 ftt_free_statdb(ftt_statdb_buf b) {
     int i;
     ENTERING("ftt_free_statdb");
@@ -136,8 +136,8 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 
     /* if null, leave it */
     if (pcStart != 0) {
-	
-		/* null terminate at pcEnd, copy the string, 
+
+		/* null terminate at pcEnd, copy the string,
 		** and then put the byte back where we scribbled the null
 		** ... after eating blanks off the end
 		*/
@@ -152,7 +152,7 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 		  save = *pcEnd;
 		  *pcEnd = 0;
 		}
-	DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);	
+	DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
 		b->value[n] = strdup(pcStart);
 		/* why is this "if" here??? I forget now... mengel*/
 		if ( save != 'n' ) *pcEnd = save;
@@ -163,7 +163,7 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 }
 
 int ftt_numeric_tab[FTT_MAX_STAT] = {
-    /*  FTT_VENDOR_ID		0 * 0,*/4,/*0-3  header for dump DB*/ 
+    /*  FTT_VENDOR_ID		0 * 0,*/4,/*0-3  header for dump DB*/
     /*  FTT_PRODUCT_ID		1 * 0,*/4,
     /*  FTT_FIRMWARE		2 * 0,*/4,
     /*  FTT_SERIAL_NUM		3 * 0,*/4,
@@ -383,7 +383,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     CKNULL("ftt_descriptor", d);
     CKNULL("statistics buffer pointer", b);
 
-
     memset(b,0,sizeof(ftt_stat));
 
 
@@ -477,16 +476,16 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     if (stat_ops & FTT_DO_RS) {
 	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   18, 0x00};
 
-        /* 
-	** if the request sense data from the test unit ready is negative 
+        /*
+	** if the request sense data from the test unit ready is negative
         ** then ftt_do_scsi_command already did a request sense, and
         ** the data is in the global ftt_sensebuf.
 	** otherwise we need to do one...
         */
-  
+
         if (res < 0) {
             extern char ftt_sensebuf[18];
-	    memcpy(buf, ftt_sensebuf, 18);   
+	    memcpy(buf, ftt_sensebuf, 18);
 	    res = 0;
         } else {
 	    res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 18, 10, 0);
@@ -512,7 +511,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 	    /* ASC/ASCQ data parsing
 	    **
-	    ** these are the codes from the DLT book, because 
+	    ** these are the codes from the DLT book, because
 	    ** it appears from the book that we may sometimes
 	    ** get them filled in with a sense code of 0 to
 	    ** indicate end of tape, etc.
@@ -570,7 +569,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 *         different drives has different length of a Product Revision Number
 *         for STK T9940A/B it takes bytes 32-39
 */
-	    if (((d->prod_id[1] == '9') && (d->prod_id[3] == '4'))|
+	    if (((0 == strncmp(d->prod_id,"9840",4) == 0))||
 		(strncmp(d->prod_id, "T10000", 6) == 0)) {
 	      set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
 	    } else {
@@ -581,12 +580,12 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	     * look up based on ANSI version *and* product id, so
 	     * we can have generic SCSI-2 cases, etc.
 	     */
-	   sprintf(buf, "%d%s", buf[2] & 0x3, ftt_unalias(d->prod_id)); 
+	   sprintf(buf, "%d%s", buf[2] & 0x3, ftt_unalias(d->prod_id));
 	    stat_ops = ftt_get_stat_ops(buf);
 	}
     }
 
-    /* 
+    /*
     ** Get other vendor specific request sense available data now that we know for sure
     ** what kind of drive this is from the inquiry data.
     */
@@ -612,19 +611,17 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		remain_tape=(double)pack(0,buf[23],buf[24],buf[25]);
 		error_count = pack(0,buf[16],buf[17],buf[18]);
 
-		if (d->prod_id[5] == '9') {
-		     
-                     DEBUG2(stderr, "remain_tape 8900 case... \n");
+		if (strncmp(d->prod_id,"EXB-89",6) == 0) {
+             DEBUG2(stderr, "remain_tape 8900 case... \n");
 		     /* 8900's count 16k blocks, not 1k blocks */
 		     remain_tape *= 16.0;
 
-		} else if (d->prod_id[5] == 't') {
-		     
-                     DEBUG2(stderr, "remain_tape Mammoth2 case... \n");
+		} else if (strncmp(d->prod_id,"Mammoth",7)  == 0) {
+             DEBUG2(stderr, "remain_tape Mammoth2 case... \n");
 		     /* 8900's count 16k blocks, not 1k blocks */
 		     remain_tape *= 33.0;
 		} else {
-                     DEBUG2(stderr, "remain_tape non-8900 case... \n");
+             DEBUG2(stderr, "remain_tape non-8900 case... \n");
 		     ;
 		}
 		set_stat(b,FTT_REMAIN_TAPE,ftt_dtoa(remain_tape),0);
@@ -643,7 +640,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		/* DLT */
 		set_stat(b,FTT_MOTION_HOURS,ftt_itoa((long)pack(0,0,buf[19],buf[20])),0);
 		set_stat(b,FTT_POWER_HOURS, ftt_itoa((long)pack(buf[21],buf[22],buf[23],buf[24])),0);
-                set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0);  
+                set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0);
 	    }
 	    if (stat_ops & FTT_DO_AITRS) {
 		/* AIT */
@@ -686,7 +683,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	} else {
 
 	    hwdens = buf[4];
-	    DEBUG2(stderr, "density code %d\n", hwdens); 
+	    DEBUG2(stderr, "density code %d\n", hwdens);
 	    set_stat(b,FTT_DENSITY,  ftt_itoa((long)hwdens), 0);
 	    set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(7,buf[2])),0);
 	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
@@ -694,12 +691,13 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 	    n_blocks =     pack(0,buf[5],buf[6],buf[7]);
 	    block_length = pack(0,buf[9],buf[10],buf[11]);
-                if (d->prod_id[5] == '9') {
+	    DEBUG2(stderr, "Product_ID %s\n", d->prod_id);
+                if (strncmp(d->prod_id,"EXB-89",6) == 0) {
                      DEBUG2(stderr, "total block 8900 case... \n");
                      /* 8900's count 16k blocks, not 1k blocks */
                      n_blocks *= 16.0;
 
-                } else if (d->prod_id[5] == 't') {
+                } else if (strncmp(d->prod_id,"Mammoth",7)  == 0) {
 
                      DEBUG2(stderr, "total bloks Mammoth2 case... \n");
                      /* Mammoth's count 33k blocks, not 1k blocks */
@@ -722,7 +720,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_BLOCK_TOTAL, ftt_itoa((long)n_blocks),    0);
 
 	    if (stat_ops & FTT_DO_EXBRS) {
-		/* 
+		/*
 		** the following lies still allow reasonable results
 		** from doing before/after deltas
 		** we'll override them with log sense data if we have it.
@@ -730,8 +728,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		** tape thats shows as the difference between tape size
 		** and remaining tape on an EXB-8200 when rewound
 		*/
-#define 	EXB_8200_FUDGE_FACTOR 1279
-		
+#define EXB_8200_FUDGE_FACTOR 1279
+
 		if (stat_ops & FTT_DO_EXB82FUDGE) {
 			data_count = tape_size - remain_tape - EXB_8200_FUDGE_FACTOR;
 		} else {
@@ -755,10 +753,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_MS_Px0f) {
-	static unsigned char cdb_mode_sense_p09[]= 
+	static unsigned char cdb_mode_sense_p09[]=
 			{ 0x1a, 0x08, 0x0f, 0x00,   20, 0x00};
 
-	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p09, 
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p09,
 				  6, buf, 20, 10, 0);
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
@@ -768,24 +766,24 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     }
     if (stat_ops & FTT_DO_MS_Px10) {
 
-	static unsigned char cdb_mode_sense_p10[]= 
+	static unsigned char cdb_mode_sense_p10[]=
 			{ 0x1a, 0x08, 0x10, 0x00,   20, 0x00};
 
 
-	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p10, 
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p10,
 				  6, buf, 20, 10, 0);
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
 	} else {
 	    set_stat(b,FTT_TRANS_COMPRESS,     ftt_itoa((long)buf[4+14]), 0);
 	}
-	
+
     }
     if (stat_ops & FTT_DO_MS_Px20_EXB && hwdens == 0) {
-	static unsigned char cdb_mode_sense_p20[]= 
+	static unsigned char cdb_mode_sense_p20[]=
 			{ 0x1a, 0x08, 0x20, 0x00, 0x0a, 0x00};
 
-	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p20, 
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense_p20,
 				  6, buf, 20, 10, 0);
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
@@ -798,16 +796,16 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	static unsigned char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00,
 						0x00, 0x00, 0x00, 0x00, 0x00};
 
-	res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10, 
+	res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10,
 				  buf, 20, 10, 0);
-	
-        /* 
+
+        /*
         ** 850x drives (for example) don't do RP in lower densities, so if it
         ** fails there its not really a failure
         */
 	if (!(stat_ops & FTT_DO_RP_SOMETIMES) && res < 0) {
 	    failures++;
-	} 
+	}
         if ( res >= 0 ) {
 	    set_stat(b,FTT_BOT,     ftt_itoa(bit(7,buf[0])), 0);
 	    set_stat(b,FTT_PEOT,    ftt_itoa(bit(6,buf[0])), 0);
@@ -817,15 +815,15 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_LS) {
- 	int npages;
+	int npages;
 	static char buf2[1028];
-	static unsigned char cdb_log_sense[]= {0x4d, 0x00, 0x00, 0x00, 0x00, 
+	static unsigned char cdb_log_sense[]= {0x4d, 0x00, 0x00, 0x00, 0x00,
 						   0x00, 0x00, 4, 4, 0};
 
 
         /* check supported page list, we want 0x32 or 0x39... */
 	cdb_log_sense[2] = 0;
-	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10, 
+	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10,
 				  buf2, 1028, 10, 0);
 
         npages = pack(0,0,buf2[2],buf2[3]);
@@ -840,22 +838,22 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    do_page = buf2[4+i];
 	    DEBUG2(stderr, "Page %d\n", do_page);
             switch( do_page ) {
-	       	case 0x02:
+		case 0x02:
 		case 0x03:
 		case 0x0c:
 		case 0x2e:
 		case 0x30:
-	       	case 0x31: 
+	    case 0x31:
 		case 0x32:
-	       	case 0x39:
+	    case 0x39:
 		case 0x3c:
 
 		    cdb_log_sense[2] = 0x40 | do_page;
-		    res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10, 
+		    res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10,
 					      buf, 1028, 10, 0);
 		    if(res < 0) {
-		    	failures++;
-		    } else { 
+			  failures++;
+		    } else {
 		        switch( do_page ) {
 
 		        case 0x02:
@@ -902,9 +900,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 				  data_length = 0x9e + 2;
 			      }
 			      dens_offset = data_length-40; /* See Density Support Block Descriptor in manual */
-			      static unsigned char report_dens[]= {0x44, 0x00, 0x00, 0x00, 0x00, 
+			      static unsigned char report_dens[]= {0x44, 0x00, 0x00, 0x00, 0x00,
 								   0x00, 0x00, 0, 0xff, 0};
-			      res = ftt_do_scsi_command(d,"Report Density Support", report_dens, 10, 
+			      res = ftt_do_scsi_command(d,"Report Density Support", report_dens, 10,
 							buf, data_length, 10, 0);
 			      if(res < 0) {
 				failures++;
@@ -942,9 +940,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    break;
 
 		        case 0x31:
-			    /* 
+			    /*
 			    ** we want the remaining tape of the
-                            ** current partition if we can get it. 
+                            ** current partition if we can get it.
 			    ** this computes a log sense slot based on
 			    ** slot  part  data
 			    ** ----  ----  -----
@@ -1031,7 +1029,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    /* mammoth vendor unique info we want */
 			    if (0 == strncmp(d->prod_id,"EXB-89",6) ||
 			        0 == strncmp(d->prod_id,"Mammoth",7) ) {
-			
+
 			       decrypt_ls(b,buf,8,FTT_POWER_HOURS,60.0);
 			       decrypt_ls(b,buf,9,FTT_MOTION_HOURS,60.0);
                             }
@@ -1040,14 +1038,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
                     }
 		    break;
              }
-	
+
         }
-	
+
     }
     if (stat_ops & FTT_DO_MS_Px21 ) {
 	static unsigned char cdb_ms21[6] = {0x1a, DBD, 0x21, 0x00, 10, 0x00};
         int loadpart;
-        
+
 	res = ftt_do_scsi_command(d,"Mode Sense, 0x21", cdb_ms21, 6, buf, 10, 10, 0);
 	loadpart = (buf[BD_SIZE+3] >> 1) & 0x3f;
 	set_stat(b,FTT_MOUNT_PART,ftt_itoa(loadpart),0);
@@ -1066,7 +1064,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 #else /* this is the WIN32 part */
 	{
 		DWORD fres,par,pos,pos2;
-		
+
 		HANDLE fh ;
 		TAPE_GET_MEDIA_PARAMETERS gmp;
 		TAPE_GET_DRIVE_PARAMETERS gdp;
@@ -1080,11 +1078,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		if ( fres < 1100 ) {
 			set_stat(b,FTT_BLOCK_SIZE,ftt_itoa(gmp.BlockSize),0);
 			set_stat(b,FTT_WRITE_PROT,ftt_itoa((int)gmp.WriteProtected),0);
-		
+
 			if ( gdp.FeaturesLow & TAPE_DRIVE_TAPE_REMAINING ) {
 				set_stat(b,FTT_REMAIN_TAPE, ftt_itoa_Large(gmp.Remaining),0);
 			}
-			
+
 			set_stat(b,FTT_TRANS_COMPRESS,ftt_itoa(gdp.Compression),0);
 			set_stat(b,FTT_TRANS_DENSITY,"0",0); /*this has to be 0*/
 
@@ -1096,7 +1094,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		}
 		par = pos = pos = (DWORD)-1;
 		fres = GetTapePosition(fh,TAPE_LOGICAL_POSITION,&par,&pos,&pos2);
-		if ( pos >= 0 ) { 
+		if ( pos >= 0 ) {
 			set_stat(b,FTT_BOT,ftt_itoa((pos == 0 )?1:0),0);
 		}
 	}
@@ -1153,12 +1151,12 @@ ftt_clear_stats(ftt_descriptor d) {
 	}
     }
     if (stat_ops & FTT_DO_EXBRS) {
-    	static unsigned char cdb_clear_rs[]  = { 0x03, 0x00, 0x00, 0x00, 30, 0x80 };
+	  static unsigned char cdb_clear_rs[]  = { 0x03, 0x00, 0x00, 0x00, 30, 0x80 };
 	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_rs, 6, buf, 30, 10, 0);
 	if (res < 0) return res;
     }
     if (stat_ops & FTT_DO_LS) {
-        static unsigned char cdb_clear_ls[] = { 0x4c, 0x02, 0x40, 0x00, 0x00, 0x00, 
+        static unsigned char cdb_clear_ls[] = { 0x4c, 0x02, 0x40, 0x00, 0x00, 0x00,
 					0x00, 0x00, 0x00, 0x00};
 	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_ls, 10, 0, 0, 10, 1);
 	if (res < 0) return res;
