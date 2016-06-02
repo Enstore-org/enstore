@@ -1290,6 +1290,132 @@ class FileClerkMethods(FileClerkInfoMethods):
         # input ticket is a file clerk part of the main ticket
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
+        record = {'pnfsid':'','drive':'','pnfs_name0':'','deleted':'unknown'}
+
+        record["external_label"]   = ticket["fc"]["external_label"]
+        record["location_cookie"]  = ticket["fc"]["location_cookie"]
+        record["size"]             = ticket["fc"]["size"]
+        record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
+        record["complete_crc"]     = ticket["fc"]["complete_crc"]
+	record["original_library"] = ticket["fc"].get("original_library",None)
+        if ticket["fc"].get("mover_type",None) == "DiskMover":
+            record["cache_location"] = record["location_cookie"]
+
+
+        # uid and gid
+        if ticket["fc"].has_key("uid"):
+            record["uid"] = ticket["fc"]["uid"]
+        if ticket["fc"].has_key("gid"):
+            record["gid"] = ticket["fc"]["gid"]
+
+        # does it have bfid?
+        if ticket["fc"].has_key("bfid"):
+            bfid = ticket["fc"]["bfid"]
+            rc, reason = self.bfid_generator.check(bfid)
+            if not rc:
+                Trace.log(e_errors.ERROR, reason)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, reason)
+                self.reply_to_caller(ticket)
+                return
+            # make sure the bfid does not exist
+            if self.filedb_dict[bfid]:
+                msg = "new_bit_file(): %s exists"%(bfid,)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.BFID_EXISTS, msg)
+                self.reply_to_caller(ticket)
+                return
+        else:
+            # get a new bit file id
+            bfid = self.unique_bit_file_id()
+
+        # check for copy
+        original_bfid = None
+        if ticket["fc"].has_key("original_bfid"):
+            # check if it is valid
+            original_bfid = ticket["fc"].get("original_bfid")
+            original_file = self.filedb_dict[original_bfid]
+            if not original_file:
+                msg = "new_bit_file(copy): original bfid %s does not exist"%(original_bfid)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.NO_FILES, msg)
+                self.reply_to_caller(ticket)
+                return
+            # check size
+            if original_file['size'] != record['size']:
+                msg = "new_bit_file(copy): wrong size %d, (%s, %d)"%(
+                    record['size'], original_bfid, original_file['size'])
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+            # check crc
+            if original_file['complete_crc'] != record["complete_crc"]:
+                msg = "new_bit_file(copy): wrong crc %d, (%s, %d)"%(
+                     record["complete_crc"], original_bfid, original_file['complete_crc'])
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+            # check sanity_cookie
+            if original_file['sanity_cookie'] != record["sanity_cookie"]:
+                msg = "new_bit_file(copy): wrong sanity_cookie %s, (%s, %s)"%(
+                     `record["sanity_cookie"]`, original_bfid, `original_file['sanity_cookie']`)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+
+        record["bfid"] = bfid
+	now = time.time()
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
+		record["cache_status"] = file_cache_status.CacheStatus.CREATED
+		record["cache_mod_time"] = time2timestamp(now)
+
+        # insert record
+        is_inserted=False
+        retries=10
+        while not is_inserted and retries:
+            try:
+                self.filedb_dict.insert_new_record(bfid,record)
+                is_inserted=True
+            except Exception as e:
+                retries -= 1
+                bfid = self.unique_bit_file_id()
+                record["bfid"] = bfid
+                # last try failed, report
+                if not retries :
+                    Trace.alarm(e_errors.ERROR, "Failed to insert new file record with bfid {} : {}".format(bfid, str(e)))
+                    ticket["status"] = (e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
+                    self.reply_to_caller(ticket)
+                    return
+        # if it is a copy, register it
+        if original_bfid:
+            if self.register_copy(original_bfid, bfid):
+                msg = "new_bit_file(copy): failed to register copy %s, %s"%(original_bfid, bfid)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+
+        count = ticket["fc"].get("copies", 0)
+        if count > 0:
+            if self.log_copies(bfid, count):
+                msg = "new_bit_file(copy): failed to log copy count %s, %d"%(bfid, count)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+
+        ticket["fc"]["bfid"] = bfid
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        Trace.trace(10,'new_bit_file bfid=%s'%(bfid,))
+        return
+
+    def new_bit_file_set_pnfsid(self, ticket):
+        # input ticket is a file clerk part of the main ticket
+        # create empty record and control what goes into database
+        # do not pass ticket, for example to the database!
 
         ticket["status"] = (e_errors.OK, None)
 
@@ -1568,21 +1694,84 @@ class FileClerkMethods(FileClerkInfoMethods):
 
     def set_pnfsid(self, ticket):
         """
-        functinality of set_pnfsid call is moved to new_bit_file call
-        this call is retained for backward compatibility with older encp
-
-        set_pnfsid is used in encp and enmv
-
         call to set_pnfsid from encp contains unique_id key
         whereas enmv does not.
 
         """
 
-        if "unique_id" in ticket["fc"] :
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-        else:
+        ticket["status"] = (e_errors.OK, None)
+        if not "unique_id" in ticket["fc"] :
             self.modify_file_record(ticket["fc"])
+            self.reply_to_caller(ticket)
+            return
+
+        bfid  = self.extract_bfid_from_ticket(ticket.get('fc', {}),check_exists = False)
+        if not bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+
+        pnfsid = self.extract_value_from_ticket('pnfsid', ticket.get('fc', {}))
+        if not pnfsid:
+            return #extract_value_from_ticket handles its own errors.
+
+        ticket["status"] = (e_errors.OK, None)
+        record={}
+
+        # temporary workaround - sam doesn't want to update encp too often
+        pnfsvid = ticket["fc"].get("pnfsvid")
+        pnfs_name0 = ticket["fc"].get("pnfs_name0")
+
+        # start (10/18/00) adding which drive we used to write the file
+        drive = ticket["fc"].get("drive","unknown:unknown")
+
+        # start (7/26/2004) adding which user wrote the file
+        uid = ticket["fc"].get("uid", None)
+        gid = ticket["fc"].get("gid", None)
+
+        # add the pnfsid
+        record["pnfsid"] = pnfsid
+        record["drive"] = drive
+        # temporary workaround - see above
+        if pnfsvid != None:
+            record["pnfsvid"] = pnfsvid
+        if pnfs_name0 != None:
+            record["pnfs_name0"] = pnfs_name0
+        if uid != None:
+            record["uid"] = uid
+        if gid != None:
+            record["gid"] = gid
+        record["deleted"] = "no"
+	record["original_library"] = ticket["fc"].get("original_library",None)
+	record["file_family_width"] = ticket["fc"].get("file_family_width",None)
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
+		record["cache_status"] = file_cache_status.CacheStatus.CACHED
+
+        # take care of the copy count
+        original = self._find_original(bfid)
+        if original:
+            with self.copy_lock:
+                self._made_copy(original)
+
+	# record our changes
+        try:
+            record=self.filedb_dict.update_record(bfid,record)
+        except Exception as e:
+            Trace.alarm(e_errors.ERROR, "Failed to update file record with bfid {} : {}".format(bfid, str(e)))
+            ticket["status"] = (e_errors.ERROR, "Failed to update file record with bfid {}, see server log for details".format(bfid))
+            self.reply_to_caller(ticket)
+            return
+
+	#
+	# send event to PE
+	#
+	if self.en_qpid_client :
+		if ticket["fc"].get("mover_type",None) == "DiskMover":
+			event = pe_client.evt_cache_written_fc(ticket,record)
+			try:
+				self.en_qpid_client.send(event)
+			except:
+				ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+
+	self.reply_to_caller(ticket)
 
 	Trace.trace(12,'set_pnfsid %s'%(ticket,))
 	return
