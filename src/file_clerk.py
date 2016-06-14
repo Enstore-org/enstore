@@ -81,6 +81,33 @@ WHERE f.bfid=fit.bfid
    AND f.deleted='n'
 """
 
+SELECT_FILES_IN_TRANSITION_TO_REPLAY="""
+SELECT f.bfid,
+       f.cache_status,
+       f.cache_mod_time
+FROM file f,
+files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND f.archive_status IS NULL
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+   AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '1 day'
+LIMIT 50000
+"""
+
+SELECT_ALL_FILES_IN_TRANSITION_TO_REPLAY="""
+SELECT f.bfid,
+       f.cache_status,
+       f.cache_mod_time
+FROM file f,
+     files_in_transition fit
+WHERE f.bfid=fit.bfid
+   AND f.archive_status IS NULL
+   AND f.cache_status='CACHED'
+   AND f.deleted='n'
+LIMIT 50000
+"""
+
 SELECT_ARCHIVING_FILES_IN_TRANSITION="""
 SELECT f.bfid
 FROM file f,
@@ -2610,9 +2637,9 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
     def get_files_in_transition(self, all=None):
         if all:
-            q=SELECT_ALL_FILES_IN_TRANSITION
+            q=SELECT_ALL_FILES_IN_TRANSITION_TO_REPLAY
         else:
-	    q=SELECT_FILES_IN_TRANSITION
+	    q=SELECT_FILES_IN_TRANSITION_TO_REPLAY
         res = self.filedb_dict.query_getresult(q)
         return res
 
