@@ -6385,10 +6385,18 @@ def _verify_metadata(MY_TASK, job, fcc, db):
     if src_file_record['size'] != dst_file_record['size']:
         err_msg = "%s and %s have different size" % (src_bfid, dst_bfid)
     elif src_file_record['complete_crc'] != dst_file_record['complete_crc']:
-        # check against 1 seed crc
-        seed_1_crc = checksum.convert_0_adler32_to_1_adler32(src_file_record['complete_crc'], src_file_record['size'])
-        if seed_1_crc != dst_file_record['complete_crc']:
-            err_msg = "%s and %s have different crc" % (src_bfid, dst_bfid)
+        # src and dst seed can be different. We do not know crc seed, 0 or 1. 
+        # Guess crc seed is 0 in the record and 1 in the other. Try to convert to seed 1 and compare.
+        #
+        # src crc seed 0 - convert to 1
+        # dst crc seed 1
+        src_seed_1_crc = checksum.convert_0_adler32_to_1_adler32(src_file_record['complete_crc'], src_file_record['size'])
+        if src_seed_1_crc != dst_file_record['complete_crc']:
+            # src crc seed 1
+            # dst crc seed 0 - convert to 1
+            dst_seed_1_crc = checksum.convert_0_adler32_to_1_adler32(dst_file_record['complete_crc'], dst_file_record['size'])
+            if dst_seed_1_crc != src_file_record['complete_crc']:
+                err_msg = "%s and %s have different crc" % (src_bfid, dst_bfid)
     elif src_file_record['sanity_cookie'] != dst_file_record['sanity_cookie']:
         err_msg = "%s and %s have different sanity_cookie" % (src_bfid, dst_bfid)
         log(MY_TASK, str(src_file_record['sanity_cookie']), str(dst_file_record['sanity_cookie']))
