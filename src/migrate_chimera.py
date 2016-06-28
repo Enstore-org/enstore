@@ -7895,7 +7895,7 @@ def final_scan_files(dst_bfids, intf):
     (fcc,vcc) = get_clerks()
     err_count = 0
 
-    with Pgdb as db:
+    with Pgdb() as db:
         try:
             for dst_bfid in dst_bfids:
                 #Get the destination info.
@@ -8035,7 +8035,7 @@ def final_scan_volume(vol, intf):
     if debug:
         log(MY_TASK, "volume_info:", str(dst_volume_record))
 
-    with Pgdb as db:
+    with Pgdb() as db:
         sg, ff, wp = string.split(dst_volume_record['volume_family'], '.')
 
         # make sure this is a migration volume
@@ -10149,42 +10149,43 @@ def main(intf):
 
 def do_work(intf):
 
-	try:
-		exit_status = main(intf)
-	except (SystemExit, KeyboardInterrupt):
-		exc, msg = sys.exc_info()[:2]
-		exit_status = 1
-	except:
-		#Get the uncaught exception.
-		exc, msg, tb = sys.exc_info()
-		message = "Uncaught exception: %s, %s\n" % (exc, msg)
-		try:
-			error_log(message)
-		        #Send to the log server the traceback dump.  If
-			# unsuccessful, print the traceback to standard error.
-			Trace.handle_error(exc, msg, tb)
-		except (OSError, IOError):
-			if msg.errno == errno.EPIPE:
-				#User piped the output to another process, but
-				# didn't read all the data from the migrate
-				# process.
-				pass
-			else:
-				raise sys.exc_info()[0], sys.exc_info()[1], \
-				      sys.exc_info()[2]
-		del tb #No cyclic references.
-		exit_status = 1
+    try:
+        exit_status = main(intf)
+    except (SystemExit, KeyboardInterrupt):
+        exc, msg = sys.exc_info()[:2]
+        exit_status = 1
+    except:
+        #Get the uncaught exception.
+        try:
+            exc, msg, tb = sys.exc_info()
+            message = "Uncaught exception: %s, %s\n" % (exc, msg)
+            try:
+                error_log(message)
+                # Send to the log server the traceback dump.
+                #  If unsuccessful, print the traceback to standard error
+                Trace.handle_error(exc, msg, tb)
+            except (OSError, IOError):
+                if msg.errno == errno.EPIPE:
+                    #User piped the output to another process, but
+                    # didn't read all the data from the migrate
+                    # process.
+                    pass
+                else:
+                    raise sys.exc_info()[0],sys.exc_info()[1],sys.exc_info()[2]
+        finally:
+            del tb #No cyclic references.
+        exit_status = 1
 
-	#We should try and kill our child processes.
-	if USE_THREADS:
-		wait_for_threads()
-	else:
-		wait_for_processes(kill = True)
+    #We should try and kill our child processes.
+    if USE_THREADS:
+        wait_for_threads()
+    else:
+        wait_for_processes(kill=True)
 
-	#With the possibility that exactly 256 failures could occur, the
-        # default sys.exit() behavior when passed 256 is to return an exit
-        # status to the caller.  Map all non-zero values to one.
-	sys.exit(bool(exit_status))
+    #With the possibility that exactly 256 failures could occur, the
+    # default sys.exit() behavior when passed 256 is to return an exit
+    # status to the caller.  Map all non-zero values to one.
+    sys.exit(bool(exit_status))
 
 
 if __name__ == '__main__':
