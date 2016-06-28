@@ -631,10 +631,12 @@ def init(intf):
 
     return
 
-class Pgdb:
-    """contextmanager class to ensure db.close()"""
-    def __enter__(self):
+class Pgdb(pg.DB):
+    """contextmanager class to ensure db.close() is executed"""
+    def __init__(self):
         self.db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+    def __enter__(self):
+        return self.db
     def __exit__(self, exc_type, exc_value, traceback):
         self.db.close()
 
