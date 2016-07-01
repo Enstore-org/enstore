@@ -7893,7 +7893,7 @@ def _scan_dest(MY_TASK,dst_file_record,encp,intf,fcc,vcc,db):
                         and (dst_bfid == dst_package_id))
 
     # Get the first (src_bfid,dst_bfid) record from migration table for dst_bfid
-    # It will return (None,None) for the migrated package v1.5 as the package 
+    # It will return (None,None) for the migrated package v1.5 as the package
     #  file is created during migration and does not have src.
     (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
 
@@ -7921,8 +7921,9 @@ def _scan_dest(MY_TASK,dst_file_record,encp,intf,fcc,vcc,db):
             message = "active file on destination tape without a source"
             warning_log(MY_TASK, message)
             return 0
+
         # 2) if dst_is_a_package:
-        # 2a) note: package files created during 
+        # 2a) note: package files created during
         #           migration without repackaging (phase 1.0) do have entry
         #           in migration table and processed below wit=
         # 2b) This is a package file created during migration with packaging v1.5
@@ -7958,13 +7959,13 @@ def _scan_dest(MY_TASK,dst_file_record,encp,intf,fcc,vcc,db):
         return err_count
 
     # These files have normal (src_bfid,dst_bfid) entries in migration table
-    # - Regular files, 
+    # - Regular files,
     # - package file written with migration without repackaging
     # - constituent files
     if not is_swapped(src_bfid, fcc, db):
         error_log(MY_TASK,"%s %s has not been swapped" % (src_bfid, dst_bfid))
         return 1
-    
+
     src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
     if not e_errors.is_ok(src_file_record):
         error_log(MY_TASK,"unable to get file information for %s" % (src_bfid,))
@@ -8005,8 +8006,10 @@ def final_scan_files(dst_bfids, intf):
                 dst_file_record = get_file_info(MY_TASK, dst_bfid, fcc, db)
                 err_count += _scan_dest(MY_TASK,dst_file_record,encp,intf,fcc,vcc,db)
         except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            error_log(MY_TASK, str(exc_type), str(exc_value), str(dst_bfid))
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            Trace.handle_error(exc_type, exc_value, exc_tb)
+#            error_log(MY_TASK, str(exc_type), str(exc_value), str(dst_bfid))
+            del exc_tb #avoid resource leaks
 
     return err_count
 
@@ -8181,7 +8184,7 @@ def final_scan_volume(vol, intf):
 
             # Determine if the volume contains deleted files only
             #   by tesing file_family part of the volume_family triple.
-            # The command line option "--with-deleted" is not required to scan 
+            # The command line option "--with-deleted" is not required to scan
             #   deleted files on "*.deleted" columns.
             # Otherwise, require argument --with-deleted on the command line
             #   to scan files deleted by user.
