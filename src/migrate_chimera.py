@@ -8084,7 +8084,7 @@ def final_scan_volume(vol, intf):
     with Pgdb() as db:
         # make sure this is a migration volume
         is_migration_closed = is_migration_history_closed(MY_TASK, vol, db)
-        if not is_migration_closed is None:
+        if is_migration_closed is None:
             error_log(MY_TASK, "migration history is not closed for volume %s,"
                       " stop processing the volume" % (vol,))
             return 1
