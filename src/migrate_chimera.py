@@ -7946,7 +7946,8 @@ def _scan_dest(MY_TASK,dst_file_record,encp,intf,fcc,vcc,db):
             err_count += _scan_dest(MY_TASK,dc_file_record,encp,intf,fcc,vcc,db)
         # scan package file itself by reading bfid.
         use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
-        ret = _scan_bfid(MY_TASK,dst_bfid,use_path,"/dev/null",intf)
+        ret = _scan_bfid(MY_TASK,dst_bfid,use_path,"/dev/null",intf,encp)
+
         err_count += ret
 # hold on for now adding (None,dst_bfid) to migration table.
 #         if not is_closed(dst_bfid, fcc, db):
