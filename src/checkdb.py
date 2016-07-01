@@ -10,6 +10,7 @@
 ###############################################################################
 
 import os
+import shutil
 import signal
 import socket
 import stat
@@ -28,8 +29,8 @@ import psycopg2
 import psycopg2.extras
 from DBUtils.PooledDB import PooledDB
 
-
-import pg
+DURATION = 72 #hours
+PREFIX = 'RECENT_FILES_ON_TAPE'
 
 EXCLUDED_STORAGE_GROUP = ['backups', 'CLEAN', 'null', 'test', 'none']
 
@@ -233,14 +234,10 @@ LISTING_FILE = "COMPLETE_FILE_LISTING"
 
 # the way to check it is to run file listing on all
 def check_db(check_dir):
-    out_file = os.path.join(check_dir, LISTING_FILE)
-    f = open(out_file, 'w')
-    time_stamp = time.ctime(time.time())
-    f.write("Listed at %s\n\n"%(time_stamp))
-    f.close()
 
     query = """
-        SELECT v.storage_group,
+        SELECT coalesce(to_char(f.archive_mod_time, 'YYYY-MM-DD HH24:MI:SS'),to_char(f.update,'YYYY-MM-DD HH24:MI:SS')),
+              v.storage_group,
               v.file_family,
                CASE
                    WHEN f.package_id <> f.bfid
@@ -299,40 +296,75 @@ def check_db(check_dir):
     colnames="storage_group file_family volume location_cookie bfid size crc pnfs_id pnfs_path archive_status package_pnfsid"
 
     output_files = {}
+    recent_output_files = {}
+    pnfs_dict_file = open(os.path.join(check_dir, 'PNFS.XREF'),"w")
+    pnfs_dict_file.write("pnfs_id bfid size pnfs_path\n")
 
-    header = """
+    complete_file_listing_header = """
 -- Listed at {}
 --
 -- STORAGE GROUP: {}
 --
     """
+    recent_files_listing_header = """
+Date this listing was generated: {}
+Brought to You by: {}
 
+"""
+
+
+    complete_file_listing_file = os.path.join(check_dir, LISTING_FILE)
+    complete_file_listing_fd  = open(complete_file_listing_file, 'w')
+    time_stamp = time.ctime(time.time())
+    complete_file_listing_fd.write("Listed at %s\n\n"%(time_stamp))
+    complete_file_listing_fd.write("%s\n"%(colnames,))
+
+
+    start_time = time.time()
     while True:
-        res = cursor.fetchmany(10000)
+        res = cursor.fetchmany(100000)
         if len(res) == 0:
             break
         for row in res:
-            sg = row[0]
+            sg = row[1]
             if sg in EXCLUDED_STORAGE_GROUP:
                 continue
+            complete_file_listing_fd.write("%s\n"%(string.join([str(i) for i in row[1:]]," ")))
             if sg not in output_files:
                 out_file = os.path.join(check_dir, LISTING_FILE + "_" + sg)
                 output_files[sg]=open(out_file,"w")
-                output_files[sg].write(header.format(time_stamp,sg))
+                output_files[sg].write(complete_file_listing_header.format(time_stamp,sg))
                 output_files[sg].write("%s\n"%(colnames,))
             f = output_files[sg]
-            f.write("%s\n"%(string.join([str(i) for i in row]," ")))
+            f.write("%s\n"%(string.join([str(i) for i in row[1:]]," ")))
+
+            if sg not in recent_output_files:
+                out_file = os.path.join(check_dir, PREFIX + "_" + sg)
+                recent_output_files[sg]=open(out_file,"w")
+                recent_output_files[sg].write(recent_files_listing_header.format(time_stamp,os.path.basename(sys.argv[0])))
+                head = "Recent (packed and package) written to tape in the last {} hours for storage group {}".format(DURATION,sg)
+                recent_output_files[sg].write("\n{}\n\n".format(head))
+                recent_output_files[sg].write("update_time storage_group file_family volume location_cookie bfid size crc pnfs_id pnfs_path archive_status package_pnfsid\n")
+
+            t = row[0]
+            try:
+                update_time = time.mktime(time.strptime(t,"%Y-%m-%d %H:%M:%S"))
+                if update_time  > start_time - DURATION * 3600 :
+                    f = recent_output_files[sg]
+                    f.write("%s\n"%(string.join([str(i) for i in row]," ")))
+            except Exception, msg:
+                #print msg, row
+                continue
+            pnfs_dict_file.write("{} {} {} {}\n".format(row[8],row[5],row[6],row[9]))
+
     cursor.close()
+    complete_file_listing_fd.close()
     map(lambda x : x.close(), output_files.values())
+    map(lambda x : x.close(), recent_output_files.values())
+    pnfs_dict_file.close()
 
     cursor.close()
     connection.close()
-
-    # generate pnfs dictionary
-    print timeofday.tod(), "Generating PNFS.XREF ..."
-    pnfs_dict_file = os.path.join(check_dir, 'PNFS.XREF')
-    cmd = "psql -d backup -A -F ' ' -c "+'"'+"select pnfs_id, bfid, size, pnfs_path from file where deleted = 'n' and not pnfs_path is null"+'"'+" -o %s"%(pnfs_dict_file)
-    os.system(cmd)
 
 if __name__ == "__main__":
     if "--help" in sys.argv:
@@ -361,12 +393,11 @@ if __name__ == "__main__":
     check_db(check_dir)
     stop_postmaster(db_path)
     # moving COMPLETE_FILE_LISTING to dest_path
-    cmd = "enrcp %s %s"%(os.path.join(check_dir, "COMPLETE_FILE_LISTING*"), dest_path)
-    print timeofday.tod(), cmd
-    os.system(cmd)
-    cmd = "enrcp %s %s"%(os.path.join(check_dir, "PNFS.XREF"), dest_path)
-    print timeofday.tod(), cmd
-    os.system(cmd)
+    for cmd in ("enrcp %s %s"%(os.path.join(check_dir, "COMPLETE_FILE_LISTING*"), dest_path),
+                "enrcp %s %s"%(os.path.join(check_dir, "RECENT_FILES_ON_TAPE*"), dest_path),
+                "enrcp %s %s"%(os.path.join(check_dir, "PNFS.XREF"), dest_path)):
+        print timeofday.tod(), cmd
+        os.system(cmd)
     if os.access(db_path, os.F_OK):
         #
         # clean up after ourselves so next
