@@ -7942,7 +7942,8 @@ def _scan_dest(MY_TASK,dst_file_record,encp,intf,fcc,vcc,db):
             dc_bfid = dc_rec['bfid']
             if dc_bfid == dst_bfid:
                 continue # skip the original package record
-            err_count += _scan_dest(MY_TASK,dc_bfid,encp,intf,fcc,vcc,db)
+            dc_file_record = get_file_info(MY_TASK, dc_bfid, fcc, db)
+            err_count += _scan_dest(MY_TASK,dc_file_record,encp,intf,fcc,vcc,db)
         # scan package file itself by reading bfid.
         use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
         ret = _scan_bfid(MY_TASK,dst_bfid,use_path,"/dev/null",intf)
@@ -8084,6 +8085,7 @@ def final_scan_volume(vol, intf):
     with Pgdb() as db:
         # make sure this is a migration volume
         is_migration_closed = is_migration_history_closed(MY_TASK, vol, db)
+        # Error in processing migration history
         if is_migration_closed is None:
             error_log(MY_TASK, "migration history is not closed for volume %s,"
                       " stop processing the volume" % (vol,))
