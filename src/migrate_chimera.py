@@ -2028,14 +2028,17 @@ def log_history_closed(src_vol, dst_vol, vcc, db):
 
         return None  #Should never happen.
 
-#Return True if the source volume has all of its destination volumes
-# recorded in the migration_history table.  False otherwise.  Errors
-# return None.
+# Check the source volume has all of its destination volumes recorded
+# in the migration_history table.
 def is_migration_history_done(MY_TASK, src_vol, db):
-    # MY_TASK - string to use in log() and error_log().
-    # src_vol - string respresenting the source volume to check if all
-    #           pairs of this volume are done or closed
-    # db - A pg.DB instantiated object.
+#    MY_TASK - string, task name to report in log() and error_log().
+#    src_vol - string, source volume to check
+#    db - A pg.DB instantiated object.
+# Return:
+#    None    - Errors
+#    True    - the source volume has all of its destination volumes recorded
+#              in the migration_history table.
+#    False otherwise.
 
     if USE_CLERKS:
         #This mode not yet implemented for this function.
@@ -2070,7 +2073,7 @@ def is_migration_history_done(MY_TASK, src_vol, db):
                 return None  #Error
 
             if len(res) == 0:
-                #Their is not a record made for this source and destination
+                #There is no record made for this source and destination
                 # combination.
                 return False
             elif not res[0]['time']:
@@ -2082,14 +2085,17 @@ def is_migration_history_done(MY_TASK, src_vol, db):
         # the migration_history table.
         return True
 
-#Return True if the destination volume has all of its source volumes
-# recorded in the migration_history table and the "closed_time" field
-# is filled in.  False otherwise.  Errors return None.
+# Check if all pairs of the destination volume are done or closed
 def is_migration_history_closed(MY_TASK, dst_vol, db):
-    # MY_TASK - string to use in log() and error_log().
-    # src_vol - string respresenting the source volume to check if all
-    #           pairs of this volume are done or closed
-    # db - A pg.DB instantiated object.
+#     MY_TASK - string, task name to report in log() and error_log().
+#     dst_vol - string, destination volume
+#     db      - pg.DB instantiated object.
+# Return:
+#    None     - Errors
+#    True     - the destination volume has all of its source volumes
+#               recorded in the migration_history table
+#               and the "closed_time" fields filled in.
+#    False otherwise.
 
     if USE_CLERKS:
         #This mode not yet implemented for this function.
@@ -2102,7 +2108,7 @@ def is_migration_history_closed(MY_TASK, dst_vol, db):
             #An error occured.  get_volume_id() reports it own errors.
             return None
 
-        #Currently migrated_to() only supports direct DB access.
+        #Currently migrated_from() only supports direct DB access.
         from_volume_list = migrated_from(dst_vol, db)
 
         for src_volume in from_volume_list:
