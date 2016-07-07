@@ -1303,7 +1303,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 try:
                     os.removedirs(os.path.dirname(item['cache_location']))
                     item['cache_status'] = file_cache_status.CacheStatus.PURGED
-                    Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
+                    Trace.trace(10, "purge_files: purged %s"%(item['cache_location'],))
                 except OSError, detail:
                     if detail.errno not in (errno.ENOENT, errno.ENOTEMPTY):
                         Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
