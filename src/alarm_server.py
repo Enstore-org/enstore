@@ -74,8 +74,9 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         condition = self.get_from_ticket(ticket, enstore_constants.CONDITION, alarm.DEFAULT_CONDITION)
         # remove this entry from the dictionary, so it won't be included
         # as part of alarm_info
-        if ticket.has_key("work"):
-            del ticket["work"]
+        for key in ('work', 'send_ts'):
+            if key in ticket:
+                del ticket[key]
 
         theAlarm = self.alarm(severity, root_error, pid, uid, source, condition,
                               remedy_type, ticket)
