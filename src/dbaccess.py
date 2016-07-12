@@ -245,12 +245,62 @@ class DatabaseAccess:
             #
             raise
 
+    def update_returning_result(self,s,values=None):
+        db,cursor=None,None
+        try:
+            db=self.pool.connection();
+            cursor=db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            s += " RETURNING *"
+            if values:
+                cursor.execute(s,values)
+            else:
+                cursor.execute(s)
+            res=cursor.fetchone()
+            db.commit()
+            cursor.close()
+            db.close()
+            return res
+        except psycopg2.Error, msg:
+            try:
+                if db:
+                    db.rollback()
+                for c in (cursor,db):
+                    if c:
+                        c.close()
+            except:
+                # if we failed to close just silently ignore the exception
+                pass
+            db,cursor=None,None
+            #
+            # propagate exception to caller
+            #
+            raise e_errors.EnstoreError(None,
+                                        str(msg),
+                                        e_errors.DATABASE_ERROR)
+        except:
+            if db:
+                db.rollback()
+                for c in (cursor,db):
+                    if c:
+                        c.close()
+            #
+            # propagate exception to caller
+            #
+            raise
+
     def insert(self,s,record=None):
         if record:
             q=generate_insert_query(s,record.keys())
             return self.update(q,record.values())
         else:
             return self.update(s)
+
+    def insert_returning_result(self,s,record=None):
+        if record:
+            q=generate_insert_query(s,record.keys())
+            return self.update_returning_result(q,record.values())
+        else:
+            return self.update_returning_result(s)
 
     def remove(self,s,values=None):
         return self.update(s,values)

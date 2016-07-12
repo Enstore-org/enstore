@@ -26,17 +26,19 @@ Each derived class has to provide the following:
     self.export_format() -- map database format to output dictionary
 """
 
-import time
-import random
-import datetime
-import string
-import types
 import copy
+import datetime
+import random
+import string
+import time
+import types
+
+import Cache
+import dbaccess
+import e_errors
 import ejournal
 import os
 import Trace
-import e_errors
-import dbaccess
 
 
 default_database = 'enstoredb'
@@ -392,6 +394,13 @@ class FileDB(DbTable):
         AND bfid = %s
         """
 
+        """
+        cache that keeps volume label : volume id
+        association to reduce number of nested
+        selects
+        """
+        self.volume_cache = Cache.Cache()
+
     def __setitem__(self, key, value):
         res = self.dbaccess.query_dictresult(self.retrieve_query,(key,))
         if len(res) == 0:        # insert
@@ -411,10 +420,10 @@ class FileDB(DbTable):
                     UPDATE file SET
                     """
                     for k in d.keys():
-                        if k != "volume":
-                            query += "{}=%s,".format(k)
+                        if k == "volume":
+                                query += "{}=(SELECT id FROM volume WHERE label=%s),".format(k)
                         else:
-                            query += "{}=(SELECT id FROM volume WHERE label=%s),".format(k)
+                            query += "{}=%s,".format(k)
                     query = query[:-1] + " WHERE {}=%s".format(self.pkey)
                     v=d.values()
                     v.append(key)
@@ -439,17 +448,25 @@ class FileDB(DbTable):
             DbTable.insert_new_record(self,key,value)
             return
         v1 = self.import_format(value)
+        label = v1["volume"]
+
+        volume_id =  self.volume_cache.get(label)
+
+        if not volume_id:
+            res = self.dbaccess.query("SELECT id FROM volume where label=%s",(label,))
+            volume_id = res[0][0]
+            self.volume_cache.put(label,volume_id)
+
+        v1["volume"] = volume_id
         query = """
         INSERT INTO {} ({}) VALUES (
         """
         query=query.format(self.table,string.join(v1.keys(), ","))
+        values = v1.values()
         for k in v1.keys():
-            if k != "volume":
                 query += "%s,"
-            else:
-                query += "(SELECT id FROM volume where label=%s),"
         query=query[:-1]+")"
-        self.dbaccess.update(query,v1.values())
+        res=self.dbaccess.update_returning_result(query,v1.values())
         if self.auto_journal:
             self.jou[key] = value
 
@@ -476,14 +493,14 @@ class FileDB(DbTable):
         UPDATE file SET
         """
         for k in v1.keys():
-            if k != "volume":
-                query += "{}=%s,".format(k)
-            else:
+            if k == "volume":
                 query += "{}=(SELECT id FROM volume WHERE label=%s),".format(k)
+            else:
+                query += "{}=%s,".format(k)
         query = query[:-1] + " WHERE {}=%s".format(self.pkey)
         v=v1.values()
         v.append(key)
-        res = self.dbaccess.update(query,tuple(v))
+        res = self.dbaccess.update_returning_result(query,tuple(v))
         updated_record =  self.__getitem__(key)
         if self.auto_journal:
             self.jou[key] = updated_record
