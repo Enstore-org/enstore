@@ -1589,7 +1589,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             result =  enstore_functions2.shell_command2(cmd)
             if result[0] == 0:
                 sg_dev = result[1].split()[0]
-                sc_dir = 'dev/sc'
+                sc_dir = '/dev/sc'
                 ftt_sc =  '/dev/sc/sc%sd0'%(nst_num,)
                 # make symlink
                 if not os.path.exists(sc_dir):
