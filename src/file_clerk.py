@@ -290,8 +290,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             file_clerk_host, file_clerk_port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
             ticket["file_clerk_callback_addr"] = (file_clerk_host, file_clerk_port)
-
-            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            address_family = socket.getaddrinfo(file_clerk_host, None)[0][0]
+            self.control_socket = socket.socket(address_family, socket.SOCK_STREAM)
             self.control_socket.connect(ticket['callback_addr'])
             callback.write_tcp_obj(self.control_socket, ticket)
             r, w, x = select.select([listen_socket], [], [], 15)

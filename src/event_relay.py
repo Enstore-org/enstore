@@ -18,7 +18,8 @@ import enstore_functions2
 DEFAULT_PORT = enstore_constants.EVENT_RELAY_PORT
 heartbeat_interval = enstore_constants.EVENT_RELAY_HEARTBEAT
 my_name = enstore_constants.EVENT_RELAY
-my_ip = socket.gethostbyaddr(socket.gethostname())[2][0]
+my_ip = socket.getaddrinfo(socket.gethostname(), None)[0][4][0]
+my_address_family = socket.getaddrinfo(socket.gethostname(), None)[0][0]
 
 # event relay message types
 ALL = "all"
@@ -61,8 +62,10 @@ class Relay:
 	self.timeouts = {} # key is (host,port), value is num times error in send
         ##self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         ##self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	self.send_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+	#self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	#self.send_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+	self.listen_socket = socket.socket(my_address_family, socket.SOCK_DGRAM)
+	self.send_socket = cleanUDP.cleanUDP(my_address_family, socket.SOCK_DGRAM)
         my_addr = ("", my_port)
         self.listen_socket.bind(my_addr)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
@@ -204,4 +207,5 @@ class Relay:
 			self.handle_error(addr, msg)
 if __name__ == '__main__':
     R = Relay()
+    #R._do_print({'levels':range(5, 400)})
     R.mainloop()

@@ -207,8 +207,9 @@ class MonitorServerClient(generic_client.GenericClient):
     def _open_data_socket(self, mon_serv_addr):
         Trace.trace(10, "Creating non-blocking data socket.")
         #Create the socket.
+	address_family = socket.getaddrinfo(mon_serv_addr[0], None)[0][0]
         try:
-            sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock=socket.socket(address_family, socket.SOCK_STREAM)
         except socket.error, detail:
             #raise CLIENT_CONNECTION_ERROR, detail[1]
             raise generic_client.ClientError(str(detail))

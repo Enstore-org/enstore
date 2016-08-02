@@ -2750,7 +2750,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                                                      ("", "", "", "", ""))[1])
     if hostname:
         try:
-            hostname = socket.gethostbyname(hostname)
+            hostname = hostaddr.name_to_address(hostname)
         except (socket.error, socket.herror, socket.gaierror):
             pass
 
@@ -4713,10 +4713,10 @@ def open_data_socket(mover_addr, interface_ip = None):
 
     Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
-
+    address_family = socket.getaddrinfo(mover_addr[0], None)[0][0]
     try:
         #Create the socket.
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket = socket.socket(address_family, socket.SOCK_STREAM)
     except socket.error, msg:
         raise socket.error, msg
 
@@ -12222,7 +12222,7 @@ class EncpInterface(option.Interface):
         #Determine all aliases and ip addresses for this node name.
         for i in [1, 2, 3]:
             try:
-                this_host = socket.gethostbyname_ex(socket.getfqdn())
+                this_host = socket.getaddrinfo(socket.getfqdn(), None)[0][4][0],[],[]
             except (socket.error, socket.herror, socket.gaierror):
                 time.sleep()
         else:

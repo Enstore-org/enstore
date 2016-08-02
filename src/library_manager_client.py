@@ -39,7 +39,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         self.log_name = "C_"+string.upper(string.replace(name,
                                                          ".library_manager",
                                                          MY_NAME))
-        
+
         generic_client.GenericClient.__init__(self, csc, self.log_name,
                                               flags = flags, logc = logc,
                                               alarmc = alarmc,
@@ -63,16 +63,17 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return self.send(ticket)
 
     def getwork(self) :
-        return self.getlist("getwork")
+        return self.send({"work": "getwork"})
 
     def getworks_sorted(self) :
-        return self.getlist("getworks_sorted")
+        return self.send({"work": "getworks_sorted"})
 
     #Print out the relavent information on the volume assert.
     def get_asserts(self):
 
         #Pending volume asserts get printed here.
-        asserts = self.getlist("get_asserts").get("pending_asserts",[])
+        rc = self.send({"work": "get_asserts"})
+        asserts = rc.get("pending_asserts",[])
         if asserts:
             print "Pending assert requests"
         for assert_work in asserts:
@@ -124,7 +125,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
             #Print the volume information.
             print "%s %s %s %s %s" % (node, lib, user, volume, mover)
-            
+
 
         print "Pending assert requests:", len(asserts)
         print "Active assert requests:", active_assert_cnt
@@ -208,7 +209,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    # them here; they are handled with another switch.
                    if work["work"] == "volume_assert":
                        continue
-                   
+
                    host = work["wrapper"]["machine"][1]
                    user = work["wrapper"]["uname"]
                    pnfsfn = work["wrapper"]["pnfsFilename"]
@@ -236,11 +237,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
         print "Pending write requests: ", pending_write_cnt
         print "Active read requests: ", active_read_cnt
         print "Active write requests: ", active_write_cnt
-                           
+
         return {"status" :(e_errors.OK, None)}
 
     def get_suspect_volumes(self):
-        return self.getlist("get_suspect_volumes")
+        return self.send({"work": "get_suspect_volumes"})
 
     def remove_work(self, id):
         return self.send({"work":"remove_work", "unique_id": id})
@@ -250,7 +251,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
     def get_lm_state(self, timeout=10, tries=2):
         return self.send({"work":"get_lm_state"}, timeout, tries)
-        
+
     # remove volume from suspect volume list
     def remove_suspect_volume(self, volume):
         return self.send({"work":"remove_suspect_volume", "volume":volume})
@@ -273,10 +274,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
         ticket = self.send(ticket, self.send_to,self.send_tries)
         if ticket['status'][0] != e_errors.OK:
             return ticket
-
         r,w,x = select.select([listen_socket], [], [], 15)
         if not r:
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, "timeout waiting for library manager callback", e_errors.TIMEDOUT)        
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, "timeout waiting for library manager callback", e_errors.TIMEDOUT)
         control_socket, address = listen_socket.accept()
 
         if not hostaddr.allow(address):
@@ -289,8 +289,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
         if ticket["status"][0] != e_errors.OK:
             return ticket
-        
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        address_family = socket.getaddrinfo(host, None)[0][0]
+        data_path_socket = socket.socket(address_family, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['library_manager_callback_addr'])
         worklist = callback.read_tcp_obj_new(data_path_socket)
         data_path_socket.close()
@@ -314,7 +315,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
     # reset pending request queue counters
     def reset_pending_queue_counters(self, timeout=0, tries=0):
         return self.send({"work":"reset_pending_queue_counters"}, timeout, tries)
-            
+
     def storage_groups(self, timeout=0, tries=0):
         return self.send({"work":"storage_groups"}, timeout, tries)
 
@@ -326,7 +327,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
     #tell lm to print pending work queue
     def printqueue(self, timeout=0, tries=0):
         return self.send({"work":"print_queue"}, timeout, tries)
-        
+
 
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self, args=sys.argv, user_mode=1) :
@@ -356,7 +357,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.list = 0
         self.queue_length = 0
         self.reset_queue_counters = 0
-        
+
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -365,7 +366,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                 self.library_options)
 
     parameters = ["library"]
-        
+
     def parse_options(self):
         generic_client.GenericClientInterface.parse_options(self)
 
@@ -383,7 +384,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                 del self.args[0]
             except KeyError:
                 self.name = ""
-                
+
         self.name = self.complete_server_name(self.name, "library_manager")
 
     def print_library_managers(self):
@@ -398,7 +399,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         for lm_name in lm_dict.values():
             lm_info = csc.get(lm_name['name'])
             print msg_spec % (lm_name['name'], lm_info['host'])
-            
+
         sys.exit(0)
 
 
@@ -506,7 +507,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN},
-        
+
         }
 
 
@@ -603,7 +604,7 @@ def do_work(intf):
         ticket = lmc.get_queue(intf.get_queue, intf.name)
         if e_errors.is_ok(ticket):
             print ticket
-        
+
     elif (intf.start_draining or intf.stop_draining):
         if intf.start_draining:
             if intf.start_draining == 'lock': lock = 'locked'

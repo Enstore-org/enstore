@@ -124,9 +124,11 @@ class EventRelayClient:
         else:
             self.sock = None
             try:
-                self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                set_max_recv_buffersize(self.sock)
                 default_ip = host_config.get_default_interface_ip()
+                address_family = socket.getaddrinfo(default_ip, None)[0][0]
+                self.sock = socket.socket(address_family, socket.SOCK_DGRAM)
+                set_max_recv_buffersize(self.sock)
+                #default_ip = host_config.get_default_interface_ip()
                 self.sock.bind((default_ip, 0))    # let the system pick a port
             except socket.error, msg:
                 # this can happen rarely, it can mean too many open files

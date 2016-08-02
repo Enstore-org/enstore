@@ -169,7 +169,8 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             volume_clerk_host, volume_clerk_port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
             ticket["volume_clerk_callback_addr"] = (volume_clerk_host, volume_clerk_port)
-            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	    address_family = socket.getaddrinfo(volume_clerk_host, None)[0][0]
+            self.control_socket = socket.socket(address_family, socket.SOCK_STREAM)
             self.control_socket.connect(addr)
             callback.write_tcp_obj(self.control_socket, ticket)
 

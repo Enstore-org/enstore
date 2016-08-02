@@ -985,11 +985,12 @@ class LibraryManagerMethods:
         rc = 0
         try:
             Trace.trace(self.trace_level+10,"send_regret %s" % (ticket,))
-            control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	    host = ticket['wrapper']['machine'][1]
+	    address_family = socket.getaddrinfo(host, None)[0][0]
+            control_socket = socket.socket(address_family, socket.SOCK_STREAM)
             flags = fcntl.fcntl(control_socket.fileno(), fcntl.F_GETFL)
             fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
             # the following insertion is for antispoofing
-            host = ticket['wrapper']['machine'][1]
             if ticket.has_key('route_selection') and ticket['route_selection']:
                 ticket['mover_ip'] = host
                 # bind control socket to data ip
@@ -4792,25 +4793,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # body of getwork to run either in thread or as a function call
     def __getwork(self,ticket):
+        rticket = ticket.copy()
+        rticket["status"] = (e_errors.OK, None)
+        rticket["at movers"] = self.work_at_movers.list
         try:
-            control_socket,data_socket = self.get_user_sockets(ticket)
-            if not control_socket:
-                return 1
-            # make it thread safe
-            rticket = {}
-            rticket['r_a'] = ticket.get('r_a', None)
-            rticket["status"] = (e_errors.OK, None)
-            rticket["at movers"] = self.work_at_movers.list
             adm_queue, write_queue, read_queue = self.pending_work.get_queue()
             rticket["pending_work"] = adm_queue + write_queue + read_queue
-            callback.write_tcp_obj_new(data_socket,rticket)
-            data_socket.close()
-            callback.write_tcp_obj_new(control_socket,ticket)
-            control_socket.close()
+            self.send_reply_with_long_answer(rticket)
             return 0
         except:
             return 1
-
 
     def getwork(self,ticket):
         """
@@ -4822,11 +4814,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         :arg ticket: enstore library manager client request containig ticket['work'] = 'getwork'
 
         """
-
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket) # reply now to avoid deadlocks
-        # this could tie things up for awhile - fork and let child
-        # send the work list (at time of fork) back to client
         if self.do_fork:
             fp = self.fork()
             if fp != 0:
@@ -4855,7 +4842,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return
             try:
                 self.pending_work.wprint()
-
             except:
                 pass
             os._exit(0)
@@ -4865,22 +4851,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # body of getworks_sorted to run either in thread or as a function call
     def __getworks_sorted(self,ticket):
         rc = 0
+        rticket = ticket.copy()
+        rticket["status"] = (e_errors.OK, None)
+        rticket["at movers"] = self.work_at_movers.list
         try:
-            control_socket,data_socket = self.get_user_sockets(ticket)
-            if not control_socket:
-                return 1
-            rticket = {}
-            rticket["status"] = (e_errors.OK, None)
-            rticket["at movers"] = self.work_at_movers.list
             adm_queue, write_queue, read_queue = self.pending_work.get_queue()
             rticket["pending_works"] = {'admin_queue': adm_queue,
                                         'write_queue': write_queue,
                                         'read_queue':  read_queue,
                                         }
-            callback.write_tcp_obj_new(data_socket,rticket)
-            data_socket.close()
-            callback.write_tcp_obj_new(control_socket,ticket)
-            control_socket.close()
+            self.send_reply_with_long_answer(rticket)
         except:
             rc = 1
         return rc
@@ -4897,8 +4877,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         """
 
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
         if self.do_fork:
@@ -4914,17 +4892,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
    #body of get_asserts to run either in thread or as a function call
     def __get_asserts(self, ticket):
         rc = 0
+        rticket = ticket.copy()
+        rticket["status"] = (e_errors.OK, None)
         try:
-            control_socket,data_socket = self.get_user_sockets(ticket)
-            if not control_socket:
-                return 1
-            rticket = {}
-            rticket["status"] = (e_errors.OK, None)
             rticket['pending_asserts'] = self.volume_assert_list
-            callback.write_tcp_obj_new(data_socket,rticket)
-            data_socket.close()
-            callback.write_tcp_obj_new(control_socket,ticket)
-            control_socket.close()
+            self.send_reply_with_long_answer(rticket) 
         except:
             rc = 1
         return rc
@@ -4957,20 +4929,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # body of get_suspect_volumes to run either in thread or as a function call
     def __get_suspect_volumes(self,ticket):
         rc = 0
+        rticket = ticket.copy()
+        rticket['r_a'] = ticket.get('r_a', None)
+        rticket["status"] = (e_errors.OK, None)
+        rticket["suspect_volumes"] = self.suspect_volumes.list
         try:
-            control_socket,data_socket = self.get_user_sockets(ticket)
-            if not control_socket:
-                return 1
-            rticket = {}
-            rticket['r_a'] = ticket.get('r_a', None)
-            rticket["status"] = (e_errors.OK, None)
-            rticket["suspect_volumes"] = self.suspect_volumes.list
-            callback.write_tcp_obj_new(data_socket,rticket)
-            data_socket.close()
-            callback.write_tcp_obj_new(control_socket,ticket)
-            control_socket.close()
+            self.send_reply_with_long_answer(rticket)
         except:
-            return 1
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "exception in __get_suspect_volumes: %s %s"%(exc, msg))
+            rc =  1
         return rc
 
     # get list of suspected volumes
@@ -4984,8 +4952,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         :arg ticket: enstore library manager client request containig ticket['work'] = 'get_suspect_volumes'
         """
 
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        #ticket["status"] = (e_errors.OK, None)
+        #self.reply_to_caller(ticket) # reply now to avoid deadlocks
+
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
         if self.do_fork:
@@ -4996,35 +4965,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             os._exit(rc)
         else:
             dispatching_worker.run_in_thread('Get_Suspect_Volumes', self.__get_suspect_volumes, args=(ticket,))
-
-    def get_user_sockets(self, ticket):
-        """
-        Get a port for the data transfer.
-        Tell the user I'm your library manager and here's your ticket.
-        Used for delivering replies over TCP (big messages).
-
-        :type ticket: :obj:`dict`
-        :arg ticket: enstore library manager client request
-        """
-
-        library_manager_host, library_manager_port, listen_socket =\
-                              callback.get_callback()
-        listen_socket.listen(4)
-        ticket["library_manager_callback_addr"] = (library_manager_host, library_manager_port)
-        control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        control_socket.connect(ticket['callback_addr'])
-        callback.write_tcp_obj_new(control_socket, ticket)
-        r,w,x = select.select([listen_socket], [], [], 15)
-        if not r:
-            listen_socket.close()
-            return None, None
-        data_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            data_socket.close()
-            listen_socket.close()
-            return None, None
-        listen_socket.close()
-        return control_socket, data_socket
 
     def remove_work(self, ticket):
         """

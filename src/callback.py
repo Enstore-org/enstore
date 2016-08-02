@@ -11,7 +11,7 @@ The following functions are those intended for use by other modules:
 read_obj:          Use for reading python objects from a pipe file descriptor.
 read_tcp_obj:      Use for reading python objects from a tcp socket.
 write_obj:         Use for writing python objects to a pipe file descriptor.
-write_tcp_obj_new: Use for writing python objects to a tcp socket.  
+write_tcp_obj_new: Use for writing python objects to a tcp socket.
 get_callback:      Use to obtain a tcp socket.
 
 Use of write_tcp_obj() is discouraged for new code.  It uses repr instead
@@ -42,7 +42,7 @@ import Interfaces
 MSG_LEN_POSITIONS = 12
 MSG_LEN_POSITIONS_OLD = 8
 PROTOCOL = "PROTO001" # must be 8 caharacters to be used in place of old message length
- 
+
 """
 class TCPError(socket.error):
 
@@ -71,7 +71,7 @@ class TCPError(socket.error):
         self._string()
 
         self.args = (self.errno, self.e_message)
-        
+
     def __str__(self):
         self._string()
         return self.strerror
@@ -94,7 +94,7 @@ class TCPError(socket.error):
 
 
 class FIFOError(OSError):
-    
+
     def __init__(self, e_errno, e_message = None):
 
         OSError.__init__(self)
@@ -120,7 +120,7 @@ class FIFOError(OSError):
         self._string()
 
         self.args = (self.errno, self.e_message)
-        
+
     def __str__(self):
         self._string()
         return self.strerror
@@ -140,7 +140,7 @@ class FIFOError(OSError):
             self.strerror = self.e_message
 
         return self.strerror
-"""    
+"""
 
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
@@ -243,7 +243,7 @@ def __get_socket_state(fd):
             # How that can happen to a file in /proc, I don't know.
             Trace.log(e_errors.ERROR,
                       "__get_socket_state(): /proc/net/tcp: %s" % str(msg))
-            
+
     return None
 
 def log_socket_state(sock):
@@ -300,7 +300,7 @@ def log_socket_state(sock):
             try:
                 mac_addresses = arpGetFunc(peer_name[0])
                 if mac_addresses:
-                    Trace.log(e_errors.ERROR, 
+                    Trace.log(e_errors.ERROR,
                               "socket state: arp get[%s]: %s" % \
                               (peer_name[0], str(mac_addresses)))
 
@@ -308,28 +308,30 @@ def log_socket_state(sock):
                 Trace.log(e_errors.ERROR,
                           "socket state: arp get[%s]: %s" % \
                           (peer_name[0], str(msg)))
-                
+
 ###############################################################################
 ###############################################################################
 
 # get an unused tcp port for control communication
 def get_callback(ip=None):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     config = host_config.get_config()
     if ip is None:
         if config:
             ip = config.get('hostip')
         if not ip:
             ip = host_config.get_default_interface_ip()
+    address_family = socket.getaddrinfo(ip, None)[0][0]
+    s = socket.socket(address_family, socket.SOCK_STREAM)
     s.bind((ip, 0))
-    host, port = s.getsockname()
+    host, port = s.getsockname()[0:2]
+
     return host, port, s
 
 def connect_to_callback(ip_addr, interface_ip = None, timeout = 30):
-
+    hostinfo = socket.getaddrinfo(ip_addr[0], None)
     try:
         #Create the socket.
-        connect_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connect_socket = socket.socket(hostinfo[0][0], socket.SOCK_STREAM)
     except socket.error, msg:
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
@@ -348,7 +350,7 @@ def connect_to_callback(ip_addr, interface_ip = None, timeout = 30):
 
     try:
         connect_socket.connect(ip_addr)
-        #error = 0 #MWZ: pychecker questioned this line.  
+        #error = 0 #MWZ: pychecker questioned this line.
     except socket.error, msg:
         #We have seen that on IRIX, when the three way handshake is in
         # progress, we get an EISCONN error.
@@ -378,13 +380,13 @@ def connect_to_callback(ip_addr, interface_ip = None, timeout = 30):
             else:
                 connect_socket.close()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            
+
 
     if r or w:
         #Get the socket error condition...
         rtn = connect_socket.getsockopt(socket.SOL_SOCKET,
                                           socket.SO_ERROR)
-        #error = 0 #MWZ: pychecker questioned this line.  
+        #error = 0 #MWZ: pychecker questioned this line.
     #If the select didn't return sockets ready for read or write, then the
     # connection timed out.
     else:
@@ -416,7 +418,7 @@ def timeout_send(sock,msg,timeout=15*60):
     timeout_time = total_start_time + timeout
 
     error_string = ""
-    
+
     #Loop until the timeout has passed, a hard error occurs (AKA where an
     # exception is raised) or the message has really arrived.
     while timeout_time > time.time():
@@ -429,7 +431,7 @@ def timeout_send(sock,msg,timeout=15*60):
 
             #Re-raise the exception for write_raw() to handle.
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        
+
         if sock in fds:
             #We got our socket.
             break
@@ -439,7 +441,7 @@ def timeout_send(sock,msg,timeout=15*60):
         # So lets keep looping for a while.
 
     if type(sock) == types.IntType: #In case sock is an fd for a pipe.
-        nwritten = os.write(sock, msg) 
+        nwritten = os.write(sock, msg)
     else:
         nwritten = sock.send(msg)
 
@@ -464,7 +466,7 @@ def _send_raw(sock, message, message_length, timeout):
         return 1, error_string
     return 0, ""
 
-    
+
 #send a message, with bytecount and rudimentary security
 ## Note: Make sure to consider that sock could be a socket object, socket
 ##       fd or pipe fd.
@@ -481,7 +483,7 @@ def write_raw(sock, msg, timeout=15*60):
         else:
             # old protocol
             ml_format="%%0%sd"%(MSG_LEN_POSITIONS_OLD)
-            
+
         #First part of the message sent is MSG_LEN_POSITIONS characters consisiting of the
         #First part of the message sent is 8 characters consisiting of the
         # length of the payload part of the message.  Put these bytes together
@@ -505,17 +507,17 @@ def write_raw(sock, msg, timeout=15*60):
         if proto:
             e, err_msg = _send_raw(sock, proto, len(proto), timeout)
             if e:
-               return e, err_msg 
-            
+                return e, err_msg
+
         #Now actually write out the length of the payload to the socket.
         e, err_msg = _send_raw(sock, msg_msg_len, msg_len_len, timeout)
         if e:
-            return e, err_msg 
+            return e, err_msg
 
         #This time write out the 'signature'.
         e, err_msg = _send_raw(sock, msg_signature, msg_signature_len, timeout)
         if e:
-            return e, err_msg 
+            return e, err_msg
 
         #Write the payload to the socket.
         ptr = 0
@@ -537,7 +539,7 @@ def write_raw(sock, msg, timeout=15*60):
         #Lastly, write out the checksum of the payload.
         e, err_msg = _send_raw(sock, checksum_msg, checksum_len, timeout)
         if e:
-            return e, err_msg 
+            return e, err_msg
 
         return 0, ""
     except (socket.error, select.error, OSError), detail:
@@ -571,9 +573,9 @@ def write_tcp_obj_new(sock,obj,timeout=15*60):
     if type(sock) != types.IntType and not hasattr(sock, "fileno"):
         raise TypeError("expected integer socket file descriptor or "
                         "socket object; received %s instead" % (str(sock),))
-    
+
     rtn, e = write_tcp_raw(sock, cPickle.dumps(obj), timeout)
-    
+
     if e:
         log_socket_state(sock) #Log the state of the socket.
         Trace.log(e_errors.ERROR, e)
@@ -590,12 +592,12 @@ def write_obj(fd, obj, timeout=15*60, verbose = True):
         Trace.log(e_errors.ERROR, e)
         #raise e_errors.TCP_EXCEPTION #What should this be?
         raise e_errors.EnstoreError(None, e, e_errors.IOERROR)
-    
+
     return rtn
 
 ###############################################################################
 ###############################################################################
-        
+
 #recv with a timeout
 def timeout_recv(sock, nbytes, timeout = 15 * 60):
     total_start_time = time.time()
@@ -603,7 +605,7 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
 
     error_string = ""
     data_string = ""
-    
+
     #Loop until a the timeout has passed, a hard error occurs or
     # the message has really arrived.
     while timeout_time > time.time():
@@ -630,7 +632,7 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
         if data_string == "":
             #According to python documentation when recv() returns the empty
             # string the other end has closed the connection.
-            
+
             #Log the time spent waiting.
             error_string = "timeout_recv(): time passed: %s sec of %s sec" % \
                            (time.time() - total_start_time, timeout)
@@ -640,7 +642,7 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             continue
 
         return data_string, error_string
-        
+
     #timedout
     error_string = "timeout_recv(): timedout"
     return "", error_string
@@ -705,7 +707,7 @@ def read_raw(fd, timeout=15*60):
     #Read in the adler32 CRC and verify it is consistant with what we
     # expected.
     tmp, error_string = timeout_recv(fd, 8, timeout)
-    crc = long(tmp, 16)  #XXX 
+    crc = long(tmp, 16)  #XXX
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
         error_string = "%s; read_raw: checksum mismatch %s != %s" \
@@ -732,7 +734,7 @@ def read_tcp_obj(sock, timeout=15*60):
             peername = "unknown"
         error_string = "%s from %s" % (e, peername)
         Trace.log(e_errors.ERROR, error_string)
-        
+
         #raise e_errors.TCP_EXCEPTION
         raise e_errors.EnstoreError(None, e, e_errors.NET_ERROR)
 
@@ -744,7 +746,7 @@ def read_tcp_obj(sock, timeout=15*60):
             obj = en_eval(s)
         except SyntaxError:
             obj = None
-    
+
     return obj
 
 # receive a message over the network which is a Python object
@@ -764,10 +766,10 @@ def read_tcp_obj_new(sock, timeout=15*60):
             peername = "unknown"
         error_string = "%s from %s" % (e, peername)
         Trace.log(e_errors.ERROR, error_string)
-        
+
 	#raise e_errors.TCP_EXCEPTION
         raise e_errors.EnstoreError(None, e, e_errors.NET_ERROR)
-    
+
     return cPickle.loads(s)
 
 # receive a message from a co-process which is a Python object
@@ -776,12 +778,12 @@ def read_obj(fd, timeout=15*60, verbose = True):
     if not s:
         if verbose:
             Trace.log(e_errors.ERROR, e)
-        
+
         #raise e_errors.TCP_EXCEPTION #What should this be?
         raise e_errors.EnstoreError(None, e, e_errors.IOERROR)
-    
+
     return cPickle.loads(s)
-    
+
 
 if __name__ == "__main__" :
     Trace.init("CALLBACK")

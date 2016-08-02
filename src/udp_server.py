@@ -26,6 +26,7 @@ import Trace
 import e_errors
 import host_config
 import enstore_constants
+import hostaddr
 
 # for python 2.6 and latter use
 # rawUDP_p -- process based rawUDP for better use of multiprocessor environment
@@ -63,7 +64,6 @@ class UDPServer:
         self.socket_type = socket.SOCK_DGRAM
         self.max_packet_size = enstore_constants.MAX_UDP_PACKET_SIZE
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
-        self.address_family = socket.AF_INET
         self._lock = threading.Lock()
         self.current_id = None
         self.queue_size = 0L
@@ -118,9 +118,7 @@ class UDPServer:
                 Trace.log(e_errors.ERROR, str(msg))
 
         try:
-            self.node_name, self.aliaslist, self.ipaddrlist = \
-                socket.gethostbyname_ex(
-                    socket.gethostbyaddr(self.server_address[0])[0])
+            self.node_name, self.aliaslist, self.ipaddrlist = hostaddr.gethostinfo()
             cf = host_config.find_config_file()
             if cf:
                 cc = host_config.read_config_file(cf)
@@ -206,7 +204,6 @@ class UDPServer:
         May be overridden.
         """
 
-        print "server_bind add %s"%(self.server_address,)
         Trace.trace(16,"server_bind add %s"%(self.server_address,))
         self.server_socket.bind(self.server_address)
 
