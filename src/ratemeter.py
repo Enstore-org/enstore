@@ -204,8 +204,9 @@ class Ratemeter:
         self.event_relay_addr = event_relay_addr
         self.system_name = system_name
         self.output_dir = output_dir
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        hostname = os.uname()[1]
+	hostname = os.uname()[1]
+	address_family = socket.getaddrinfo(hostname, None)[0][0]
+        self.sock = socket.socket(address_family, socket.SOCK_DGRAM)
         if hostname == 'sirius.net.home':
             hostname = 'cgw-sirius.dyndns.org'
         self.sock.bind((hostname, 0))

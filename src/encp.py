@@ -464,7 +464,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11d CVS"
+    version_string = "v3_11e CVS"
     encp_file = globals().get('__file__', "")
     if encp_file:
         version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)
@@ -2750,7 +2750,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                                                      ("", "", "", "", ""))[1])
     if hostname:
         try:
-            hostname = socket.gethostbyname(hostname)
+            hostname = hostaddr.name_to_address(hostname)
         except (socket.error, socket.herror, socket.gaierror):
             pass
 
@@ -4713,10 +4713,10 @@ def open_data_socket(mover_addr, interface_ip = None):
 
     Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
-
+    address_family = socket.getaddrinfo(mover_addr[0], None)[0][0]
     try:
         #Create the socket.
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket = socket.socket(address_family, socket.SOCK_STREAM)
     except socket.error, msg:
         raise socket.error, msg
 
@@ -8130,6 +8130,54 @@ def set_sfs_settings(ticket, intf_encp):
                   (time.time() - layer4_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
+
+    filedb_start_time = time.time() # Start time of updating file database.
+
+    #Update the file database with the transfer info.
+    Trace.message(INFO_LEVEL, "Setting file db pnfs fields.")
+    try:
+        # add the pnfs ids and filenames to the file clerk ticket and store it
+        fc_ticket = {}
+        fc_ticket["fc"] = ticket['fc'].copy()
+        fc_ticket["fc"]["pnfsid"] = sfs_id
+        fc_ticket["fc"]["pnfsvid"] = "" #p.volume_fileP.id
+        fc_ticket["fc"]["pnfs_name0"] = ticket['wrapper']['pnfsFilename']
+        fc_ticket["fc"]["pnfs_mapname"] = "" #p.mapfile
+        fc_ticket["fc"]["drive"] = drive
+        fc_ticket["fc"]['uid'] = ticket['wrapper']['uid']
+        fc_ticket["fc"]['gid'] = ticket['wrapper']['gid']
+        fc_ticket["fc"]['library'] = ticket['vc'].get('library', None)
+        fc_ticket["fc"]['original_library'] = ticket.get('original_library', None)
+        fc_ticket["fc"]['file_family_width'] = ticket['vc'].get('file_family_width', 1)
+
+
+        #As long as encp is restricted to working with one enstore system
+        # at a time, passing get_fcc() the bfid info is not necessary.
+        fcc = get_fcc()   #ticket["fc"]["bfid"]
+        fc_reply = fcc.set_pnfsid(fc_ticket)
+
+        if not e_errors.is_ok(fc_reply['status'][0]):
+            Trace.alarm(e_errors.ERROR, fc_reply['status'][0], fc_reply)
+            ticket['status'] = fc_reply['status']
+            return
+
+        Trace.message(TICKET_LEVEL, "FILE DB PNFS FIELDS SET")
+        Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
+
+        #ticket['status'] = fc_reply['status']
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        exc, msg = sys.exc_info()[:2]
+        Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
+                  % (str(exc), str(msg)))
+        ticket['status'] = (str(exc), str(msg))
+        return
+
+    message = "[2] Time to set file database: %s sec." % \
+              (time.time() - filedb_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     if not ticket.get('copy', None):  #Don't set size if copy.
         filesize_start_time = time.time() # Start time of setting the filesize.
@@ -12174,7 +12222,7 @@ class EncpInterface(option.Interface):
         #Determine all aliases and ip addresses for this node name.
         for i in [1, 2, 3]:
             try:
-                this_host = socket.gethostbyname_ex(socket.getfqdn())
+                this_host = socket.getaddrinfo(socket.getfqdn(), None)[0][4][0],[],[]
             except (socket.error, socket.herror, socket.gaierror):
                 time.sleep()
         else:

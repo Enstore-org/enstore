@@ -93,10 +93,10 @@ class GenericClientInterface(option.Interface):
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
     def client_options(self):
-        return (self.alive_options()  + 
-                self.trace_options() + 
+        return (self.alive_options()  +
+                self.trace_options() +
                 self.help_options() )
-    
+
     def complete_server_name(self, server_name, server_type):
         if not server_name:
             return server_name
@@ -113,7 +113,6 @@ class GenericClientInterface(option.Interface):
             #The string does not contain enough characters to end in
             # ".mover".  So, it must be added.
             server_name = server_name + "." + server_type
-
         return server_name
 
 class GenericClient:
@@ -158,7 +157,6 @@ class GenericClient:
         #This must be done after the self.csc is set.  Client's don't care,
         # but this prevents servers from crashing.
         self.log_name = self.get_name(name)
-
         if server_address:
             self.server_address = server_address
             if server_name:
@@ -185,7 +183,7 @@ class GenericClient:
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                     rcv_timeout=rcv_timeout,
                                                     rcv_tries=rcv_tries)
-        
+
 	# get the alarm client
 	if alarmc:
 	    # we were given one, use it
@@ -221,13 +219,15 @@ class GenericClient:
         if my_server == enstore_constants.CONFIGURATION_SERVER or \
            self._is_csc():
             host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
-            hostip = socket.gethostbyname(host)
+            #hostip = socket.gethostbyname(host)
+	    hostip = hostaddr.name_to_address(host)
             port = int(os.environ.get("ENSTORE_CONFIG_PORT",'localhost'))
             ticket = {'host':host, 'hostip':hostip, 'port':port,
                       'status':(e_errors.OK, None)}
         elif my_server == enstore_constants.MONITOR_SERVER:
             host = socket.gethostname()
-            hostip = socket.gethostbyname(host)
+            #hostip = socket.gethostbyname(host)
+	    hostip = hostaddr.name_to_address(host)
             port = enstore_constants.MONITOR_PORT
             ticket = {'host':host, 'hostip':hostip, 'port':port,
                       'status':(e_errors.OK, None)}
@@ -241,7 +241,7 @@ class GenericClient:
         if my_server == None:
             #If the server name is invalid, don't bother continuing.
             return None
-        
+
         ticket = self.get_server_configuration(my_server,
                                                rcv_timeout, tries)
 
@@ -254,13 +254,13 @@ class GenericClient:
             except IOError:
                 pass
             return None
-        
+
         try:
             server_address = (ticket['hostip'], ticket['port'])
         except KeyError, detail:
             try:
                 sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
-                                 ( my_server, detail, 
+                                 ( my_server, detail,
                                    os.environ.get('ENSTORE_CONFIG_HOST','')))
                 sys.stderr.flush()
             except IOError:
@@ -283,7 +283,7 @@ class GenericClient:
     #1   : to always do the long answer response
     #0   : to never to the long answer response
     def send(self, ticket, rcv_timeout=0, tries=0, long_reply = None):
-        try:
+	try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -307,8 +307,8 @@ class GenericClient:
              type(x) == types.DictType and x.get('long_reply', None)) \
             or (long_reply != None and long_reply)):
 
-            if (hasattr(self, "server_address") and 
-                (x['callback_addr'][0] == socket.gethostbyname(self.server_address[0]))):
+            if (hasattr(self, "server_address") and
+                (x['callback_addr'][0] == socket.getaddrinfo(self.server_address[0], None)[0][4][0])):
                 # If this client instance has attribute 'server_addr'
                 # and callback came from this address
                 # there is no need to check if access from this server is allowed
@@ -319,7 +319,7 @@ class GenericClient:
                 if not hostaddr.allow(x['callback_addr']):
                     x['status'] = "address %s not allowed" % (x['callback_addr'],)
                     return x
-            
+
             try:
                 connect_socket = callback.connect_to_callback(x['callback_addr'])
                 x['status'] = (e_errors.OK, None)
@@ -341,7 +341,7 @@ class GenericClient:
                 connect_socket.close()
 
         return x
-        
+
     # return the name used for this client/server #XXX what is this nonsense? cgw
     def get_name(self, name):
         return name
@@ -361,14 +361,14 @@ class GenericClient:
         except errno.errorcode[errno.ETIMEDOUT]:
             return {'status' : (e_errors.TIMEDOUT,
                                 enstore_constants.CONFIGURATION_SERVER)}
-        
+
         #Check for errors.
         if e_errors.is_timedout(t['status']):
             Trace.trace(14,"alive - ERROR, config server get timed out")
             return {'status' : (e_errors.CONFIGDEAD, None)}
         elif not e_errors.is_ok(t['status']):
             return {'status':t['status']}
-        
+
         #Send and recieve the alive message.
         try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
@@ -421,8 +421,8 @@ class GenericClient:
         except errno.errorcode[errno.ETIMEDOUT]:
             x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
         return x
-    
-    
+
+
     def handle_generic_commands(self, server, intf):
         ret = None
         if intf.alive:
@@ -441,7 +441,7 @@ class GenericClient:
             ret = self.trace_levels(server, 'dont_alarm', intf.dont_alarm)
         return ret
 
-            
+
     # examine the final ticket to check for any errors
     def check_ticket(self, ticket):
         if not 'status' in ticket.keys(): return None

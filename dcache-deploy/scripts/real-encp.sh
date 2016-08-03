@@ -364,6 +364,15 @@ except:
 	   (cd ${file_dir} && tar --seek --record-size=512 --strip-components 5 --force-local -xf ${package_path} ${file_path})  >>$LOGFILE 2>&1
 	   rc=$?
 	   if [ $rc -eq 0 ]; then
+	       pnfsid_in_loc=`basename ${file_path}`
+	       if [ "${pnfsid_in_loc}" != "${pnfsid}" ]; then
+		   #
+		   # we have come across packaged files that have different PNFSID in their
+		   # name than their PNFSIDs. Handle those:
+		   #
+		   say pnfsid on location cookie does not match file pnfsid ${pnfsid_in_loc} != ${pnfsid}
+		   (cd  ${file_dir} && mv ${pnfsid_in_loc} ${pnfsid})
+	       fi
 	       chmod 0644 $filepath
 	       touch $filepath
 	       t1=`date +"%s"`

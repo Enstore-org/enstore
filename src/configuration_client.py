@@ -225,7 +225,8 @@ class ConfigurationClient(generic_client.GenericClient):
         # machines we need to add this information before continuing.
         if e_errors.is_ok(ret) and key == enstore_constants.MONITOR_SERVER:
             ret['host'] = socket.gethostname()
-            ret['hostip'] = socket.gethostbyname(ret['host'])
+            #ret['hostip'] = socket.gethostbyname(ret['host'])
+	    ret['hostip'] = hostaddr.name_to_address(ret['host'])
             ret['port'] = enstore_constants.MONITOR_PORT
         ##END HACK.
 
@@ -249,7 +250,6 @@ class ConfigurationClient(generic_client.GenericClient):
         :arg retry: number of retries
         :rtype: :obj:`dict` configuration server reply
         """
-
         ticket = {"work"          : "dump2",
                   }
         done_ticket = self.send(ticket, rcv_timeout = timeout,
@@ -1084,5 +1084,4 @@ if __name__ == "__main__":
 
     # fill in interface
     intf = ConfigurationClientInterface(user_mode=0)
-
     do_work(intf)

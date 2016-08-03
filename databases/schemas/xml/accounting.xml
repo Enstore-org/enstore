@@ -263,7 +263,7 @@
     <column name="mover_interface" type="varchar" size="32" null="no"/>
     <column name="driver" type="varchar" size="16" null="no"/>
     <column name="storage_group" type="varchar" size="16" null="no"/>
-    <column name="encp_ip" type="varchar" size="16" null="no"/>
+    <column name="encp_ip" type="varchar" size="64" null="no"/>
     <column name="encp_id" type="varchar" size="64" null="no"/>
     <column name="disk_rate" type="bigint"/>
     <column name="transfer_rate" type="bigint"/>

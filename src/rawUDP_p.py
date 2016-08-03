@@ -19,6 +19,7 @@ import udp_common
 import checksum
 import Trace
 import enstore_constants
+import hostaddr
 
 DEBUG = False
 #DEBUG = True
@@ -94,9 +95,11 @@ class RawUDP:
 
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
-        self.address_family = socket.AF_INET
-        hostip = socket.gethostbyname(socket.gethostname())
+        #self.address_family = socket.AF_INET
+        #hostip = socket.gethostbyname(socket.gethostname())
+	hostip = hostaddr.name_to_address(socket.gethostname())
         ip, port, self.server_socket = udp_common.get_callback(hostip, port)
+        self.address_family = socket.getaddrinfo(ip, None)[0][0]
         self.server_address = (ip, port)
 
         # set this socket to be closed in case of an exec
@@ -183,8 +186,7 @@ class RawUDP:
     def get(self):
         _print(self.d_o, "GET")
         rc = None
-        Trace.trace(6,  "GET Queue size %s"%(self.queue_size_p.value,))
-
+        Trace.trace(6, "GET Queue size %s"%(self.queue_size_p.value,))
         if self.use_queue:
             message = self.queue.get(True, self.rcv_timeout)
             if message:
@@ -387,8 +389,10 @@ def _receiver(RawUDP_obj):
             RawUDP_obj.arrived.set()
 
 def create_server(port):
-    hostip = socket.gethostbyname(socket.gethostname())
-    server_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+    #hostip = socket.gethostbyname(socket.gethostname())
+    hostip = hostaddr.name_to_address(socket.gethostname())
+    address_family = socket.getaddrinfo(hostip[0], None)[0][0]
+    server_socket = cleanUDP.cleanUDP(address_family, socket.SOCK_DGRAM)
     try:
         server_socket.socket.bind((hostip, port))
     except socket.error, msg:

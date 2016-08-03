@@ -216,8 +216,9 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
     # the same machine.
     def _open_cntl_socket(self, client_addr, mover_addr):
         #Create the socket.
+	address_family = socket.getaddrinfo(client_addr[0], None)[0][0]
         try:
-            sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock=socket.socket(address_family, socket.SOCK_STREAM)
         except socket.error, detail:
             #raise CLIENT_CONNECTION_ERROR, detail[1]
             raise MonitorError("open_cntl_socket: %s"%(detail[1],))

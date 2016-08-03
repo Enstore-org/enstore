@@ -119,8 +119,11 @@ def get_enstore_tmp_dir():
     #First check the config file.  If local to the config server machine
     # read the config file directly.  Otherwise contact the config server.
     config_hostname = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
-    hostnames = socket.gethostbyname_ex(socket.gethostname())
-    hostnames = [hostnames[0]] + hostnames[1] + hostnames[2]
+    hostname = socket.gethostname()
+    hostinfo = socket.getaddrinfo(hostname, None)
+    #hostnames = socket.gethostbyname_ex(socket.gethostname())
+    #hostnames = [hostnames[0]] + hostnames[1] + hostnames[2]
+    hostnames = [hostname, [hostname.split('.')[0]], [hostinfo[0][4][0]]]
     for item in Interfaces.interfacesGet().values():
         # For nodes with multiple IP addresses, we need to check for all
         # of them.

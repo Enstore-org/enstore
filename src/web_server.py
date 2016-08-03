@@ -38,9 +38,10 @@ class WebServer:
         csc   = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
                                                           enstore_functions2.default_port()))
         self.this_host_name=socket.gethostname()
+        hostinfo = socket.getaddrinfo(self.this_host_name, None)
         self.system_name = csc.get_enstore_system(timeout,retry)
         self.server_dict={}
-        self.domain_name=socket.gethostbyname(socket.gethostname())[0:7]
+        self.domain_name=hostinfo[0][4][0][0:7]
         if self.system_name:
             self.server_dict = csc.get(WEB_SERVER, timeout, retry)
             config_dict = csc.dump(timeout, retry)

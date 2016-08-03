@@ -220,44 +220,50 @@ ENSTORE_FILES=$VAULT/enstore.files
 rm -f $ENSTORE_FILES
 #only backup the latest directory copy.
 ELAST=`ls -ltd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
-find $ELAST -type f $find_options -print > $ENSTORE_FILES
-# tar journal files
-# make a list of journal files
-find $ENSTORE/JOURNALS -type f $find_options -print > /tmp/journals
-# file list without path
-for i in `cat /tmp/journals`; do basename $i; done > /tmp/journal_files
-# do tar-ing in $ENSTORE/JOURNALS
-if [ -s /tmp/journal_files ]
+rc=$?
+if [ $rc -eq 0 ];
 then
+
+    find $ELAST -type f $find_options -print > $ENSTORE_FILES
+    # tar journal files
+    # make a list of journal files
+    find $ENSTORE/JOURNALS -type f $find_options -print > /tmp/journals
+    # file list without path
+    for i in `cat /tmp/journals`; do basename $i; done > /tmp/journal_files
+    # do tar-ing in $ENSTORE/JOURNALS
+    if [ -s /tmp/journal_files ]
+    then
 	(cd $ENSTORE/JOURNALS; tar cvf journals.tar `cat /tmp/journal_files`)
 	echo $ENSTORE/JOURNALS/journals.tar >> /tmp/journals
 	echo $ENSTORE/JOURNALS/journals.tar >> $ENSTORE_FILES
+    fi
+    rm -f /tmp/journal_files
+    # cat /tmp/journals >> $ENSTORE_FILES
+    ls $backup_path/ACC-DST/* >> $ENSTORE_FILES
+
+    lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
+    list ""
+    list "ENSTORE databases backup: $lines files to backup to tape"
+    doit "cat $ENSTORE_FILES"
+    list ""
+    counter=0
+    cat $ENSTORE_FILES| while read file; do
+       counter=`expr $counter + 1`;
+       list "$counter of $lines ENSTORE database files: $file"
+       saveit $file
+    done
+    if [ -f $QUIT ]; then exit 1; fi
+    rm -f $ENSTORE_FILES
+    # rm backup journals
+    for i in `cat /tmp/journals`
+    do
+	rm -f $i
+    done
+    rm -f /tmp/journals
+    find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
+else
+    echo "Did not find enstore backup, continuing" 1>&2
 fi
-rm -f /tmp/journal_files
-# cat /tmp/journals >> $ENSTORE_FILES
-ls $backup_path/ACC-DST/* >> $ENSTORE_FILES
-
-lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
-list ""
-list "ENSTORE databases backup: $lines files to backup to tape"
-doit "cat $ENSTORE_FILES"
-list ""
-counter=0
-cat $ENSTORE_FILES| while read file; do
-  counter=`expr $counter + 1`;
-  list "$counter of $lines ENSTORE database files: $file"
-  saveit $file
-done
-if [ -f $QUIT ]; then exit 1; fi
-rm -f $ENSTORE_FILES
-# rm backup journals
-for i in `cat /tmp/journals`
-do
-  rm -f $i
-done
-rm -f /tmp/journals
-find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
-
 
 
 

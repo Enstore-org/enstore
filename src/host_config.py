@@ -24,6 +24,7 @@ import Trace
 import multiple_interface
 import enroute
 import runon
+import hostaddr
 #import pdb
 
 #UDP_fixed_route = 0
@@ -135,7 +136,8 @@ def get_default_interface_ip():
     # The minute loop is necessary when the DNS server is rebooted.
     for i in range(0, 60):
         try:
-            default=socket.gethostbyname(socket.getfqdn(socket.gethostname()))
+            # default=socket.getaddrinfo(socket.getfqdn(),  socket.AF_INET)[0][4][0]
+	    default=socket.getaddrinfo(socket.getfqdn(),  None)[0][4][0]
             break
         except socket.error, msg:
             if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
@@ -171,7 +173,8 @@ def get_default_interface_ip():
             #Look for matching name lookups.
             try:
                 if socket.gethostbyaddr(intf['ip'])[0] == socket.gethostname():
-                    default = socket.gethostbyname(intf['ip'])
+		    default = hostaddr.name_to_address(socket.gethostname())
+                    #default = socket.gethostbyname(intf['ip'])
                     break
             except socket.error:
                 pass
@@ -351,7 +354,8 @@ def is_route_in_table(dest):
 
     for i in range(0, 60):
         try:
-            ip = socket.gethostbyname(dest)
+            #ip = socket.gethostbyname(dest)
+	    ip = hostaddr.name_to_address(dest)
             break
         except (socket.error,), msg:
             if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:

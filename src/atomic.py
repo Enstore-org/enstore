@@ -40,7 +40,7 @@ def unique_id():
     tm=b.join(a)
     return tm.replace(" ", "_")
 
-    
+
 def _open2(pathname, flags, mode=0666):
     __pychecker__ = "unusednames=i"
 
@@ -75,7 +75,7 @@ def _open2(pathname, flags, mode=0666):
     message = os.strerror(rtn_errno)
     use_filename = pathname
     unlink_filename = None
-    
+
     try:
         os.link(tmpname, pathname)
         ok = True
@@ -139,7 +139,7 @@ def _open2(pathname, flags, mode=0666):
                 else:
                     #If we get out of the loop, we know it must be either
                     # case 3 or case 4.
-                    
+
                     if s and s2 and s[stat.ST_INO] == s2[stat.ST_INO]:
                         #We know it is case 3.
                         rtn_errno = errno.EAGAIN
@@ -168,7 +168,7 @@ def _open2(pathname, flags, mode=0666):
                         message = os.strerror(rtn_errno)
                         use_filename = pathname
                         unlink_filename = tmpname
-                        
+
             except OSError, detail2:
                 Trace.trace(5, "atomic.open 3 %s"%(detail2,))
                 os.close(fd_tmp)
@@ -197,7 +197,7 @@ def _open2(pathname, flags, mode=0666):
             os.close(fd_tmp)
             os.unlink(tmpname)
             raise sys.exc_info()
-            
+
 
     if ok:
         #Pull out only the information about how to open the file with respect
@@ -205,8 +205,8 @@ def _open2(pathname, flags, mode=0666):
         second_chance_flags = flags & (os.O_WRONLY | os.O_RDONLY | os.O_RDWR)
         try:
             fd=os.open(pathname, second_chance_flags, mode)
-            os.unlink(tmpname)
             os.close(fd_tmp)
+            os.unlink(tmpname)
             return fd
         except OSError, detail:
             Trace.trace(5, "atomic.open 4 %s"%(detail,))

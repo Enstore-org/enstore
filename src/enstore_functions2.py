@@ -848,7 +848,9 @@ def this_host():
     
     if host_names_and_ips == None:
         try:
-            rtn = socket.gethostbyname_ex(socket.getfqdn())
+            #rtn = socket.gethostbyname_ex(socket.getfqdn())
+            hostname = socket.getfqdn()
+            rtn = socket.getaddrinfo(hostname, None)
         except (socket.error, socket.herror, socket.gaierror), msg:
             try:
                 message = "unable to obtain hostname information: %s\n" \
@@ -858,7 +860,7 @@ def this_host():
             except IOError:
                 pass
             sys.exit(1)
-        rtn_formated = [rtn[0]] + rtn[1] + rtn[2]
+        rtn_formated = [hostname, hostname.split('.')[0], rtn[0][4][0]]
 
         interfaces_list = Interfaces.interfacesGet()
         for interface in interfaces_list.keys():

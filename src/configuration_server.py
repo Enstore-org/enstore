@@ -633,13 +633,13 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 
         if not hostaddr.allow(ticket['callback_addr']):
             return None
-
         reply = self.__make_dump(ticket)
         if reply == None:
             return
         self.reply_to_caller(ticket)
         addr = ticket['callback_addr']
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	address_family = socket.getaddrinfo(addr[0], None)[0][0]
+        sock = socket.socket(address_family, socket.SOCK_STREAM)
         try:
             sock.connect(addr)
             r = callback.write_tcp_obj(sock, reply)
