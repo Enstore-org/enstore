@@ -1,6 +1,6 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 5.1.2
+Version: 6.0.0
 Release: 0
 License: GPL
 Group: System Environment/Base
@@ -220,9 +220,9 @@ $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh $1
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 
-%postun
-export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
-rm -rf $ENSTORE_DIR
+# %postun
+#export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
+#rm -rf $ENSTORE_DIR
 
 %files
 %defattr(-,enstore,enstore,-)
@@ -237,6 +237,18 @@ rm -rf $ENSTORE_DIR
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Wed Aug 3 2016  <moibenko@fnal.gov> -
+- First official release with IPV6 support v 6.0.0, release 0.
+* Wed Jul 13 2016  <moibenko@fnal.gov> -
+- minor change v 5.1.3, release 5.
+* Wed Jul 13 2016  <moibenko@fnal.gov> -
+- do not remove /opt/enstore v 5.1.3, release 4.
+* Wed Jul 13 2016  <moibenko@fnal.gov> -
+- do not remove /opt/enstore v 5.1.3, release 3.
+* Wed Jul 13 2016  <moibenko@fnal.gov> -
+- minor change v 5.1.3, release 2.
+* Tue Jul 12 2016  <moibenko@fnal.gov> -
+- preliminary release with IPV6 support v 5.1.3, release 1.
 * Tue May 10 2016  <moibenko@fnal.gov> -
 - new release 5.1.3, release 0.
 * Wed Feb 10 2016  <moibenko@fnal.gov> -
