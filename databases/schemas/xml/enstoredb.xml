@@ -9,7 +9,7 @@
     <column name="daily" type="numeric"/>
     <column name="projected_daily" type="numeric"/>
     <column name="quota" type="integer"/>
-    <column name="allocated" type="integer"/>
+    <column name="allocated" type="bigint"/>
     <column name="days_surviving" type="numeric"/>
     <column name="alert" type="varchar"/>
   </table>
@@ -256,6 +256,7 @@
         <index name="cache_location_idx" columns="cache_location"/>
         <index name="original_library_idx" columns="original_library"/>
         <index name="file_family_width_idx" columns="file_family_width"/>
+	<index name="file_bfid_key" columns="bfid"/>
     </indexes>
     <relations>
         <relation name="$1" column="volume" table="volume" fk="id"/>

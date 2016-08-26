@@ -1,0 +1,361 @@
+commit e84d491366323bda114915221364b95e07fc112b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Aug 3 13:59:14 2016 -0500
+
+    First official release with IPV6 support.
+    v 6.0.0
+    release 1
+
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 978f1a937e8d6aec0614e4cdbe52962fa4af0b73
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 2 12:56:37 2016 -0500
+
+        Changes to allow IPV6 in enstore communications.
+        The changes are basically to conform to requirements in https://docs.python.org/2/library/socket.html
+
+        http://srm.fnal.gov/reviews/r/353/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1790
+
+M	src/callback.py
+M	src/configuration_client.py
+M	src/configuration_server.py
+M	src/encp.py
+M	src/enstore_functions.py
+M	src/enstore_functions2.py
+M	src/enstore_start.py
+M	src/event_relay.py
+M	src/event_relay_client.py
+M	src/file_clerk.py
+M	src/generic_client.py
+M	src/host_config.py
+M	src/hostaddr.py
+M	src/library_manager.py
+M	src/library_manager_client.py
+M	src/media_changer.py
+M	src/monitor_client.py
+M	src/monitor_server.py
+M	src/ratemeter.py
+M	src/rawUDP_p.py
+M	src/udp_server.py
+M	src/volume_clerk.py
+M	src/web_server.py
+
+commit 8858b8df0addb676a3b60be857c697c552f0ecf4
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Jul 25 10:28:12 2016 -0500
+
+    encp: bug fix, move unlink call after close call, bump encp version to v3_11e
+
+       RB: http://srm.fnal.gov/reviews/r/356/
+       BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1793
+
+M	src/atomic.py
+M	src/encp.py
+
+commit 5d0726b565868b5341dd4f14642980134ac74c52
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 20 14:41:15 2016 -0500
+
+    accounting db: alter encp_xfer.encp_ip to be 64 characters long
+
+       RB : http://srm/reviews/r/355/
+       BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1792
+
+M	databases/schemas/xml/accounting.xml
+
+commit 71bef53a8ea6cde5704043acecdb962554d5a7a3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Jul 20 09:43:15 2016 -0500
+
+        Fix sc device directory name.
+        The leading "/" was missing.
+        http://srm.fnal.gov/reviews/r/354/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1791
+
+M	src/mover.py
+
+commit c01cb958b1c8d4b143c302040f3e75edb9d23b9d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Jul 12 15:43:32 2016 -0500
+
+    file_clerk: cache label -> volume_id internaly to avoid nested selects
+
+    introduced a simple key,value LRU cache and use it to keep
+    volume label, volume id association to avoid nested select
+
+       RB : http://srm/reviews/r/344/
+       BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1778
+
+A	src/Cache.py
+M	src/dbaccess.py
+M	src/edb.py
+
+commit 2c9fb86784e9b91f8935a1a381fdb063f0bfb7bc
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jul 8 11:18:57 2016 -0500
+
+        Exclude 'send_ts' key from the dictionary reported as alarm.
+        http://srm.fnal.gov/reviews/r/352/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1787
+
+M	src/alarm_server.py
+
+commit 376b8996099e9d7e95d65002297bc6bb4b675030
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jul 7 10:50:43 2016 -0500
+
+        Do not log purged files.
+        http://srm.fnal.gov/reviews/r/351/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1789
+
+M	src/cache/servers/migrator.py
+
+commit a1f356cb2abd07624449a8e2ccb24ac0a9a3f3a1
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Jul 1 14:32:50 2016 -0500
+
+    checkdb: generate complete file listing, recent_files and PNFS.XREF in one go
+
+       RB : http://srm/reviews/r/345/
+
+M	src/checkdb.py
+
+commit 9f0a5008de47dcc9db9b3ebe00561b02cfbcd193
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Jun 14 15:22:46 2016 -0500
+
+    real-encp.sh : handle cases when packaged file name is different from
+    its pnfsid
+
+    RB: http://srm/reviews/r/350/
+    BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1784
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit 6a2d21f22f52203965fd09693b23d0e5da5bd6ef
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Jun 14 12:25:30 2016 -0500
+
+    file_clerk: limit number of replayed events
+
+    RB: http://srm/reviews/r/348/
+
+M	src/file_clerk.py
+
+commit 5ba1876721f543a77ca3c99e610cf73a8d5d619b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Jun 14 12:13:27 2016 -0500
+
+    backup2Tape: skip if no enstore backup is found
+
+    RB: http://srm/reviews/r/349/
+    BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1781
+
+M	sbin/backup2Tape
+
+commit e9d922881711beb0a095584764f0c4b0d84fc199
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jun 2 11:04:19 2016 -0500
+
+    file_clerk: revert set_pnfsid call
+
+    RB: http://srm/reviews/r/347/
+
+M	src/encp.py
+M	src/file_clerk.py
+
+commit 0ad9d1b92ad31949295376f0351c435d523a61aa
+Merge: c81f422 2fdf097
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue May 31 15:07:18 2016 -0500
+
+    t branch Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 2fdf097233ee0e3a474baead0e4e20c83cdb6bdd
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue May 31 12:49:43 2016 -0500
+
+        It was observed that when tape drive does not return complete information and results in  Sense Key : Medium Error [current] the mover coredumps at the line in ftt_stats.c where it compares names for exabyte and mammoth tape drives (looks as the wrong address). Changed the comparison method.
+        http://srm.fnal.gov/reviews/r/342/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1287
+
+M	ftt/ftt_lib/ftt_stats.c
+
+commit c81f4221af8302ae756a7571abd68d766d418323
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu May 26 09:55:09 2016 -0500
+
+    checkdb: replace many sequential queries with one query
+
+    RB: http://srm/reviews/r/343/
+    BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1779
+
+M	src/checkdb.py
+
+commit caeb9aae7a2e83ab6058222cdbc5101afc313187
+Merge: d6d2845 af7ba35
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue May 10 13:25:34 2016 -0500
+
+    Merge branch 'release/5.1.3-0' into develop
+
+commit af7ba356d3c2b67b8ed3bb4af1d0de4941028f20
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue May 10 13:23:56 2016 -0500
+
+    Enstore rpm 5.1.3-0
+
+A	release-notes/ENSTORE_V_5.1.2-0.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit d6d2845a19b92d0256b86868b6b3b264dd179745
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon May 9 13:08:28 2016 -0500
+
+    file_clerk: use rawUDP for mesasge processing
+
+        file_clerk: use rawUDP for mesasge processing
+        add "send_ts" timestamp of the moment the message was created to
+        facilitate debugging
+    	RB : http://srm/reviews/r/341/
+            BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1774
+
+M	src/file_clerk.py
+M	src/rawUDP_p.py
+M	src/udp_client.py
+M	src/udp_server.py
+
+commit 96fe8b0e18c3d8d244de1d26dca346c17b5b64a4
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Apr 27 09:08:25 2016 -0500
+
+    For writing file to tape use command line options instead of setting pnfs tags.
+    http://srm.fnal.gov/reviews/r/339/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1773
+
+M	src/cache/servers/migrator.py
+
+commit dc85e174ad118f47f199ed7d51179a8aaa90ea85
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Apr 18 16:31:04 2016 -0500
+
+        save result of previous run of recent_files_on_tape to
+        a directry in format YYYY/MM/DD
+
+    	RB : http://srm/reviews/r/338/
+    	BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1769
+
+M	src/recent_files_on_tape.py
+
+commit 065ac9f77e199986021954750316f831e45b7ed4
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Apr 18 15:42:36 2016 -0500
+
+        Changes to address issues during stken upgrade to 5.1.2-0
+        http://srm.fnal.gov/reviews/r/335/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1753
+
+M	sbin/purge_files_wrapper.py
+M	sbin/qpid_broker
+M	src/cache/messaging/client.py
+M	src/cache/servers/migration_dispatcher.py
+
+commit 96c66f44cd1ce397cec04994dc92649f2ba726b0
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Apr 18 14:05:32 2016 -0500
+
+        query in pnfs_monitor.py was incorrect.
+        As the result the monitor table (files_with_no_layers) kept growing resulting in ever increasing
+        running time of pnfs_monitor. Reported by SSA
+
+        RB: http://srm.fnal.gov/reviews/r/337/
+
+M	sbin/pnfs_monitor.py
+
+commit 20a02526648f352b52439164d80944c175fe1861
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Apr 7 16:27:57 2016 -0500
+
+        print package pnfsid in complete file listing
+
+        RB : http://srm/reviews/r/336/
+
+M	src/checkdb.py
+
+commit 656c97dc17d905a0cfeaf2ef3d2fe8a562e5b36f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Mar 29 16:29:16 2016 -0500
+
+        Contrary to SLF5 SLF6 kernel rebuilds SCSI address on boot. This leads to the situation when tape drive device may change.
+        We have a static definition of tape device in enstore configuration.
+        This change does the following:
+        1. For STK tape libraries get the WWN of tape drive using ACSSA command. Use this information to identify tape drive device and make corresponding symlinks.
+        This approach allows to correctly map tape devices (tps* and sc*) to mc_device in the tape library.
+        2. Looks as other types of tape libraries do not provide interface for reading tape drive WWN.
+        For such libraries only single tape drive per host will be correctly identified.
+        This change requires installation of sg3_utils.
+        http://srm.fnal.gov/reviews/r/334/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1751
+
+M	src/media_changer.py
+M	src/media_changer_client.py
+M	src/mover.py
+
+commit 17f477393fbd1496b80896efb24fb64edcb63fb0
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Mar 2 10:26:11 2016 -0600
+
+        More changes to installation instructions
+
+M	doc/guides/Enstore_Administrator_Guide.odm
+M	doc/guides/Enstore_Administrator_Guide.pdf
+M	doc/guides/installation.odt
+
+commit 8d75e99d82ccc729aa4695614f15484961470171
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Feb 29 13:54:24 2016 -0600
+
+        Changed installaton procedure
+
+M	doc/guides/Enstore_Administrator_Guide.pdf
+M	doc/guides/booktitle_admin.odt
+M	doc/guides/installation.odt
+
+commit 19afdba2d5798df2152bab7b242bef87fbdc68e8
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Feb 15 16:39:41 2016 -0600
+
+    Fixed for disk mover.
+
+M	src/mover.py
+
+commit 7b33802faf661de1b7a28a126c2eebd3fe808a38
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Feb 12 15:02:44 2016 -0600
+
+        Before enstore contained 2 directories ftt and FTT, where ftt was a copy of ftt. Now FTT is symlink of ftt.
+        Also removing rpm will remove /opt/enstore
+
+        http://srm.fnal.gov/reviews/r/333/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1750
+
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 09f1b02b8bc15421dbeb4ab2b4dad6006291f174
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Feb 11 14:04:31 2016 -0600
+
+        Disable migrator debug output at start.
+        http://srm.fnal.gov/reviews/r/332/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1749
+
+M	src/cache/servers/migrator.py
+
+commit 5877e27f63c8475a93356ca63db8e8d02a4397b3
+Merge: 5c49c0f af9a27a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Feb 10 10:16:08 2016 -0600
+
+    Merge branch 'release/5.1.2.0' into develop
