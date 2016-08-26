@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.0.0
-Release: 0
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -237,6 +237,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Aug 26 2016  <moibenko@fnal.gov> -
+- udp_common.py change was missing
 * Wed Aug 3 2016  <moibenko@fnal.gov> -
 - First official release with IPV6 support v 6.0.0, release 0.
 * Wed Jul 13 2016  <moibenko@fnal.gov> -
