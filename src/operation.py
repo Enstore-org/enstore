@@ -165,36 +165,36 @@ DATABASEUSER = None
 # This is a hard wired configuration
 def library_type(cluster, lib):
 	if cluster == 'D0':
-		if lib == 'D0-9940B' or lib == 'mezsilo':
+		if lib in ('D0-9940B','mezsilo'):
 			return '9310'
-		if lib == 'samlto2' or lib == 'samlto':
+		if lib in ('samlto2','samlto'):
 			return 'aml2'
-		if lib == 'D0-LTO4F1' or lib == 'D0-10KCF1':
+		if lib in ('D0-LTO4F1','D0-10KCF1'):
 			return '8500F1'
-		if lib == 'D0-LTO4G1':
+		if lib in ('D0-LTO4G1',):
 			return '8500G1'
-		if lib == 'D0-LTO4GS' or lib == 'D0-10KCGS':
+		if lib in ('D0-LTO4GS','D0-10KCGS'):
 			return '8500GS'
 	elif cluster == 'STK':
-		if lib == 'CD-9940B' or lib == '9940':
+		if lib in ('CD-9940B','9940'):
 			return '9310'
-		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1' or lib == 'CD-10KCG1':
+		if lib in ('CD-LTO3','CD-LTO4G1','CD-10KCG1','CD-10KDG1'):
 			return '8500G1'
-		if lib == 'CD-LTO3GS' or lib == 'CD-LTO4GS' or lib == 'CD-10KCGS':
+		if lib in ('CD-LTO3GS','CD-LTO4GS','CD-10KCGS','CD-10KDGS'):
 			return '8500GS'
 		if lib in ('CD-LTO4F1','CD-10KCF1','CD-10KDF1'):
 			return '8500F1'
 	elif cluster == 'CDF':
-		if lib == 'CDF-9940B' or lib == 'cdf':
+		if lib in ('CDF-9940B','cdf'):
 			return '9310'
-		if lib == 'CDF-LTO3' or lib == 'CDF-LTO4G1':
+		if lib in ('CDF-LTO3','CDF-LTO4G1'):
 			return '8500G1'
-		if lib == 'CDF-LTO4GS' or lib == 'CDF-10KCGS':
+		if lib in ('CDF-LTO4GS','CDF-10KCGS'):
 			return '8500GS'
-		if lib == 'CDF-LTO4F1' or lib == 'CDF-10KCF1':
+		if lib in ('CDF-LTO4F1','CDF-10KCF1'):
 			return '8500F1'
 	elif cluster == 'GCC':
-		if lib == 'LTO3' or lib == 'LTO4' or lib == '10KCG1':
+		if lib in ('LTO3','LTO4','10KCG1'):
 			return '8500G1'
 		if lib == 'LTO4F1':
 			return '8500F1'

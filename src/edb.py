@@ -462,11 +462,25 @@ class FileDB(DbTable):
         INSERT INTO {} ({}) VALUES (
         """
         query=query.format(self.table,string.join(v1.keys(), ","))
-        values = v1.values()
         for k in v1.keys():
                 query += "%s,"
         query=query[:-1]+")"
-        res=self.dbaccess.update_returning_result(query,v1.values())
+        try:
+            res=self.dbaccess.update_returning_result(query,v1.values())
+        except:
+            res = self.dbaccess.query("SELECT id FROM volume where label=%s",(label,))
+            if len(res) > 0:
+                if int(volume_id) != int(res[0][0]):
+                    Trace.log(e_errors.INFO, "Label="+label+", cached id="+str(volume_id) +", db id="+str(res[0][0]));
+                    volume_id = res[0][0]
+                    self.volume_cache.put(label,volume_id)
+                    v1["volume"] = volume_id
+                    res=self.dbaccess.update_returning_result(query,v1.values())
+                else:
+                    raise
+            else:
+                raise
+
         if self.auto_journal:
             self.jou[key] = value
 

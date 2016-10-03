@@ -5834,8 +5834,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 ticket['mover']['callback_addr'] = (host,port) #client expects this
                 ticket['mover']['mover_address'] = (host, self.config['port'])
-
-                self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                address_family = socket.getaddrinfo(host, None)[0][0]
+                self.control_socket = socket.socket(address_family, socket.SOCK_STREAM)
                 flags = fcntl.fcntl(self.control_socket.fileno(), fcntl.F_GETFL)
                 fcntl.fcntl(self.control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
                 # the following insertion is for antispoofing

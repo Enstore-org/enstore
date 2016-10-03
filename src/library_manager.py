@@ -4054,9 +4054,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # This code requires a new key in the mover ticket
         if mticket.has_key("current_time"):
             mover = mticket['mover']
-            if mover in self.volumes_at_movers.get_active_movers():
+            Trace.trace(11, "_mover_idle: active movers: %s"%(self.volumes_at_movers.at_movers.keys(),))
+            if mover in self.volumes_at_movers.at_movers:
                 # how idle mover can be in the active list?
                 # continue checking. This check requires synchronization between LM and mover machines.
+                Trace.trace(11, "_mover_idle: time_started %s current_time %s"%(self.volumes_at_movers.at_movers[mover]['time_started'], mticket['current_time']))
                 if self.volumes_at_movers.at_movers[mover]['time_started'] >= mticket['current_time']:
                     # idle request was issued before the request became active
                     # ignore this request, but send something to mover.
@@ -4435,7 +4437,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if mticket.has_key("current_time"):
             mover = mticket['mover']
             Trace.trace(self.my_trace_level, "_mover_bound_volume: active movers %s"%(self.volumes_at_movers.at_movers,))
-            if mover in self.volumes_at_movers.get_active_movers():
+            if mover in self.volumes_at_movers.at_movers:
                 # continue checking. This check requires synchronization between LM and mover machines.
                 if self.volumes_at_movers.at_movers[mover]['time_started'] >= mticket['current_time']:
                     # request was issued before the request became active
@@ -4896,7 +4898,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket["status"] = (e_errors.OK, None)
         try:
             rticket['pending_asserts'] = self.volume_assert_list
-            self.send_reply_with_long_answer(rticket) 
+            self.send_reply_with_long_answer(rticket)
         except:
             rc = 1
         return rc
