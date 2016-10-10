@@ -20,7 +20,7 @@ PYLIB=$(PYTHON_DIR)/lib/python2.*/lib-dynload
 # OSes that won't have modules be there when running on UNIX.
 FREEZE_SKIP_OS=-x ce -x dos -x mac -x nt -x os2 -x riscos -x riscosenviron -x riscospath -x MacOS -x _winreg -x msvcrt -x MACFS -x macfs -x SOCKS -x Carbon.File -x Carbon.Folder -x Carbon.Folders
 FREEZE_SKIP_HTML=-x GimpGradientFile -x GimpPaletteFile -x Image -x ImageTk -x PaletteFile -x _imaging -x jarray
-FREEZE_SKIP_MISC=-x sitecustomize -x ic -x rourl2path -x EasyDialogs -x org.python.core -x org -x xreadlines -x os.path -x _emx_link -x _dummy_threading -x _subprocess -x email.Generator -x email.Iterators -x usercustomize -x _md5 -x _sha -x _sha256 -x _sha512 -x _xmlplus -x _xmlrpclib -x dummy.Process -x sgmlop -x pg -x whrandom -x _scproxy -x _warnings -x init_warnings
+FREEZE_SKIP_MISC=-x sitecustomize -x ic -x rourl2path -x EasyDialogs -x org.python.core -x org -x xreadlines -x os.path -x _emx_link -x _dummy_threading -x _subprocess -x email.Generator -x email.Iterators -x usercustomize -x _md5 -x _sha -x _sha256 -x _sha512 -x _xmlplus -x _xmlrpclib -x dummy.Process -x sgmlop -x pg -x whrandom -x _scproxy -x _warnings -x init_warnings -x DBUtils -x psycopg2 -x psycopg2.extras -x DBUtils.PooledDB
 FREEZE_SKIP_POSTGRES=`if [ "_Linux" != _$(MACH_OS) ]; then echo "-x pg"; fi`
 
 FREEZE_ENCP_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC)
