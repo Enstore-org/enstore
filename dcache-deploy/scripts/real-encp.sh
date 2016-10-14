@@ -68,17 +68,8 @@ sayS() { if [ -n "${ERROR}" ];   then  echo $version `date` ${node:-nonode} ${co
 #
 pathfinder() {
     id=$1
-    fname=`head -n 1 "/pnfs/fs/.(nameof)($id)"`
-    sum=$fname
-    while : ; do
-	id=`head -n 1 "/pnfs/fs/.(parent)($id)" 2>/dev/null`
-	if [ $? -ne 0 ] ; then break ; fi
-	fname=`head -n 1 "/pnfs/fs/.(nameof)($id)" 2>/dev/null`
-	if [ $? -eq 0 ] ; then
-	    sum=${fname}/$sum
-	fi
-    done
-    echo $sum
+    fname=`head -n 1 "/pnfs/fs/.(pathof)($id)"`
+    echo $fname
 }
 
 #
@@ -289,6 +280,7 @@ fsize=${si_size}
 #remove double slashes:
 
 si_path=`echo $si_path | sed -e "s/\/\/*/\//g"`
+si_path=`pathfinder ${pnfsid}`
 
 
 pathtype1=`echo $si_path | grep -c "^/pnfs/fnal.gov/usr"`
@@ -344,7 +336,7 @@ except:
 	   # get package pnfsid
 	   #
 	   package_pnfsid=`enstore info --file ${package_id} | grep pnfsid | sed -e "s/[[:punct:]]//g" | awk '{ print $NF}'`
-	   package_path=`cat "/pnfs/fs/.(pathof)(${package_pnfsid})"`
+	   package_path=`pathfinder ${package_pnfsid}`
 	   #
 	   # strip leading slash from location cookie
 	   #
