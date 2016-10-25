@@ -22,7 +22,10 @@ import e_errors
 import Interfaces
 
 def __get_callback(host, port):
-    address_family = socket.getaddrinfo(host, None)[0][0]
+    if host:
+        address_family = socket.getaddrinfo(host, None)[0][0]
+    else:
+        address_family = socket.AF_INET
     sock = cleanUDP.cleanUDP(address_family, socket.SOCK_DGRAM)
     try:
         sock.socket.bind((host, port))
@@ -67,7 +70,8 @@ def get_default_callback(use_port=0):
 
 # try to get a port from a range of possibilities
 def get_callback(use_host=None, use_port=0):
-    if use_host not in [None,'']:
+    #if use_host not in [None,'']:
+    if use_host not in [None]:
         host = use_host
     else:
         host = host_config.choose_interface()['ip']

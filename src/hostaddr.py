@@ -86,10 +86,9 @@ def getdomainname():
 
 #Return the domain address of the current network.
 def getdomainaddr():
-    host_info = gethostinfo()
+    host_info = socket.getaddrinfo(socket.gethostname(), None)
     if host_info:
-        #ip = host_info[2][0]
-        ip = hostinfo[0][4][0]
+        ip = host_info[0][4][0]
         words = ip.split(".")
         if len(words) == 4:
             first_byte = int(words[0])
@@ -229,7 +228,6 @@ def update_domains(csc_or_dict):
 #Return None if no matching rule is explicity found.  Return True if this
 # is a valid address and False if it is not.
 def _allow(addr):
-
     # always allow requests from local host
     if socket.getfqdn() == socket.gethostbyaddr(addr)[0]:
         return 1
