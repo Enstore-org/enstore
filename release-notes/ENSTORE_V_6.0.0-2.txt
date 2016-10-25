@@ -1,0 +1,53 @@
+commit 7887ab0819d1ae463ab301bbcf7d10b07a1e6327
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Sep 29 10:47:49 2016 -0500
+
+    Bug fix: library manager incorrectly processes volumes_at_movers list.
+    Library manager incorrectly processes volumes_at_movers list. Instead of searching through the keys of the dictioany it searches through the list of values.
+    http://srm.fnal.gov/reviews/r/362/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1628
+
+M	src/library_manager.py
+
+commit 2a0d526a0f6b1f2754ee3f43bef4728bf921d906
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Sep 15 16:37:01 2016 -0500
+
+    retry in case cached label to volume id is invalid
+    (for instance due to volue recycle and erace)
+
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1801
+        RB : http://srm.fnal.gov/reviews/r/361/
+
+    commit 59d55bc3337ef2fbf953abff6b374671776692a8
+    Author: Dmitry Litvintsev <litvinse@fnal.gov>
+    Date:   Thu Sep 15 16:05:26 2016 -0500
+
+        retry in case label to volume id map changed
+
+    commit 16aef2e6b345167cc35bb3453442b735874db2f2
+    Author: Dmitry Litvintsev <litvinse@fnal.gov>
+    Date:   Thu Sep 15 15:58:54 2016 -0500
+
+        Retry in case cached map between label and volume id has changed
+
+M	src/edb.py
+
+commit 18744c9f93d225786f95d86b8c65b0a89fea4364
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Aug 30 15:59:51 2016 -0500
+
+    Add CD-10KDG1 library
+       BZ : http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1800
+       RB : http://srm.fnal.gov/reviews/r/359
+
+M	src/operation.py
+
+commit 7bcc5564df1da6d1df6edf590fae9ee3e0154db1
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 30 11:42:33 2016 -0500
+
+    mover.py change was missing in ipv6
+
+M	src/mover.py
+
