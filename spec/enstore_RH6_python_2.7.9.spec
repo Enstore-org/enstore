@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.0.0
-Release: 3
+Release: 4
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -134,7 +134,10 @@ if [ $? -ne 0 ]; then
 	useradd -u 5744 -g enstore enstore
 	chmod 775 ~enstore
 fi
-
+# save existing enstore distribution
+d=`date "+%%F-%T"`
+echo "moving $RPM_BUILD_ROOT/%{prefix} to /tmp/enstore_backup.$d"
+mv $RPM_BUILD_ROOT/%{prefix} /tmp/enstore_backup.$d
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
