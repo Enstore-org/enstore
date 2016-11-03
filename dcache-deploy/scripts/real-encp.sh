@@ -69,7 +69,7 @@ sayS() { if [ -n "${ERROR}" ];   then  echo $version `date` ${node:-nonode} ${co
 pathfinder() {
     id=$1
     fname=`head -n 1 "/pnfs/fs/.(pathof)($id)"`
-    echo $fname
+    echo ${fname}
 }
 
 #
@@ -311,27 +311,43 @@ fi
 if [ "$command" = "get" ] ; then
 
 #
-# Check if this is SFA file and we can just copy it
+# check if volume system inhibit is none:
 #
-   py_file="/tmp/${si_bfid}_$$.py"
-   enstore info --file ${si_bfid} 1> ${py_file} 2>/dev/null
-   rc=$?
-   if [ $rc -eq 0 ]; then
-       package_id=`python -c '
-import string
+   vol_info=$(enstore info --gvol ${si_volume} 2>/dev/null)
+
+   if [ $? -eq 0 ]; then
+       system_inhibit=$(python -c "
 import sys
 try:
-  f=open("'${py_file}'","r")
-  code="d=%s"%(string.join(f.readlines(),""))
-  f.close()
+  code='d='+sys.argv[1]
   exec(code)
-  print d.get("package_id")
+  print d.get('system_inhibit')[0]
 except:
   sys.exit(1)
-'`
-       rc=$?
-       rm -f ${py_file}
-       if [ ${rc} -eq 0 -a "${package_id}" != "" -a "${package_id}" != "None" -a "${package_id}" != "${si_bfid}" ]; then
+" "${vol_info}")
+
+       if [ $? -eq 0 -a ${system_inhibit} != "none" ]; then
+           say"Volume=${si_volume} system inhibit=${system_inhibit}, deactivating request"
+           exit 32
+       fi
+   fi
+
+#
+# Check if this is SFA file and we can just copy it
+#
+   file_info=$(enstore info --file ${si_bfid}  2>/dev/null)
+   if [ $? -eq 0 ]; then
+       package_id=$(python -c "
+import sys
+try:
+  code='d='+sys.argv[1]
+  exec(code)
+  print d.get('package_id')
+except:
+  sys.exit(1)
+" "${file_info}")
+
+       if [ $? -eq 0 -a "${package_id}" != "" -a "${package_id}" != "None" -a "${package_id}" != "${si_bfid}" ]; then
 	   #
 	   # get package pnfsid
 	   #
