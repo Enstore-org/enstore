@@ -1372,8 +1372,15 @@ class LibraryManagerMethods:
             if self.vc_address != None:
                 if self.vc_address == vol_server_address:
                     return
-            self.vc_address = vol_server_address
-            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,server_address=self.vc_address)
+            # If we have mixed IPV4/IPV6 configuration
+            # the address coming from encp may have IPV4 if it runs on IPV4 configuration.
+            # Check the address originally stored in vcc.
+            # If it has IPV6 configuration do not open new vcc.
+            vcc_address_family = socket.getaddrinfo(self.vcc.server_address[0], None)[0][0]
+            client_reported_vcc_address_family = socket.getaddrinfo(vol_server_address[0], None)[0][0]
+            if vcc_address_family == client_reported_vcc_address_family:
+                self.vc_address = vol_server_address
+                self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,server_address=self.vc_address)
             Trace.trace(self.trace_level+1,"set_vcc returned")
 
     ###################################################################################
