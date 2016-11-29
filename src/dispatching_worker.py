@@ -1031,8 +1031,20 @@ class DispatchingWorker(udp_server.UDPServer):
             self.reply_to_caller(ticket)
             return None
 
+        # Determine on what IP to communicate over TCP/IP depending on the address type of the client.
+        my_ipv4 = None
+        if len(ticket['r_a'][0][0].split('.')) == 4:  # IPV4:
+            # Find IPV4 address on this server
+            hostname = socket.gethostname()
+            hostinfo = socket.getaddrinfo(hostname, socket.AF_INET)
+            for e in hostinfo:
+                if e[0] == socket.AF_INET:
+                    my_ipv4 = e[4][0] # see python socket module documentation.
+                    break
+
+
         # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
+        host, port, listen_socket = callback.get_callback(ip=my_ipv4)
         listen_socket.listen(4)
 
         #The initial over UDP message needs to be small.

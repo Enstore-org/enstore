@@ -566,7 +566,6 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         try:
             if ticket.get('new', None):
                 ticket[lookup] = self.get_dict_entry(lookup)
-
                 #The following section places into the udp reply ticket
                 # information to prevent the configuration_client from having
                 # to pull it down seperatly.
@@ -581,6 +580,23 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             ticket['status'] = (e_errors.KEYERROR,
                                 "Configuration Server: no such name: "
                                 +repr(lookup))
+        # Determine on what IP type to communicate depending on the address type of the client.
+        server_ipv4 = None
+        if (len(ticket['r_a'][0][0].split('.')) == 4 and
+            'host' in ticket.get(lookup, {})):
+            # Find IPV4 address on this server
+            hostinfo = socket.getaddrinfo(ticket[lookup]['host'], socket.AF_INET)
+            for e in hostinfo:
+                if e[0] == socket.AF_INET:
+                    server_ipv4 = e[4][0] # see python socket module documentation.
+                    break
+
+        if server_ipv4:
+            # replace host_ip with IPV4 address
+            ticket['host_ip'] = server_ipv4
+            if 'hostip' in ticket[lookup] and 'host' in ticket[lookup]:
+                #ticket[lookup]['hostip'] = ticket[lookup]['host']
+                ticket[lookup]['hostip'] = server_ipv4
         self.send_reply(ticket)
 
 
@@ -621,6 +637,22 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         if domains != None:
             reply['domains'] = domains
 
+        # Determine on what IP type to communicate depending on the address type of the client.
+        my_address_family = socket.getaddrinfo(socket.gethostname(), None)[0][0]
+        if (len(ticket['r_a'][0][0].split('.'))) == 4 and (my_address_family == socket.AF_INET6):
+            # convert all 'hostip' to IPV4
+            for key in reply['dump']:
+                if 'host' in reply['dump'][key]:
+                    server_ipv4 = None
+                    hostinfo = socket.getaddrinfo(reply['dump'][key]['host'], socket.AF_INET)
+                    for e in hostinfo:
+                        if e[0] == socket.AF_INET:
+                            server_ipv4 = e[4][0] # see python socket module documentation.
+                            break
+                    if server_ipv4:
+                        # make a copy to not back-affect configuration
+                        reply['dump'][key] = copy.copy(reply['dump'][key])
+                        reply['dump'][key]['hostip'] = server_ipv4
         return reply
 
     def dump(self, ticket):
