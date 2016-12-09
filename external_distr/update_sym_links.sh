@@ -127,6 +127,10 @@ if [ $do_update -ne 0 ]
 then
     rm -f $ENSTORE_DIR/bin/enstore
     ln -s $ENSTORE_DIR/src/enstore_admin.py $ENSTORE_DIR/bin/enstore
+    rm -f $ENSTORE_DIR/bin/migrate
+    ln -s $ENSTORE_DIR/src/migrate_chimera.py $ENSTORE_DIR/bin/migrate
+    rm -f $ENSTORE_DIR/bin/duplicate
+    ln -s $ENSTORE_DIR/src/duplicate_chimera.py $ENSTORE_DIR/bin/duplicate
 fi
 ######
 
