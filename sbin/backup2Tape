@@ -119,6 +119,8 @@ ENSTORELOG=${filePath}/enstore-log-backup
 QUIT=$VAULT/QUIT
 TIMEONDISK=1  #days
 
+rc=0
+
 
 rm -f $BACKUP_LOG
 rm -f $VAULT/*.tbz2 #old junk
@@ -162,12 +164,13 @@ do
 	  # find starting WAL file
 	  startwal=`zcat ${fn} | fgrep 'START WAL' | cut -f6 -d' ' | cut -f1 -d')'`.Z
 	  startwal=${xd}.xlogs/$startwal
-          fl=`find ${xd}.xlogs -follow -type f -newer $startwal`
-          if [[ $fl != "" ]]
-          then
-            tar cfz ${xd}/xlogs-${tarfile}.tar.Z $startwal $fl
-            find ${xd}  -maxdepth 1  -name "*${tarfile}*Z"  >> $PNFS_FILES
-          fi
+	  rnd=`printf "%03d" $((${RANDOM}%1000))`
+	  echo  $startwal >  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
+          find ${xd}.xlogs -follow -type f -newer $startwal -print >>  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
+          tar -czf ${xd}/xlogs-${tarfile}.tar.Z --files-from  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
+	  rc=$?
+	  rm -f /tmp/pnfs_xlogs_list_${rnd}_$$.txt
+          find ${xd}  -maxdepth 1  -name "*${tarfile}*Z"  >> $PNFS_FILES
         fi
 done
 lines=`wc -l $PNFS_FILES | awk '{print $1}'`
