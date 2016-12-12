@@ -33,7 +33,6 @@ import string
 import time
 import types
 
-import Cache
 import dbaccess
 import e_errors
 import ejournal
@@ -394,13 +393,6 @@ class FileDB(DbTable):
         AND bfid = %s
         """
 
-        """
-        cache that keeps volume label : volume id
-        association to reduce number of nested
-        selects
-        """
-        self.volume_cache = Cache.Cache()
-
     def __setitem__(self, key, value):
         res = self.dbaccess.query_dictresult(self.retrieve_query,(key,))
         if len(res) == 0:        # insert
@@ -448,39 +440,21 @@ class FileDB(DbTable):
             DbTable.insert_new_record(self,key,value)
             return
         v1 = self.import_format(value)
-        label = v1["volume"]
 
-        volume_id =  self.volume_cache.get(label)
-
-        if not volume_id:
-            res = self.dbaccess.query("SELECT id FROM volume where label=%s",(label,))
-            volume_id = res[0][0]
-            self.volume_cache.put(label,volume_id)
-
-        v1["volume"] = volume_id
         query = """
         INSERT INTO {} ({}) VALUES (
         """
-        query=query.format(self.table,string.join(v1.keys(), ","))
-        for k in v1.keys():
-                query += "%s,"
-        query=query[:-1]+")"
-        try:
-            res=self.dbaccess.update_returning_result(query,v1.values())
-        except:
-            res = self.dbaccess.query("SELECT id FROM volume where label=%s",(label,))
-            if len(res) > 0:
-                if int(volume_id) != int(res[0][0]):
-                    Trace.log(e_errors.INFO, "Label="+label+", cached id="+str(volume_id) +", db id="+str(res[0][0]));
-                    volume_id = res[0][0]
-                    self.volume_cache.put(label,volume_id)
-                    v1["volume"] = volume_id
-                    res=self.dbaccess.update_returning_result(query,v1.values())
-                else:
-                    raise
-            else:
-                raise
 
+        query=query.format(self.table,string.join(v1.keys(), ","))
+
+        for k in v1.keys():
+            if k != "volume":
+                query += "%s,"
+            else:
+                query += "(SELECT id FROM volume where label=%s),"
+        query=query[:-1]+")"
+
+        res=self.dbaccess.update_returning_result(query,v1.values())
         if self.auto_journal:
             self.jou[key] = value
 
