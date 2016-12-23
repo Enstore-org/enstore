@@ -11,6 +11,7 @@ import tempfile
 import re
 import getpass
 import enstore_utils_cgi
+import e_errors
 
 def go():
     # first print the two lines for the header
