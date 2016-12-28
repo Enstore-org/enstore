@@ -248,7 +248,6 @@ class Logger(  dispatching_worker.DispatchingWorker
             if not string.find(message, msg_type) == -1:
                 # this message has a message type of msg_type
                 self.extra_logfiles[msg_type].write(message)
-                self.extra_logfiles[msg_type].flush()
                 return
 
     # log the message recieved from the log client
@@ -268,11 +267,9 @@ class Logger(  dispatching_worker.DispatchingWorker
             if message_type != e_errors.sevdict[e_errors.MISC]:
                 self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
                                    (tm[3],tm[4],tm[5], self.repeat_count))
-                self.logfile.flush()
             if not self.no_debug:
                 self.debug_logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
                                          (tm[3],tm[4],tm[5], self.repeat_count))
-                self.debug_logfile.flush()
             self.repeat_count=0
         self.last_message=message
 
@@ -285,10 +282,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 
         if message_type !=  e_errors.sevdict[e_errors.MISC]:
             res = self.logfile.write(message)    # write log message to the file
-            self.logfile.flush()
         if not self.no_debug:
             res = self.debug_logfile.write(message)    # write log message to the file
-            self.debug_logfile.flush()
         if message_type !=  e_errors.sevdict[e_errors.MISC]:
             self.write_to_extra_logfile(message)
 

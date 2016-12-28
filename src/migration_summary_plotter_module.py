@@ -6,6 +6,7 @@
 ###############################################################################
 
 # system imports
+import math
 import pg
 import os
 import sys
@@ -325,7 +326,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             use_title = "Migration/Duplication summary %s for %s" % \
                         (plot_type, key)
 
-        plot_fp.write('set terminal postscript color solid\n')
+        plot_fp.write('set terminal postscript color solid "Helvectica,19"\n')
         plot_fp.write('set output "%s"\n' % (ps_filename,))
         plot_fp.write('set title "%s" font "TimesRomanBold,16"\n' % \
                       (use_title,))
@@ -380,14 +381,16 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 percent=100
             plot_fp.write('set label "Remaining %s " at graph .05,.95\n' \
                           % (self.summary_remaining.get(key, 0L),))
-            plot_fp.write('set label "Started %s" at graph .05,.90\n' \
+            plot_fp.write('set label "Started %s" at graph .05,.88\n' \
                           % (self.summary_started.get(key, 0L),))
-            plot_fp.write('set label "Migrated %s" at graph .05,.85\n' \
+            plot_fp.write('set label "Migrated %s" at graph .05,.81\n' \
                           % (self.summary_done.get(key, 0L),))
-            plot_fp.write('set label "Closed %s (%.2f%% done)" at graph .05,.80\n' \
+            plot_fp.write('set label "Closed %s (%.2f%% done)" at graph .05,.74\n' \
                           % (self.summary_closed.get(key, 0L),percent))
-            plot_fp.write('set label "Total %s" at graph .05,.75\n' \
+            plot_fp.write('set label "Total %s" at graph .05,.67\n' \
                           % (total_volumes,))
+            if total_volumes:
+                plot_fp.write('set yrange [ 1 : %f]\n'%(1.3*total_volumes))
         else: #Daily
             plot_fp.write('set yrange [ 0 : ]\n')
 
@@ -459,6 +462,13 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         self.summary_started = {}
         self.summary_done = {}
         self.summary_closed = {}
+        previous_today_started = {}
+        previous_today_completed = {}
+        previous_today_closed = {}
+        previous_summary_started = {}
+        previous_summary_done =  {}
+        previous_summary_closed = {}
+        previous_time = {}
         for row in res:
             #row[0] is the date (YYYY-mm-dd)
             #row[1] is the media type
@@ -472,6 +482,18 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 self.summary_started[row[1]] = 0L
                 self.summary_done[row[1]] = 0L #Set the key values to zeros.
                 self.summary_closed[row[1]] = 0L
+
+                if row[1] not in  previous_time:
+                     previous_time[row[1]] = time.mktime(time.strptime(row[0],'%Y-%m-%d'))-86400
+
+                previous_today_started[row[1]]=0
+                previous_today_completed[row[1]]=0
+                previous_today_closed[row[1]]=0
+                previous_summary_started[row[1]]=0
+                previous_summary_done[row[1]]=0
+                previous_summary_closed[row[1]]=0
+
+
 
 
         ###
@@ -507,11 +529,35 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             else:
                 today_closed = row[4]
 
-            # Here we write the contents to the file.
-            self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
-                row[0], today_started, today_completed, today_closed,
-                self.summary_started[row[1]], self.summary_done[row[1]],
-                self.summary_closed[row[1]]))
+            now_time = time.mktime(time.strptime(row[0],'%Y-%m-%d'))
+            t = previous_time[row[1]]
+            while t < now_time:
+                t += 86400
+
+                if math.fabs(t-now_time) > 0.1 :
+                # Here we write the contents to the file.
+                    self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
+                            time.strftime('%Y-%m-%d',time.localtime(t)),
+                            previous_today_started[row[1]], previous_today_completed[row[1]], previous_today_closed[row[1]],
+                            previous_summary_started[row[1]],  previous_summary_done[row[1]], previous_summary_closed[row[1]]))
+                else:
+                # Here we write the contents to the file.
+                    self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
+                            time.strftime('%Y-%m-%d',time.localtime(t)),
+                            today_started, today_completed, today_closed,
+                            self.summary_started[row[1]], self.summary_done[row[1]],
+                            self.summary_closed[row[1]]))
+
+
+            previous_time[row[1]] = time.mktime(time.strptime(row[0],'%Y-%m-%d'))
+            previous_today_started[row[1]] = today_started
+            previous_today_completed[row[1]] = today_completed
+            previous_today_closed[row[1]] = today_closed
+            previous_summary_started[row[1]] = self.summary_started[row[1]]
+            previous_summary_done[row[1]] =  self.summary_done[row[1]]
+            previous_summary_closed[row[1]] = self.summary_closed[row[1]]
+
+
 
         #Avoid resource leaks.
         for key in self.pts_files.keys():

@@ -1648,6 +1648,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.state = IDLE
         self.force_clean = 0
+        # get initial fcc and fcc
+        try:
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        except:
+            self.vcc == None
+        try:
+            self.fcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        except:
+            self.fcc == None
+
 
         #################################
         ### Mover type dependent settings
@@ -1909,10 +1919,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.state = HAVE_BOUND
                             Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                             self.dismount_time = time.time() + self.default_dismount_delay
-                            try:
-                                self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-                            except:
-                                self.vcc == None
 
                             '''
                             Let tape get dismounted
@@ -4807,11 +4813,22 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.delay = 0
         self.delay = min(self.delay, self.max_dismount_delay)
-        self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
-                                                server_address=fc['address'])
-        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                         server_address=vc['address'])
-        self.vc_address = vc['address']
+
+        # If we have mixed IPV4/IPV6 configuration
+        # the address coming from encp may have IPV4 if it runs on IPV4 configuration.
+        # Check the address originally stored in vcc and fcc.
+        # If it has IPV6 configuration do not open new vcc or fcc.
+        vcc_address_family = socket.getaddrinfo(self.vcc.server_address[0], None)[0][0]
+        fcc_address_family = socket.getaddrinfo(self.fcc.server_address[0], None)[0][0]
+        client_reported_vcc_address_family = socket.getaddrinfo(vc['address'][0], None)[0][0]
+        client_reported_fcc_address_family = socket.getaddrinfo(fc['address'][0], None)[0][0]
+        if fcc_address_family == client_reported_fcc_address_family:
+            self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
+                                                    server_address=fc['address'])
+        if vcc_address_family == client_reported_vcc_address_family:
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                             server_address=vc['address'])
+        self.vc_address = self.vcc.server_address
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = fc['external_label']
         if volume_label:
@@ -4819,7 +4836,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_work_ticket['vc'].update(self.vol_info)
         else:
             Trace.log(e_errors.ERROR, "setup_transfer: volume label=%s" % (volume_label,))
-
 
         if self.vol_info['status'][0] != e_errors.OK:
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
@@ -5798,13 +5814,24 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.client_socket = None
         # run this in a thread
         self.host = None
+        ticket = self.current_work_ticket
+        data_ip=self.config.get("data_ip",None)
+        Trace.trace(10, "data ip %s"%(data_ip,))
+
+        # Coordinate IP protocol (IPV4 or IPV6) with client
+        host_ip = None
+        caller_address_family = socket.getaddrinfo(ticket['callback_addr'][0], None)[0][0]
+        hostinfo = socket.getaddrinfo(socket.gethostname(), caller_address_family)
+        my_address_family = hostinfo[0][0]
+        if my_address_family != caller_address_family:
+            # Select mover host IP according to the caller address family
+            for e in hostinfo:
+             if e[0] == caller_address_family:
+                host_ip = e[4][0]
         try:
-            ticket = self.current_work_ticket
-            data_ip=self.config.get("data_ip",None)
-            Trace.trace(10, "data ip %s"%(data_ip,))
             if (not self.method) or self.method and self.method != 'read_next':
                 try:
-                    host, port, self.listen_socket = callback.get_callback(ip=data_ip)
+                    host, port, self.listen_socket = callback.get_callback(ip=data_ip if data_ip else host_ip)
                 except Exception, detail:
                     exc, msg, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "connect_client: Connection to data ip failed:  %s %s %s"%
@@ -5831,11 +5858,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.listen_socket.listen(1)
                 # need a control connection setup
                 # otherwise: not because it must be left open
-
                 ticket['mover']['callback_addr'] = (host,port) #client expects this
                 ticket['mover']['mover_address'] = (host, self.config['port'])
-                address_family = socket.getaddrinfo(host, None)[0][0]
-                self.control_socket = socket.socket(address_family, socket.SOCK_STREAM)
+
+                self.control_socket = socket.socket(caller_address_family, socket.SOCK_STREAM)
                 flags = fcntl.fcntl(self.control_socket.fileno(), fcntl.F_GETFL)
                 fcntl.fcntl(self.control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
                 # the following insertion is for antispoofing
@@ -5894,7 +5920,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.state = IDLE
                         self.udp_ext_control_address =("get", self.lm_address)
                         self.libraries = [self.udp_ext_control_address]
-
                 Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
                 try:
                     self.control_socket.connect(ticket['callback_addr'])

@@ -3377,7 +3377,7 @@ class Tag:
                 use_msg = msg
             raise exc, use_msg, sys.exc_info()[2] #Don't have tb be local!
 
-        return t
+        return t.strip()
 
     ##########################################################################
 

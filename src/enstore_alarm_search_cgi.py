@@ -11,6 +11,7 @@ import tempfile
 import re
 import getpass
 import enstore_utils_cgi
+import e_errors
 
 def go():
     # first print the two lines for the header
@@ -53,26 +54,33 @@ def go():
         else:
             # the user did not enter an alarm timeframe, assume all
             logfile = "all"
-     
+
 	# get a list of the log files we need
 	logc = log_client.LoggerClient((config_host, config_port))
-	ticket = logc.get_logfiles(logfile, enstore_utils_cgi.TIMEOUT,
-				   enstore_utils_cgi.RETRIES)
-	logfile_names = ticket['logfiles']
-	if not logfile_names:
-	    # there were no matches
-	    print "There were no log files found (to search for alarms) that matched the entered time frame."
-	else:
-	    # put the files in alphabetical order
-	    logfile_names.sort()
-            # if the period was yesterday, we do not need today
-            if logfile == log_client.YESTERDAY:
-                logfile_names = [logfile_names[0],]
-	    # for each name, search the file for alarms and then each alarm using
-	    # the search string
-	    enstore_utils_cgi.agrep_html("%sALARM"%(Trace.MSG_TYPE,),
-                                         search_string, 
-					 logfile_names, 0)
+        ticket = logc.get_logfiles(logfile,
+                                   enstore_utils_cgi.TIMEOUT,
+                                   enstore_utils_cgi.RETRIES)
+        if ticket["status"][0] == e_errors.OK:
+            logfile_names = ticket['logfiles']
+            if not logfile_names:
+                # there were no matches
+                print "There were no log files found (to search for alarms) that matched the entered time frame."
+            else:
+                # put the files in alphabetical order
+                logfile_names.sort()
+                # if the period was yesterday, we do not need today
+                if logfile == log_client.YESTERDAY:
+                    logfile_names = [logfile_names[0],]
+                # for each name, search the file for alarms and then each alarm using
+                # the search string
+                enstore_utils_cgi.agrep_html("%sALARM"%(Trace.MSG_TYPE,),
+                                             search_string,
+                                             logfile_names, 0)
+
+        else:
+            print ticket["status"][1]
+    except Exception as msg:
+        print msg
     finally:
         print "</BODY></HTML>"
 

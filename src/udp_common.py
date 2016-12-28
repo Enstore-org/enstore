@@ -20,19 +20,39 @@ import cleanUDP
 import Trace
 import e_errors
 import Interfaces
+import hostaddr
 
 def __get_callback(host, port):
-    if host:
-        address_family = socket.getaddrinfo(host, None)[0][0]
+    if host == '':
+        # discover primary address family
+        hostname = socket.gethostname()
+        hostinfo = socket.getaddrinfo(hostname, socket.AF_INET)
+        # hostinfo is the list of tuples
+        # [(Address_Family, Socket_Type, Protocol, Cacnonical_Name, Addres), ....]
+        # For details see https://docs.python.org/2/library/socket.html#module-socket
+        # Check the entries usually the first one is the primary address family,
+        # But just to make sure.
+        af_inet6 = False
+        af_inet = False
+        for e in hostinfo:
+            if e[0] == socket.AF_INET:
+                af_inet = True
+            if e[0] == socket.AF_INET6:
+                af_inet6 = True
+        if af_inet6:
+            address_family = socket.AF_INET6
+        else:
+            address_family = socket.AF_INET
     else:
-        address_family = socket.AF_INET
+        address_family = socket.getaddrinfo(host, None)[0][0]
+
     sock = cleanUDP.cleanUDP(address_family, socket.SOCK_DGRAM)
     try:
         sock.socket.bind((host, port))
     except socket.error, msg:
         if msg.args[0] == errno.EADDRNOTAVAIL:
             error_message = "%s: %s" % (msg.args[1], host)
-            
+
             #If we get EADDRNOTAVAIL, we should check to see if the interfaces
             # list returns information about the defualt IP.  If the
             # default IP is not currently configured then there is an
@@ -90,7 +110,7 @@ def r_eval(message_to_decode, check=True, compile=False):
         Trace.trace(5,"r_eval %s %s %s"%(t1-t,check, compile))
         return rc
         #return en_eval(message_to_decode)
-    
+
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:

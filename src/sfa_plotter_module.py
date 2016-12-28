@@ -266,7 +266,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             self.rate_ntuples[log_name] = histogram.Ntuple(log_name+"_%s_rate_vs_date"%(self.data_file_name,),
                                                            "%s %s"%(log_name,self.name))
             self.rate_ntuples[log_name].set_time_axis()
-            self.rate_ntuples[log_name].set_time_axis_format("%m-%d")
+            self.rate_ntuples[log_name].set_time_axis_format("%y-%m-%d")
             df= self.rate_ntuples[log_name].get_data_file()
             self.rate_ntuples[log_name].set_opt_stat()
             self.rate_ntuples[log_name].set_ylabel("Rates [MB/s]")

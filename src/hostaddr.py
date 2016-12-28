@@ -285,15 +285,25 @@ def _allow(addr):
     return None
 
 def allow(addr):
-    Trace.trace(19, "allow: checking address %s" % (addr,))
+    Trace.trace(19, "allow: checking address %s %s" % (addr, len(addr)))
+    client_addr = list(addr)
+    # If message comes with IPV4 address on IPV6 configured receiver its format is like:
+    # '::ffff:193.109.174.113'.
+    # Single out IPV4 address.
+    a_list = addr[0].split(':')
+    le = a_list[-1]
+    if len(le.split('.')) == 4:
+        client_addr = [le, addr[1]] # IPV4 over IPV6 connection
     #Check if the address is of a valid type.  The two valid types are
     # a string (of either the hostname or ip) or a 2-tuple with a string
     # as the first item (tha has the hostname or ip).
-    hostinfo = socket.getaddrinfo(addr[0], None)
+    hostinfo = socket.getaddrinfo(client_addr[0], None)
+    Trace.trace(19, "allow: hostinfo %s" % (hostinfo))
+
     address_family = hostinfo[0][0]
     if type(addr) is type(()):
-        if len(addr)==2:
-            addr = addr[0]
+        if len(client_addr)==2:
+            addr = client_addr[0]
         elif address_family == socket.AF_INET6:
             addr = hostinfo[0][4][0]
         else:
@@ -313,7 +323,6 @@ def allow(addr):
     except IndexError:
         Trace.trace(19, "allow: not allowing %s" % (addr,))
         return 0
-
     #Call the helper _allow() function that test the address against what is
     # in known_domains.
     result = _allow(addr)

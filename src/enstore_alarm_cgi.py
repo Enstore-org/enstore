@@ -20,7 +20,7 @@ def append_from_key(argv, value_text_key, form, alt_name=""):
         # of the command itself will pick this up and give an error
         argv.append("--%s"%(alt_name,))
     return argv
-        
+
 def append_from_value(argv, value, server, form, alt_name=""):
     value_text_key = "%s_%s"%(server, value)
     return append_from_key(argv, value_text_key, form, alt_name)
@@ -73,6 +73,8 @@ def go():
 	print "<PRE>"
 	for alarm in alarms:
 	    ticket = alc.resolve(alarm)
+            if 'send_ts' in ticket:
+                del ticket['send_ts']
 	    for id in ticket.keys():
 		if ticket[id] == (e_errors.OK, None):
 		    msg = "Alarm with id = %s has been resolved."%(id,)
@@ -86,7 +88,7 @@ def go():
 							ticket[id][1])
 	else:
 	    print "</PRE>"
-		
+
     finally:
         print "</BODY></HTML>"
 

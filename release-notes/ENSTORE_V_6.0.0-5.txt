@@ -1,0 +1,100 @@
+commit 5b51bebd6ea55843880a80513e738df9ac4ae57f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Nov 1 11:12:33 2016 -0500
+
+    enstore rpm 6.0.0-5
+
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit bc41fccd9e1da69d2a9fe53fb374589374c45828
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Nov 1 11:01:31 2016 -0500
+
+    Save /opt/enstore before installing the new rpm
+
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 65be22e7391013a03c96c8592ea8448e2eb544f6
+Merge: 0017047 beb00d6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 25 13:46:03 2016 -0500
+
+    Merge branch 'release/6.0.0-3' into develop
+
+commit beb00d6f95b56b72c39779ddeacc2f6b64455664
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 25 13:44:41 2016 -0500
+
+    Enstore rpm 6.0.0-3
+
+A	release-notes/ENSTORE_V_6.0.0-2.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 0017047148a93cb5885ca904ebedd377437168e1
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Oct 21 16:50:43 2016 -0500
+
+        The address resolution problem was detected on stken after new rpm was deployed when IP aliases ("conf-stken", "conf-gccen", and such) were used. The configuration client could not contact configuration server.
+        The bug was found in hostaddr.py,  __get_callback() could not correctly default to IP address if host name was ''.
+        http://srm.fnal.gov/reviews/r/366/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1814
+
+M	src/hostaddr.py
+M	src/udp_common.py
+
+commit 230d8f29613b9fc7e782ce289724a8745919f939
+Merge: e8388bd f4de01e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Oct 21 14:32:08 2016 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit f4de01ece66c5983a0543ac02311305cf0fdeb40
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Oct 14 15:52:12 2016 -0500
+
+    real-encp: use .(pathof) to determine pathname for a pnfsid
+
+            use .(pathof) to determine pathname for a pnfsid
+            override "original path" with .(pathof). This results
+            in storing file caninical name in enstoredb
+
+            http://srm/reviews/r/346/
+    	BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1772
+
+M	dcache-deploy/scripts/real-encp.sh
+
+commit 21006d3d4c1ca2a3ae86f788ca3befb80b2d98a3
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Oct 10 15:07:50 2016 -0500
+
+    encp Makefile: exclude DBUtils and psycopg2
+
+M	src/Makefile
+
+commit b7548db29aa5d6d4c238baec4d623b428a3a9a5a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 4 11:48:09 2016 -0500
+
+        Implementation of checkdb.py functionality based on point in time recovery backup in place of pg_dump used in checkdb.py.
+        This code runs about 6 hours less than checkdb.py
+        http://srm.fnal.gov/reviews/r/358/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1796
+
+A	src/checkdb_PITR.py
+
+commit e8388bd269f94e53002d4925db6f5e620e09f7ed
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 4 11:07:59 2016 -0500
+
+    Implementation of checkdb.py functionality based on point in time recovery backup in place of pg_dump used in checkdb.py.
+    This code runs about 6 hours less than checkdb.py
+
+A	src/checkdb_PITR.py
+
+commit f52b6c54be47cb6c2526fc8e8c0ef0223f9f4b32
+Merge: 7887ab0 e106a63
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Oct 3 11:02:18 2016 -0500
+
+    Merge branch 'release/6.0.0-2' into develop
