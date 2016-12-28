@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 6.0.0
-Release: 5
+Version: 6.1.0
+Release: 0
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -136,8 +136,10 @@ if [ $? -ne 0 ]; then
 fi
 # save existing enstore distribution
 d=`date "+%%F-%T"`
-echo "moving $RPM_BUILD_ROOT/%{prefix} to /tmp/enstore_backup.$d"
-mv $RPM_BUILD_ROOT/%{prefix} /tmp/enstore_backup.$d
+if [ -d $RPM_BUILD_ROOT/%{prefix} ]; then
+   echo "moving $RPM_BUILD_ROOT/%{prefix} to /tmp/enstore_backup.$d"
+   mv $RPM_BUILD_ROOT/%{prefix} /tmp/enstore_backup.$d
+fi
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
@@ -240,6 +242,24 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Wed Dec 28 2016  <moibenko@fnal.gov> -
+- v 6.1.0 release 0.
+* Mon Dec 12 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 15. edb.py patch
+* Thu Dec 1 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 12. Fixed udp_client.py
+* Tue Nov 29 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 11. Fixes for IPV6 cleint to IPV4 server communications
+* Wed Nov 16 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 10. Forgot to include mover.py
+* Fri Nov 11 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 9. More fixes for IPV4 <-> IPV6
+* Thu Nov 10 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 8. More fixes for IPV4 <-> IPV6
+* Wed Nov 9 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 7. More fixes for IPV4 <-> IPV6
+* Tue Nov 8 2016  <moibenko@fnal.gov> -
+- v 6.0.0 release 6. Fixes for IPV4 <-> IPV6
 * Tue Nov 1 2016  <moibenko@fnal.gov> -
 - v 6.0.0 release 5.
 * Tue Oct 25 2016  <moibenko@fnal.gov> -
