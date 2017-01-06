@@ -3377,7 +3377,13 @@ class Tag:
                 use_msg = msg
             raise exc, use_msg, sys.exc_info()[2] #Don't have tb be local!
 
-        return t.strip()
+        if type(t) == types.ListType:
+           rt = []
+           for e in t:
+              rt.append(e.strip())
+           return rt
+        else:
+           return t.strip()
 
     ##########################################################################
 
