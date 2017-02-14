@@ -815,8 +815,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return False
 
         packed_file = self.pack_files(request_list)
-        Trace.trace(10, "write_to_tape: packed_file %s"%(packed_file,))
-        Trace.log(e_errors.INFO, "write_to_tape: packed_file %s"%(packed_file,))
+        Trace.log(e_errors.INFO, "write_to_tape: id %s redelivered %s packed_file %s"%(rq.correlation_id, rq.redelivered, packed_file,))
         if packed_file:
             src_file_path, bfid_list = packed_file
             if self.check_written_file():
