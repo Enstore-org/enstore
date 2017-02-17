@@ -1,0 +1,16 @@
+#!/bin/sh
+set -u
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+#mail_address=moibenko@fnal.gov
+mail_address=`enstore conf --show crons email`
+
+# Check for the presence of the empty packages during last 24 hours
+# and report if there are such.
+
+psql -p 8888 -h stkensrv0n -U enstore enstoredb -t -c "select f.package_id,v.file_family from file f, volume v where f.volume=v.id and v.file_family not like '%_copy_%' and archive_mod_time > current_timestamp - interval '1 day' and f.package_id in (select package_id from file where package_files_count!=0 group by package_id having count(*)=1)" > /tmp/empty_packages
+
+if [ `wc -l < /tmp/empty_packages` -gt 1 ]; # query returns additional empty line
+then
+   mail -s "Empty SFA packages found" $mail_address < /tmp/empty_packages
+fi
+exit 0
