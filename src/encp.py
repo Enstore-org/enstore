@@ -464,7 +464,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11e CVS"
+    version_string = "v3_11f CVS"
     encp_file = globals().get('__file__', "")
     if encp_file:
         version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)
@@ -494,7 +494,6 @@ def collect_garbage():
     message = "[1] Time to collect garbage: %s sec." % \
               (time.time() - collect_garbage_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 #def quit(exit_code=1):
 #    delete_at_exit.quit(exit_code)
@@ -1253,7 +1252,6 @@ def update_modification_time(output_path, time_now = None):
     message = "[1] Time to update modification time: %s sec." % \
               (time.time() - update_modification_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 def update_last_access_time(input_path, time_now = None):
 
@@ -1273,7 +1271,6 @@ def update_last_access_time(input_path, time_now = None):
     message = "[1] Time to update last_access_time: %s sec." % \
               (time.time() - update_last_access_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 ##############################################################################
 ##############################################################################
@@ -2940,7 +2937,6 @@ def get_callback_addresses(encp_intf):
     message = "[1] Time to get callback addresses: %s sec." % \
               (time.time() - get_callback_addresses_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return done_ticket, listen_socket, callback_addr, \
            udp_serv, udp_callback_addr
@@ -3091,7 +3087,6 @@ def filesystem_check(work_ticket):
     message = "[2] Time to verify file system consistancy: %s sec." % \
               (time.time() - verify_file_system_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 #Make sure that the wrapper can handle the filesize.
 def wrappersize_check(work_ticket):
@@ -3124,7 +3119,6 @@ def wrappersize_check(work_ticket):
     message = "[2] Time to verify wrapper size consistancy: %s sec." % \
               (time.time() - verify_wrapper_size_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 #Make sure that the library can handle the filesize.
 #def librarysize_check(target_filepath, inputfile):
@@ -3168,7 +3162,6 @@ def librarysize_check(work_ticket):
     message = "[2] Time to verify library size consistancy: %s sec." % \
               (time.time() - verify_library_size_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 #Make sure that the tags contain sane values for writes.  Raises and exception
 # on error.
@@ -3215,7 +3208,6 @@ def tag_check(work_ticket):
     message = "[2] Time to verify tags consistancy: %s sec." % \
               (time.time() - verify_tags_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 #Prevent null mover requests from proceeding without NULL in the directory
 # path.
@@ -3333,7 +3325,6 @@ def inputfile_check(work_list, e):
     message = "[2] Time to verify input file metadata (local): %s sec." % \
               (time.time() - verify_input_file_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return
 
@@ -3694,7 +3685,6 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
     message = "[2] Time to verify input file metadata (pnfs): %s sec." % \
               (time.time() - verify_input_file_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return
 
@@ -3904,12 +3894,7 @@ def outputfile_check(work_list, e):
                             l4_line1 = None
                         l1_is_bfid = bfid_util.is_bfid(l1_bfid)
                         l4_is_bfid = bfid_util.is_bfid(l4_bfid)
-                        #Log this for debugging, because users don't care.
-                        if layer1:
-                            Trace.log(99, "Detected layer 1: %s" % (layer1,))
-                        if layer4:
-                            Trace.log(99, "Detected layer 4: %s" % (layer4,))
-                        #No, give the user with a correct error message
+                        #Now, give the user with a correct error message
                         # without confusing them with to many details.
                         if l1_is_bfid or l4_is_bfid:
                             if l1_is_bfid and l4_is_bfid:
@@ -4048,7 +4033,6 @@ def outputfile_check(work_list, e):
     message = "[2] Time to verify output file metadata: %s sec." % \
               (time.time() - verify_output_file_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 #def file_check(e):
 #    # check the output pnfs files(s) names
@@ -4437,7 +4421,6 @@ def open_udp_server(udp_serv, unique_id_list, encp_intf):
     message = "[1] Time to open udp socket: %s sec." % \
               (time.time() - time_to_open_udp_server,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     #It will most likely be a while, so this would be a good time to
     # perform this maintenance.
@@ -4522,7 +4505,6 @@ def open_routing_socket(mover_ip, encp_intf):
     message = "[1] Time to open routing socket: %s sec." % \
               (time.time() - time_to_open_routing_socket,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     #No route was set.
     return None
@@ -4550,7 +4532,6 @@ def open_control_socket(listen_socket, mover_timeout):
         message = "[1] Time to select control socket: %s sec." % \
                   (time.time() - time_to_select_control_socket,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
         #If there are no successful connected sockets, then select timedout.
         if not read_fds:
@@ -4565,7 +4546,6 @@ def open_control_socket(listen_socket, mover_timeout):
         message = "[1] Time to accept control socket: %s sec." % \
                   (time.time() - time_to_accept_control_socket,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
         if not hostaddr.allow(address):
             try:
@@ -4600,7 +4580,6 @@ def open_control_socket(listen_socket, mover_timeout):
         message = "[1] Time to setsockopt control socket: %s sec." % \
                   (time.time() - time_to_setsockopt_control_socket,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
         time_to_read_control_socket = time.time()
 
@@ -4632,7 +4611,6 @@ def open_control_socket(listen_socket, mover_timeout):
         message = "[1] Time to read control socket: %s sec." % \
                   (time.time() - time_to_read_control_socket,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
         if not e_errors.is_ok(ticket):
             #If the mover already returned an error, don't bother checking if
@@ -4656,7 +4634,6 @@ def open_control_socket(listen_socket, mover_timeout):
     message = "[1] Time to open control socket: %s sec." % \
               (time.time() - time_to_open_control_socket,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     #Perform one last test of the socket.  This should never fail, but
     # on occasion does...
@@ -4817,7 +4794,6 @@ def open_data_socket(mover_addr, interface_ip = None):
     message = "[1] Time to open data socket: %s sec." % \
               (time.time() - time_to_open_data_socket,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return data_path_socket
 
@@ -5312,7 +5288,6 @@ def receive_final_dialog(control_socket):
     message = "[1] Time to receive final dialog: %s sec." % \
               (time.time() - receive_final_dialog_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return done_ticket
 
@@ -5349,7 +5324,6 @@ def receive_final_dialog_2(udp_serv, e):
     message = "[1] Time to receive final dialog (2): %s sec." % \
                   (time.time() - final_dialog_2_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return mover_udp_done_ticket
 
@@ -5597,7 +5571,6 @@ def submit_one_request_send(ticket, encp_intf):
     message = "[1] Time to submit one request: %s sec." % \
               (time.time() - submit_one_request_send_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     ticket['status'] = (e_errors.OK, None)
 
@@ -5639,7 +5612,6 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     message = "[1] Time to receive one request: %s sec." % \
               (time.time() - submit_all_request_recv_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return __submit_request_recv(response_ticket), transaction_id
 
@@ -5678,7 +5650,6 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
     message = "[1] Time to receive first request: %s sec." % \
               (time.time() - submit_one_request_recv_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return __submit_request_recv(response_ticket), transaction_id
 
@@ -5803,7 +5774,6 @@ def adjust_resubmit_request(ticket, encp_intf):
     message = "[1] Time to update request for resubmission: %s sec." % \
               (time.time() - resubmission_update_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     #Now do what we would do for any initial submition.
     return ticket
@@ -5904,7 +5874,6 @@ def open_local_file(work_ticket, tinfo, e):
     message = "[1] Time to open local file: %s sec." % \
               (time.time() - open_local_file_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return done_ticket
 
@@ -6055,7 +6024,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
     transfer_stop_time = time.time()
 
     if e_errors.is_ok(EXfer_ticket):
-        # Print a sucess message.
+        # Print a success message.
         Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
                       (request['infilepath'],
                        time.time()-tinfo['encp_start_time']))
@@ -6068,7 +6037,6 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         message = "[1] Time to transfer file: %s sec." % \
                   (transfer_stop_time - transfer_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
     else:
         Trace.log(e_errors.WARNING,
@@ -6106,7 +6074,6 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         #If we get here then the transfer was a success.
         rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
 
-    Trace.log(e_errors.INFO, "leaving transfer_file().")
     return rtn_ticket
 
 ############################################################################
@@ -6161,7 +6128,6 @@ def check_crc(done_ticket, encp_intf, fd=None):
     message = "[1] Time to check CRC: %s sec." % \
               (time.time() - check_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return
 
@@ -6212,7 +6178,6 @@ def compare_crc(done_ticket, encp_crc_1_seeded):
     message = "[1] Time to compare CRC: %s sec." % \
 	      (time.time() - compare_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     done_ticket['status'] = (e_errors.OK, None)
     return
@@ -6247,7 +6212,6 @@ def check_crc_readback(done_ticket, fd):
     message = "[1] Time to check readback CRC: %s sec." % \
 	      (time.time() - readback_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     done_ticket['status'] = (e_errors.OK, None)
     return
@@ -6291,7 +6255,6 @@ def check_crc_layer2(done_ticket, encp_crc_1_seeded):
     message = "[1] Time to check dCache CRC: %s sec." % \
 	      (time.time() - layer2_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     done_ticket['status'] = (e_errors.OK, None)
     return
@@ -6454,7 +6417,6 @@ def verify_file_size(ticket, encp_intf = None):
     message = "[1] Time to verify file size: %s sec." % \
               (time.time() - verify_file_size_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 def verify_inode(ticket):
 
@@ -6507,7 +6469,6 @@ def verify_inode(ticket):
     message = "[1] Time to verify inode: %s sec." % \
               (time.time() - verify_inode_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 ##
@@ -6611,7 +6572,6 @@ def set_outfile_permissions(ticket, encp_intf):
         message = "[1] Time to set_outfile_permissions: %s sec." % \
                       (time.time() - set_outfile_permissions_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -6802,7 +6762,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         message = "[1] Time to check external label: %s sec." % \
               (time.time() - check_external_label_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
     else:
         vc_status = (e_errors.OK, None)
 
@@ -6860,7 +6819,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         message = "[1] Time to check control socket: %s sec." % \
               (time.time() - check_control_socket_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
     #Just to be paranoid check the listening socket.  Check the current
     # socket status to avoid wiping out an error.
@@ -6877,7 +6835,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         message = "[1] Time to check listen socket: %s sec." % \
               (time.time() - check_listen_socket_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
     lf_status = (e_errors.OK, None)
     if local_filename:
@@ -6938,7 +6895,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         message = "[1] Time to check local filename: %s sec." % \
               (time.time() - check_local_filename_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
     pf_status = (e_errors.OK, None)
     skip_layer_cleanup = False
@@ -6985,7 +6941,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         message = "[1] Time to check pnfs filename: %s sec." % \
                   (time.time() - check_pnfs_filename_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
 
     ## First check for non-retriable errors.
@@ -7723,7 +7678,6 @@ def calculate_rate(done_ticket, tinfo):
     message = "[1] Time to calculate and record rate: %s sec." % \
               (time.time() - calculate_rate_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -7785,7 +7739,6 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     message = "[1] Time to calculate final statistics: %s sec." % \
               (time.time() - calculate_final_statistics_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return done_ticket
 
@@ -7915,7 +7868,6 @@ def verify_write_request_consistancy(request_list, e):
     message = "[1] Time to verify write request consistancy: %s sec." % \
               (time.time() - verify_write_request_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -8016,7 +7968,6 @@ def set_sfs_settings(ticket, intf_encp):
     message = "[2] Time to veify pnfs file location: %s sec." % \
               (time.time() - location_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     if not ticket.get('copy', None):  #Don't set layer 1 if copy.
         layer1_start_time = time.time() # Start time of setting pnfs layer 1.
@@ -8049,7 +8000,6 @@ def set_sfs_settings(ticket, intf_encp):
         message = "[2] Time to set pnfs layer 1: %s sec." % \
                   (time.time() - layer1_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
     #Format some tape drive output.
     mover_ticket = ticket.get('mover', {})
@@ -8129,7 +8079,6 @@ def set_sfs_settings(ticket, intf_encp):
         message = "[2] Time to set pnfs layer 4: %s sec." % \
                   (time.time() - layer4_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
     filedb_start_time = time.time() # Start time of updating file database.
 
@@ -8177,7 +8126,6 @@ def set_sfs_settings(ticket, intf_encp):
     message = "[2] Time to set file database: %s sec." % \
               (time.time() - filedb_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     if not ticket.get('copy', None):  #Don't set size if copy.
         filesize_start_time = time.time() # Start time of setting the filesize.
@@ -8218,7 +8166,6 @@ def set_sfs_settings(ticket, intf_encp):
         message = "[2] Time to set filesize: %s sec." % \
                   (time.time() - filesize_start_time,)
         Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
 
     #This function writes errors/warnings to the log file and put an
     # error status in the ticket.
@@ -8227,7 +8174,6 @@ def set_sfs_settings(ticket, intf_encp):
     message = "[1] Time to set metadata: %s sec." % \
               (time.time() - set_metadata_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 #Functions for writes.
@@ -8391,7 +8337,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
     message = "[1] Time to create write requests: %s sec." % \
               (time.time() - create_write_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return request_list + request_copy_list
 
@@ -8715,7 +8660,6 @@ def submit_write_request(work_ticket, encp_intf):
     message = "[1] Time to submit %d write request: %s sec." % \
               (1, time.time() - submit_write_request_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return ticket, lmc
 
@@ -8816,7 +8760,6 @@ def stall_write_transfer(data_path_socket, control_socket, e):
     message = "[1] Time to stall %d write transfer: %s sec." % \
               (1, time.time() - stall_write_transfer_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return status_ticket
 
@@ -9687,7 +9630,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
     message = "[1] Time to verify read request consistancy: %s sec." % \
               (time.time() - verify_read_request_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 #######################################################################
 
@@ -10095,7 +10037,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
     message = "[1] Time to create read requests: %s sec." % \
               (time.time() - create_read_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
     return requests_per_vol
 
 
@@ -10699,7 +10640,6 @@ def submit_read_requests(requests, encp_intf):
     message = "[1] Time to submit %d read requests: %s sec." % \
               (submitted, time.time() - submit_read_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return submitted, ticket, lmc
 
@@ -10787,7 +10727,6 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
     message = "[1] Time to stall %d read transfer: %s sec." % \
               (1, time.time() - stall_read_transfer_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return status_ticket
 
@@ -11013,7 +10952,6 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     message = "[1] Time to read hsm file: %s sec." % \
               (time.time() - read_hsm_file_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
     return done_ticket
 
@@ -12458,7 +12396,6 @@ def log_encp_start(tinfo, intf):
     message = "[1] Time to log encp start: %s sec." % \
               (time.time() - log_encp_start_time,)
     Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
 
 
 def final_say(intf, done_ticket):

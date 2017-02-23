@@ -458,8 +458,6 @@ def __readline(fp, func="readline", unstable_filesystem=False):
     if func not in ["readline", "readlines"]:
         raise TypeError("expected readline or readlines")
 
-    __log_file_access(func, fp.name)
-
     t0 = time.time()
 
     if unstable_filesystem and sem_lock:
@@ -546,15 +544,12 @@ def __readline(fp, func="readline", unstable_filesystem=False):
         except:
             # For these exceptions, sem_lock should already be released.
             s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
-            __log_duration(t0, t1, func, fp.name, status_message=s_m)
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
-        __log_duration(t0, t1, func, fp.name, status_message=s_m)
         raise sys.exc_info()[0], sys.exc_info()[1], \
               sys.exc_info()[2]
 
-    __log_duration(t0, t1, func, fp.name)
     return file_content
 
 #Helper function for wrapper() to retry transient errors.
@@ -567,8 +562,6 @@ def __wrapper(function, args=(), unstable_filesystem=None):
         log_func_name = "%s.%s" % (function.__module__, function.__name__)
     else:
         log_func_name = "%s" % (function.__name__,)
-    __log_file_access(log_func_name, args)
-    #__log_access_path(log_func_name, args)
 
     t0 = time.time()
 
@@ -609,18 +602,15 @@ def __wrapper(function, args=(), unstable_filesystem=None):
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
 
-            __log_duration(t0, t1, log_func_name, args)
             if unstable_filesystem and sem_lock:
                 sem_lock.release()
             return rtn
 
         exception_object = OSError(errno.EIO, "Unknown error")
         s_m = str(exception_object)
-        __log_duration(t0, t1, log_func_name, args, status_message=s_m)
         raise exception_object
     except:
         s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
-        __log_duration(t0, t1, log_func_name, args, status_message=s_m)
         if unstable_filesystem and sem_lock:
             sem_lock.release()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
