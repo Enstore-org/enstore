@@ -543,10 +543,8 @@ def __readline(fp, func="readline", unstable_filesystem=False):
                       sys.exc_info()[2]
         except:
             # For these exceptions, sem_lock should already be released.
-            s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
-        s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
         raise sys.exc_info()[0], sys.exc_info()[1], \
               sys.exc_info()[2]
 
@@ -607,10 +605,8 @@ def __wrapper(function, args=(), unstable_filesystem=None):
             return rtn
 
         exception_object = OSError(errno.EIO, "Unknown error")
-        s_m = str(exception_object)
         raise exception_object
     except:
-        s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
         if unstable_filesystem and sem_lock:
             sem_lock.release()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
