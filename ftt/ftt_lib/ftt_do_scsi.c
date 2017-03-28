@@ -23,7 +23,7 @@ int ftt_close_io_dev(ftt_descriptor d);
 int ftt_get_stat_ops(char *name) ;
 int ftt_describe_error();
 
-void 
+void
 ftt_set_transfer_length( unsigned char *cdb, int n ) {
 	cdb[2]= n >> 16 & 0xff;
 	cdb[3]= n >> 8 & 0xff;
@@ -31,7 +31,7 @@ ftt_set_transfer_length( unsigned char *cdb, int n ) {
 }
 
 int
-ftt_do_scsi_command(ftt_descriptor d,char *pcOp,unsigned char *pcCmd, 
+ftt_do_scsi_command(ftt_descriptor d,char *pcOp,unsigned char *pcCmd,
 	int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite) {
     int res;
 
@@ -104,7 +104,7 @@ ftt_scsi_check(scsi_handle n,char *pcOp, int stat, int len) {
 request sense data: \n\
 %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n";
 
-    static unsigned char acReqSense[]={ 0x03, 0x00, 0x00, 0x00, 
+    static unsigned char acReqSense[]={ 0x03, 0x00, 0x00, 0x00,
 				     sizeof(ftt_sensebuf), 0x00 };
 
     DEBUG2(stderr, "ftt_scsi_check called with status %d len %d\n", stat, len);
@@ -157,8 +157,8 @@ device which was not ready");
 	    case 0x0:
 		    if ( (ftt_sensebuf[2]&0x20) && (ftt_sensebuf[0]&0x80) ) {
 			/* we have a valid, incorrect length indication */
-			len -=  (ftt_sensebuf[3] << 24) + 
-				(ftt_sensebuf[4] << 16) + 
+			len -=  (ftt_sensebuf[3] << 24) +
+				(ftt_sensebuf[4] << 16) +
 				(ftt_sensebuf[5] <<  8) +
 				ftt_sensebuf[6];
 		        ftt_errno =  FTT_SUCCESS;
@@ -196,7 +196,7 @@ device which was not ready");
 		    break;
 	    }
 	}
-    } 
+    }
     if (ftt_errno == FTT_SUCCESS) {
 	return len;
     } else {
@@ -213,7 +213,7 @@ ftt_get_scsi_devname(ftt_descriptor d){
 
     for( j = 0; d->devinfo[j].device_name != 0 ; j++ ){
 	if( d->devinfo[j].passthru ){
-	    DEBUG3(stderr, "Found slot %d, name %s\n", 
+	    DEBUG3(stderr, "Found slot %d, name %s\n",
 				       j,       d->devinfo[j].device_name);
 	    return  d->devinfo[j].device_name;
 	}
@@ -221,7 +221,7 @@ ftt_get_scsi_devname(ftt_descriptor d){
     return 0;
 }
 
-/* 
+/*
 ** force us to use scsi pass-through ops to do everything
 */
 int
@@ -240,14 +240,15 @@ ftt_all_scsi(ftt_descriptor d) {
     return 0;
 }
 
+#define DCC (1 << 6)
 #include "ftt_dbd.h"
-
 static double pad;
+
 int
 ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
     /* getting evil alignment errors on IRIX6.5 */
-    static unsigned char 
+    static unsigned char
 	mod_sen10[8] = { 0x1a, DBD, 0x10, 0x00, BD_SIZE+16, 0x00},
 	mod_sel10[8] = { 0x15, 0x10, 0x00, 0x00, BD_SIZE+16, 0x00},
 	mod_sen0f[8] = { 0x1a, DBD, 0x0f, 0x00, BD_SIZE+16, 0x00},
@@ -268,25 +269,28 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    if(res < 0) return res;
 	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, BD_SIZE+16, 5, 0);
 	    if(res < 0) return res;
-	    buf[0] = 0;
-	    buf[1] = 0;
-	    /* enable outgoing compression */
-	    buf[BD_SIZE + 2] &= ~(1 << 7);
-	    buf[BD_SIZE + 2] |= (compression << 7);
-            buf[BD_SIZE + 2] |= (compression << 7);
-	        
-	    DEBUG3(stderr, "V26: ftt_scsi_set_compression %d\n",compression);
-	    /* do not use Mode Select to set compression
+	    /* Check if DCC is set (setting compression is enabled) */
+	    if (buf[BD_SIZE+2] & DCC) {
+	      /* DCC is bit 6 in the 3rd byte on page 0x0f */
+	      buf[0] = 0;
+	      buf[1] = 0;
+	      /* enable outgoing compression */
+	      buf[BD_SIZE + 2] &= ~(1 << 7);
+	      buf[BD_SIZE + 2] |= (compression << 7);
+	      buf[BD_SIZE + 2] |= (compression << 7);
 
-            if ((0 == strncmp(d->prod_id,"ULT",3))||
-	        (0 == strncmp(d->prod_id,"T9940",5))||
-                (0 == strncmp(d->prod_id,"9840",4))) {
-		res = ftt_set_compression(d,compression);
-            }else{
-               res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 220, 1);
-            }
-	    */
-	    res = ftt_set_compression(d,compression);
+	      DEBUG3(stderr, "V26: ftt_scsi_set_compression %d\n",compression);
+	      /* do not use Mode Select to set compression
+
+		 if ((0 == strncmp(d->prod_id,"ULT",3))||
+		 (0 == strncmp(d->prod_id,"T9940",5))||
+		 (0 == strncmp(d->prod_id,"9840",4))) {
+		 res = ftt_set_compression(d,compression);
+		 }else{
+		 res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 220, 1);
+		 }
+	      */
+	      res = ftt_set_compression(d,compression);
 
 /*
             if ((0 != strncmp(d->prod_id,"ULT",3))||(0 != strncmp(d->prod_id,"T9940B",6))){
@@ -296,10 +300,11 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
+	    }
 	}
 	if (ftt_get_stat_ops(opbuf) & FTT_DO_MS_Px10) {
 	    DEBUG2(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
-	    res = ftt_open_scsi_dev(d);        
+	    res = ftt_open_scsi_dev(d);
 	    if(res < 0) return res;
 	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen10, 6, buf, BD_SIZE+16, 5, 0);
 	    if(res < 0) return res;
@@ -383,12 +388,12 @@ ftt_scsi_locate( ftt_descriptor d, int blockno) {
 		res = ftt_wait(d);
 	}
     } else {
-	static unsigned char 
+	static unsigned char
 	    locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	 
+
 	locate_cmd[3] = (blockno >> 24) & 0xff;
 	locate_cmd[4] = (blockno >> 16) & 0xff;
-	locate_cmd[5] = (blockno >> 8)  & 0xff; 
+	locate_cmd[5] = (blockno >> 8)  & 0xff;
 	locate_cmd[6] = blockno & 0xff;
 	res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
 	res = ftt_describe_error(d,0,"a SCSI pass-through call", res, res,"Locate", 0);
@@ -442,7 +447,7 @@ typedef struct
 
 #define hex(x) "0123456789ABCDEF" [ (x) & 0xF ]
 
-/* print an array in hex format, only looks OK if nperline a multiple of 4, 
+/* print an array in hex format, only looks OK if nperline a multiple of 4,
  * but that's OK.  value of space must be 0 <= space <= 3;
  */
 void
@@ -488,7 +493,7 @@ static char pdt_types[][16] = {
 
 void
 printinq(inqdata *inq)
-{ 
+{
    unsigned char special;
    int neednl = 1;
    printf("%-10s", pdt_types[(pdt < NPDT) ? pdt : NPDT-1]);
@@ -543,7 +548,7 @@ printinq(inqdata *inq)
 
 int ftt_inquire(ftt_descriptor d) {
 
-    static unsigned char 
+    static unsigned char
 	inquiry[6] = { 0x12, 0x00, 0x00, 0x00, 255, 0x00};
     inqdata inqbuf ;
     int res;
@@ -552,12 +557,12 @@ int ftt_inquire(ftt_descriptor d) {
     CKNULL("ftt_descriptor", d);
     DEBUG2(stderr, "Entering ftt_inquire\n");
     DEBUG3(stderr, "Using SCSI inquire \n");
-    res = ftt_open_scsi_dev(d);   
+    res = ftt_open_scsi_dev(d);
     if(res < 0) return res;
     res = ftt_do_scsi_command(d, "inquire", inquiry, 6, (char *)&inqbuf, sizeof(inqdata), 5, 0);
     if(res < 0) return res;
 
-    printinq(&inqbuf); 
+    printinq(&inqbuf);
 
     return res;
 }
@@ -567,7 +572,7 @@ int ftt_inquire(ftt_descriptor d) {
 */
 int ftt_modesense(ftt_descriptor d) {
 
-    static unsigned char 
+    static unsigned char
 	mod_sen3f[6] = { 0x1a, 0x00, 0x3f, 0x00, 255, 0x00},
 	msbuf [255], *mptr;
     int res;
@@ -577,7 +582,7 @@ int ftt_modesense(ftt_descriptor d) {
     CKNULL("ftt_descriptor", d);
     DEBUG2(stderr, "Entering ftt_modesense\n");
     DEBUG3(stderr, "Using SCSI Mode sense 0x3f page to get all mode sense\n");
-    res = ftt_open_scsi_dev(d);        
+    res = ftt_open_scsi_dev(d);
     if(res < 0) return res;
     res = ftt_do_scsi_command(d, "Mode sense", mod_sen3f, 6, msbuf, 255, 5, 0);
     if(res < 0) return res;
@@ -587,7 +592,7 @@ int ftt_modesense(ftt_descriptor d) {
                 return 1;
     mptr = msbuf;
 
-    printf("Header:\n length %#x, med type %#x, dev spcfc %#x, blk desc len %#x\n", 
+    printf("Header:\n length %#x, med type %#x, dev spcfc %#x, blk desc len %#x\n",
            msbuf[0], msbuf[1], msbuf[2], msbuf[3]);
     mptr += 4;
     dlen -= 4;
@@ -616,7 +621,7 @@ int ftt_modesense(ftt_descriptor d) {
 */
 int ftt_logsense(ftt_descriptor d) {
 
-    static unsigned char 
+    static unsigned char
 	logsense0h[10]={0x4d, 0x00, 0x40, 0x00, 0x00,0x00,0x00, 0x10, 0x00, 0x00},
         lslist[255],
 	lsbuf [0x1000], *lptr;
@@ -630,18 +635,18 @@ int ftt_logsense(ftt_descriptor d) {
     CKNULL("ftt_descriptor", d);
     DEBUG2(stderr, "Entering ftt_get_logsense\n");
     DEBUG3(stderr, "Using SCSI log sense 0x0 page to get get list of pages\n");
-    res = ftt_open_scsi_dev(d);        
+    res = ftt_open_scsi_dev(d);
     if(res < 0) return res;
     res = ftt_do_scsi_command(d, "log sense", logsense0h, 10, lslist, 255, 5, 0);
     if(res < 0) return res;
     dlen = (lslist[2] << 8) + lslist[3];
     for(lptr=&lslist[4]; dlen-- > 0; lptr++) {
-       if (*lptr == 0) 
+       if (*lptr == 0)
           continue;
        memset(lsbuf, 0, 8);
        logsense0h[2]= 0x40 | *lptr;		/* cum values for page */
        printf ("Retrieving LOG SENSE PAGE %x \n",*lptr);
-       res = ftt_do_scsi_command(d, "log sense", 
+       res = ftt_do_scsi_command(d, "log sense",
                     logsense0h, 10, lsbuf, 0x1000, 5, 0);
        if(res < 0) return res;
        printf ("CODE FLAG LENGTH   VAL BASE 10     VAL HEX - got page %x\n", lsbuf[0]);
@@ -651,7 +656,7 @@ int ftt_logsense(ftt_descriptor d) {
           param_code   = (*pageptr << 8) + *(pageptr+1);
           param_length = *(pageptr+3);
           param_flags  = *(pageptr+2);
-          for (param_ptr = pageptr+4, param_val=0; 
+          for (param_ptr = pageptr+4, param_val=0;
                    param_ptr < pageptr+4+param_length; param_ptr++)
               param_val = (param_val*256) + *param_ptr;
           printf("%4x %4x %4x %16d ", param_code, param_flags, param_length, param_val);

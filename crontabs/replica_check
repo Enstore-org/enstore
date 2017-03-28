@@ -1,0 +1,1 @@
+*/15 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p replica_check python $ENSTORE_DIR/tools/replica_check.py > /dev/null 2>&1

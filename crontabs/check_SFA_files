@@ -1,0 +1,1 @@
+0 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p check_empty_packages check_empty_packages  > /dev/null 2>&1

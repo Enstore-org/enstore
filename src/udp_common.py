@@ -104,10 +104,10 @@ def r_eval(message_to_decode, check=True, compile=False):
     try:
         #This is uses the restricted eval.  The unstricted eval could have
         #  been used by doing: return eval(message_to_decode)
-        t=time.time()
-        rc = en_eval(message_to_decode, check, compile)
-        t1=time.time()
-        Trace.trace(5,"r_eval %s %s %s"%(t1-t,check, compile))
+        #t=time.time()
+        rc = en_eval(message_to_decode, check=check, compile=compile)
+        #t1=time.time()
+        #Trace.trace(5,"r_eval %s %s %s"%(t1-t,check, compile))
         return rc
         #return en_eval(message_to_decode)
 
