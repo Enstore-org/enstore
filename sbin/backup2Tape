@@ -187,7 +187,7 @@ cat $PNFS_FILES| while read file; do
 done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $PNFS_FILES
-find $PNFS -type f -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
+find $PNFS -type f -follow -daystart -mmin +$((24*60*$TIMEONDISK)) -exec rm -fr {} \;
 
 
 #### PostgreSQL PITR Backups ###############################################
@@ -263,7 +263,7 @@ then
 	rm -f $i
     done
     rm -f /tmp/journals
-    find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
+    find $ENSTORE -follow -daystart -mmin +$((24*60*$TIMEONDISK)) -exec rm -fr {} \;
 else
     echo "Did not find enstore backup, continuing" 1>&2
 fi
