@@ -39,7 +39,7 @@ SEVERITY=""
 SHORT_DESCRIPTION="write protect 10 tapes (flip tabs) in STKEN 8500GS tape library"
 COMMENTS="Please run lock on stkensrv4n.fnal.gov to write protect 10 tapes (2 caps)"
 
-MONITORED_CATEGORIZATION="Storage -- enstore"
+MONITORED_CATEGORIZATION="Scientific Data Storage and Access -- Enstore Tape Storage"
 REPORTED_SOURCE="Event Monitoring"
 SERVICE="Infrastructure Event"
 CI_NAME=socket.gethostname().split('.')[0].upper()
