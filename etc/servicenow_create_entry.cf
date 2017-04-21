@@ -2,16 +2,19 @@
 user_last=System
 # user_first = Bridge
 #user_first=cd-srv-dms-enstore
-user_first=Dms-enstore 
+user_first=Dms-enstore
 assignment_group=Storage Service
 category=General
+categorization=Scientific Data Storage and Access -- Enstore Tape Storage
 reported_source=Event Monitoring
 impact=3 - Moderate/Limited
 urgency=3 - Medium
+virtual_organization=Other
 
 [HelpDesk]
 #submitUrl=https://demofermi.service-now.com/incident.do?WSDL
 submitUrl=https://fermi.service-now.com/incident.do?WSDL
+incidentRestUrl=https://fermi.service-now.com/api/now/table/incident
 #submitUrl=https://fermidev.service-now.com/incident.do?WSDL
 generalUrl=%{submitUrl}s
 #acct=cd-srv-bridge

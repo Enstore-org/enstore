@@ -15,18 +15,19 @@ import suds.client
 
 
 CONFIG_FILE=os.path.join(os.environ["ENSTORE_DIR"],"etc/servicenow_create_entry.cf")
-DEV_SNOW_PUT_URL="https://fermidev.service-now.com/CreateRequestedItem.do?WSDL"
+
 """ ServiceNow development URL used to insert requests """
-PRD_SNOW_PUT_URL="https://fermi.service-now.com/CreateRequestedItem.do?WSDL"
+DEV_SNOW_PUT_URL="https://fermidev.service-now.com/CreateRequestedItem.do?WSDL"
 """ ServiceNow production URL used to insert requests """
-DEV_SNOW_GET_URL="https://fermidev.service-now.com/sc_req_item.do?WSDL"
+PRD_SNOW_PUT_URL="https://fermi.service-now.com/CreateRequestedItem.do?WSDL"
 """ ServiceNow development URL used to retrieve created ticket """
-PRD_SNOW_GET_URL="https://fermi.service-now.com/sc_req_item.do?WSDL"
+DEV_SNOW_GET_URL="https://fermidev.service-now.com/sc_req_item.do?WSDL"
 """ ServiceNow production URL used to retrieve created ticket """
-ASSIGNMENT_GROUP="Logistics/PREP Support"
+PRD_SNOW_GET_URL="https://fermi.service-now.com/sc_req_item.do?WSDL"
 """ Assignment group """
-CAT_ITEM="18c27227042950008638553dd6544037"
+ASSIGNMENT_GROUP="Logistics/PREP Support"
 """ Magic categorization item that initiates the workflow """
+CAT_ITEM="18c27227042950008638553dd6544037"
 CALLER_ID="Dms-enstore System"
 AFFILIATION="Fermilab"
 E_MAIL="ssa-auto@fnal.gov"

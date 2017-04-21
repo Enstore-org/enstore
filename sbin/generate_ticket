@@ -18,47 +18,14 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-# assume we are talking to the remedy server specified in the following line
-remedy_server="csdserver"
+CI=`echo $1 | awk '{ printf toupper($1) }'`
 
-. /usr/local/etc/setups.sh
+$ENSTORE_DIR/sbin/create_snow_ticket.py "${CI}" "$2" "$3" "$4" 2>/dev/null
 
-rc=1
-
-setup servicenow_soap 2>/dev/null
-if [ "${SETUP_SERVICENOW_SOAP:-}" != "" ];
+rc=$?
+if [ "${rc}" != "0" ];
 then
-    export PYTHONPATH=$SETUPS_DIR:$PYTHONPATH
-    CI=`echo $1 | awk '{ printf toupper($1) }'`
-    $ENSTORE_DIR/sbin/create_remedy_ticket.py "${CI}" "$2" "$3" "$4" 2>/dev/null
-    rc=$?
-    if [ "${rc}" != "0" ];
-    then
-	echo "enstore alarm --raise --root_error 'servicenow_soap api call failed' --severity E"|at now+1min
-	unsetup servicenow_soap 2>/dev/null
-    else
-	exit 0
-    fi
+    echo "enstore alarm --raise --root_error 'servicenow api call failed' --severity E"|at now+1min
 else
-    echo "enstore alarm --raise --root_error 'servicenow_soap product missing or not current' --severity E"|at now+1min
+    exit 0
 fi
-
-
-setup remedy_soap 2>/dev/null
-if [ "${SETUP_REMEDY_SOAP:-}" != "" ];
-then
-    export PYTHONPATH=$SETUPS_DIR:$PYTHONPATH
-    CI=`echo $1 | awk '{ printf toupper($1) }'`
-    $ENSTORE_DIR/sbin/create_remedy_ticket.py "${CI}" "$2" "$3" "$4"
-    rc=$?
-    if [ "${rc}" != "0" ];
-    then
-	echo "enstore alarm --raise --root_error 'remedy_soap api call failed' --severity E"|at now+1min
-    else
-	exit 0
-    fi
-else
-    echo "enstore alarm --raise --root_error 'remedy_soap product missing or not current' --severity E"|at now+1min
-fi
-
-exit 0
