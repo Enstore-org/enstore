@@ -153,6 +153,7 @@ rm -f $PNFS_FILES
 touch $PNFS_FILES
 # Here we create the xlogs tar files and put them in the corresponding
 # pnfs-backup directories.
+
 for xd in $PNFS
 do
         fn=`find ${xd}.xlogs $find_options -type f -name '*backup.Z' | sort | head -n1`
@@ -162,11 +163,16 @@ do
 	  # FIXME: this relies on a name not having dots, revisit later
           tarfile=`zcat ${fn} | fgrep LABEL |  awk '{ print $NF }' | xargs basename  | cut -f1,2 -d .`
 	  # find starting WAL file
-	  startwal=`zcat ${fn} | fgrep 'START WAL' | cut -f6 -d' ' | cut -f1 -d')'`.Z
-	  startwal=${xd}.xlogs/$startwal
+	  startwalname=`zcat ${fn} | fgrep 'START WAL' | cut -f6 -d' ' | cut -f1 -d')'`.Z
+	  # full path to the WAL file
+	  startwal=${xd}.xlogs/$startwalname
 	  rnd=`printf "%03d" $((${RANDOM}%1000))`
+	  # build list of WAL files to tar:
 	  echo  $startwal >  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
           find ${xd}.xlogs -follow -type f -newer $startwal -print >>  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
+	  # remove all files older than starting WAL file
+          find ${xd}.xlogs -follow -type f ! -newer $startwal ! -name $startwalname -exec rm -f {} \;
+	  # tar the WAL files
           tar -czf ${xd}/xlogs-${tarfile}.tar.Z --files-from  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
 	  rc=$?
 	  rm -f /tmp/pnfs_xlogs_list_${rnd}_$$.txt
@@ -187,7 +193,8 @@ cat $PNFS_FILES| while read file; do
 done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $PNFS_FILES
-find $PNFS -type f -follow -daystart -mmin +$((24*60*$TIMEONDISK)) -exec rm -fr {} \;
+# remove older backup and tarred WAL files
+find $PNFS -type f -daystart -mmin +$((24*60*$TIMEONDISK)) -exec rm -f {} \;
 
 
 #### PostgreSQL PITR Backups ###############################################
@@ -224,7 +231,7 @@ rm -f $ENSTORE_FILES
 #only backup the latest directory copy.
 ELAST=`ls -ltd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
 rc=$?
-if [ $rc -eq 0 ];
+if [ $rc -eq 0 -a "${ELAST:-undefined}" != "undefined" ];
 then
 
     find $ELAST -type f $find_options -print > $ENSTORE_FILES
