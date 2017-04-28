@@ -81,8 +81,10 @@ ENCP_ARGS=["encp"] + ["--skip-pnfs",
 
 Trace.init("VOLUME_AUDIT")
 
+
 def help():
     return "usage %prog [options]"
+
 
 class VolumeAudit:
     """Performs volume audit by randomly choosing a tape and running
@@ -104,6 +106,7 @@ class VolumeAudit:
                                            database = dbInfo.get('dbname', "enstoredb"),
                                            port     = dbInfo.get('db_port', 5432),
                                            user     = dbInfo.get('dbuser', "enstore"))
+
     def do_work(self):
         """Performs volume audit by randomly choosing a tape and running
         encp of first, last and random file in between from that tape. Records
@@ -114,6 +117,11 @@ class VolumeAudit:
         #
         lms = self.csc.get_library_managers2()
         libs = []
+        """
+        exclude test tape libraries
+        """
+        test_libraries = self.csc.get('crons',{}).get('test_library_list', [])
+        lms = [lm for lm in lms if lm['library_manager'] not in test_libraries]
         for l in lms:
             lmc = library_manager_client.LibraryManagerClient(self.csc, l["name"])
             active_volumes = lmc.get_active_volumes()
