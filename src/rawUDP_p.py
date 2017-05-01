@@ -113,8 +113,9 @@ class RawUDP:
     def set_keyword(self, keyword):
         self.replace_keyword = keyword
 
-    def set_max_queue_size(self, queue_size):
-        self.max_queue_size = queue_size
+    def set_max_queue_size(self, queue_size=None):
+        if queue_size:
+            self.max_queue_size = queue_size
         del(self.queue)
         self.queue = multiprocessing.Queue(self.max_queue_size)
 
@@ -377,11 +378,16 @@ def _receiver(RawUDP_obj):
                     RawUDP_obj.queue.put_nowait(message)
                 except Queue.Full:
                     m = str(message)
-                    if RawUDP_obj.caller_name == "log_server":
+                    if hasattr(RawUDP_obj, 'caller_name') and \
+                            RawUDP_obj.caller_name == "log_server":
                         if not " ENCP " in m:
                             # Send to stdout as enstore log service may not be available.
                             msg = " ".join((time.strftime("%Y-%m-%d %H:%M:%S"), m))
                             print "Intermediate queue is full", msg
+                    else:
+                        # reset queue
+                        print "Intermediate queue is full, resetting queue"
+                        RawUDP_obj.set_max_queue_size()
                 except Exception, detail:
                     print "Exception putting into queue:", detail
 
