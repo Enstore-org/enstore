@@ -3852,30 +3852,6 @@ def outputfile_check(work_list, e):
                         # layer 4 is missing and therefore it must be chimera.
                         pass
 
-                    #This block of code will log information.  We should
-                    # never see this message, but I'm adding it because
-                    # it looks like there are cases we do.  The information
-                    # logged lists which layers contain only whitespace.
-                    if (len(layer1) > 0 and not layer1[0].strip()) or \
-                           (len(layer4) > 0 and not layer4[0].strip()):
-                        message = ""
-                        for layer in (1, 2, 3, 4, 5, 6, 7):
-                            try:
-                                #So what if we end up reading layers 1 and
-                                # 4 twice.
-                                layer_data = sfs.readlayer(layer,
-                                                           outputfile_use)
-                            except:
-                                continue
-
-                            if layer_data and \
-                                   not layer_data[0].strip():
-                                message = "layer%s = %s  %s" % (layer,
-                                                                layer_data,
-                                                                message)
-                        Trace.log(e_errors.INFO,
-                                  "Detected whitspace in layers: %s" % message)
-
                     layer1 = map(string.strip, layer1)
                     layer4 = map(string.strip, layer4)
                     #Test if the layers are empty.
@@ -4380,8 +4356,6 @@ def open_udp_server(udp_serv, unique_id_list, encp_intf):
 
     Trace.message(INFO_LEVEL, "Waiting for udp callback at address: %s" %
                   str(udp_serv.server_socket.getsockname()))
-    Trace.log(e_errors.INFO, "Waiting for udp callback at address: %s" %
-                  str(udp_serv.server_socket.getsockname()))
 
     udp_ticket = None
 
@@ -4454,7 +4428,6 @@ def open_routing_socket(mover_ip, encp_intf):
         #Record which interface was choosen.
         if_name = interface.get('interface', "unknown")
         Trace.message(TRANSFER_LEVEL, "Choosing interface: %s" % if_name)
-        Trace.log(e_errors.INFO, "Choosing interface: %s" % if_name)
 
         ip = interface.get('ip')
 	if ip and mover_ip:   #route_ticket.get('mover_ip', None):
@@ -4518,7 +4491,6 @@ def open_control_socket(listen_socket, mover_timeout):
     message = "Waiting for mover to connect control socket at address: %s" \
               % str(listen_socket.getsockname()) + elapsed_string()
     Trace.message(INFO_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
 
     start_wait_time = time.time()
     wait_left_time = mover_timeout
@@ -4629,7 +4601,6 @@ def open_control_socket(listen_socket, mover_timeout):
                control_socket.getpeername(),
                ticket.get('unique_id', "Unknown")) + elapsed_string()
     Trace.message(INFO_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
 
     message = "[1] Time to open control socket: %s sec." % \
               (time.time() - time_to_open_control_socket,)
@@ -4641,8 +4612,6 @@ def open_control_socket(listen_socket, mover_timeout):
     if fds:
         try:
             bytes_queued = callback.get_socket_read_queue_length(control_socket)
-            if bytes_queued == 0:
-                Trace.log(e_errors.INFO, "No socket read queued count.")
 
         except AttributeError:
             #FIONREAD not known on this system.
@@ -4655,22 +4624,12 @@ def open_control_socket(listen_socket, mover_timeout):
         if bytes_queued > 0:
             try:
                 ticket = callback.read_tcp_obj(control_socket)
-
-                Trace.log(e_errors.INFO,
-                          "Received second ticket in open_control_socket: %s" %
-                          (str(ticket),))
             except (select.error, socket.error, e_errors.EnstoreError), msg:
                 raise EncpError(msg.errno, str(msg), e_errors.NET_ERROR, ticket)
             except e_errors.TCP_EXCEPTION:
                 raise EncpError(errno.ENOTCONN,
                                 "Control socket no longer usable after initalization.",
                                 e_errors.TCP_EXCEPTION, ticket)
-
-    #Check for additional connection attempts we aren't ready for.
-    read_fds, unused, unused = select.select([listen_socket], [], [], 0)
-    if read_fds:
-        message = "Detected additional connection attempt that is not expected."
-        Trace.log(e_errors.INFO, message)
 
     return control_socket, address, ticket
 
@@ -4689,7 +4648,6 @@ def open_data_socket(mover_addr, interface_ip = None):
                   (mover_addr,) + elapsed_string()
 
     Trace.message(INFO_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
     address_family = socket.getaddrinfo(mover_addr[0], None)[0][0]
     try:
         #Create the socket.
@@ -4754,7 +4712,6 @@ def open_data_socket(mover_addr, interface_ip = None):
             fail_1st_data_socket_later_state = True  #Don't do this again.
 
             message = "Simulating FAIL_1ST_DATA_SOCKET_LATER error."
-            Trace.log(e_errors.INFO, message)
             Trace.message(ERROR_LEVEL, message, out_fp=sys.stderr)
 
     #If the select didn't return sockets ready for read or write, then the
@@ -4778,7 +4735,6 @@ def open_data_socket(mover_addr, interface_ip = None):
     message = "Data socket %s is connected to %s." % \
               (sockname, peername) + elapsed_string()
     Trace.message(INFO_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
 
     try:
 	data_path_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
@@ -4856,7 +4812,6 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
             message = "Waiting for udp message at: %s." % \
 		      str(udp_serv.server_socket.getsockname())
 	    Trace.message(TRANSFER_LEVEL, message)
-	    Trace.log(e_errors.INFO, message)
 
             #Keep looping until one of these two messages arives.
             # Ignore any other that my be received.
@@ -4875,7 +4830,6 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
 		return None, uticket
 
 	    Trace.message(TRANSFER_LEVEL, "Opened udp socket.")
-	    Trace.log(e_errors.INFO, "Opened udp socket.")
         except (EncpError,), detail:
             if getattr(detail, "errno", None) == errno.ETIMEDOUT:
 	        #Handle retries needs to be called to update various values
@@ -4901,7 +4855,6 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
     message = "Listening for control socket at: %s" \
               % str(listen_socket.getsockname())
     Trace.message(INFO_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
 
     start_time = time.time()
     while time.time() < start_time + encp_intf.resubmit_timeout:
@@ -4968,8 +4921,6 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
                   (ticket.get('mover', {}).get('name', "Unknown"),
                    ticket.get('unique_id', "Unknown")) + elapsed_string()
         Trace.message(INFO_LEVEL, message)
-        Trace.log(e_errors.INFO, message)
-
 
         #Verify that the id is one that we are excpeting and not one that got
         # lost in the ether.
@@ -5028,9 +4979,6 @@ def mover_handshake_part2(ticket, encp_intf):
 
         #Attempt to get the data socket connected with the mover.
         try:
-            Trace.log(e_errors.INFO,
-                      "Attempting to connect data socket to mover at %s." \
-                      % (mover_addr,))
             data_path_socket = open_data_socket(mover_addr, local_intf_ip)
 
             if not data_path_socket:
@@ -5039,8 +4987,6 @@ def mover_handshake_part2(ticket, encp_intf):
         except (socket.error,), msg:
             #exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.NET_ERROR, str(msg))
-            #Trace.log(e_errors.INFO, str(msg))
-            #close_descriptors(control_socket)
             #Since an error occured, just return it.
             return None, ticket
 
@@ -5086,20 +5032,7 @@ def wait_for_message(listen_socket, lmc, work_list,
         select_list.append(lmc_socket)
 
     #Wait for a message or socket connection.
-    Trace.log(99, "transaction_id_list: %s" % (transaction_id_list,))
     if USE_NEW_EVENT_LOOP and transaction_id_list:
-        #Send to the debug log information about the current ids we are
-        # waiting for and those that we have queued up.  This should
-        # never grow to a list larger than one; if it does then there
-        # likely is a bug somewhere.
-        Trace.log(TRANS_ID_LEVEL,
-                  "waiting for: %s or connections to %s" % \
-                  (transaction_id_list, listen_socket.getsockname()))
-        queued_sent_ids = getattr(lmc.u.get_tsd(), "send_queue", {}).keys()
-        queued_recv_ids = getattr(lmc.u.get_tsd(), "recv_queue", {}).keys()
-        Trace.log(TRANS_ID_LEVEL, "queued sent ids: %s  recv ids: %s" % \
-                  (queued_sent_ids, queued_recv_ids))
-
         #If we are using the new event loop and we have pending answers for UDP
         # replies that could arrive at any time, we need to execute this
         # nasty loop to be able to resend messages that have not received a
@@ -5136,9 +5069,6 @@ def wait_for_message(listen_socket, lmc, work_list,
                     # the original message.
                     #A better mechanism will be needed if more than just
                     # the lmc will do things like this.
-#                    print "RESENDING:", transaction_id_list
-                    Trace.log(TRANS_ID_LEVEL,
-                              "repeating ids: %s" % (transaction_id_list,))
                     lmc.u.repeat_deferred(transaction_id_list)
 
                 continue
@@ -5154,8 +5084,6 @@ def wait_for_message(listen_socket, lmc, work_list,
                 #A better mechanism will be needed if more than just
                 # the lmc will do things like this.
                 #                print "DROPPING:", transaction_id_list
-                Trace.log(TRANS_ID_LEVEL,
-                          "dropping ids: %s" % (transaction_id_list,))
                 lmc.u.drop_deferred(transaction_id_list)
 
     else:
@@ -5172,9 +5100,7 @@ def wait_for_message(listen_socket, lmc, work_list,
 
 
     #Get the packets specified one at a time.
-    Trace.log(99, "lmc_socket: %s   r: %s" % (lmc_socket, r))
     if lmc_socket in r:
-        Trace.log(TRANS_ID_LEVEL, "getting LM message")
         response_ticket, transaction_id = submit_all_request_recv(
             transaction_id_list, work_list, lmc, e)
         #We need to change the timedout errors to resumbitting ones.
@@ -5188,10 +5114,7 @@ def wait_for_message(listen_socket, lmc, work_list,
         #Encasing the transaction ID in a list is done only to make the
         # output string for it look like the others, which really are
         # lists.
-        Trace.log(TRANS_ID_LEVEL,
-                  "received id: %s" % ([transaction_id],))
     elif listen_socket in r or (udp_socket and udp_socket in r):
-        Trace.log(TRANS_ID_LEVEL, "starting mover handshake")
         #Wait for the mover to establish the control socket.  See
         # if the id matches one of the tickets we submitted.
         # Establish data socket connection with the mover.
@@ -5211,7 +5134,7 @@ def wait_for_message(listen_socket, lmc, work_list,
         #We did not get any response back from the library manager.  Allow
         # this situation to be an error.
         message = "never received response from %s" % (lmc.server_name,)
-        Trace.log(e_errors.INFO, message)
+        Trace.log(e_errors.WARNING, message)
 
         response_ticket = {'status' : (e_errors.TIMEDOUT, lmc.server_name)}
 
@@ -5267,12 +5190,10 @@ def receive_final_dialog(control_socket):
                 #Output the info.
                 if done_ticket.has_key("method"): #get
                     message = "Received final dialog (1)." + elapsed_string()
-                    Trace.log(e_errors.INFO, message)
                     Trace.message(TRANSFER_LEVEL, message)
                 else: #encp
                     message = "Received final dialog for %s." % \
                              done_ticket.get('unique_id', "Unknown") + elapsed_string()
-                    Trace.log(e_errors.INFO, message)
                     Trace.message(TRANSFER_LEVEL, message)
                 #Output these two regardless of get or encp.
                 Trace.message(TICKET_LEVEL, "FINAL DIALOG:")
@@ -5319,7 +5240,6 @@ def receive_final_dialog_2(udp_serv, e):
     Trace.message(TRANSFER_LEVEL, "Received final dialog (2).")
     Trace.message(TICKET_LEVEL, "FINAL DIALOG (udp):")
     Trace.message(TICKET_LEVEL, pprint.pformat(mover_udp_done_ticket))
-    Trace.log(e_errors.INFO, "Received final dialog (2).")
 
     message = "[1] Time to receive final dialog (2): %s sec." % \
                   (time.time() - final_dialog_2_start_time,)
@@ -5363,8 +5283,6 @@ def close_descriptors(*fds):
             routes_to_close[fd.getpeername()[0]] = 1
         except (OSError, IOError, AttributeError, socket.error), msg:
             pass
-            #Trace.log(e_errors.WARNING,
-            #          "Unable to cleanup routing table: %s" % (str(msg),))
 
         if hasattr(fd, "close"):
 	    try:
@@ -5509,7 +5427,6 @@ def submit_one_request_send(ticket, encp_intf):
           % (filename, transfer_type, ticket['unique_id'],
              ticket['infile'], ticket['outfile'])
     Trace.log(e_errors.INFO, message)
-    Trace.log(TICKET_1_LEVEL, "Sending ticket: %s" % (str(ticket),))
     #Tell the user what the current state of the transfer is.
     message = "Submitting %s %s request to LM.%s" % \
                   (filename, transfer_type, elapsed_string())
@@ -5535,7 +5452,6 @@ def submit_one_request_send(ticket, encp_intf):
         #This is used to keep multiple encps in a migration in sync.
         # Otherwise, it should have no effect.
         try:
-            #Trace.log(98, "<<< start_lock.release(), TP #2, except")
             start_lock.release()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5546,7 +5462,6 @@ def submit_one_request_send(ticket, encp_intf):
         #This is used to keep multiple encps in a migration in sync.
         # Otherwise, it should have no effect.
         try:
-            #Trace.log(98, "<<< start_lock.release(), TP #3, except")
             start_lock.release()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5557,9 +5472,7 @@ def submit_one_request_send(ticket, encp_intf):
     #This is used to keep multiple encps in a migration in sync.
     # Otherwise, it should have no effect.
     try:
-        #Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred() - going to release")
         start_lock.release()
-        #Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred(), released")
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -5587,10 +5500,8 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     #count = 0
     while not response_ticket:
         try:
-            Trace.log(99, "in submit_all_request_recv() before recv_deferred2()")
             response_ticket, transaction_id = lmc.u.recv_deferred2(
                 transaction_ids, encp_intf.resubmit_timeout)
-            Trace.log(99, "in submit_all_request_recv() after recv_deferred2()")
         except (socket.error, select.error, e_errors.EnstoreError), msg:
             transaction_id = None
             if msg.errno in [errno.ETIMEDOUT]:
@@ -5607,7 +5518,6 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
             """
             if not response_ticket:
                 Trace.log(e_errors.ERROR, "about to hang in submit_all_request_recv: %s" % (response_ticket,))
-            #raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     message = "[1] Time to receive one request: %s sec." % \
               (time.time() - submit_all_request_recv_start_time,)
@@ -5797,7 +5707,6 @@ def open_local_file(work_ticket, tinfo, e):
     open_local_file_start_time = time.time()
 
     Trace.message(5, "Opening local file.")
-    Trace.log(e_errors.INFO, "Opening local file.")
 
     if is_write(e):
         flags = os.O_RDONLY
@@ -6135,10 +6044,6 @@ def check_for_crcs(done_ticket):
     #Make these more accessable.
     mover_crc = done_ticket['fc'].get('complete_crc', None)
     encp_crc = done_ticket['exfer'].get('encp_crc', None)
-
-    #Trace.log(e_errors.INFO,
-    #          "Mover CRC: %s  ENCP CRC: %s" % (mover_crc, encp_crc))
-    #print "Mover CRC: %s  ENCP CRC: %s" % (mover_crc, encp_crc)
 
     #Check this just to be safe.
     if mover_crc == None:
@@ -6516,13 +6421,13 @@ def set_outfile_permissions(ticket, encp_intf):
                         except (OSError, IOError), msg2:
                             Trace.handle_error(severity=99)
                             message = "StorageFS failed: %s" % (str(msg2),)
-                            Trace.log(e_errors.INFO, message)
+                            Trace.log(e_errors.WARNING, message)
                             ticket['status'] = (e_errors.OSERROR, message)
                             return
                         in_stat_info = in_sfs.get_stat(ticket['infile'])
             except (OSError, IOError), msg:
                 Trace.handle_error(severity=99)
-                Trace.log(e_errors.INFO, "stat failed: %s: %s" % \
+                Trace.log(e_errors.WARNING, "stat failed: %s: %s" % \
                           (str(msg), ticket['infile']))
                 message = "Unable to stat() file: %s: %s" % \
                           (str(msg), ticket['infilepath'])
@@ -6541,7 +6446,7 @@ def set_outfile_permissions(ticket, encp_intf):
 
                 ticket['status'] = (e_errors.OK, None)
             except (OSError, IOError), msg:
-                Trace.log(e_errors.INFO, "chmod %s failed: %s" % \
+                Trace.log(e_errors.WARNING, "chmod %s failed: %s" % \
                           (ticket['outfile'], msg))
                 ticket['status'] = (e_errors.USERERROR,
                                "Unable to set permissions: %s" % (str(msg),))
@@ -6566,7 +6471,7 @@ def set_outfile_permissions(ticket, encp_intf):
                               (ticket['outfile'], uid, gid, os.getuid(),
                                os.getgid(), os.geteuid(), os.getegid(),
                                str(msg))
-                    Trace.log(e_errors.INFO, message)
+                    Trace.log(e_errors.WARNING, message)
                     ticket['status'] = (e_errors.USERERROR, message)
 
         message = "[1] Time to set_outfile_permissions: %s sec." % \
@@ -6722,9 +6627,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     if USE_FIRST_REQUEST and not request_dictionary.has_key('infile') and \
            not request_dictionary.has_key('outfile'):
         request_dictionary, unused, unused = get_next_request(request_list)
-        message = "using request %s instead for error processing" \
-                  % (request_dictionary['unique_id'],)
-        Trace.log(e_errors.INFO, message)
 
     #These fields need to be retrieved with possible defaults.  If the transfer
     # failed before encp could determine which transfer failed (aka failed
@@ -6881,9 +6783,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #These four error are likely due to an outside process/user.
             if getattr(msg, "errno", None) in [errno.EACCES, errno.ENOENT,
                                                errno.EFBIG, errno.EPERM]:
-                #For debugging.
-                Trace.log(40, "euid = %s  egid = %s  uid = %s  gid = %s" % \
-                          (os.geteuid(), os.getegid(), os.getuid(), os.getgid()))
                 #Local File status.
                 lf_status = (e_errors.FILE_MODIFIED,
                              "Noticed the local file changed: " + str(msg))
@@ -6934,10 +6833,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 # the previous encp has already set.
                 skip_layer_cleanup = True
 
-        #Add this for debugging.
-        Trace.log(e_errors.INFO,
-                  "pf_status = %s  skip_layer_cleanup = %s" %
-                  (pf_status, skip_layer_cleanup))
         message = "[1] Time to check pnfs filename: %s sec." % \
                   (time.time() - check_pnfs_filename_start_time,)
         Trace.message(TIME_LEVEL, message)
@@ -7911,9 +7806,6 @@ def set_sfs_settings(ticket, intf_encp):
                 else:   # HSMFILE
                     sfs = namespace.StorageFS(sfsid)
                     path = sfs.get_path()[0]  #Find the new path.
-                Trace.log(e_errors.INFO,
-                          "File %s was moved to %s." %
-                          (ticket['wrapper']['pnfsFilename'], path))
                 ticket['wrapper']['pnfsFilename'] = path  #Remember new path.
                 if is_write(ticket):
                     ticket['outfile'] = path
@@ -7960,7 +7852,7 @@ def set_sfs_settings(ticket, intf_encp):
             else:
                 ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
             #Log the problem.
-            Trace.log(e_errors.INFO,
+            Trace.log(e_errors.WARNING,
                       "Trouble with sfs (StorageFS): %s %s %s." %
                       (ticket['status'][0], str(exc), str(msg)))
             return
@@ -8118,7 +8010,7 @@ def set_sfs_settings(ticket, intf_encp):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
-        Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
+        Trace.log(e_errors.WARNING, "Unable to send info. to file clerk. %s %s."
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
         return
@@ -8141,12 +8033,7 @@ def set_sfs_settings(ticket, intf_encp):
                 # would set the filesize back to zero.
                 pstat = sfs.get_stat(pnfs_filename)
                 size = pstat[stat.ST_SIZE]
-                if long(size) == long(ticket['file_size']) or long(size) == 1L:
-                    Trace.log(e_errors.INFO,
-                              "Filesize (%s) for file %s already set." %
-                              (ticket['file_size'],
-                               ticket['wrapper']['pnfsFilename']))
-                else:
+                if not size:
                     # set the file size
                     sfs.set_file_size(ticket['file_size'], pnfs_filename)
         except (KeyboardInterrupt, SystemExit):
@@ -8536,8 +8423,7 @@ def create_write_request(work_ticket, file_number,
         # "NULL" appear in the pnfs pathname, which conflicts with
         # the task of --shortcut.  So, we need to breakdown and do
         # this full name lookup.
-        Trace.log(99, "shortcut: %s  override_path: %s  wrapper: %s" % \
-                  (e.shortcut, e.override_path, volume_clerk['wrapper']))
+
         if e.shortcut and not e.override_path:
             if is_null_media_type(volume_clerk):
                 #To avoid an error with the mover, perform a full
@@ -8646,7 +8532,7 @@ def submit_write_request(work_ticket, encp_intf):
             pass
     except KeyError:
         message = "UNEXPECTED TICKET FORMAT DETECTED: %s" % ticket
-        Trace.log(e_errors.INFO, message)
+        Trace.log(e_errors.WARNING, message)
 
     Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % (1,))
     Trace.message(TRANSFER_LEVEL,
@@ -8669,10 +8555,6 @@ def stall_write_transfer(data_path_socket, control_socket, e):
 
     stall_write_transfer_start_time = time.time()
 
-    Trace.log(INFO_LEVEL,
-              "stalling write transfer until signal bytes arives: %s sec" % \
-              (e.mover_timeout,))
-
     #Stall starting the count until the first byte is ready for writing.
     duration = e.mover_timeout
     while 1:
@@ -8691,8 +8573,6 @@ def stall_write_transfer(data_path_socket, control_socket, e):
                 break
 
     if data_path_socket not in write_fd:
-        Trace.log(INFO_LEVEL,
-                  "confirming control_socket still okay: %s sec" % (10,))
 
         try:
             read_control_fd, unused, unused = select.select([control_socket],
@@ -8907,7 +8787,6 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
             delete_at_exit.register_bfid(done_ticket['fc']['bfid'])
         except (IndexError, KeyError):
             pass
-            #Trace.log(e_errors.WARNING, "unable to register bfid")
 
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
                       (work_ticket['outfilepath'],
@@ -8955,11 +8834,11 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         try:
             delete_at_exit.unregister_bfid(done_ticket['fc']['bfid'])
         except (IndexError, KeyError):
-            Trace.log(e_errors.INFO, "unable to unregister bfid")
+            Trace.log(e_errors.WARNING, "unable to unregister bfid")
         try:
             delete_at_exit.unregister(done_ticket['outfile']) #pnfsname
         except (IndexError, KeyError):
-            Trace.log(e_errors.INFO, "unable to unregister file")
+            Trace.log(e_errors.WARNING, "unable to unregister file")
 
         # calculate some kind of rate - time from beginning
         # to wait for mover to respond until now. This doesn't
@@ -9069,7 +8948,6 @@ def prepare_write_to_hsm(tinfo, e):
     #Create the zero length file entries.
     message = "Creating zero length output files."
     Trace.message(TRANSFER_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
     for i in range(len(request_list)):
         if e.put_cache or request_list[i].get('copy', None) != None:
             # We still need to get the inode.
@@ -10649,9 +10527,6 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
 
     stall_read_transfer_start_time = time.time()
 
-    Trace.log(INFO_LEVEL,
-              "stalling read transfer until data arives: %s sec" % \
-              (e.mover_timeout,))
 
     #Stall starting the count until the first byte is ready for reading.
     duration = e.mover_timeout
@@ -10671,8 +10546,6 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
                 break
 
     if data_path_socket not in read_fd:
-        Trace.log(INFO_LEVEL,
-                  "confirming control_socket still okay: %s sec" % (10,))
 
         try:
             read_control_fd, unused, unused = select.select([control_socket],
@@ -10832,7 +10705,6 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
 
     #By adding the pnfs_filename check, we will know if another process
     # has modified this file.
-    Trace.log(99, "after open_local_file: %s" % (done_ticket['status'],))
     result_dict = handle_retries(request_list, request_ticket,
                                  done_ticket, e,
                                  pnfs_filename = request_ticket['infile'])
@@ -11061,7 +10933,6 @@ def prepare_read_from_hsm(tinfo, e):
     #Create the zero length file entries.
     message = "Creating zero length output files."
     Trace.message(TRANSFER_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
     for vol in requests_per_vol.keys():
         for i in range(len(requests_per_vol[vol])):
 
@@ -12384,15 +12255,6 @@ def log_encp_start(tinfo, intf):
     #Trace.message(CONFIG_LEVEL, format_class_for_print(intf, "intf"))
     Trace.message(CONFIG_LEVEL, "intf:\n" + str(intf))
 
-    #Convenient, but maybe not correct place, to hack in log message
-    # that shows how encp was called.
-    if intf.outtype == "hsmfile":  #write
-        Trace.log(e_errors.INFO, "%s  %s %s  %s  %s  %s" %
-                  (version_line, os_line, id_line, tag_line, cwd_line, command_line))
-    else:                       #read
-        Trace.log(e_errors.INFO, "%s  %s, %s  %s  %s" %
-                  (version_line, os_line, id_line, cwd_line, command_line))
-
     message = "[1] Time to log encp start: %s sec." % \
               (time.time() - log_encp_start_time,)
     Trace.message(TIME_LEVEL, message)
@@ -12409,9 +12271,6 @@ def final_say(intf, done_ticket):
         #Catch an impossible (hopefully) situation where status contains
         # and error, but exit_status says success.
         if not e_errors.is_ok(status) and not exit_status:
-            Trace.log(e_errors.INFO, "Traceback line for check_for_traceback.")
-            Trace.log(e_errors.INFO,
-                      " done_ticket['exit_status'] = %s  exit_status = %s  status = %s" % (done_ticket.get('exit_status', "NotSet"), exit_status, status))
             if intf.migration_or_duplication and \
                    e_errors.is_non_retriable(status):
                 #For fatal errors, tell migration not to retry!
@@ -12441,17 +12300,6 @@ def final_say(intf, done_ticket):
         if not ifilename and not ofilename:
             ifilename = intf.input
             ofilename = intf.output
-
-        #Perform any necessary string formating.
-        if status[1] == None:
-            msg_str = None
-        elif type(status[1]) == types.StringType:
-            #Log messages should not have newlines in them.
-            msg_str = string.replace(status[1], "\n\t", "  ")
-        else:
-            msg_str = str(status[1])
-
-        Trace.log(e_errors.INFO, msg_str)
 
         if e_errors.is_alarmable(status):
             Trace.alarm(e_errors.ERROR, status[0],
@@ -12606,9 +12454,7 @@ def main(intf):
 def do_work(intf, main=main):
 
     #Keep multiple encps within a migration in sync.
-    #Trace.log(98, "--- start_lock.acquire(), TP #0, before")
     start_lock.acquire()
-    #Trace.log(98, ">>> start_lock.acquire(), TP #0, got lock")
 
     try:
         exit_status = main(intf)
@@ -12645,7 +12491,6 @@ def do_work(intf, main=main):
 
     #Keep multiple encps within a migration in sync.
     try:
-        #Trace.log(98, "<<< start_lock.release(), TP #1 main")
         start_lock.release()
     except:
         pass

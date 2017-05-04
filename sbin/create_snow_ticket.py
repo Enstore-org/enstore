@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import sys
-import remedy_interface
+import snow_interface
 
 if __name__ == '__main__':
     try:
-        ticket = remedy_interface.submit_ticket(
+        ticket = snow_interface.submit_ticket(
             CiName  = sys.argv[1].upper(),
             Summary = sys.argv[1].upper() + " : " + sys.argv[3][:100],
             Notes   = sys.argv[4],
@@ -21,4 +21,4 @@ if __name__ == '__main__':
     except Exception, msg:
         sys.stderr.write("%s\n"%(str(msg)))
         sys.exit(1)
-        
+
