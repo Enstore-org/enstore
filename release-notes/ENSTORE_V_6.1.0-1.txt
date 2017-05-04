@@ -1,0 +1,97 @@
+commit f5c62920447f4bc14faa9c439ba07516e3b85e7d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Mar 28 13:41:42 2017 -0500
+
+    enstore rpm 6..0.0-1
+
+A	release-notes/ENSTORE_V_6.1.0-0.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit a94f605db6ee8aea8cb5cc97a765c4c0e91b5a55
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Mar 28 13:24:53 2017 -0500
+
+        Set compression fails if it is disabled at the drive. Check if Data Capable Controlled by operator configuration menu is set before calling ftt_set_compression.
+        http://srm.fnal.gov/reviews/r/386/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1865
+
+M	ftt/ftt_lib/ftt_do_scsi.c
+A	ftt/ftt_lib/opendemo.c
+
+commit 3db35ac55582b254fdb0963cd740e4e5e1cc2e7f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Mar 3 13:07:45 2017 -0600
+
+        en_eval call in udp_common.py was incorrect. The intent was to have it called
+        with parameters check, compile. But actually it is called with debug, check,
+        because the function declaration is:
+        en_eval(expr, debug=False, check=True, compile=False) (see en_eval.py)
+        http://srm.fnal.gov/reviews/r/385/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1860
+
+M	src/udp_common.py
+
+commit e183a11f47870d10bfbbb0caa92712c31e5d9322
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Feb 23 11:53:16 2017 -0600
+
+    file_utils : remove unused variables
+
+M	src/file_utils.py
+
+commit dc943c3cd1b0a1c33f2a2edc24e003f2bb6959ab
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Feb 23 11:46:29 2017 -0600
+
+    ENCP: remove log statements
+
+    RB : http://srm.fnal.gov/reviews/r/381/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1857
+
+M	src/encp.py
+M	src/file_utils.py
+
+commit 7c0df64c29d9179971a76dd0c7d133c468a5a224
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Feb 23 11:43:15 2017 -0600
+
+    crons: add replica check cron
+
+    RB : http://srm.fnal.gov/reviews/r/382/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1858
+
+A	crontabs/replica_check
+A	tools/replica_check.py
+
+commit ea7098f8891f163b69673f778906258f754842a1
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Feb 17 14:12:46 2017 -0600
+
+        Cron job to check for empty packages.
+    	http://srm.fnal.gov/reviews/r/380/
+    	http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1856
+
+A	crontabs/check_SFA_files
+A	sbin/check_empty_packages
+
+commit 09d9e369276a1a66448d642ee9a8eb277047662f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Feb 14 15:42:48 2017 -0600
+
+        Add request correlation id and redelivery flag to migrator log message to identify the message.
+        http://srm.fnal.gov/reviews/r/379/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1851
+        This is to debug duplicate write request lists porblem.
+
+M	src/cache/servers/migrator.py
+
+commit a932e6cdaa4e58d900bbaf8b0c61c9e9e04db9a9
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jan 6 09:36:23 2017 -0600
+
+        The problem was found with tags which are not strings, but list of strings.
+        http://srm.fnal.gov/reviews/r/369/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1823
+
+M	src/chimera.py
+
