@@ -19,7 +19,7 @@ def submit_ticket(**kwargs):
 
     config_parser = ConfigParser()
     config_parser.read(CONFIG_FILE)
-    url = config_parser.get("HelpDesk","incidenRestUrl")
+    url = config_parser.get("HelpDesk", "incidentRestUrl")
 
     if not url :
         raise Exception("service now URL is not defined")
@@ -29,6 +29,11 @@ def submit_ticket(**kwargs):
                                   url,
                                   config_parser.get("HelpDesk","acct"),
                                   config_parser.get("HelpDesk","passwd"))
+
+    auth_handler = urllib2.HTTPBasicAuthHandler(password_manager)
+    opener = urllib2.build_opener(auth_handler)
+    urllib2.install_opener(opener)
+
     data = json.dumps({
         'impact' :  kwargs.get('Impact_Type','3-Moderate/Limited'),
         'u_virtual_organization' : config_parser.get('create_entry','virtual_organization','Other'),
