@@ -11,8 +11,8 @@ import ftt_driver
 import Trace
 import e_errors
 
-MS_HEADER_DATA_LENGTH = 4 # Mode Sense / Select Data Header Length 
-P_25H_LEN = 0x1e+2 # length of Page 0x25 
+MS_HEADER_DATA_LENGTH = 4 # Mode Sense / Select Data Header Length
+P_25H_LEN = 0x1e+2 # length of Page 0x25
 P_0FH_LEN = 0x0e + 2 # length of Page 0x0f
 
 def ftt_mode_sense_6_bytes(driver,            # ftt driver
@@ -27,10 +27,10 @@ def ftt_mode_sense_6_bytes(driver,            # ftt driver
 
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type dbd: :obj:`int` 
-  :arg dbd: 0x80 - "do not return data block descriptor" flag 
-  :type page_code: :obj:`int` 
-  :arg page_code: page code 
+  :type dbd: :obj:`int`
+  :arg dbd: 0x80 - "do not return data block descriptor" flag
+  :type page_code: :obj:`int`
+  :arg page_code: page code
   :type subpage_code: :obj:`int`
   :arg subpage_code: suppage code
   :type allocation_length: :obj:`int`
@@ -39,7 +39,7 @@ def ftt_mode_sense_6_bytes(driver,            # ftt driver
   :arg control_byte: control byte
   :rtype: :obj:`list` - mode sense data
   """
-  
+
   cdb_mode_sense = [0x1a, # mode sense command
                     dbd,
                     page_code,
@@ -66,21 +66,21 @@ def ftt_mode_select_6_bytes(driver,
   6 - bytes mode select command according to SCSI reference.
   !!! Use this command at your own risk.
   The best practice is to fist issue a correspondind mode sense command
-  and then modify received data and send mode select command 
-  
+  and then modify received data and send mode select command
+
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type pf: :obj:`int` 
+  :type pf: :obj:`int`
   :arg pf: page formatted data
-  :type reserved_msb: :obj:`int` 
+  :type reserved_msb: :obj:`int`
   :arg reserved_msb: MSB
-  :type reserved_lsb: :obj:`int` 
+  :type reserved_lsb: :obj:`int`
   :arg reserved_lsb: LSB
-  :type data_block_length: :obj:`int` 
+  :type data_block_length: :obj:`int`
   :arg data_block_length: data block length
-  :type control_byte: :obj:`int` 
+  :type control_byte: :obj:`int`
   :arg control_byte: control byte
-  :type data_block: :obj:`int` 
+  :type data_block: :obj:`int`
   :arg data_block: data block
   :rtype: :obj:`list` - mode select data
   """
@@ -110,29 +110,28 @@ def t10000c_amc(driver,
                 amc = 0x00
                 ):
   """
-  Set "Allow Maximum Capacity" bit for T10000C drive 
-  
+  Set "Allow Maximum Capacity" bit for T10000C drive
+
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type amc: :obj:`int` 
+  :type amc: :obj:`int`
   :arg amc: may have 2 values 1 - enable, 0 - disable
   :rtype: :obj:`bool`
   """
-  
+
   if not amc in (0,1):
     return False
-  
-  OFFSET_TO_AMC = 5 
-  OFFSET_TO_DBD = 8
-  
+
+  OFFSET_TO_AMC = 5
+
   # read what are the settings first (Mode select page 0x25)
-  
+
   data = ftt_mode_sense_6_bytes(driver,
                                 page_code = 0x25,
                                 allocation_length = P_25H_LEN + MS_HEADER_DATA_LENGTH,
                                 control_byte = 0x00
                                 )
-  Trace.trace(32, "t10000c_amc: Data: %s"%(sprint_list(data),)) 
+  Trace.trace(32, "t10000c_amc: Data: %s"%(sprint_list(data),))
 
   # modify data buffer to set AMC bit
   data[0] = 0x00
@@ -140,7 +139,7 @@ def t10000c_amc(driver,
   data[2] = 0x10
   data[3] = 0x00
   data[MS_HEADER_DATA_LENGTH + OFFSET_TO_AMC] = data[MS_HEADER_DATA_LENGTH + OFFSET_TO_AMC] & 0xfe | amc
-  
+
   res = ftt_mode_select_6_bytes(driver,                 # ftt driver
                                 data_block_length = P_25H_LEN + MS_HEADER_DATA_LENGTH,
                                 data_block = data
@@ -151,12 +150,74 @@ def t10000c_amc(driver,
                                       allocation_length = P_25H_LEN + MS_HEADER_DATA_LENGTH,
                                       control_byte = 0x00
                                 )
-  Trace.trace(32, "t10000c_amc: Sense Data: %s"%(sprint_list(sense_data),)) 
+  Trace.trace(32, "t10000c_amc: Sense Data: %s"%(sprint_list(sense_data),))
 
   if sense_data[MS_HEADER_DATA_LENGTH + OFFSET_TO_AMC] != data[MS_HEADER_DATA_LENGTH + OFFSET_TO_AMC]:
     Trace.log(e_errors.ERROR, "AMC setting failed: out %s in %s"%
               (data[MS_HEADER_DATA_LENGTH + OFFSET_TO_AMC],
                sense_data[MS_HEADER_DATA_LENGTH + OFFSET_TO_AMC]))
+    return False
+  else:
+    return True
+
+def set_lfa_fsa(driver,
+                lfa = True,
+                fsa = True
+                ):
+  """
+  Set "Large File Accelerator, File Sync Accelerator
+
+  :type driver: :obj:`ftt_driver.FTTDriver`
+  :arg driver: tape driver object
+  :type lfa: :obj:`bool`
+  :arg lfa: True - Enable
+  :type fsa: :obj:`bool`
+  :arg fsa: True - Enable
+  :rtype: :obj:`bool`
+  """
+
+  mask = (3<<6)
+  byte8 = 0x00
+  if lfa:
+    byte8 = (1<<6)
+  if not fsa:
+    byte8 = byte8|(1<<7)
+  byte8 = byte8&mask
+
+  OFFSET_TO_DFSA = 8
+
+  # read what are the settings first (Mode select page 0x25)
+
+  data = ftt_mode_sense_6_bytes(driver,
+                                page_code = 0x25,
+                                allocation_length = P_25H_LEN + MS_HEADER_DATA_LENGTH,
+                                control_byte = 0x00
+                                )
+  Trace.trace(32, "set_lfa_fsa: Data: %s"%(sprint_list(data),))
+
+  # modify data buffer to set AMC bit
+  data[0] = 0x00
+  data[1] = 0x00
+  data[2] = 0x10
+  data[3] = 0x00
+  data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DFSA] = data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DFSA] & 0xc0 | byte8
+
+  res = ftt_mode_select_6_bytes(driver,                 # ftt driver
+                                data_block_length = P_25H_LEN + MS_HEADER_DATA_LENGTH,
+                                data_block = data
+                                )
+
+  sense_data = ftt_mode_sense_6_bytes(driver,
+                                      page_code = 0x25,
+                                      allocation_length = P_25H_LEN + MS_HEADER_DATA_LENGTH,
+                                      control_byte = 0x00
+                                )
+  Trace.trace(32, "set_lfa_fsa: Sense Data: %s"%(sprint_list(sense_data),))
+
+  if sense_data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DFSA] != data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DFSA]:
+    Trace.log(e_errors.ERROR, "LFA FSA setting failed: out %s in %s"%\
+              (data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DFSA],
+               sense_data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DFSA]))
     return False
   else:
     return True
@@ -169,23 +230,23 @@ def t10000c_dce(driver,     # ftt driver
 
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type dce: :obj:`int` 
+  :type dce: :obj:`int`
   :arg dce: may have 2 values 0x80 - enable, 0 - disable
   :rtype: :obj:`bool`
   """
-  
+
   if not dce in (0,0x80):
     return False
 
-  OFFSET_TO_DCE = 2  
+  OFFSET_TO_DCE = 2
   # read what are the settings first (Mode select page 0x0f
-  
+
   data = ftt_mode_sense_6_bytes(driver,
                                 page_code = 0x0f,
                                 allocation_length = P_0FH_LEN + MS_HEADER_DATA_LENGTH,
                                 control_byte = 0x00
                                 )
-  Trace.trace(32, "t10000c_dce: Data: %s"%(sprint_list(data),)) 
+  Trace.trace(32, "t10000c_dce: Data: %s"%(sprint_list(data),))
 
   # modify data buffer to set dce bit
   data[0] = 0x00
@@ -204,7 +265,7 @@ def t10000c_dce(driver,     # ftt driver
                                       allocation_length = P_0FH_LEN + MS_HEADER_DATA_LENGTH,
                                       control_byte = 0x00
                                 )
-  Trace.trace(32, "t10000c_dce: Sense Data: %s"%(sprint_list(sense_data),)) 
+  Trace.trace(32, "t10000c_dce: Sense Data: %s"%(sprint_list(sense_data),))
 
   if sense_data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DCE]&0xff != data[MS_HEADER_DATA_LENGTH + OFFSET_TO_DCE]:
     Trace.log(e_errors.ERROR, "AMC setting failed: out %0x in %0x"%
@@ -218,26 +279,26 @@ def t10000c_sdca(driver,
                  sdca = 0x00
                  ):
   """
-  Set "Select Data Compression Algorithm" bit for T10000C drive 
+  Set "Select Data Compression Algorithm" bit for T10000C drive
 
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type sdca :obj:`int` 
+  :type sdca :obj:`int`
   :arg sdca: may have 2 values 1 - LZ1 compression on write, 0 - no compression
   :rtype: :obj:`bool`
   """
-  
+
   if not sdca in (0,1):
     return False
-  OFFSET_TO_SDCA = 14  
+  OFFSET_TO_SDCA = 14
   # read what are the settings first (Mode select page 0x0f
-  
+
   data = ftt_mode_sense_6_bytes(driver,
                                 page_code = 0x10,
                                 allocation_length = P_0FH_LEN + MS_HEADER_DATA_LENGTH,
                                 control_byte = 0x00
                                 )
-  Trace.trace(32, "t10000c_sdca: Data: %s"%(data,)) 
+  Trace.trace(32, "t10000c_sdca: Data: %s"%(data,))
 
   # modify data buffer to set dce bit
   data[0] = 0x00
@@ -256,7 +317,7 @@ def t10000c_sdca(driver,
                                       allocation_length = P_0FH_LEN + MS_HEADER_DATA_LENGTH,
                                       control_byte = 0x00
                                 )
-  Trace.trace(32, "t10000c_sdca: Sense Data: %s"%(sense_data,)) 
+  Trace.trace(32, "t10000c_sdca: Sense Data: %s"%(sense_data,))
 
   if sense_data[MS_HEADER_DATA_LENGTH + OFFSET_TO_SDCA] != data[MS_HEADER_DATA_LENGTH + OFFSET_TO_SDCA]:
     Trace.log(e_errors.ERROR, "AMC setting failed: out %0x in %0x"%
@@ -275,11 +336,11 @@ def  t10000_set_compression(driver,
 
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type compression :obj:`bool` 
+  :type compression :obj:`bool`
   :arg compression: False - compression OFF, True - comression ON
   :rtype: :obj:`bool`
   """
-  
+
   dce = 0
   sdca = 0
   if compression:
@@ -299,13 +360,13 @@ def ftt_scsi_verify(driver,
 
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type byte1: :obj:`int` 
+  :type byte1: :obj:`int`
   :arg byte1: byte one of SCSI verify command
-  :type byte2: :obj:`int` 
+  :type byte2: :obj:`int`
   :arg byte2: byte two of SCSI verify command
   :rtype: :obj:`list` - scsi verify data
   """
-  
+
   cdb_verify = [0x8f,             # scsi verify command
                 byte1,
                 byte2,
@@ -347,19 +408,19 @@ def ftt_request_sense(driver,
 
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :type reserved_1: :obj:`int` 
+  :type reserved_1: :obj:`int`
   :arg reserved_1: reserved
-  :type reserved_2: :obj:`int` 
+  :type reserved_2: :obj:`int`
   :arg reserved_2: reserved
-  :type reserved_3: :obj:`int` 
+  :type reserved_3: :obj:`int`
   :arg reserved_3: reserved
-  :type allocation_length: :obj:`int` 
+  :type allocation_length: :obj:`int`
   :arg allocation_length: page allocation length (59)
-  :type control_byte: :obj:`int` 
+  :type control_byte: :obj:`int`
   :arg control_byte: control byte
   :rtype: :obj:`list` - request sense data
   """
-  
+
   cdb_request_sense = [0x03,             # request sense command
                        reserved_1,
                        reserved_2,
@@ -383,11 +444,11 @@ def check_scsi_verify(driver):
   Check scsi verify status.
   :type driver: :obj:`ftt_driver.FTTDriver`
   :arg driver: tape driver object
-  :rtype: :obj:`tuple` - ( :obj:`bool` - request sense worked, :obj:`bool` - verify done, :obj:`float` - percent done) 
+  :rtype: :obj:`tuple` - ( :obj:`bool` - request sense worked, :obj:`bool` - verify done, :obj:`float` - percent done)
   """
 
   rc = ftt_request_sense(driver)
-  
+
   Trace.trace(32, "%s"%(sprint_list(rc),))
 
   if rc[0] not in (0x70, 0x71):
@@ -400,7 +461,7 @@ def check_scsi_verify(driver):
     return True, False, percent_complete
   else:
     return False, False, percent_complete # request sense is invalid
-    
+
 
 
 def print_list(l):
@@ -414,11 +475,20 @@ def sprint_list(l):
     s = "%s%02x "%(s,i&0xff,)
   return s
 
+def page_25_just_test(driver):
+  # we are reading sense page 0x25
+  res = ftt_mode_sense_6_bytes(driver,
+                               page_code = 0x25,
+                               allocation_length = P_25H_LEN + MS_HEADER_DATA_LENGTH,
+                               control_byte = 0x00
+                             )
+  Trace.trace(32, "page25: Sense Data: %s"%(sprint_list(res),))
+
 def page_25_test(driver):
   stats = driver.get_stats()
   remaining = stats[ftt.REMAIN_TAPE]
   if remaining:
-    remaining = long(remaining)* 1024L 
+    remaining = long(remaining)* 1024L
     print "Remaining Bytes", remaining
 
   # we are reading sense page 0x25
@@ -438,32 +508,50 @@ def page_25_test(driver):
   print "Changeable Settings"
   print_list(res)
 
-  amc = raw_input("enter 0 or 1 to set AMC or just press Enter: ")
-  if amc:
-    amc = int(amc)
-    if amc > 1 or amc < 0:
-      print "only 0 or 1 is allowed"
-      sys.exit(1)
-  
-    print("Set AMC to %s"%(amc,))
-    if t10000c_amc(driver,  # ftt driver
-                   amc = amc # may have 2 values 1 - enable, 0 - disable
-                   ):
-      print "AMC was set successfully"
-      stats = driver.get_stats()
-      remaining = stats[ftt.REMAIN_TAPE]
-      if remaining:
-        remaining = long(remaining)* 1024L
-        print "Remaining Bytes", remaining 
+  res = raw_input("enter 1 to set AMC, 2 to set FSA or LFA, or just press Enter: ")
+  if res:
+    res = int(res)
+  if res == 1:
+    amc = raw_input("enter 0 or 1 to set AMC or just press Enter: ")
+    if amc:
+      amc = int(amc)
+      if amc > 1 or amc < 0:
+        print "only 0 or 1 is allowed"
+        sys.exit(1)
 
+      print("Set AMC to %s"%(amc,))
+      if t10000c_amc(driver,  # ftt driver
+                     amc = amc # may have 2 values 1 - enable, 0 - disable
+                     ):
+        print "AMC was set successfully"
+        stats = driver.get_stats()
+        remaining = stats[ftt.REMAIN_TAPE]
+        if remaining:
+          remaining = long(remaining)* 1024L
+          print "Remaining Bytes", remaining
+
+      else:
+        print "AMC setting failed"
+  elif res == 2:
+    lfa = True
+    res = raw_input("Set LFA? (y/n): ")
+    if res and res[0] == 'n':
+      lfa = False
+    fsa = True
+    res = raw_input("Set FSA? (y/n): ")
+    if res and res[0] == 'n':
+      fsa = False
+    if set_lfa_fsa(driver, lfa = lfa, fsa = fsa):
+      print "LFA and FSA were set successfully"
     else:
-      print "AMC setting failed"
-  
+      print "LFA and FSA setting failed"
+
+
 def page_0f_test(driver):
   stats = driver.get_stats()
   remaining = stats[ftt.REMAIN_TAPE]
   if remaining:
-    remaining = long(remaining)* 1024L 
+    remaining = long(remaining)* 1024L
     print "Remaining Bytes", remaining
 
   # we are reading sense page 0x25
@@ -488,7 +576,7 @@ def page_10_test(driver):
   stats = driver.get_stats()
   remaining = stats[ftt.REMAIN_TAPE]
   if remaining:
-    remaining = long(remaining)* 1024L 
+    remaining = long(remaining)* 1024L
     print "Remaining Bytes", remaining
 
   # we are reading sense page 0x25
@@ -557,8 +645,8 @@ def enable_trace_at_start(levels):
     for level in levels:
         Trace.print_levels[level]=1
 
-if __name__ == '__main__':            
-    
+if __name__ == '__main__':
+
   if len(sys.argv) != 2:
     usage()
     sys.exit(-1)
@@ -569,7 +657,7 @@ if __name__ == '__main__':
     driver.open(sys.argv[1], mode=1, retry_count=3)
   except Exception, detail:
     print "Exception", detail
-    
+
   stats = driver.get_stats()
   print "Drive Type", stats[ftt.PRODUCT_ID]
   while True:
@@ -615,6 +703,6 @@ if __name__ == '__main__':
         break
     else:
       break
-  
-  
-    
+
+
+
