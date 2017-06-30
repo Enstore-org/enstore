@@ -5805,10 +5805,10 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
     # file.  Also, total up the crc value for comparison with what was
     # sent from the mover.
     try:
-        if e.chk_crc != 0:
-            crc_flag = 1
-        else:
+        if e.cksm_value is not None or e.chk_crc == 0:
             crc_flag = 0
+        else:
+            crc_flag = 1
 
 	################################################
 	"""
@@ -5990,50 +5990,86 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
 ## The following functions do CRC checks.
 ##
 ############################################################################
-
-
 def check_crc(done_ticket, encp_intf, fd=None):
-
     check_crc_start_time = time.time()
 
-    #Make these more accessable.
-    #mover_crc = done_ticket['fc'].get('complete_crc', None)
+    mover_crc = done_ticket['fc'].get('complete_crc', None)
     encp_crc = done_ticket['exfer'].get('encp_crc', None)
 
+    done_ticket['status'] = (e_errors.OK, None)
+
+    if mover_crc is None:
+        msg = "warning: mover did not return CRC; skipping CRC check\n"
+        try:
+            sys.stderr.write(msg)
+            sys.stderr.flush()
+        except IOError:
+            pass
+        done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+        return
+
     if encp_intf.chk_crc:
-        check_for_crcs(done_ticket)
-        if not e_errors.is_ok(done_ticket):
-            #We don't want to fail for this reason, just to skip testing more.
-            done_ticket['status'] = (e_errors.OK, None)
+        if encp_crc is None and encp_intf.cksm_value is None:
+            msg = "warning: encp failed to calculate CRC; skipping CRC check\n"
+            try:
+                sys.stderr.write(msg)
+                sys.stderr.flush()
+            except IOError:
+                pass
+            done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
             return
 
-    #Enstore at FNAL historically uses a zero seeded adler32.  The adler32
-    # standard says that it should be seed with 1 not 0.  Convert the zero
-    # seeded value to a one seeded value for comparison, if necessary.
-    #
-    #The variable encp_crc_1_seeded is what is used to check the CRC in
-    # layer 2, this always needs to be checked as a 1 seeded adler32.
-    encp_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
-            encp_crc, done_ticket['file_size'])
+        """
+        Enstore at FNAL historically uses a zero seeded adler32.  The adler32
+        standard says that it should be seed with 1 not 0.  Convert the zero
+        seeded value to a one seeded value for comparison, if necessary.
 
-    # Check the CRC
-    if encp_intf.chk_crc:
-        compare_crc(done_ticket, encp_crc_1_seeded)
-        if not e_errors.is_ok(done_ticket):
+        The variable crc_1_seeded is what is used to check the CRC in
+        layer 2, this always needs to be checked as a 1 seeded adler32.
+        """
+
+        crc = encp_intf.cksm_value if encp_intf.cksm_value is not None else encp_crc
+
+        if encp_intf.cksm_value is not None:
+            if encp_intf.cksm_seed == 1:
+                crc_1_seeded = encp_intf.cksm_value
+            else:
+                crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(encp_intf.cksm_value,
+                                                                       done_ticket['file_size'])
+        else:
+            # encp_crc is always seeded 0
+            crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(encp_crc,
+                                                                   done_ticket['file_size'])
+
+        """
+        mover crc can be 0 seeded or 1 seeded depending on configuration,
+        try both
+        """
+        mover_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(mover_crc,
+                                                                     done_ticket['file_size'])
+        # Check the CRC
+        if mover_crc != crc_1_seeded and mover_crc_1_seeded != crc_1_seeded:
+            msg = "CRC mismatch: %d (or %d) mover != %d (or %d) encp" % (mover_crc,
+                                                                         mover_crc_1_seeded,
+                                                                         crc,
+                                                                         crc_1_seeded)
+            done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
             return
+        # Check the CRC in pnfs layer 2 (set by dcache).
+        if encp_intf.get_cache or encp_intf.put_cache:
+            check_crc_layer2(done_ticket, crc_1_seeded)
+            if not e_errors.is_ok(done_ticket):
+                return
 
-    #If the user wants a crc readback check of the new output file (reads
-    # only) calculate it and compare.
+    """
+    If the user wants a crc readback check of the new output file
+    (reads only) calculate it and compare.
+    """
     if encp_intf.ecrc:
         check_crc_readback(done_ticket, fd)
         if not e_errors.is_ok(done_ticket):
             return
 
-    # Check the CRC in pnfs layer 2 (set by dcache).
-    if encp_intf.chk_crc and (encp_intf.get_cache or encp_intf.put_cache):
-        check_crc_layer2(done_ticket, encp_crc_1_seeded)
-        if not e_errors.is_ok(done_ticket):
-            return
     message = "[1] Time to check CRC: %s sec." % \
               (time.time() - check_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
@@ -11282,6 +11318,9 @@ class EncpInterface(option.Interface):
         self.check = 0             # check if transfer attempt will occur
         self.ignore_fair_share = None # tells LM not count this write transfer
                                       # against the storage groups limit.
+        self.cksm_value = None  # value of adler32 checksum
+        self.cksm_seed = 1  # seed value
+
 
         #messages for user options
         self.data_access_layer = 0 # no special listings
@@ -11501,6 +11540,17 @@ class EncpInterface(option.Interface):
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.DEFAULT_VALUE:1,
                           option.USER_LEVEL:option.USER,},
+        option.CKSM_VALUE: {option.HELP_STRING:
+                                "Specifies value of adler32 checksum",
+                            option.VALUE_TYPE: option.INTEGER,
+                            option.VALUE_USAGE: option.REQUIRED,
+                            option.USER_LEVEL: option.USER, },
+        option.CKSM_SEED: {option.HELP_STRING:
+                               "Specifies value of adler32 checksum seed",
+                           option.VALUE_TYPE: option.INTEGER,
+                           option.DEFAULT_VALUE: 1,
+                           option.VALUE_USAGE: option.REQUIRED,
+                           option.USER_LEVEL: option.USER, },
         option.EPHEMERAL:{option.HELP_STRING:
                           "Use the ephemeral file family (writes only).",
                           option.DEFAULT_TYPE:option.STRING,

@@ -223,6 +223,8 @@ DUPLICATED = "duplicated"                    #volume
 DURATION = "duration"                        #recent_file_listing
 ECHO = "echo"                                #pnfs
 ECRC = "ecrc"                                #encp
+CKSM_VALUE = "cksm-value"                    #encp
+CKSM_SEED = "cksm-seed"                      #encp
 EJECT = "eject"                              #media
 ENABLE = "enable"                            #quota
 ENABLE_REDIRECTION="enable-redirection"      # encp # per discussion with Gene tis replaces disable-redirection
@@ -521,7 +523,8 @@ valid_option_list = [
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE, DUPLICATED, DURATION,
-    ECHO, ECRC, EJECT, ENABLE, ENABLE_REDIRECTION, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
+    ECHO, ECRC, CKSM_VALUE, CKSM_SEED, EJECT, ENABLE, ENABLE_REDIRECTION,
+    ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
     EXISTS, EXPORT, EXTERNAL_TRANSITIONS,
     FILE, FILE_FALLBACK,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
