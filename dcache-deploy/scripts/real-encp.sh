@@ -176,13 +176,7 @@ fi
 
 if [ -z "$ENCP" ]; then say $0 $* Can not find encp in our path; exit 1; fi
 
-if [  -r /etc/dcache/encp.options ]; then
-    . /etc/dcache/encp.options  # this sets variable options
-elif  [ -r $E_H/dcache-deploy/scripts/encp.options ]; then
-    . $E_H/dcache-deploy/scripts/encp.options # this sets variable options
-else
-    options="--verbose=4 --threaded --ecrc --bypass-filesystem-max-filesize-check --mmap-io --buffer-size 62914560"
-fi
+options="--verbose=4 --threaded --bypass-filesystem-max-filesize-check"
 
 if [ $# -lt 3 ] ;then
     say Not enough arguments  $0 $args
@@ -396,6 +390,12 @@ except:
        unset LD_PRELOAD
    fi
    #
+   # if crc is known, do not calculate it, check it later
+   #
+   if [ "${uri_crc}" != "" ]; then
+       encp --help | egrep "\-\-cksm\-value"  >/dev/null 2>&1 && options="${options:-} --no-crc"
+   fi
+   #
    # try to get file by bfid
    #
    say g1 $ENCP $options --age-time 60 --delpri 10 --skip-pnfs --get-bfid ${si_bfid} $filepath
@@ -405,7 +405,6 @@ except:
    if [ $ENCP_EXIT -eq 0 ]; then
        rm -f $out
        sayS g2s get, rc=$ENCP_EXIT
-       exit $ENCP_EXIT
    else
        #
        # execute normal encp, if getting by bfid failed
@@ -419,10 +418,38 @@ except:
 	   sayS g2s get, rc=$ENCP_EXIT
        else
 	   sayE g2e get, rc=$ENCP_EXIT
+	   exit $ENCP_EXIT
        fi
-       exit $ENCP_EXIT
    fi
-
+   #
+   # check the crc,
+   #
+   if [ "${uri_crc}" != "" ]; then
+       #
+       # uri_crc comes from layer 4 and most probably seeded 0
+       #
+       disk_crc=`ecrc -0 $filepath | awk '{ print $NF }'`
+       rc=$?
+       if [ ${rc} -ne 0 ]; then
+	   sayE Failed to calculate crc, ${rc}
+	   exit 1
+       fi
+       if [ "${disk_crc}" != "${uri_crc}" ]; then
+           #
+           # try also seeded 1
+           #
+	   disk_crc=`ecrc -1 $filepath | awk '{ print $NF }'`
+	   if [ ${rc} -ne 0 ]; then
+	       sayE Failed to calculate crc, ${rc}
+	       exit 1
+	   fi
+	   if [ "${disk_crc}" != "${uri_crc}" ]; then
+	       sayE crc mismatch, "${disk_crc}" != "${uri_crc}"
+	       exit 1
+	   fi
+       fi
+   fi
+   exit  $ENCP_EXIT
 #------------------------------------------------------------------------------------------
 elif [ "$command" = "put" ] ; then
 
@@ -433,6 +460,14 @@ elif [ "$command" = "put" ] ; then
     fi
 
     encp --help | egrep "\-\-enable\-redirection" >/dev/null 2>&1 && options="${options:-} --enable-redirection"
+    #
+    # if encp supports --cksm-value option, pass checksum value to it
+    #
+    if [ "${si_flag_c}" != "" ]; then
+	si_flag_c=`echo ${si_flag_c}| cut -d":" -f2`
+	crc_value=`printf "%d" "0x"${si_flag_c}`
+	encp --help | egrep "\-\-cksm\-value"  >/dev/null 2>&1 && options="${options:-} --cksm-value ${crc_value}"
+    fi
     # files that bigger than 8 GB need to use the cern wrapper, not the default cpio
     big=`expr 8 \* 1024 \* 1024 \* 1024 - 10000`
     if [ $si_size -gt $big ]; then
