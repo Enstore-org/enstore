@@ -49,14 +49,15 @@ if server['status'][0] != e_errors.OK:
 
 # make up the out file
 # do not take more backup in the same hour!
-hour = "%02d"%(time.localtime()[3])
+localtime = time.localtime()
+suffix = "%02d-%02d"%(localtime.tm_mday,localtime.tm_hour,)
 out_dir = os.path.join(backupinfo['dir'], 'ACC-DST')
 #if not os.access(out_dir, os.F_OK):
 #	os.makedirs(out_dir)
 if not os.path.exists(out_dir):
 	print out_dir," does not exist, creating "
 	os.makedirs(out_dir)
-outfile = os.path.join(backupinfo['dir'], 'ACC-DST', sys.argv[1]+'.backup.'+hour)
+outfile = os.path.join(backupinfo['dir'], 'ACC-DST', sys.argv[1]+'.backup.'+suffix)
 
 cmd = "pg_dump -p %d -h %s -U %s -F c -f %s %s"%(server['dbport'], server['dbhost'], server['dbuser'], outfile, server['dbname'])
 
