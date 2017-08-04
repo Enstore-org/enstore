@@ -44,7 +44,7 @@ if __name__ == "__main__":
         res=cursor.fetchall()
         delay = 0
         if res[0][0]:
-            delay = inr(res[0][0])
+            delay = int(res[0][0])
         if delay > 18000:
             Trace.alarm(e_errors.ALARM, "Replica is behind by %d seconds"%(delay,))
     except Exception as e:
