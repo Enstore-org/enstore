@@ -688,24 +688,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(7,buf[2])),0);
 	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
 
-
 	    n_blocks =     pack(0,buf[5],buf[6],buf[7]);
 	    block_length = pack(0,buf[9],buf[10],buf[11]);
 	    DEBUG2(stderr, "Product_ID %s\n", d->prod_id);
-                if (strncmp(d->prod_id,"EXB-89",6) == 0) {
-                     DEBUG2(stderr, "total block 8900 case... \n");
-                     /* 8900's count 16k blocks, not 1k blocks */
-                     n_blocks *= 16.0;
-
-                } else if (strncmp(d->prod_id,"Mammoth",7)  == 0) {
-
-                     DEBUG2(stderr, "total bloks Mammoth2 case... \n");
-                     /* Mammoth's count 33k blocks, not 1k blocks */
-                     n_blocks *= 33.0;
-                } else {
-                     DEBUG2(stderr, "remain_tape non-8900 case... \n");
-                     ;
-}
 	    tape_size =    n_blocks;
 
 	    if (0 == b->value[FTT_TNP]) {
