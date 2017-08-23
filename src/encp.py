@@ -11722,7 +11722,7 @@ class EncpInterface(option.Interface):
                                  option.VALUE_NAME:'resubmit_timeout',
                                  option.VALUE_TYPE:option.INTEGER,
                                  option.VALUE_USAGE:option.REQUIRED,
-                                 option.USER_LEVEL:option.ADMIN,
+                                 option.USER_LEVEL:option.USER2,
                                  },
         option.SHORTCUT:{option.HELP_STRING:
                          "Used with dcache transfers to avoid pathname "
