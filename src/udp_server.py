@@ -14,9 +14,9 @@ import checksum
 import sys
 import socket
 import fcntl
-import copy
 import types
 import threading
+import cPickle
 
 # enstore imports
 
@@ -552,19 +552,18 @@ class UDPServer:
 
         """
 
-
-        self._lock.acquire()
-        try:
-            # there are rare cases when the following erro occurs:
-            # RuntimeError: dictionary changed size during iteration
-            # I do not know the reason
-            # but this should help the code to proceed
-            list_copy = copy.deepcopy(list)
-        except:
-            list_copy = None
-            Trace.handle_error()
-            Trace.log(e_errors.INFO, "Exception when doing deepcopy. List %s"%(list,))
-        self._lock.release()
+        with self._lock
+            try:
+                # there are rare cases when the following erro occurs:
+                # RuntimeError: dictionary changed size during iteration
+                # I do not know the reason
+                # but this should help the code to proceed
+                #list_copy = copy.deepcopy(list)
+                list_copy = cPickle.loads(cPickle.dumps(list, -1)) # this about 5 times faster than deepcopy
+            except:
+                list_copy = None
+                Trace.handle_error()
+                Trace.log(e_errors.INFO, "Exception when doing deepcopy. List %s"%(list,))
 
         if not list_copy:
             # do not send a reply
