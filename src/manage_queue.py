@@ -908,7 +908,10 @@ class Queue:
         updated_requests = {}
         for key in self.queue.keys():
             Trace.trace(TR+23, 'Queue.update_priority: updating %s'% (key,))
-            self.queue[key]['by_priority'].update()
+            try:
+                self.queue[key]['by_priority'].update()
+            except KeyError:
+                Trace.trace(TR+23, "KeyError %s"%(self.queue,))
             if self.queue[key]['by_priority'].updated:
                 Trace.trace(TR+23, 'Queue.update_priority: updated %s'% (key,))
                 self.queue[key]['by_priority'].updated = False
@@ -1473,43 +1476,39 @@ class Request_Queue:
             queue = self.regular_queue
         ticket['encp']['basepri'] = basepri
         ticket['encp']['adminpri'] = adm_pri
-        #self._lock.acquire()
-        try:
-            rq, stat = queue.put(basepri, ticket)
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.handle_error(exc, detail, tb)
-            del(tb)
-            rq = None
-            stat = None
-        #self._lock.release()
-        if rq:
-            self._lock.acquire()
+        with self._lock:
             try:
-                Trace.trace(TR+21, "PUT %s"%(self.queue_length,))
-                if ticket['work'] == 'write_to_hsm' and ticket['vc'].has_key('file_family'):
-                    if self.families.has_key(ticket['vc']['file_family']):
-                       self.families[ticket['vc']['file_family']] = self.families[ticket['vc']['file_family']] + 1
-                    else:
-                       self.families[ticket['vc']['file_family']] = 1
-                    Trace.trace(TR+21, "PUT. FF %s"%(self.families,))
-                if self.storage_groups.has_key(rq.ticket["vc"]["storage_group"]):
-                    self.storage_groups[rq.ticket["vc"]["storage_group"]] = self.storage_groups[rq.ticket["vc"]["storage_group"]] + 1
-                else:
-                    self.storage_groups[rq.ticket["vc"]["storage_group"]] = 1
-                self.queue_length = self.queue_length + 1
-                self.put_into_queue = self.put_into_queue + 1
-                if self.put_into_queue == MAX_LONG:
-                   self.put_into_queue = 0L # to avoid overflow
-
-
+                rq, stat = queue.put(basepri, ticket)
             except:
                 exc, detail, tb = sys.exc_info()
-                print "EXC", detail
                 Trace.handle_error(exc, detail, tb)
                 del(tb)
+                Trace.trace(TR+23,"More Details %s %s"%(basepri, ticket))
+                rq = None
+                stat = None
+            if rq:
+                try:
+                    Trace.trace(TR+21, "PUT %s"%(self.queue_length,))
+                    if ticket['work'] == 'write_to_hsm' and ticket['vc'].has_key('file_family'):
+                        if self.families.has_key(ticket['vc']['file_family']):
+                           self.families[ticket['vc']['file_family']] = self.families[ticket['vc']['file_family']] + 1
+                        else:
+                           self.families[ticket['vc']['file_family']] = 1
+                        Trace.trace(TR+21, "PUT. FF %s"%(self.families,))
+                    if self.storage_groups.has_key(rq.ticket["vc"]["storage_group"]):
+                        self.storage_groups[rq.ticket["vc"]["storage_group"]] = self.storage_groups[rq.ticket["vc"]["storage_group"]] + 1
+                    else:
+                        self.storage_groups[rq.ticket["vc"]["storage_group"]] = 1
+                    self.queue_length = self.queue_length + 1
+                    self.put_into_queue = self.put_into_queue + 1
+                    if self.put_into_queue == MAX_LONG:
+                       self.put_into_queue = 0L # to avoid overflow
 
-            self._lock.release()
+
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    Trace.handle_error(exc, detail, tb)
+                    del(tb)
 
         return rq, stat
 
