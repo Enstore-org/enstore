@@ -464,7 +464,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11g CVS"
+    version_string = "v3_11h CVS"
     encp_file = globals().get('__file__', "")
     if encp_file:
         version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)
@@ -11661,7 +11661,7 @@ class EncpInterface(option.Interface):
                               option.VALUE_NAME:'mover_timeout',
                               option.VALUE_TYPE:option.INTEGER,
                               option.VALUE_USAGE:option.REQUIRED,
-                              option.USER_LEVEL:option.ADMIN,
+                              option.USER_LEVEL:option.USER2,
                               },
         option.NO_CRC:{option.HELP_STRING:"Do not perform CRC check.",
                        option.DEFAULT_NAME:'chk_crc',
@@ -11722,7 +11722,7 @@ class EncpInterface(option.Interface):
                                  option.VALUE_NAME:'resubmit_timeout',
                                  option.VALUE_TYPE:option.INTEGER,
                                  option.VALUE_USAGE:option.REQUIRED,
-                                 option.USER_LEVEL:option.ADMIN,
+                                 option.USER_LEVEL:option.USER2,
                                  },
         option.SHORTCUT:{option.HELP_STRING:
                          "Used with dcache transfers to avoid pathname "
