@@ -35,6 +35,8 @@ def print_help():
     -t, --time interval - monitoring inteval in seconds (default: 30s)
     -h, --help - print help
     -m, --mail - mail recipient
+    -r, --restart - restart library manager unconditionally.
+                    Without this option library manager restart only during off hours.
     if library managers are not specified they will be taken from the configuration
     """
 
@@ -206,7 +208,8 @@ class LMC(library_manager_client.LibraryManagerClient):
 
 mail_recipient = os.environ.get("ENSTORE_MAIL", None)
 prog_name = sys.argv[0].split('/')[-1]
-opts, args = getopt.getopt(sys.argv[1:], "t:h", ["timeout", "help"])
+restart = False
+opts, args = getopt.getopt(sys.argv[1:], "t:h:r", ["timeout", "help", "restart"])
 for o, a in opts:
     if o in ["-t", "--time"]:
         interval = int(a)
@@ -215,6 +218,8 @@ for o, a in opts:
     elif o in ["-h", "--help"]:
         print_help()
         sys.exit(0)
+    elif o in ["-r", "--restart"]:
+        restart = True
 
 if not mail_recipient:
     print "Please specify mail recipient"
@@ -307,7 +312,8 @@ try:
                 # Otherwise send e-mail to developer
                 t = time.localtime()
                 if (t.tm_wday in (5,6) or # weekend
-                    (t.tm_hour not in xrange(8, 17))): # weekday before 8:00am or after 5:00pm
+                    (t.tm_hour not in xrange(8, 17)) or # weekday before 8:00am or after 5:00pm
+                    (restart)): # restart unconditionally
                     # restart LM
                     lmc.restart()
                 else: # weekdays between 8:00 and 17:00
