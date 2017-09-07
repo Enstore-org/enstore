@@ -8658,8 +8658,8 @@ def migrate_volume(vol, intf):
     # Detect empty tapes.
     if len(tape_list) == 0:
         log(MY_TASK, vol, "volume is empty")
-        db.close()  #Avoid resource leaks.
-        return 0
+#        db.close()  #Avoid resource leaks.
+#        return 0
 
     media_types = []
     #Need to obtain the output media_type.  If --library
@@ -8669,14 +8669,6 @@ def migrate_volume(vol, intf):
         media_type = get_media_type(intf.library, db)
         media_types = [media_type]
     else:
-        """
-        for row in res:
-            original_path = row[2]
-            media_type = search_media_type(original_path, db)
-
-            if media_type and media_type not in media_types:
-                media_types.append(media_type)
-        """
         for file_record in tape_list:
             media_type = search_media_type(file_record['pnfs_name0'], db)
             if media_type and media_type not in media_types:
@@ -8708,13 +8700,15 @@ def migrate_volume(vol, intf):
         set_system_migrating_func(vcc, vol)
         log(MY_TASK, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
 
-    #Migrate the files in the list.
-    res = migrate(tape_list, intf, volume_record=volume_record)
+    if len(tape_list) == 0:
+        res = 0
+    else:
+        # Migrate files in the list.
+        res = migrate(tape_list, intf, volume_record=volume_record)
 
     #Do one last volume wide check.
     if res == 0 and is_migrated_by_src_vol(vol, intf, db, checked = 0, closed = 0):
         set_src_volume_migrated(MY_TASK, vol, vcc, db)
-
     else:
         message = "do not set %s to %s due to previous error" % \
                   (vol, INHIBIT_STATE)
