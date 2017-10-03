@@ -552,7 +552,7 @@ class UDPServer:
 
         """
 
-        with self._lock
+        with self._lock:
             try:
                 # there are rare cases when the following erro occurs:
                 # RuntimeError: dictionary changed size during iteration
