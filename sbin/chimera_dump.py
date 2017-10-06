@@ -19,35 +19,35 @@ import dbaccess
 import enstore_functions2
 
 QUERY_TOP_DIRECTORIES="""
-WITH RECURSIVE paths(pnfsid, path, type, depth)
-AS (VALUES('000000000000000000000000000000000000','',16384,0)
-UNION SELECT d.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
+WITH RECURSIVE paths(ino, pnfsid, path, type, depth)
+AS (VALUES(pnfsid2inumber('000000000000000000000000000000000000'),'','',16384,0)
+UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
    FROM t_dirs d,t_inodes i, paths p
-   WHERE p.type=16384 AND d.iparent=p.pnfsid AND p.depth<4 AND
-         d.iname != '.' AND d.iname != '..' AND i.ipnfsid=d.ipnfsid)
+   WHERE p.type=16384 AND d.iparent=p.ino AND p.depth<4 AND
+         d.iname != '.' AND d.iname != '..' AND i.inumber=d.ichild)
          SELECT p.path, p.pnfsid  FROM paths p
          WHERE p.type=16384 and p.depth>3 and p.path ~ '/pnfs/fs/usr'
 """
 
 QUERY_TOP_DIRECTORY="""
-WITH RECURSIVE paths(pnfsid, path, type, depth)
-AS (VALUES('000000000000000000000000000000000000','',16384,0)
-UNION SELECT d.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
+WITH RECURSIVE paths(ino, pnfsid, path, type, depth)
+AS (VALUES(pnfsid2inumber('000000000000000000000000000000000000'),'','',16384,0)
+UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
    FROM t_dirs d,t_inodes i, paths p
-   WHERE p.type=16384 AND d.iparent=p.pnfsid AND p.depth<4 AND
-         d.iname != '.' AND d.iname != '..' AND i.ipnfsid=d.ipnfsid)
+   WHERE p.type=16384 AND d.iparent=p.ino AND p.depth<4 AND
+         d.iname != '.' AND d.iname != '..' AND i.inumber=d.ichild)
          SELECT p.path, p.pnfsid FROM paths p
          WHERE p.type=16384 and p.depth>3 and p.path = '/pnfs/fs/usr/{}'
 """
 
 DUMP_DIRECTORY="""
-WITH RECURSIVE paths(pnfsid, path, type, size, uid, gid, ctime, atime, mtime)
-AS (VALUES('{}','',16384,0::BIGINT,0,0,now(),now(),now())
-   UNION SELECT d.ipnfsid, path||'/'||d.iname,
+WITH RECURSIVE paths(ino, pnfsid, path, type, size, uid, gid, ctime, atime, mtime)
+AS (VALUES(pnfsid2inumber('{}'),'','',16384,0::BIGINT,0,0,now(),now(),now())
+   UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,
       i.itype,i.isize,i.iuid,i.igid,i.ictime,i.iatime,i.imtime
    FROM t_dirs d,t_inodes i, paths p
-   WHERE p.type=16384 AND d.iparent=p.pnfsid AND
-         d.iname != '.' AND d.iname != '..' AND i.ipnfsid=d.ipnfsid)
+   WHERE p.type=16384 AND d.iparent=p.ino AND
+         d.iname != '.' AND d.iname != '..' AND i.inumber=d.ichild)
 	  SELECT p.pnfsid, encode(l1.ifiledata,'escape') as bfid, '{}'||p.path as path,
           p.size,p.uid,p.gid,
           extract (epoch from p.ctime)::BIGINT,
@@ -55,7 +55,7 @@ AS (VALUES('{}','',16384,0::BIGINT,0,0,now(),now(),now())
           extract (epoch from p.mtime)::BIGINT
 	   FROM paths p, t_level_1 l1
 	    WHERE p.type=32768 AND
-	           l1.ipnfsid=p.pnfsid;
+	           l1.inumber=p.ino;
 """
 
 def help():
@@ -71,7 +71,7 @@ def help():
 def dump_directory(path,pnfsid):
     q=DUMP_DIRECTORY.format(pnfsid,path)
     outfile=os.path.join("/tmp","CHIMERA_DUMP_%s"%(os.path.basename(path)))
-    cmd = "psql -U enstore_reader  -A -F ' ' -c \"%s\" -o %s chimera"%(q,outfile,)
+    cmd = "psql -U enstore_reader  -A -F ' ' -c \"%s\" -o %s -h stkensrv1n chimera"%(q,outfile,)
     os.system(cmd)
 
 if __name__ == "__main__":
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     db  = dbaccess.DatabaseAccess(maxconnections=1,
-                                  host     = "localhost",
+                                  host     = "stkensrv1n",
                                   database = "chimera",
                                   user     = "enstore_reader")
     storage_groups = []
