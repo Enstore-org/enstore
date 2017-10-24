@@ -1279,7 +1279,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     set_cache_params.append({'bfid': cur_package_id,
                                              'cache_status': file_cache_status.CacheStatus.PURGING,
                                              'archive_status': None,        # we are not changing this
-                                             'cache_location': rec['cache_location']})
+                                             'cache_location': None})
 
         if set_cache_params:
             self.state = CHANGING_STATE
@@ -1288,31 +1288,34 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.trace(e_errors.INFO, "Will purge files in cache")
 
             for item in set_cache_params:
-                try:
-                    Trace.trace(10, "_purge_files: removing %s"%(item['cache_location'],))
-                    os.remove(item['cache_location'])
-                except OSError, detail:
-                    if detail.args[0] != errno.ENOENT:
-                        Trace.trace(10, "_purge_files: can not remove %s: %s"%(item['cache_location'], detail))
-                        Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
-                except Exception, detail:
-                    Trace.trace(10, "_purge_files: can not remove %s: %s"%(item['cache_location'], detail))
-                    Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                if item['cache_location']: # remove only small files, not packages. Packages have no cache location.
+                   try:
+                        Trace.trace(10, "_purge_files: removing %s"%(item['cache_location'],))
+                        os.remove(item['cache_location'])
+                   except OSError, detail:
+                       if detail.args[0] != errno.ENOENT:
+                           Trace.trace(10, "_purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                           Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                   except Exception, detail:
+                       Trace.trace(10, "_purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                       Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
 
-                try:
-                    os.removedirs(os.path.dirname(item['cache_location']))
-                    item['cache_status'] = file_cache_status.CacheStatus.PURGED
-                    Trace.trace(10, "purge_files: purged %s"%(item['cache_location'],))
-                except OSError, detail:
-                    if detail.errno not in (errno.ENOENT, errno.ENOTEMPTY):
-                        Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
-                        Trace.trace(10, "_purge_files: error removing directory: %s"%(detail,))
-                    else:
+                   try:
+                        os.removedirs(os.path.dirname(item['cache_location']))
                         item['cache_status'] = file_cache_status.CacheStatus.PURGED
-                        Trace.log(DEBUGLOG, "_purge_files: purged %s"%(item['cache_location'],))
+                        Trace.trace(10, "purge_files: purged %s"%(item['cache_location'],))
+                   except OSError, detail:
+                       if detail.errno not in (errno.ENOENT, errno.ENOTEMPTY):
+                           Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
+                           Trace.trace(10, "_purge_files: error removing directory: %s"%(detail,))
+                       else:
+                           item['cache_status'] = file_cache_status.CacheStatus.PURGED
+                           Trace.log(DEBUGLOG, "_purge_files: purged %s"%(item['cache_location'],))
 
-                except Exception, detail:
-                    Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
+                   except Exception, detail:
+                       Trace.log(e_errors.ERROR, "purge_files: error removing directory: %s"%(detail,))
+                else:
+                    item['cache_status'] = file_cache_status.CacheStatus.PURGED # Packages have no cache location, but set packages PURGED anyway.
 
             self.state = CHANGING_STATE
             rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
