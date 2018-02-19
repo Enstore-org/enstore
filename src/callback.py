@@ -624,11 +624,15 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             continue
 
         read_len = nbytes - len(data_string)
-        if type(sock) == types.IntType:
-            data_string = data_string + os.read(sock, read_len)
-        else:
-            data_string = data_string + sock.recv(read_len)
-
+        try:
+            if type(sock) == types.IntType:
+                data_string = data_string + os.read(sock, read_len)
+            else:
+                data_string = data_string + sock.recv(read_len)
+        except socket.error, msg:
+            error_string = "timeout_recv(): %s" % str(msg)
+            #Return to handle the error.
+            return "", error_string
         if data_string == "":
             #According to python documentation when recv() returns the empty
             # string the other end has closed the connection.
@@ -750,13 +754,15 @@ def read_tcp_obj(sock, timeout=15*60):
     return obj
 
 # receive a message over the network which is a Python object
-def read_tcp_obj_new(sock, timeout=15*60):
+def read_tcp_obj_new(sock, timeout=15*60, exit_on_no_socket=False):
     if type(sock) != types.IntType and not hasattr(sock, "fileno"):
         raise TypeError("expected integer socket file descriptor or "
                         "socket object; received %s instead" % (str(sock),))
 
     s, e = read_tcp_raw(sock, timeout)
     if not s:
+        if exit_on_no_socket:
+            return
         log_socket_state(sock) #Log the state of the socket.
 
         #Gather additional information and log the error.

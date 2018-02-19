@@ -47,6 +47,7 @@ import strbuffer
 import volume_family
 import namespace
 import set_cache_status
+import log_client
 
 # enstore cache imports
 #import cache.stub.mw as mw
@@ -318,11 +319,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=(fc_conf['host'],
-                                                                fc_conf['port']))
+                                                                fc_conf['port']),
+                                                logc = self.logclient)
         ic_conf = self.csc.get("info_server")
         self.infoc = info_client.infoClient(self.csc,
                                             server_address=(ic_conf['host'],
-                                                            ic_conf['port']))
+                                                            ic_conf['port']),
+                                            logc = self.logclient)
         self.archiver = self.my_conf.get("archiver", DEFAULT_ARCHIVER)
         if not self.archiver in ("tar", "zip"):
             Trace.alarm(e_errors.WARNING, "Unrecognized archive command %s. Will default to %s"%(self.archiver, DEFAULT_ARCHIVER))
@@ -333,7 +336,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                                          self.stage_area,
                                                          self.tmp_stage_area))
 
-    def  __init__(self, name, cs):
+    def  __init__(self, name, cs, logclient = None):
         """
         Creates Migrator. Constructor gets configuration from enstore Configuration Server
 
@@ -342,10 +345,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.csc = cs
 
         generic_server.GenericServer.__init__(self, self.csc, name,
-					      function = self.handle_er_msg)
-
-
+					      function = self.handle_er_msg,
+                                              logc=logclient)
+        self.logclient = logclient
         Trace.init(self.log_name, 'yes')
+        if logclient and isinstance(logclient, log_client.TCPLoggerClient):
+            Trace.set_max_message_size(enstore_constants.MB)
+            Trace.log(e_errors.INFO,  "DUMP_FILE %s"%( self.logclient.dump_file,))
+        Trace.log(e_errors.INFO, "Log client %s"%(self.logclient,))
         #self._do_print({'levels':range(5, 400)})
         try:
             self.load_configuration()
@@ -2046,9 +2053,16 @@ class MigratorInterface(generic_server.GenericServerInterface):
 def do_work():
     # get an interface
     intf = MigratorInterface()
+    csc  = configuration_client.ConfigurationClient((intf.config_host,
+                                                     intf.config_port) )
+    migrator_config  = csc.get(intf.name)
+    use_tcp_log_client = migrator_config.get('use_tcp_log_client')
+    logclient = None
+    if use_tcp_log_client:
+        logclient = log_client.TCPLoggerClient(csc,  name = '%s.log'%(intf.name,))
 
     # create  Migrator instance
-    migrator = Migrator(intf.name, (intf.config_host, intf.config_port))
+    migrator = Migrator(intf.name, (intf.config_host, intf.config_port), logclient = logclient)
     migrator.handle_generic_commands(intf)
 
     #Trace.init(migrator.log_name, 'yes') # leave it in the code to turn on when debugging

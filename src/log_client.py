@@ -17,6 +17,15 @@ import pwd
 import string
 import base64
 import cPickle
+import threading
+import socket
+import fcntl
+import errno
+import select
+import cPickle
+import time
+import Queue
+import multiprocessing
 #import cStringIO		# to make freeze happy
 #import copy_reg			# to make freeze happy
 
@@ -26,6 +35,8 @@ import enstore_constants
 import Trace
 import e_errors
 import option
+import callback
+import enstore_functions
 
 MY_NAME = enstore_constants.LOG_CLIENT   #"LOG_CLIENT"
 MY_SERVER = enstore_constants.LOG_SERVER #"log_server"
@@ -33,7 +44,8 @@ YESTERDAY = "yesterday"
 VALID_PERIODS = {"today":1, YESTERDAY:2, "week":7, "month":30, "all":-1}
 RCV_TIMEOUT = 3
 RCV_TRIES = 1
-
+RECONNECT_TIMEOUT = 20
+MAX_QUEUE_SIZE = 200000
 
 ##############################################################################
 # AUTHOR        : FERMI-LABS
@@ -322,7 +334,7 @@ class LoggerClient(generic_client.GenericClient):
         self.logger_address = self.server_address
         lticket = self.csc.get( server_name, rcv_timeout, rcv_tries)
         self.log_dir = lticket.get("log_file_path", "")
-	Trace.set_log_func( self.log_func )
+        Trace.set_log_func( self.log_func )
 
     def log_func( self, time, pid, name, args ):
         #Even though this implimentation of log_func() does not use the time
@@ -342,7 +354,8 @@ class LoggerClient(generic_client.GenericClient):
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
 				       e_errors.sevdict[severity],name,msg)
 	ticket = {'work':'log_message', 'message':msg}
- 	self.u.send_no_wait( ticket, self.logger_address, unique_id=True)
+        Trace.trace(300,"UDP %s"%(ticket,))
+        self.u.send_no_wait( ticket, self.logger_address, unique_id=True)
 
 #    def send( self, severity, priority, format, *args ):
 #	if args != (): format = format%args
@@ -384,6 +397,160 @@ class LoggerClient(generic_client.GenericClient):
 	                 rcv_timeout, tries )
         return x
 
+class TCPLoggerClient(LoggerClient):
+    def __init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
+                 server_address = None, flags = 0, alarmc = None,
+                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES, reconnect_timeout=RECONNECT_TIMEOUT):
+
+        LoggerClient.__init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
+                 server_address = None, flags = 0, alarmc = None,
+                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES)
+
+	Trace.set_log_func( self.log_func )
+        self.message_buffer =  multiprocessing.Queue(MAX_QUEUE_SIZE) # intermediate message storage
+        self.rcv_timeout = rcv_timeout
+        self.connected = False
+        self.reconnect_timeout = reconnect_timeout
+        self.hostname = socket.gethostname()
+        try:
+            user_name = pwd.getpwuid(os.geteuid())[0]
+        except KeyError:
+            user_name = '%s'%(os.geteuid(),)
+        # if there are problems with connection to log server dump messages locally
+        self.dump_file = os.path.join(enstore_functions.get_enstore_tmp_dir(), user_name,  name)
+        self.dump_here = open(self.dump_file, 'a')
+
+        self.lock = threading.Lock()
+        self.message_arrived = threading.Event()
+        # Start sender thread
+        sender_thread = threading.Thread(target = self.sender)
+        try:
+            sender_thread.start()
+            self.run = True
+        except:
+            exc, detail, tb = sys.exc_info()
+            print "TCPLoggerClient problem", detail
+            raise exc, detail
+
+    def log_func(self, time, pid, name, args):
+        #Even though this implimentation of log_func() does not use the time
+        # parameter, others will.
+        __pychecker__ = "unusednames=time"
+
+	severity = args[0]
+	msg      = args[1]
+        #if self.log_name:
+        #    ln = self.log_name
+        #else:
+        #    ln = name
+	if severity > e_errors.MISC:
+            msg = '%s %s' % (severity, msg)
+            severity = e_errors.MISC
+
+	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
+				       e_errors.sevdict[severity],name,msg)
+	ticket = {'work':'log_message', 'message':msg}
+        Trace.trace(301, "TCP %s"%(ticket,))
+        try:
+            self.message_buffer.put_nowait(ticket)
+        except Queue.Full:
+            print "Message Queue is full"
+
+    def stop(self):
+        self.run = False
+
+    def connect(self):
+        server_host_info = socket.getaddrinfo(self.logger_address[0], None)
+        server_address_family = server_host_info[0][0]
+        self.socket = socket.socket(server_address_family, socket.SOCK_STREAM)
+        flags = fcntl.fcntl(self.socket.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl(self.socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        self.socket.bind((socket.gethostname(), 0))
+        try:
+            self.socket.connect(self.logger_address)
+        except socket.error, detail:
+            print detail
+            if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
+                pass
+            #The TCP handshake is in progress.
+            elif detail[0] == errno.EINPROGRESS:
+                pass
+            else:
+                print "error connecting to %s (%s)"%\
+                    (self.logger_address, detail)
+                raise socket.error, detail
+
+        #Check if the socket is open for reading and/or writing.
+        r, w, ex = select.select([self.socket], [self.socket], [], self.rcv_timeout)
+
+        if r or w:
+            #Get the socket error condition...
+            try:
+                rtn = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            except:
+                exc, detail, tb = sys.exc_info()
+                print "RTN< EXC", exc, detail
+                return False
+
+        else:
+            print "error connecting to %s (%s)"%\
+                      (self.logger_address, os.strerror(errno.ETIMEDOUT))
+            raise errno.ETIMEDOUT
+
+        #...if it is zero then success, otherwise it failed.
+        if rtn != 0:
+            raise socket.error,(rtn, os.strerror(rtn))
+            #raise RuntimeError('error connecting to %s (%s)'%\
+            #    (self.logger_address, os.strerror(rtn)))
+        # we have a connection
+        fcntl.fcntl(self.socket.fileno(), fcntl.F_SETFL, flags)
+        self.connected = True
+        return True
+
+    def pull_message(self):
+        message = None
+        try:
+            message = self.message_buffer.get(True, 1)
+        except Queue.Empty:
+            pass
+        return message
+
+    def write_to_local_log(self, message):
+        tm = time.localtime(time.time())
+        msg_to_write = '%.4d-%.2d-%.2d  %.2d:%.2d:%.2d %s %s\n'%(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5], message.get('sender', 'unknown'), message.get('message'))
+        self.dump_here.write(msg_to_write)
+        self.dump_here.flush()
+
+    def sender(self):
+        try:
+            self.conn_start = time.time()
+            self.connect()
+        except socket.error, detail:
+            print "will try to reconnect"
+        while True:
+            if not self.run:
+                self.socket.close()
+                break
+            message = self.pull_message()
+            if message:
+                if self.connected:
+                    try:
+                        callback.write_tcp_obj_new(self.socket, message)
+                        #self.socket.send(cPickle.dumps(message))
+                    except:
+                        exc, detail, tb = sys.exc_info()
+                        print "error sending: %s %s %s " % (exc, detail, message)
+                        self.connected = False
+                if not self.connected:
+                    self.write_to_local_log(message)
+                    dt = time.time() - self.conn_start
+                    if dt >= self.reconnect_timeout:
+                        # try to reconnect
+                        try:
+                            self.conn_start = time.time()
+                            self.connect()
+                        except socket.error, detail:
+                            print "will try to reconnect"
 
 # stand alone function to send a log message
 def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):

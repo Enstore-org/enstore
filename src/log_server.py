@@ -34,6 +34,11 @@ import time
 import string
 import glob
 import pwd
+import threading
+import socket
+import fcntl
+import select
+import cPickle
 
 #enstore imports
 import dispatching_worker
@@ -47,10 +52,12 @@ import hostaddr
 import Trace
 import log_client
 import option
+import callback
 
 MY_NAME = enstore_constants.LOG_SERVER   #"log_server"
 FILE_PREFIX = "LOG-"
 NO_MAX_LOG_FILE_SIZE = -1L
+MAX_TCP_MESSAGE_SIZE = enstore_constants.MB*10
 
 def format_date(tm=None):
     if not tm:
@@ -123,6 +130,7 @@ class Logger(  dispatching_worker.DispatchingWorker
 	self.msg_type_logs = keys.get('msg_type_logs', {})
 	self.msg_type_keys = self.msg_type_logs.keys()
 	self.extra_logfiles = {}
+        self.lock = threading.Lock()
 
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
@@ -153,7 +161,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         # everythin else.
         self.log_message(ticket)
 
-    def open_extra_logs(self, mode='w'):
+    def open_extra_logs(self, mode='a+'):
 	for msg_type in self.msg_type_keys:
 	    filename = self.msg_type_logs[msg_type]
 	    file_path = "%s/%s%s"%(self.logfile_dir_path, filename,
@@ -174,26 +182,21 @@ class Logger(  dispatching_worker.DispatchingWorker
         try:
             if not os.path.exists(dirname):
                 os.mkdir(dirname)
-            self.logfile = open(logfile_name, 'a')
-            if not self.no_debug:
-                self.debug_logfile = open(debug_file_name, 'a')
-	    self.open_extra_logs('a')
-        except :
-	    try:
-		self.logfile = open(logfile_name, 'w')
+            with self.lock:
+                self.logfile = open(logfile_name, 'a+')
                 if not self.no_debug:
-                    self.debug_logfile = open(debug_file_name, 'a')
-		self.open_extra_logs('w')
-	    except:
-                message="cannot open log %s"%(logfile_name,)
-                try:
-                    print  message
-                    sys.stderr.write("%s\n" % message)
-                    sys.stderr.flush()
-                    sys.stdout.flush()
-                except IOError:
-                    pass
-		os._exit(1)
+                    self.debug_logfile = open(debug_file_name, 'a+')
+                self.open_extra_logs('a+')
+        except Exception, detail:
+            message="cannot open log %s: %s"%(logfile_name, detail)
+            try:
+                print  message
+                sys.stderr.write("%s\n" % message)
+                sys.stderr.flush()
+                sys.stdout.flush()
+            except IOError:
+                pass
+            os._exit(1)
 
     # return the current log file name
     def get_logfile_name(self, ticket):
@@ -254,7 +257,10 @@ class Logger(  dispatching_worker.DispatchingWorker
     def log_message(self, ticket) :
         if not ticket.has_key('message'):
             return
-        host = hostaddr.address_to_name(self.reply_address[0])
+        if 'sender' in ticket: # ticket came over tcp
+            host = ticket['sender']
+        else:
+            host = hostaddr.address_to_name(self.reply_address[0])
                   ## XXX take care of case where we can't figure out the host name
         # determine what type of message is it
         message_type = string.split(ticket['message'])[2]
@@ -280,12 +286,19 @@ class Logger(  dispatching_worker.DispatchingWorker
         # format log message
         message = "%.2d:%.2d:%.2d %s\n" %  (tm[3], tm[4], tm[5], message)
 
-        if message_type !=  e_errors.sevdict[e_errors.MISC]:
-            res = self.logfile.write(message)    # write log message to the file
-        if not self.no_debug:
-            res = self.debug_logfile.write(message)    # write log message to the file
-        if message_type !=  e_errors.sevdict[e_errors.MISC]:
-            self.write_to_extra_logfile(message)
+        with self.lock: # to synchronize logging threads
+            try:
+                if message_type !=  e_errors.sevdict[e_errors.MISC]:
+                    res = self.logfile.write(message)    # write log message to the file
+                    self.logfile.flush()
+                if not self.no_debug:
+                    res = self.debug_logfile.write(message)    # write log message to the file
+                if message_type !=  e_errors.sevdict[e_errors.MISC]:
+                    self.write_to_extra_logfile(message)
+            except:
+                exc, value, tb = sys.exc_info()
+                for l in traceback.format_exception( exc, value, tb ):
+                    print l
 
     def check_for_extended_files(self, filename):
         if not self.max_log_file_size == NO_MAX_LOG_FILE_SIZE:
@@ -406,6 +419,68 @@ class Logger(  dispatching_worker.DispatchingWorker
                     self.open_logfile(self.logfile_name)
 
 
+    def serve_tcp_clients_recv(self):
+        while True:
+            if hasattr(self, 'rcv_sockets') and len(self.rcv_sockets) != 0:
+                r, w, ex = select.select(self.rcv_sockets, [], [], 10)
+                if r:
+                    while len(r) > 0:
+                        s = r.pop(0)
+                        try:
+                            fds, junk, junk = select.select([s], [], [], 0.1)
+                            if s in fds:
+                                data = s.recv(MAX_TCP_MESSAGE_SIZE)
+                                if data:
+                                    ticket = cPickle.loads(data)
+                                    self.log_message(ticket)
+                                else:
+                                    self.rcv_sockets.remove(s)
+                                    break
+                            else:
+                                self.rcv_sockets.remove(s)
+                                break
+
+                        except e_errors.EnstoreError, detail:
+                            print "EXCEPT", detail
+                            self.rcv_sockets.remove(s)
+                            break
+
+    def serve_tcp_clients_enstore(self):
+        while True:
+            if hasattr(self, 'rcv_sockets') and len(self.rcv_sockets) != 0:
+                r, w, ex = select.select(self.rcv_sockets, [], [], 10)
+                if r:
+                    while len(r) > 0:
+                        s = r.pop(0)
+                        try:
+                            ticket = callback.read_tcp_obj_new(s, timeout=.1, exit_on_no_socket=True)
+                            if ticket:
+                                #print "TICKET", ticket
+                                self.log_message(ticket)
+                            else:
+                                self.rcv_sockets.remove(s)
+                                break
+                        except e_errors.EnstoreError, detail:
+                            print "EXCEPT", detail
+                            self.rcv_sockets.remove(s)
+                            break
+
+    serve_tcp_clients = serve_tcp_clients_enstore
+
+    def tcp_server(self):
+        print "STARTING TCP SERVER"
+        address_family = socket.getaddrinfo(self.server_address[0], None)[0][0]
+        listen_socket = socket.socket(address_family, socket.SOCK_STREAM)
+        listen_socket.bind(self.server_address)
+        self.rcv_sockets = []
+        listen_socket.listen(4)
+        while True:
+            s, addr = listen_socket.accept()
+            flags = fcntl.fcntl(s.fileno(), fcntl.F_GETFL)
+            fcntl.fcntl(s.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            if hostaddr.allow(addr):
+                self.rcv_sockets.append(s)
+
 class LoggerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
@@ -434,6 +509,21 @@ class LoggerInterface(generic_server.GenericServerInterface):
             ["config-file=", "test"]
     """
 
+def thread_is_running(thread_name):
+    """
+    check if named thread is running
+
+    :type thread_name: :obj:`str`
+    :arg thread_name: thread name
+    """
+
+    threads = threading.enumerate()
+    for thread in threads:
+        if ((thread.getName() == thread_name) and thread.isAlive()):
+            return True
+    else:
+        return False
+
 if __name__ == "__main__" :
     Trace.init(string.upper(MY_NAME))
 
@@ -446,9 +536,21 @@ if __name__ == "__main__" :
 
     while 1:
         try:
-            logserver.serve_forever()
+            tn =  "log_server_udp"
+            if not thread_is_running(tn):
+                print "STARTING", tn
+                dispatching_worker.run_in_thread(tn, logserver.serve_forever)
+            tn =  "log_server_tcp_connections"
+            if not thread_is_running(tn):
+                print "STARTING", tn
+                dispatching_worker.run_in_thread(tn, logserver.tcp_server)
+            tn =  "log_server_tcp"
+            if not thread_is_running(tn):
+                print "STARTING", tn
+                dispatching_worker.run_in_thread(tn,logserver.serve_tcp_clients)
 	except SystemExit, exit_code:
 	    sys.exit(exit_code)
         except:
 	    logserver.serve_forever_error(logserver.log_name)
             continue
+        time.sleep(10)
