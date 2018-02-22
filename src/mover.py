@@ -842,7 +842,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                                               function = self.handle_er_msg,
                                               logc=logclient)
 
-        #Trace.log(e_errors.INFO, "Log client for  %s is %s"%(name,  logclient))
         self.logclient =  logclient
         self.name = name # log name
         self.shortname = name
@@ -928,6 +927,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.error_times = [] # list of times when transfer failed
         self.consecutive_failures = 0 # consecutive error counter
         self.max_consecutive_failures = 2 # maximal number of consecutive errors (configurable)
+        self.media_changer_consecutive_failures = 0 # consecutive error count for media changer requests
         self.max_failures = 3 # maximal number of failures before going OFFLINE (configurable)
         self.failure_interval = 3600 # offline mover if number of failures>self.max_failures within this interval (configurable)
         self.current_work_ticket = {}
@@ -3208,7 +3208,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         buffer_empty_t = time.time()   #time when buffer empty has been detected
-        buffer_empty_cnt = 0 # number of times buffer was consequtively empty
+        buffer_empty_cnt = 0 # number of times buffer was consecutively empty
         nblocks = 0L
         bytes_written = 0
         # send a trigger message to the client
@@ -3640,7 +3640,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
         self.media_transfer_time = 0.
         buffer_full_t = 0   #time when buffer full has been detected
-        buffer_full_cnt = 0 # number of times buffer was consequtively full
+        buffer_full_cnt = 0 # number of times buffer was consecutively full
         nblocks = 0
         header_size = 0 # to avoit a silly exception
         #Initialize thresholded transfer notify messages.
@@ -5794,7 +5794,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.listen_socket = None
 
         Trace.log(e_errors.INFO, "Done is sent")
-        print "DONE"
         return
 
     def del_udp_client(self, udp_client):
@@ -6851,6 +6850,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     self.state = IDLE
                 self.current_volume = None
+                if self.last_error[0] == s_status[0]:
+                    self.media_changer_consecutive_failures += 1
+                if self.media_changer_consecutive_failures >= self.max_consecutive_failures:
+                    Trace.log(e_errors.ERROR, "max_consecutive_media_changer_failures (%d) reached"%
+                              (self.max_consecutive_failures,))
+                    self.offline()
+                    return
                 self.last_error = s_status
                 return
             else:
