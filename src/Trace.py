@@ -81,9 +81,9 @@ def get_logname():
 def set_logname(new_logname):
     logname_data.logname = str(new_logname)
 
-def set_max_message_size(max_message_size):
+def set_max_message_size(maximum_message_size):
     global max_message_size
-    max_message_size = max_message_size
+    max_message_size = maximum_message_size
 
 #Provide a way to get the threadname in a thread safe way.
 include_threadname = None
