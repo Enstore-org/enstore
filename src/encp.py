@@ -8505,6 +8505,7 @@ def create_write_request(work_ticket, file_number,
         work_ticket['version'] = encp_client_version()
         work_ticket['work'] = "write_to_hsm"
         work_ticket['wrapper'] = wrapper
+        work_ticket['buffered_tape_marks']=e.buffered_tape_marks
 
         tags = {}
         tags['library'] = library
@@ -11399,6 +11400,9 @@ class EncpInterface(option.Interface):
         # by the filesystem; skip the test if that is needed.
         self.bypass_filesystem_max_filesize_check = 0
 
+        #Enable buffered tape marks
+        self.buffered_tape_marks = 0
+
         #If the user wants the pnfs_agent instead of locally mount pnfs,
         # let them have it.  This needs to be set BEFORE
         # option.Interface.__init__() since it uses this value.
@@ -11482,6 +11486,11 @@ class EncpInterface(option.Interface):
         option.BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK:{option.HELP_STRING:
                             "Skip the check for the max filesize a file"
                             " system supports.",
+                            option.VALUE_USAGE:option.IGNORED,
+                            option.DEFAULT_TYPE:option.INTEGER,
+                            option.USER_LEVEL:option.USER,},
+        option.BUFFERED_TAPE_MARKS:{option.HELP_STRING:
+                            "Enable buffered tape marks support.",
                             option.VALUE_USAGE:option.IGNORED,
                             option.DEFAULT_TYPE:option.INTEGER,
                             option.USER_LEVEL:option.USER,},

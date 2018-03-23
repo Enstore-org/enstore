@@ -165,6 +165,7 @@ BACKUP = "backup"                            #volume, file
 BFID = "bfid"                                #pnfs, file
 BFIDS = "bfids"                              #file
 BUFFER_SIZE = "buffer-size"                  #encp
+BUFFERED_TAPE_MARKS = "buffered-tape-marks"  # encp, migration
 BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK = "bypass-filesystem-max-filesize-check"
                                              #encp
 BYPASS_LABEL_CHECK = "bypass-label-check"    #volume
@@ -510,7 +511,7 @@ TEST = "test"                                #option
 # in check.
 valid_option_list = [
     ADD, AGE_TIME, ALIVE, ALL, ARRAY_SIZE, ASSIGN_SG,
-    BACKUP, BFID, BFIDS, BUFFER_SIZE,
+    BACKUP, BFID, BFIDS, BUFFER_SIZE, BUFFERED_TAPE_MARKS,
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK,
     CLEAN_DRIVE, CLEAR, CLEAR_SG, CLIENT_NAME,
