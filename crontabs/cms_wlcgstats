@@ -1,0 +1,1 @@
+1 0 * * * enstore source /usr/local/etc/setups.sh; $ENSTORE_DIR/sbin/ecron -p cms_wlcgstats $ENSTORE_DIR/sbin/cms_wlcgstats.sh >/dev/null 2>/dev/null
