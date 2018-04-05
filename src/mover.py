@@ -3260,7 +3260,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                      (bytes_written, len(self.header_labels)), error_source=TAPE)
                 return
             try:
-                self.tape_driver.writefm()
+                if self.buffered_tapemarks:
+                    self.tape_driver.writefm_buffered()
+                else:
+                    self.tape_driver.writefm()
             except:
                 exc, detail, tb = sys.exc_info()
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
@@ -3465,15 +3468,22 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.single_filemark or self.eof_labels:
                     Trace.trace(23, "single fm %s eof labels %s"%(self.single_filemark, self.eof_labels))
                     Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
+                    if self.buffered_tapemarks:
+                        self.tape_driver.writefm_buffered()
+                    else:
+                       self.tape_driver.writefm()
                 else:
-                    Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
-                    Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
-                    Trace.trace(23, "skip fm -1")
-                    self.tape_driver.skipfm(-1)
-                    Trace.trace(23, "fm done")
+                     if self.buffered_tapemarks:
+                         self.tape_driver.writefm_buffered()
+                         self.tape_driver.writefm_buffered()
+                     else:
+                         Trace.trace(23, "write fm")
+                         self.tape_driver.writefm()
+                         Trace.trace(23, "write fm")
+                         self.tape_driver.writefm()
+                     Trace.trace(23, "skip fm -1")
+                     self.tape_driver.skipfm(-1)
+                     Trace.trace(23, "fm done")
                 Trace.trace(10, "complete CRC %s"%(self.buffer.complete_crc,))
                 self.eof_labels = self.wrapper.eof_labels(self.buffer.complete_crc)
                 if self.eof_labels:
@@ -3491,12 +3501,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                         # log all running proceses
                         self.log_processes(logit=1)
                         return
+
                     Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
+                    if self.buffered_tapemarks:
+                        self.tape_driver.writefm_buffered()
+                    else:
+                        self.tape_driver.writefm()
                     if not self.single_filemark:
                         Trace.trace(5, "single fm %s"%(self.single_filemark,))
                         Trace.trace(23, "write fm")
-                        self.tape_driver.writefm()
+                        if self.buffered_tapemarks:
+                           self.tape_driver.writefm_buffered()
+                        else:
+                            self.tape_driver.writefm()
                         Trace.trace(23, "skip fm -1")
                         self.tape_driver.skipfm(-1)
                         Trace.trace(23, "fm done")
@@ -4406,7 +4423,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.unlock_state()
                     return
                 try:
-                  self.tape_driver.writefm()
+                  if self.buffered_tapemarks:
+                      self.tape_driver.writefm_buffered()
+                  else:
+                      self.tape_driver.writefm()
                   # skip back one position in case when next read fails
                   # in this case tape is in the right position for the next write
                   self.tape_driver.skipfm(-1)
@@ -4934,7 +4954,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.file_size = self.bytes_to_write
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
             self.target_location = None
-
+            self.buffered_tapemarks = ticket.get('buffered_tapemarks', False) and volume_family.extract_file_family(self.vol_info['volume_family']).startswith('Migration')
         Trace.trace(10, "finish_transfer_setup: label %s state %s"%(volume_label, state_name(self.save_state)))
         Trace.trace(10, "finish_transfer_setup: ticket %s"%(self.current_work_ticket,))
         # this is for crc check in ASSERT mode
@@ -6422,6 +6442,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                         else:
                             try:
+                                if self.buffered_tapemarks:
+                                    self.tape_driver.flush_data()
                                 self.tape_driver.writefm()
                             except:
                                 Trace.alarm(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
