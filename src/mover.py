@@ -237,6 +237,7 @@ class Buffer:
         self.client_crc_on = 0
         self.read_stats = [0,0,0,0,0] # read block timing stats
         self.write_stats = [0,0,0,0,0] # read block timing stats
+        self.buffered_tapemarks = None
 
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
@@ -4424,9 +4425,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 try:
                   if self.buffered_tapemarks:
-                      self.tape_driver.writefm_buffered()
-                  else:
-                      self.tape_driver.writefm()
+                       self.tape_driver.flush_data()
+                  self.tape_driver.writefm()
                   # skip back one position in case when next read fails
                   # in this case tape is in the right position for the next write
                   self.tape_driver.skipfm(-1)
@@ -4954,9 +4954,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.file_size = self.bytes_to_write
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
             self.target_location = None
-            self.buffered_tapemarks = ticket.get('buffered_tapemarks', False) and volume_family.extract_file_family(self.vol_info['volume_family']).startswith('Migration')
+
+        self.buffered_tapemarks = ticket.get('buffered_tape_marks', False) and enstore_functions2.is_migration_file_family(volume_family.extract_file_family(self.vol_info['volume_family']))
         Trace.trace(10, "finish_transfer_setup: label %s state %s"%(volume_label, state_name(self.save_state)))
         Trace.trace(10, "finish_transfer_setup: ticket %s"%(self.current_work_ticket,))
+        Trace.trace(10, "finish_transfer_setup: buffered tapemarks%s"%(self.buffered_tapemarks,))
         # this is for crc check in ASSERT mode
         Trace.trace(24, "finish_transfer_setup MODE %s"%(mode_name(self.mode),))
         if self.mode == ASSERT:

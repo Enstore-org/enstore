@@ -345,14 +345,14 @@ class FTTDriver(generic_driver.Driver):
             ftt.raise_ftt()
         return r
 
-    def writefm_buffrered(self):
+    def writefm_buffered(self):
         ## Write one and only one filemark.  Letting ftt close the device for us
         ## results in writing two and backspacing over one.
         r=0
         try:
             Trace.trace(42, "ftt.writefm_buffered()")
             r = self.ftt.writefm_buffered()
-            Trace.trace(42,"%s=ftt.writefm_buffrered() done"%(r,))
+            Trace.trace(42,"%s=ftt.writefm_buffered() done"%(r,))
             #### XXX Hack! Avert your eyes, innocent ones!
             ## We don't want a subsequent "close" to write extra filemarks.
             ## ftt_close_dev is being too helpful in the case where the last operation
