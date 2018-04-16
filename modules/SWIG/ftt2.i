@@ -1,5 +1,3 @@
-/* $Id$ */
-
 %module ftt2
 
 %{
@@ -13,9 +11,9 @@ extern char ftt_eprint_buf[];
 #define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
 /* device information structure */
 #define MAXDEVSLOTS 80
-typedef struct {		
-	char *device_name;	/* pathname for device 		*/
-	short int density;	/* density code  		*/
+typedef struct {
+	char *device_name;	/* pathname for device */
+	short int density;	/* density code */
 	short int mode;		/* compression, etc.		*/
 	short int hwdens;	/* hardware density code for (density,mode) */
 	short int passthru;	/* scsi passthru device	        */
@@ -166,7 +164,7 @@ typedef char * cptr;
     for (i = 0; i < size; i++) {
       PyObject *o = PyList_GetItem($source,i);
       if (PyInt_Check(o)) {
-	item = (char)PyInt_AsLong(PyList_GetItem($source,i)); 
+	item = (char)PyInt_AsLong(PyList_GetItem($source,i));
 	$target[i] = item;
 	}
       else {
@@ -185,7 +183,7 @@ typedef char * cptr;
 // Wrapper around ftt_do_scsi_command to solve the problem with
 // read/write buffer
 %inline %{
-PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const byteptr cmd_ptr, int cmd_len, int buf_len, int to) 
+PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const byteptr cmd_ptr, int cmd_len, int buf_len, int to)
 {
     int i, res;
     PyObject * out_list;
@@ -198,10 +196,10 @@ PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const by
 	item = (long)scsi_buf[i];
 	PyList_SetItem(out_list, i, PyInt_FromLong(item));
     }
-	
-    free(scsi_buf);   	
+
+    free(scsi_buf);
     return out_list;
-    
+
 }
 
 %}
@@ -224,7 +222,7 @@ PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const by
 #define FTT_WRITE_COUNT		6
 #define FTT_READ_ERRORS		7
 #define FTT_WRITE_ERRORS	8
-#define FTT_READ_COMP		9 
+#define FTT_READ_COMP		9
 #define FTT_FILE_NUMBER		10
 #define FTT_BLOCK_NUMBER	11
 #define FTT_BOT			12
@@ -262,7 +260,7 @@ PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const by
 #define FTT_SENSE_KEY		44
 #define FTT_TRANS_SENSE_KEY	45
 #define FTT_RETRIES		46
-#define FTT_FAIL_RETRIES	47 
+#define FTT_FAIL_RETRIES	47
 #define FTT_RESETS		48
 #define FTT_HARD_ERRORS		49
 #define FTT_UNC_WRITE		50
@@ -282,7 +280,7 @@ extern int ftt_debug;
 #define FTT_DEBUG_MED   2
 #define FTT_DEBUG_HI	3
 
-/* rewind/retension/etc. flags 
+/* rewind/retension/etc. flags
 
 extern char *ftt_ascii_rewindflags[];
 
@@ -292,7 +290,7 @@ extern char *ftt_ascii_rewindflags[];
 #define FTT_RDNW 0x00000008	/* we can read this density, but not write it */
 
 
-/* error returns 
+/* error returns
 **
 ** If you add or change error numbers, you MUST also update
 ** -- ftt_ascii_error[] in ftt_error.c
@@ -314,7 +312,7 @@ extern char *ftt_ascii_rewindflags[];
 #define FTT_EBLKSIZE		10
 #define FTT_ENOEXEC		11
 #define FTT_EBLANK		12
-#define FTT_EBUSY		13		
+#define FTT_EBUSY		13
 #define FTT_ENODEV		14
 #define FTT_ENXIO		15
 #define FTT_ENFILE		16
@@ -333,38 +331,38 @@ extern char *ftt_ascii_rewindflags[];
 #define FTT_ENOTBOT		29
 
 
-/* ftt_status return bitflags 
+/* ftt_status return bitflags
 */
 #define FTT_ABOT	0x01
 #define FTT_AEOT	0x04
-#define FTT_AEW 	0x08
+#define FTT_AEW     0x08
 #define FTT_PROT	0x10
 #define FTT_ONLINE	0x20
 #define FTT_BUSY	0x40
 
-/* header types 
+/* header types
 ** if you add/change these, you need to update
 ** -- ftt_label_type_names[] in ftt_higher.c
 ** so that it can print reasonable error messages.
 */
 extern char *ftt_label_type_names[];
-#define FTT_ANSI_HEADER 	0
-#define FTT_FMB_HEADER  	1
-#define FTT_TAR_HEADER  	2
-#define FTT_CPIO_HEADER 	3
-#define FTT_UNKNOWN_HEADER 	4
-#define FTT_BLANK_HEADER	5
-#define FTT_DONTCHECK_HEADER	6
-#define FTT_MAX_HEADER		7
+#define FTT_ANSI_HEADER     0
+#define FTT_FMB_HEADER      1
+#define FTT_TAR_HEADER      2
+#define FTT_CPIO_HEADER     3
+#define FTT_UNKNOWN_HEADER  4
+#define FTT_BLANK_HEADER    5
+#define FTT_DONTCHECK_HEADER 6
+#define FTT_MAX_HEADER       7
 
-/* readonly Values 
+/* readonly Values
 */
 
 #define FTT_RDWR   0
 #define FTT_RDONLY 1
 
 
-/* compression Values 
+/* compression Values
 */
 #define FTT_UNCOMPRESSED 0
 #define FTT_COMPRESSED   1
@@ -420,39 +418,41 @@ int		ftt_guess_label(char *,int, char **OUTPUT, int *OUTPUT);
 ftt_stat_buf *	ftt_init_stats(ftt_descriptor);
 char **		ftt_list_all(ftt_descriptor);
 int             ftt_list_supported(FILE *);
-int		ftt_set_mount_partition(ftt_descriptor, int); 
-char * 		ftt_make_os_name(char *, char *, char *);
+int		ftt_set_mount_partition(ftt_descriptor, int);
+char *  ftt_make_os_name(char *, char *, char *);
 int		ftt_name_to_density(ftt_descriptor, const char *);
 ftt_descriptor	ftt_open(const char*, int);
-int		ftt_open_dev(ftt_descriptor);
+int	    ftt_open_dev(ftt_descriptor);
 ftt_descriptor	ftt_open_logical(const char*,char*,char*,int);
 int		ftt_read(ftt_descriptor, cptr, int);
 int		ftt_report(ftt_descriptor);
 int		ftt_retension(ftt_descriptor);
-/* int 		ftt_retry(ftt_descriptor, 
-				  int, 
+/* int ftt_retry(ftt_descriptor,
+				  int,
 				  int (*)(ftt_descriptor, char *, int),
-				  char *buf, 
+				  char *buf,
 				  int len); */
 int		ftt_rewind(ftt_descriptor);
 int		ftt_scsi_locate(ftt_descriptor, int);
 int		ftt_set_data_direction(ftt_descriptor, int);
-char * 		ftt_set_mode(ftt_descriptor, int density, int,  int );
-int 		ftt_set_mode_dev(ftt_descriptor, const char *, int );
+char *  ftt_set_mode(ftt_descriptor, int density, int,  int );
+int		ftt_set_mode_dev(ftt_descriptor, const char *, int );
 int		ftt_setdev(ftt_descriptor);
 int		ftt_skip_fm(ftt_descriptor, int);
 int		ftt_skip_rec(ftt_descriptor, int);
-int 		ftt_skip_to_double_fm(ftt_descriptor d);
+int 	ftt_skip_to_double_fm(ftt_descriptor d);
 int		ftt_status(ftt_descriptor,int);
-void 		ftt_sub_stats(ftt_stat_buf,ftt_stat_buf,ftt_stat_buf);
+void    ftt_sub_stats(ftt_stat_buf,ftt_stat_buf,ftt_stat_buf);
 int		ftt_unload(ftt_descriptor);
-int 		ftt_update_stats(ftt_descriptor,ftt_stat_buf *);
+int     ftt_update_stats(ftt_descriptor,ftt_stat_buf *);
 int		ftt_undump_stats(ftt_stat_buf, FILE *);
-int 		ftt_verify_vol_label(ftt_descriptor,int,char*,int,int);
-int 		ftt_wait(ftt_descriptor);
+int     ftt_verify_vol_label(ftt_descriptor,int,char*,int,int);
+int     ftt_wait(ftt_descriptor);
 int		ftt_write(ftt_descriptor, cptr, int);
-int 		ftt_write_vol_label(ftt_descriptor,int,char*);
+int     ftt_write_vol_label(ftt_descriptor,int,char*);
 int		ftt_writefm(ftt_descriptor);
+int		ftt_writefm_buffered(ftt_descriptor);
+int		ftt_flush_data(ftt_descriptor);
 int		ftt_write2fm(ftt_descriptor);
 
 int		ftt_close_scsi_dev(ftt_descriptor);
@@ -464,20 +464,19 @@ int      ftt_inquire(ftt_descriptor d);
 int      ftt_modesense(ftt_descriptor d);
 int      ftt_logsense(ftt_descriptor d);
 
-typedef struct { 
-	int n_parts; 
-	int max_parts; 
+typedef struct {
+	int n_parts;
+	int max_parts;
 	int partsizes[64];
 } ftt_partition_table, *ftt_partbuf;
 
-ftt_partbuf 	ftt_alloc_parts();
-void 		ftt_free_parts(ftt_partbuf);
-
-int 		ftt_extract_nparts(ftt_partbuf);
-int 		ftt_extract_maxparts(ftt_partbuf);
-long 		ftt_extract_part_size(ftt_partbuf,int);
-int 		ftt_set_nparts(ftt_partbuf,int);
-int 		ftt_set_part_size(ftt_partbuf,int,long);
+ftt_partbuf ftt_alloc_parts();
+void    ftt_free_parts(ftt_partbuf);
+int		ftt_extract_nparts(ftt_partbuf);
+int		ftt_extract_maxparts(ftt_partbuf);
+long 	ftt_extract_part_size(ftt_partbuf,int);
+int		ftt_set_nparts(ftt_partbuf,int);
+int		ftt_set_part_size(ftt_partbuf,int,long);
 
 int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_write_partitions(ftt_descriptor,ftt_partbuf);
@@ -503,7 +502,7 @@ int ftt_set_last_operation(ftt_descriptor, int);
 #define FTT_OPN_ERASE		 9
 #define FTT_OPN_STATUS		10
 #define FTT_OPN_GET_STATUS	11
-#define FTT_OPN_ASYNC 		12 
+#define FTT_OPN_ASYNC       12
 #define FTT_OPN_PASSTHRU        13
 #define FTT_OPN_CHALL           14
 #define FTT_OPN_OPEN            15

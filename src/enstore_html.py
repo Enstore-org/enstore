@@ -1,13 +1,5 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
-#import setpath
-
 # system imports
 import string
 import calendar
@@ -89,14 +81,14 @@ PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour (no null mvs)"],
 	     [enstore_constants.MPD_FILE, "Mounts/Day (no null mvs as of 8/1/01)"],
 	     [enstore_constants.MPD_MONTH_FILE, "Mounts/Day (30 days) (no null mvs)"],
 	     [enstore_constants.MLAT_FILE, "Mount Latency (no null mvs)"],
-	     [enstore_constants.BPD_MONTH_FILE_W, "Bytes Written/Day (30 days) (no null mvs)"], 
+	     [enstore_constants.BPD_MONTH_FILE_W, "Bytes Written/Day (30 days) (no null mvs)"],
 	     [enstore_constants.BPD_FILE_R, "Bytes Read/Day (no null mvs)"],
 	     [enstore_constants.BPD_FILE_W, "Bytes Written/Day (no null mvs)"],
-	     [enstore_constants.TOTAL_BPD_FILE_W, "CDF/D0/STK Total Bytes Written/Day (30 days)"], 
-	     [enstore_constants.TOTAL_BPD_FILE, "CDF/D0/STK Total Bytes/Day (30 days)"], 
-	     [enstore_constants.BPD_MONTH_FILE, "Bytes/Day (30 days) (no null mvs)"], 
+	     [enstore_constants.TOTAL_BPD_FILE_W, "CDF/D0/STK Total Bytes Written/Day (30 days)"],
+	     [enstore_constants.TOTAL_BPD_FILE, "CDF/D0/STK Total Bytes/Day (30 days)"],
+	     [enstore_constants.BPD_MONTH_FILE, "Bytes/Day (30 days) (no null mvs)"],
 	     [enstore_constants.BPD_FILE_D, "Bytes/Day"],
-	     [enstore_constants.BPD_FILE, "Bytes/Day (no null mvs)"], 
+	     [enstore_constants.BPD_FILE, "Bytes/Day (no null mvs)"],
 	     [enstore_constants.XFERLOG_FILE, "Transfer Activity (log - no null mvs))"],
 	     [enstore_constants.XFER_FILE, "Transfer Activity (no null mvs)"],
              [enstore_constants.NULL_RATES, "Null Terabytes/Day"],
@@ -176,7 +168,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	    self.meta = HTMLgen.Meta(equiv="Refresh", content=self.refresh)
 
     # this is the base class for all of the html generated enstore documents
-    def __init__(self, refresh=0, background="enstore.gif", help_file="", 
+    def __init__(self, refresh=0, background="enstore.gif", help_file="",
 		 system_tag="", url_gif_dir = ""):
 	self.align = YES
 	self.textcolor = DARKBLUE
@@ -185,7 +177,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
         self.url_gif_dir = url_gif_dir
 	self.background = os.path.join(url_gif_dir, background)
 	if self.background:
-	    HTMLgen.SimpleDocument.__init__(self, background=self.background, 
+	    HTMLgen.SimpleDocument.__init__(self, background=self.background,
 					    textcolor=self.textcolor)
 	else:
 	    HTMLgen.SimpleDocument.__init__(self, textcolor=self.textcolor)
@@ -202,29 +194,29 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
         self.do_nav_table = 1
         sys.stdout.flush()
         config_dict = configuration_client.get_config_dict(5, 2)
-        
+
         if config_dict:
             inq = config_dict.get(enstore_constants.INQUISITOR, {})
             sys.stdout.flush()
             if inq:
                 self.web_dir = inq.get('html_file','/local/ups/prd/www_pages/enstore')
             else:
-               self.web_dir = '/local/ups/prd/www_pages/enstore' 
+               self.web_dir = '/local/ups/prd/www_pages/enstore'
         else:
             self.web_dir = '/local/ups/prd/www_pages/enstore'
-            
+
 
     # generate the three button navigation table for the top of each of the
     # enstore web pages
     def nav_table(self):
 	tr = HTMLgen.TR()
 	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
-	          HTMLgen.Href("%senstore_system.html"%(self.nav_link,), 'Home'), 
-		  size="+2")), 
+	          HTMLgen.Href("%senstore_system.html"%(self.nav_link,), 'Home'),
+		  size="+2")),
 			     bgcolor=NAV_TABLE_COLOR))
 	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
 	          HTMLgen.Href("%s%s"%(self.nav_link, enstore_constants.SAAGHTMLFILE),
-			       'System'), 
+			       'System'),
 		  size="+2")), bgcolor=NAV_TABLE_COLOR))
 	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
 	          HTMLgen.Href("%sstatus_enstore_system.html"%(self.nav_link,), SERVERS),
@@ -233,10 +225,10 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	          HTMLgen.Href("%sencp_enstore_system.html"%(self.nav_link,), 'Encp'),
 		  size="+2")), bgcolor=NAV_TABLE_COLOR))
 	if self.help_file:
-	    tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(HTMLgen.Href("%s%s"%(self.nav_link, self.help_file), 
+	    tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(HTMLgen.Href("%s%s"%(self.nav_link, self.help_file),
 									'Help'), size="+2")),
 				 bgcolor=NAV_TABLE_COLOR))
-	table = HTMLgen.TableLite(tr, border=1, cellspacing=5, 
+	table = HTMLgen.TableLite(tr, border=1, cellspacing=5,
 				  cellpadding=CELLP, align="LEFT")
 	return table
 
@@ -257,12 +249,12 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
             ## can be found.
             use_script_title_gif = os.path.join(self.url_gif_dir,
                                                 self.script_title_gif)
-            tr.append(HTMLgen.TD(HTMLgen.Image(use_script_title_gif), 
+            tr.append(HTMLgen.TD(HTMLgen.Image(use_script_title_gif),
 				 align="RIGHT"))
 
     def table_top_b(self, table, td, cols=1):
 	if self.description:
-	    td.append(HTMLgen.Font(self.description, html_escape='OFF', 
+	    td.append(HTMLgen.Font(self.description, html_escape='OFF',
 				   size="+2"))
 	    td.append(HTMLgen.HR(size=2, noshade=1))
 	table.append(HTMLgen.TR(td))
@@ -271,24 +263,24 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def add_source_server(self, cols=1):
 	tr = HTMLgen.TR(empty_data(cols))
-	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Brought To You By : ", 
-						      size=-1)), 
+	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Brought To You By : ",
+						      size=-1)),
 			align="RIGHT")
 	td.append(HTMLgen.Font("%s"%(self.source_server,), size=-1))
 	tr.append(td)
 	return tr
 
     def add_last_updated(self):
-	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Last updated : ", 
-						      size=-1)), 
+	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Last updated : ",
+						      size=-1)),
 			align="RIGHT")
-	td.append(HTMLgen.Font("%s"%(enstore_functions2.format_time(time.time()),), 
+	td.append(HTMLgen.Font("%s"%(enstore_functions2.format_time(time.time()),),
 			       html_escape='OFF', size=-1))
 	return td
 
     def table_top(self, cols=1, add_update=1):
-	# create the outer table and its rows	
-	fl_table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, 
+	# create the outer table and its rows
+	fl_table = HTMLgen.TableLite(cellspacing=0, cellpadding=0,
 				     align="LEFT", width="800")
         if self.do_nav_table:
             tr = HTMLgen.TR(HTMLgen.TD(self.nav_table()))
@@ -302,7 +294,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	if add_update:
 	    if self.system_tag:
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(self.system_tag,
-								     size="+1", 
+								     size="+1",
 								     color=BRICKRED)),
 					   align="LEFT"))
 	    else:
@@ -311,11 +303,11 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	    fl_table.append(tr)
 
 	if self.align == YES:
-	    table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table, colspan=cols)), 
-				      cellspacing=0, cellpadding=0, 
+	    table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table, colspan=cols)),
+				      cellspacing=0, cellpadding=0,
 				      align="LEFT", width="800")
 	else:
-	    table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table, colspan=cols)), 
+	    table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table, colspan=cols)),
 				      cellspacing=0, cellpadding=0)
 	table.append(empty_row(cols))
 	td = HTMLgen.TD(HTMLgen.HR(size=2, noshade=1), colspan=cols)
@@ -324,8 +316,8 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def big_title(self, txt, cols=1):
 	tr = HTMLgen.TR()
-	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(txt, 
-						       size="+4", 
+	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(txt,
+						       size="+4",
 						       html_escape='OFF')),
 			     colspan=cols))
 	return tr
@@ -351,7 +343,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     # create a table header
     def make_th(self, name):
-	return HTMLgen.TH(HTMLgen.Bold(HTMLgen.Font(name, size="+2", 
+	return HTMLgen.TH(HTMLgen.Bold(HTMLgen.Font(name, size="+2",
 						    color=BRICKRED,
                                                     html_escape='OFF')),
 			  align="CENTER")
@@ -370,18 +362,18 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	if data[0][0:5] == "alive":
 	    if color:
 		# use the user specified color
-		tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=color, 
+		tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=color,
 					   html_escape='OFF'))
 	    else:
 		tr = HTMLgen.TR(HTMLgen.TD(srvr, html_escape='OFF'))
 	elif  data[0][0:5] == "error":
-	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=SERVER_ERROR_COLOR, 
+	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=SERVER_ERROR_COLOR,
 				       html_escape='OFF'))
 	elif data[0] == enstore_constants.NOT_MONITORING:
-	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=NOT_MONITORING_COLOR, 
+	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=NOT_MONITORING_COLOR,
 				       html_escape='OFF'))
 	else:
-	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=TIMED_OUT_COLOR, 
+	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=TIMED_OUT_COLOR,
 				       html_escape='OFF'))
 	for datum in data:
 	    tr.append(HTMLgen.TD(datum, html_escape='OFF'))
@@ -406,9 +398,9 @@ class EnExtraFileListPages(EnBaseHtmlDoc):
 
     def __init__(self, status_page):
 	extra_text = "(More Active Files)"
-	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh,
 			       help_file="fileHelp.html",
-			       system_tag="%s %s"%(status_page.system_tag, 
+			       system_tag="%s %s"%(status_page.system_tag,
 						   extra_text))
 	self.title = "%s %s"%(status_page.title, extra_text)
 	self.source_server = THE_INQUISITOR
@@ -429,9 +421,9 @@ class EnExtraLmFullQueuePages(EnBaseHtmlDoc):
 
     def __init__(self, status_page, lm):
 	extra_text = "(Extra %s full queue rows)"%(lm,)
-	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh,
 			       help_file="serverStatusFullLMQHelp.html",
-			       system_tag="%s %s"%(status_page.system_tag, 
+			       system_tag="%s %s"%(status_page.system_tag,
 						   extra_text))
 	self.title = "%s %s"%(status_page.title, extra_text)
 	self.source_server = THE_INQUISITOR
@@ -445,7 +437,7 @@ class EnExtraLmFullQueuePages(EnBaseHtmlDoc):
 	table = self.table_top()
 	table.append(empty_row())
 	table.append(empty_row())
-	table.append(HTMLgen.TR(HTMLgen.TD(self.server_heading(self.lm), 
+	table.append(HTMLgen.TR(HTMLgen.TD(self.server_heading(self.lm),
 					   colspan=5)))
 	table.append(empty_row())
 	table.append(row)
@@ -456,9 +448,9 @@ class EnExtraLmQueuePages(EnBaseHtmlDoc):
 
     def __init__(self, status_page, lm):
 	extra_text = "(Extra %s queue rows)"%(lm,)
-	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh,
 			       help_file="serverStatusLMQHelp.html",
-			       system_tag="%s %s"%(status_page.system_tag, 
+			       system_tag="%s %s"%(status_page.system_tag,
 						   extra_text))
 	self.title = "%s %s"%(status_page.title, extra_text)
 	self.source_server = THE_INQUISITOR
@@ -473,7 +465,7 @@ class EnExtraLmQueuePages(EnBaseHtmlDoc):
 	table.cellpadding=3
 	table.append(empty_row(LM_COLS))
 	table.append(empty_row(LM_COLS))
-	table.append(HTMLgen.TR(HTMLgen.TD(self.server_heading(self.lm), 
+	table.append(HTMLgen.TR(HTMLgen.TD(self.server_heading(self.lm),
 					   colspan=LM_COLS)))
 	table.append(empty_row(LM_COLS))
 	for row in rows:
@@ -484,7 +476,7 @@ class EnExtraLmQueuePages(EnBaseHtmlDoc):
 class EnMoverStatusPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh=60, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="moverStatusHelp.html",
 			       system_tag=system_tag)
 	self.title = "Movers Page"
@@ -506,29 +498,29 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
     def add_bytes_eod_info(self, moverd, tr, mvkey):
 	if moverd.has_key(enstore_constants.EOD_COOKIE):
 	    tr.append(HTMLgen.TD(moverd[mvkey]))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("EOD%sCookie"%(NBSP,), 
+	    tr.append(HTMLgen.TD(HTMLgen.Font("EOD%sCookie"%(NBSP,),
 					      color=BRICKRED,
 					      html_escape='OFF'),
 				 align="CENTER"))
 	    tr.append(HTMLgen.TD(moverd[enstore_constants.EOD_COOKIE]))
 	elif moverd.has_key(enstore_constants.LOCATION_COOKIE):
 	    tr.append(HTMLgen.TD(moverd[mvkey]))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("Location%sCookie"%(NBSP,), 
-					      color=BRICKRED, 
+	    tr.append(HTMLgen.TD(HTMLgen.Font("Location%sCookie"%(NBSP,),
+					      color=BRICKRED,
 					      html_escape='OFF'),
 				 align="CENTER"))
 	    tr.append(HTMLgen.TD(moverd[enstore_constants.LOCATION_COOKIE]))
 	else:
 	    tr.append(HTMLgen.TD(moverd[mvkey], colspan=3))
 
-    # add input and output files 
+    # add input and output files
     def add_files(self, moverd, table):
 	if moverd.has_key(enstore_constants.FILES):
 	    # we need to make the table able to hold a long file name
 	    table.width = "100%"
 	    table.append(empty_row(4))
 	    for i in [0, 1]:
-		tr = HTMLgen.TR(HTMLgen.TD(moverd[enstore_constants.FILES][i], 
+		tr = HTMLgen.TR(HTMLgen.TD(moverd[enstore_constants.FILES][i],
 					   colspan=4))
 		table.append(tr)
 	    table.append(empty_row(4))
@@ -541,7 +533,7 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 	# watching it.
 	moverd = self.data_dict.get(mover, {})
 	if moverd:
-	    # we may have gotten an error when trying to get it, 
+	    # we may have gotten an error when trying to get it,
 	    # so look for a piece of it.  (efb used to be 'or')
 	    if moverd.has_key(enstore_constants.STATE) and \
 	       moverd[enstore_constants.STATE]:
@@ -549,45 +541,45 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 		# tell if this is a bad state or not
 		words = string.split(moverd[enstore_constants.STATE])
 		if words[0] in BAD_MOVER_STATES:
-		    table.append(self.alive_row(mover, 
-					     moverd[enstore_constants.STATUS], 
+		    table.append(self.alive_row(mover,
+					     moverd[enstore_constants.STATUS],
 						FUSCHIA))
 		else:
-		    table.append(self.alive_row(mover, 
+		    table.append(self.alive_row(mover,
 					     moverd[enstore_constants.STATUS]))
 
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
                                                 "Completed%sTransfers"%(NBSP,),
-						color=BRICKRED, 
+						color=BRICKRED,
 						html_escape='OFF')))
-		tr.append(HTMLgen.TD(moverd[enstore_constants.COMPLETED], 
+		tr.append(HTMLgen.TD(moverd[enstore_constants.COMPLETED],
 				     align="LEFT"))
 		tr.append(HTMLgen.TD(HTMLgen.Font("Failed%sTransfers"%(NBSP,),
-						  color=BRICKRED, 
+						  color=BRICKRED,
 						  html_escape='OFF')))
-		tr.append(HTMLgen.TD(moverd[enstore_constants.FAILED], 
+		tr.append(HTMLgen.TD(moverd[enstore_constants.FAILED],
 				     align="LEFT"))
 		mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
-					     align="LEFT", bgcolor=YELLOW, 
+					     align="LEFT", bgcolor=YELLOW,
 					     width="100%")
 		mv_table.append(empty_row(4))
 		if moverd.has_key(enstore_constants.LAST_READ):
 		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
                                                   "Last%sRead%s(bytes)"%(NBSP,
 									 NBSP),
-						  color=BRICKRED, 
+						  color=BRICKRED,
 						  html_escape='OFF'),
 					       align="CENTER"))
-		    self.add_bytes_volume_info(moverd, tr, 
+		    self.add_bytes_volume_info(moverd, tr,
 					       enstore_constants.LAST_READ)
 		    mv_table.append(tr)
 		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(
                                                  "Last%sWrite%s(bytes)"%(NBSP,
 									 NBSP),
-						 color=BRICKRED, 
+						 color=BRICKRED,
 						 html_escape='OFF'),
 					       align="CENTER"))
-		    self.add_bytes_eod_info(moverd, tr, 
+		    self.add_bytes_eod_info(moverd, tr,
 					    enstore_constants.LAST_WRITE)
 		    mv_table.append(tr)
 		    self.add_files(moverd, mv_table)
@@ -595,19 +587,19 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
                                                "Current%sRead%s(bytes)"%(NBSP,
 									 NBSP),
-					       color=BRICKRED, 
+					       color=BRICKRED,
 					       html_escape='OFF'),
 					       align="CENTER"))
-		    self.add_bytes_volume_info(moverd, tr, 
+		    self.add_bytes_volume_info(moverd, tr,
 					       enstore_constants.CUR_READ)
 		    mv_table.append(tr)
 		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
 			                     "Current%sWrite%s(bytes)"%(NBSP,
 									NBSP),
-					     color=BRICKRED, 
+					     color=BRICKRED,
 					     html_escape='OFF'),
 					       align="CENTER"))
-		    self.add_bytes_eod_info(moverd, tr, 
+		    self.add_bytes_eod_info(moverd, tr,
 					    enstore_constants.CUR_WRITE)
 		    mv_table.append(tr)
 		    self.add_files(moverd, mv_table)
@@ -616,7 +608,7 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 		table.append(tr)
 	    else:
 		# all we have is the alive information
-		table.append(self.alive_row(mover, 
+		table.append(self.alive_row(mover,
 					    moverd[enstore_constants.STATUS]))
 
     # generate the main table with all of the information
@@ -652,7 +644,7 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 class EnMigratorStatusPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh=60, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="migratorStatusHelp.html",
 			       system_tag=system_tag)
 	self.title = "Migrators Page"
@@ -667,7 +659,7 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
     # add the eod/location cookie information if it exists
     def add_bytes_eod_info(self, migratord, tr, mgkey):
         pass
-    # add input and output files 
+    # add input and output files
     def add_files(self, migratord, table):
         pass
 
@@ -723,10 +715,10 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
                         tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
                                                       "Last%sRead%s(bytes)"%(NBSP,
                                                                              NBSP),
-                                                      color=BRICKRED, 
+                                                      color=BRICKRED,
                                                       html_escape='OFF'),
                                                    align="CENTER"))
-                        self.add_bytes_volume_info(md, tr, 
+                        self.add_bytes_volume_info(md, tr,
                                                    enstore_constants.LAST_READ)
                         m_table.append(tr)
                         tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(
@@ -746,16 +738,16 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
                                                    color=BRICKRED,
                                                    html_escape='OFF'),
                                                    align="CENTER"))
-                        self.add_bytes_volume_info(md, tr, 
+                        self.add_bytes_volume_info(md, tr,
                                                    enstore_constants.CUR_READ)
                         m_table.append(tr)
                         tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
                                                  "Current%sWrite%s(bytes)"%(NBSP,
                                                                             NBSP),
-                                                 color=BRICKRED, 
+                                                 color=BRICKRED,
                                                  html_escape='OFF'),
                                                    align="CENTER"))
-                        self.add_bytes_eod_info(md, tr, 
+                        self.add_bytes_eod_info(md, tr,
                                                 enstore_constants.CUR_WRITE)
                         m_table.append(tr)
                         self.add_files(md, m_table)
@@ -764,7 +756,7 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
                     table.append(tr)
                 else:
                     # all we have is the alive information
-                    table.append(self.alive_row(migrator, 
+                    table.append(self.alive_row(migrator,
                                                 md[enstore_constants.STATUS]))
 
     # generate the main table with all of the information
@@ -801,7 +793,7 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
 class EnLmStatusPage(EnBaseHtmlDoc):
 
     def __init__(self, lm, refresh=60, system_tag="", max_lm_rows=DEFAULT_LM_ROWS):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="lmStatusHelp.html",
 			       system_tag=system_tag)
 	self.title = "%s Page"%(lm,)
@@ -815,19 +807,21 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 
     def read_q_list(self, mover):
 	aMover = mover.get(enstore_constants.MOVER, enstore_constants.NOMOVER)
-	return [mover[enstore_constants.DEVICE], mover[enstore_constants.FILE], 
-		mover[enstore_constants.NODE], 
+	return [mover[enstore_constants.DEVICE], mover[enstore_constants.FILE],
+		mover[enstore_constants.NODE],
 		aMover, mover[enstore_constants.CURRENT],
-		mover[enstore_constants.LOCATION_COOKIE]]
+		mover[enstore_constants.LOCATION_COOKIE],
+                mover[enstore_constants.STORAGE_GROUP]]
 
     def write_q_list(self, mover):
 	device = mover.get(enstore_constants.DEVICE, None)
 	aMover = mover.get(enstore_constants.MOVER, enstore_constants.NOMOVER)
-	return [device, mover[enstore_constants.FILE], 
+	return [device, mover[enstore_constants.FILE],
 		mover[enstore_constants.NODE],
 		aMover, mover[enstore_constants.CURRENT],
 		mover[enstore_constants.FILE_FAMILY],
-		mover[enstore_constants.FILE_FAMILY_WIDTH]]
+		mover[enstore_constants.FILE_FAMILY_WIDTH],
+                mover[enstore_constants.STORAGE_GROUP]]
 
     def parse_queues(self):
 	# list of all vols currently being read or to be read
@@ -877,17 +871,17 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	tr = HTMLgen.TR()
 	if print_device:
 	    td = HTMLgen.TD("%s"%(NBSP,), html_escape='OFF')
-	    td.append(HTMLgen.Bold(HTMLgen.Name(elem[0], 
-						HTMLgen.Href("tape_inventory/%s"%(elem[0],), 
+	    td.append(HTMLgen.Bold(HTMLgen.Name(elem[0],
+						HTMLgen.Href("tape_inventory/%s"%(elem[0],),
 								       elem[0]))))
 	    tr.append(td)
 	else:
 	    # we do not need to print the volume label, again, must have done it before
 	    tr.append(empty_data())
 	if elem[3] is not enstore_constants.NOMOVER:
-	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP, 
+	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP,
 					     HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
-								   elem[3],), elem[3])), 
+								   elem[3],), elem[3])),
 				 html_escape='OFF'))
 	    # keep track of the busy movers so when we create the addtl movers table we do
 	    # not include these.
@@ -902,7 +896,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	file_num = string.split(elem[5], '_')
 	try:
 	    file_num = string.atoi(file_num[-1])
-	    str = "(CurPri%s:%s%s%sFile%s:%s%s)"%(NBSP, NBSP, elem[4], 
+	    str = "(CurPri%s:%s%s%sFile%s:%s%s)"%(NBSP, NBSP, elem[4],
 						  NBSP, NBSP, NBSP, file_num)
 	except ValueError:
 	    # this is a disk move, or the location cookie is wrong.
@@ -912,32 +906,45 @@ class EnLmStatusPage(EnBaseHtmlDoc):
         return tr
 
     def write_row(self, elem, print_ff=0):
+        #
+        # elem structure:
+        # [
+        #  Label,
+        #  Source file,
+        #  Source node,
+        #  Mover,
+        #  Priority,
+        #  File family,
+        #  File family width,
+        #  Storage group
+        # ]
+
 	tr = HTMLgen.TR()
 	if print_ff:
 	    td = HTMLgen.TD("%s"%(NBSP,), html_escape='OFF')
-	    td.append(HTMLgen.Bold(HTMLgen.Name(elem[5], elem[5])))
+	    td.append(HTMLgen.Bold(HTMLgen.Name(elem[5], elem[5]))) # File Family
 	    tr.append(td)
 	else:
 	    # we do not need to print the file family, again, must have done it before
 	    tr.append(empty_data())
 	if elem[3] is not enstore_constants.NOMOVER:
-	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP, 
+	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP,
 					     HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
-								   elem[3],), elem[3])), 
+								   elem[3],), elem[3])),
 				 html_escape='OFF'))
 	    # keep track of the busy movers so when we create the addtl movers table we do
 	    # not include these.
-	    self.busy_movers.append(elem[3])
+	    self.busy_movers.append(elem[3]) # mover
 	else:
 	    tr.append(empty_data())
 	tr.append(HTMLgen.TD(elem[2]))
 	# only display the last n characters of the file name
 	tr.append(HTMLgen.TD(HTMLgen.Font(elem[1][-70:], color=LIGHTBLUE)))
-	tr.append(HTMLgen.TD("(CurPri%s:%s%s%sFFWidth%s:%s%s)"%(NBSP, NBSP, elem[4], 
-								NBSP, NBSP, NBSP, elem[6]),
+	tr.append(HTMLgen.TD("(SG:%s%s%sCurPri:%s%s%sFFWidth:%s)"%(elem[7], NBSP, NBSP, elem[4],
+								NBSP, NBSP, elem[6]),
 			     html_escape='OFF'))
         return tr
-	
+
     def append_vols(self, elem):
 	rows = []
 	rows.append(self.read_row(elem, 1))
@@ -949,11 +956,11 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	return rows
 
     def read_header_row(self):
-	td = HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("reads", 
-							       "Reads%s"%(NBSP,)), 
-						  html_escape='OFF'), 
+	td = HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("reads",
+							       "Reads%s"%(NBSP,)),
+						  html_escape='OFF'),
 				   SIZE="+3"), colspan=LM_COLS)
-	td.append(HTMLgen.Font(HTMLgen.Href(get_full_queue_name(self.lm), 
+	td.append(HTMLgen.Font(HTMLgen.Href(get_full_queue_name(self.lm),
 					    "Full%sQueue%sElements"%(NBSP, NBSP)),
 			       SIZE="-1", html_escape='OFF'))
 	return HTMLgen.TR(td)
@@ -990,7 +997,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	else:
 	    if started_extra_page:
 		table.append(empty_row(LM_COLS))
-		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename,
 								'Extra Read Queue Rows (%s)'%(num_extra)),
 						   colspan=LM_COLS)))
 
@@ -1005,8 +1012,8 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	return rows
 
     def write_header_row(self):
-	txt = HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("writes", 
-						     "Writes%s"%(NBSP,))), 
+	txt = HTMLgen.Font(HTMLgen.Bold(HTMLgen.Name("writes",
+						     "Writes%s"%(NBSP,))),
 			   SIZE="+3", html_escape='OFF')
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=LM_COLS))
 
@@ -1042,7 +1049,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	else:
 	    if started_extra_page:
 		table.append(empty_row(LM_COLS))
-		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+		table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename,
 								'Extra Write Queue Rows (%s)'%(num_extra)),
 						   colspan=LM_COLS)))
 
@@ -1090,12 +1097,12 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	self.busy_movers = []
 	# add the status line
 	str1 = HTMLgen.Font("Status%s:"%(NBSP,), size="+1", html_escape='OFF')
-	stat = HTMLgen.Font(HTMLgen.Bold("%s%s%s"%(str1, NBSP, 
+	stat = HTMLgen.Font(HTMLgen.Bold("%s%s%s"%(str1, NBSP,
 						   self.data_dict[enstore_constants.STATUS][0]),
 					 html_escape='OFF'), color=BRICKRED, html_escape='OFF')
-	table.append(HTMLgen.TR(HTMLgen.TD(stat, colspan=LM_COLS, align="LEFT", 
+	table.append(HTMLgen.TR(HTMLgen.TD(stat, colspan=LM_COLS, align="LEFT",
 					   html_escape='OFF')))
-        table.append(empty_row(LM_COLS)) 
+        table.append(empty_row(LM_COLS))
 	# add the suspect volumes
 	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("Suspect%sVolumes%s:%s"%(NBSP,
 							     NBSP, NBSP), html_escape='OFF'),
@@ -1116,15 +1123,15 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		tr.append(td)
 		table.append(tr)
 		tr = HTMLgen.TR(empty_data())
-	table.append(empty_row(LM_COLS)) 
+	table.append(empty_row(LM_COLS))
 	self.parse_queues()
 	# add the read queue elements
 	table.append(self.read_header_row())
         table.append(empty_row(LM_COLS))
 	self.get_in_vol_order(table)
 	# add the write queue elements
-        table.append(empty_row(LM_COLS)) 
-        table.append(empty_row(LM_COLS)) 
+        table.append(empty_row(LM_COLS))
+        table.append(empty_row(LM_COLS))
 	table.append(self.write_header_row())
         table.append(empty_row(LM_COLS))
 	self.get_in_ff_order(table)
@@ -1149,7 +1156,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 class EnLmFullStatusPage(EnBaseHtmlDoc):
 
     def __init__(self, lm, refresh=60, system_tag="", max_lm_rows=DEFAULT_FULL_LM_ROWS):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="lmFullStatusHelp.html",
 			       system_tag=system_tag)
 	self.title = "%s Page"%(lm,)
@@ -1169,8 +1176,8 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	if vols == ['None'] or vols == {}:
 	    tr = None
 	else:
-	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Suspect%sVolumes"%(NBSP,), 
-						    color=BRICKRED, 
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Suspect%sVolumes"%(NBSP,),
+						    color=BRICKRED,
 						    html_escape='OFF')))
 	    for vol in vols:
 		if vol_str:
@@ -1184,7 +1191,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 		vol_str = "%s %s - %s"%(vol_str, vol[0],
 					enstore_functions2.print_list(vol[1]))
 	    else:
-		tr.append(HTMLgen.TD(vol_str, align="LEFT", colspan=4, 
+		tr.append(HTMLgen.TD(vol_str, align="LEFT", colspan=4,
 				     html_escape='OFF'))
 	return tr
 
@@ -1214,7 +1221,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	    tr.append(empty_data())
 	if qelem.has_key(enstore_constants.MODIFICATION):
 	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sModified"%(NBSP,),
-					      color=BRICKRED, 
+					      color=BRICKRED,
 					      html_escape='OFF')))
 	    tr.append(HTMLgen.TD(qelem[enstore_constants.MODIFICATION]))
 	else:
@@ -1224,24 +1231,31 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 
     def file_families_row(self, qelem):
 	if qelem.has_key(enstore_constants.DEVICE):
-	    tr = HTMLgen.TR(self.spacer_data("Device%sLabel"%(NBSP,)))
+	    tr = HTMLgen.TR(self.spacer_data("Label"))
 	    tr.append(HTMLgen.TD(qelem[enstore_constants.DEVICE]))
 	else:
 	    tr = HTMLgen.TR(empty_data())
 	    tr.append(empty_data())
+	if qelem.has_key(enstore_constants.STORAGE_GROUP):
+	    tr.append(HTMLgen.TD(HTMLgen.Font("SG",
+					      color=BRICKRED,
+					      html_escape='OFF')))
+	    tr.append(HTMLgen.TD(qelem[enstore_constants.STORAGE_GROUP]))
 	if qelem.has_key(enstore_constants.FILE_FAMILY):
-	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily"%(NBSP,), 
+	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sFam"%(NBSP,),
 					      color=BRICKRED,
 					      html_escape='OFF')))
 	    tr.append(HTMLgen.TD(qelem[enstore_constants.FILE_FAMILY]))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily%sWidth"%(NBSP, 
-								     NBSP),
-					      color=BRICKRED,
-					      html_escape='OFF')))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.FILE_FAMILY_WIDTH]))
+            work = qelem.get(enstore_constants.WORK)
+            if work and work == enstore_constants.WRITE:
+                tr.append(HTMLgen.TD(HTMLgen.Font("File%sFam%sWidth"%(NBSP,
+                                                                      NBSP),
+                                                  color=BRICKRED,
+                                                  html_escape='OFF')))
+                tr.append(HTMLgen.TD(qelem[enstore_constants.FILE_FAMILY_WIDTH]))
 	elif qelem.has_key(enstore_constants.VOLUME_FAMILY):
-	    tr.append(HTMLgen.TD(HTMLgen.Font("Volume%sFamily"%(NBSP,), 
-					      color=BRICKRED, 
+	    tr.append(HTMLgen.TD(HTMLgen.Font("Volume%sFamily"%(NBSP,),
+					      color=BRICKRED,
 					      html_escape='OFF')))
 	    tr.append(HTMLgen.TD(qelem[enstore_constants.VOLUME_FAMILY]))
 	    tr.append(empty_data())
@@ -1253,7 +1267,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	    tr.append(empty_data())
 	return tr
 
-    # given the type of work and the type of queue, return the text to be 
+    # given the type of work and the type of queue, return the text to be
     # displayed to describe this queue element
     def get_intro_text(self, work, queue):
 	if queue == AT_MOVERS:
@@ -1270,7 +1284,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 
     def first_queue_row(self, qelem, intro):
 	text = self.get_intro_text(qelem[enstore_constants.WORK], intro)
-	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, 
+	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED,
 						html_escape='OFF')))
 	if qelem.has_key(enstore_constants.MOVER) and \
 	   not qelem[enstore_constants.MOVER] == enstore_constants.NOMOVER:
@@ -1289,7 +1303,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	tr = HTMLgen.TR(self.spacer_data("Local%sfile"%(NBSP,)))
 	tr.append(HTMLgen.TD(qelem[enstore_constants.FILE], colspan=5))
 	return tr
-	    
+
     def bytes_id_row(self, qelem):
 	tr = HTMLgen.TR(self.spacer_data("Bytes"))
 	tr.append(HTMLgen.TD(qelem[enstore_constants.BYTES]))
@@ -1299,12 +1313,12 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 
     def reject_reason_row(self, qelem):
 	tr = HTMLgen.TR(self.spacer_data("Reason%sfor%sPending"%(NBSP,NBSP)))
-	tr.append(HTMLgen.TD(qelem[enstore_constants.REJECT_REASON], 
+	tr.append(HTMLgen.TD(qelem[enstore_constants.REJECT_REASON],
 			     colspan=5))
 	return tr
 
     def make_lm_queue_rows(self, qelems, intro):
-	table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
+	table = HTMLgen.TableLite(cellpadding=0, cellspacing=0,
 				  align="LEFT", bgcolor=YELLOW, width="100%")
 	for qelem in qelems:
 	    table.append(self.first_queue_row(qelem, intro))
@@ -1323,13 +1337,13 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	qlen = len(qelems)
 	tr0 = None
 	if (not self.max_lm_rows == DEFAULT_ALL_ROWS) and (qlen > self.max_lm_rows):
-	    # we will need to cut short the number of queue elements that we 
-	    # output on the main status page, and add a link to point to the 
-	    # rest that will be on another page. however, there is only one 
+	    # we will need to cut short the number of queue elements that we
+	    # output on the main status page, and add a link to point to the
+	    # rest that will be on another page. however, there is only one
 	    # other page at this time
 	    filename = "%s-full_%s.html"%(self.lm, queue)
-	    tr0 = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
-					      'Extra Queue Rows (%s)'%(qlen - 
+	    tr0 = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename,
+					      'Extra Queue Rows (%s)'%(qlen -
 							     self.max_lm_rows,)),
 					colspan=4))
 	    qlen = self.max_lm_rows
@@ -1337,7 +1351,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	    self.extra_queue_pages[new_key] = (EnExtraLmFullQueuePages(self,
 								       self.lm),
 					       filename)
-	    self.extra_queue_pages[new_key][0].body(self.make_lm_queue_rows(qelems[qlen:], 
+	    self.extra_queue_pages[new_key][0].body(self.make_lm_queue_rows(qelems[qlen:],
 									    intro))
 
 	tr1 = self.make_lm_queue_rows(qelems[:qlen], intro)
@@ -1347,7 +1361,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
     def work_at_movers_row(self, cols):
 	# These are the keys used in work at movers queue
 	# WORK, NODE, PORT, FILE, FILE_FAMILY, FILE_FAMILY_WIDTH, SUBMITTED,
-	# DEQUEUED, MODIFICATION, CURRENT, BASE, DELTA, AGETIME, FILE, BYTES, 
+	# DEQUEUED, MODIFICATION, CURRENT, BASE, DELTA, AGETIME, FILE, BYTES,
 	# ID
 	the_work = self.data_dict.get(enstore_constants.WORK,
 				      enstore_constants.NO_WORK)
@@ -1355,7 +1369,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	    rows = self.lm_queue_rows(the_work, enstore_constants.WORK, AT_MOVERS)
 	else:
 	    rows = (HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_constants.NO_WORK,
-						      color=BRICKRED), 
+						      color=BRICKRED),
 					 colspan=cols)),)
 	return rows
 
@@ -1381,15 +1395,15 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
     def lm_rows(self, table):
 	cols = 4
 	# first the alive information
-	table.append(self.alive_row(self.lm, 
+	table.append(self.alive_row(self.lm,
 				    self.data_dict[enstore_constants.STATUS]))
-	# we may have gotten an error while trying to get the info, 
+	# we may have gotten an error while trying to get the info,
 	# so check for a piece of it first
 	if self.data_dict.has_key(enstore_constants.LMSTATE):
 	    # the rest of the lm information is in a separate table, it starts
 	    # with the suspect volume info
-	    lm_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
-					 align="LEFT", bgcolor=YELLOW, 
+	    lm_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0,
+					 align="LEFT", bgcolor=YELLOW,
 					 width="100%")
 	    tr = self.suspect_volume_row()
 	    if tr:
@@ -1418,7 +1432,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 class EnFileListPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh = 60, system_tag="", max_rows=DEFAULT_FILE_LIST_ROWS):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="fileHelp.html",
 			       system_tag=system_tag)
 	self.title = "ENSTORE File Transfers"
@@ -1454,13 +1468,13 @@ class EnFileListPage(EnBaseHtmlDoc):
 	flen = len(filelist)
 	tr = None
 	if (not self.max_rows == DEFAULT_ALL_ROWS) and flen > self.max_rows:
-	    # we will need to cut short the number of files that we 
-	    # output on the main status page, and add a link to point to the 
-	    # rest that will be on another page. however, there is only one 
+	    # we will need to cut short the number of files that we
+	    # output on the main status page, and add a link to point to the
+	    # rest that will be on another page. however, there is only one
 	    # other page at this time
 	    filename = "enstore_files-1.html"
-	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
-						    'More Files Here (%s)'%(flen - 
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename,
+						    'More Files Here (%s)'%(flen -
 									    self.max_rows,)),
 					       colspan=2))
 	    flen = self.max_rows
@@ -1468,7 +1482,7 @@ class EnFileListPage(EnBaseHtmlDoc):
 	    self.extra_queue_pages[new_key] = (EnExtraFileListPages(self), filename)
 	    self.extra_queue_pages[new_key][0].body(self.file_list_table(filelist[flen:]))
 	table.append(HTMLgen.TR(HTMLgen.TD(self.file_list_table(filelist[0:flen], tr))))
-	
+
     # generate the body of the file
     def body(self, filelist):
 	# create the outer table and its rows
@@ -1482,7 +1496,7 @@ class EnFileListPage(EnBaseHtmlDoc):
 class EnSysStatusPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh = 60, system_tag="", max_lm_rows={}):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="serverStatusHelp.html",
 			       system_tag=system_tag)
 	self.title = "ENSTORE System Status"
@@ -1503,7 +1517,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # output the list of shortcuts on the top of the page
     def shortcut_table(self):
 	# get a list of all the servers we have.  we will output a link for the
-	# following - 
+	# following -
 	#              library managers
 	#              movers
 	self.servers = sort_keys(self.data_dict)
@@ -1524,7 +1538,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
                 first_migrator = server
 		got_migrators = True
 	# now we have the list of table data elements.  now create the table.
-	caption = HTMLgen.Caption(HTMLgen.Bold(HTMLgen.Font("Shortcuts", 
+	caption = HTMLgen.Caption(HTMLgen.Bold(HTMLgen.Font("Shortcuts",
 							    color=BRICKRED,
 							    size="+2")))
 	table = HTMLgen.TableLite(caption, cellspacing=5, cellpadding=CELLP,
@@ -1545,11 +1559,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	if got_migrators:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(first_migrator,), MIGRATORS)
-        
+
 	# now the unmonitored servers
 	if got_unmonitored_server:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
-						  '#%s'%(first_unmonitored_server,), 
+						  '#%s'%(first_unmonitored_server,),
 						 UNMONITORED_SERVERS)
 	# add a link to the full file list page
 	tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
@@ -1562,7 +1576,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	return table
 
     def server_row(self, server):
-	return self.alive_row(server, 
+	return self.alive_row(server,
 			      self.data_dict[server][enstore_constants.STATUS])
     # add in the information for the generic servers. these only have alive
     # information
@@ -1575,7 +1589,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		    # output its information
 		    table.append(self.server_row(server))
 
-    # output all of the media changer rows 
+    # output all of the media changer rows
     def media_changer_rows(self, table, skeys):
 	# now output the media changer information
 	for server in skeys:
@@ -1586,7 +1600,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		    # this is a media changer. output its alive info
 		    table.append(self.server_row(server))
 
-    # output all of the udp proxy server rows 
+    # output all of the udp proxy server rows
     def udp_proxy_server_rows(self, table, skeys):
 	# now output the udp proxy serverr information
 	for server in skeys:
@@ -1600,14 +1614,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # output the row that lists the total transfers (current and pending) row
     def xfer_row(self, lm):
 	tr = HTMLgen.TR()
-	tr.append(HTMLgen.TD(HTMLgen.Font("Ongoing%sTransfers"%(NBSP,), 
+	tr.append(HTMLgen.TD(HTMLgen.Font("Ongoing%sTransfers"%(NBSP,),
 					  color=BRICKRED, html_escape='OFF')))
 	tr.append(HTMLgen.TD(self.data_dict[lm][enstore_constants.TOTALONXFERS]))
-	tr.append(HTMLgen.TD(HTMLgen.Font("Pending%sTransfers"%(NBSP,), 
+	tr.append(HTMLgen.TD(HTMLgen.Font("Pending%sTransfers"%(NBSP,),
 					  color=BRICKRED, html_escape='OFF')))
 	tr.append(HTMLgen.TD(self.data_dict[lm][enstore_constants.TOTALPXFERS]))
 	# now add a link to the page with the full queue elements
-	tr.append(HTMLgen.TD(HTMLgen.Href(get_full_queue_name(lm), 
+	tr.append(HTMLgen.TD(HTMLgen.Href(get_full_queue_name(lm),
 					  "Full%sQueue%sElements"%(NBSP,NBSP)),
 			     html_escape='OFF'))
 	return tr
@@ -1623,10 +1637,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 				      qelem[enstore_constants.MOVER]),
 			     qelem[enstore_constants.MOVER])
         ff = qelem[enstore_constants.FILE_FAMILY]
-	txt = "%s%s(%s)%susing%s%s%sfrom%s%s%sby%s%s"%(r_type, str(vol), ff, NBSP, NBSP, 
+        sg = qelem[enstore_constants.STORAGE_GROUP]
+	txt = "%s%s(%s%s%s)%susing%s%s%sfrom%s%s%sby%s%s"%(r_type, str(vol), sg, NBSP,ff, NBSP, NBSP,
 						   str(mover), NBSP, NBSP,
 		       enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
-						   NBSP, NBSP, 
+						   NBSP, NBSP,
 						   qelem[enstore_constants.USERNAME])
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
 
@@ -1643,17 +1658,17 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    else:
 		rows_on_page = max_lm_rows
 		extra_rows = qlen - max_lm_rows
-		    
+
 	    for qelem in the_work[0:rows_on_page]:
 		rows.append(self.make_lm_wam_queue_rows(qelem, cols))
 
 	    if extra_rows > 0:
-		# we will need to cut short the number of queue elements that 
-		# we output on the main status page, and add a link to point 
-		# to the rest that will be on another page. however, there is 
+		# we will need to cut short the number of queue elements that
+		# we output on the main status page, and add a link to point
+		# to the rest that will be on another page. however, there is
 		# only one other page at this time
 		filename = "%s_%s.html"%(lm, enstore_constants.WORK)
-		rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+		rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename,
 					'Extra Queue Rows (%s)'%(extra_rows,)),
 						  colspan=cols)))
 		qlen = max_lm_rows
@@ -1677,8 +1692,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
 
     def make_lm_pend_write_row(self, qelem, cols):
-	r_type = "Pending%swrite%sfor%s%s"%(NBSP, NBSP, NBSP, 
+	r_type = "Pending%swrite%sfor%s%s%s%s"%(NBSP, NBSP, NBSP,
+                                               qelem[enstore_constants.STORAGE_GROUP], NBSP,
 					  qelem[enstore_constants.FILE_FAMILY])
+	##r_type = "Pending%swrite%sfor%s%s"%(NBSP, NBSP, NBSP,
+        ##                                    qelem[enstore_constants.FILE_FAMILY])
 	txt = "%s%sfrom%s%s%sby%s%s%s[%s]"%(r_type, NBSP, NBSP,
 				 enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 				 NBSP, NBSP, qelem[enstore_constants.USERNAME], NBSP,
@@ -1709,7 +1727,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
 		if extra_rows > 0:
 		    for qelem in  the_work[enstore_constants.READ][rows_on_page:]:
-			extra_read_rows.append(self.make_lm_pend_read_row(qelem, 
+			extra_read_rows.append(self.make_lm_pend_read_row(qelem,
 									  cols))
 	    if not the_work[enstore_constants.WRITE] == []:
 		qlen = len(the_work[enstore_constants.WRITE])
@@ -1721,19 +1739,20 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		    extra_rows = qlen - max_lm_rows
 
 		for qelem in the_work[enstore_constants.WRITE][0:rows_on_page]:
+                    #print "THW", qelem
 		    rows.append(self.make_lm_pend_write_row(qelem, cols))
 
 		if extra_rows > 0:
 		    for qelem in  the_work[enstore_constants.WRITE][rows_on_page:]:
-			extra_write_rows.append(self.make_lm_pend_write_row(qelem, 
+			extra_write_rows.append(self.make_lm_pend_write_row(qelem,
 									    cols))
 	extra_rows = extra_read_rows + extra_write_rows
 	if extra_rows:
-	    # we will need to cut short the number of queue elements that we 
-	    # output on the main status page, and add a link to point to the 
-	    # rest that will be on another page. however, there is only one 
+	    # we will need to cut short the number of queue elements that we
+	    # output on the main status page, and add a link to point to the
+	    # rest that will be on another page. however, there is only one
 	    # other page at this time
-	    rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+	    rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename,
 				   'Extra Queue Rows (%s)'%(len(extra_rows),)),
 					      colspan=cols)))
 	    new_key = "%s-%s"%(lm, enstore_constants.PENDING)
@@ -1756,7 +1775,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	       lm_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
 		# append the lm state to the status information
 		lm_d[enstore_constants.STATUS][0] = \
-			 "%s%s:%s%s"%(lm_d[enstore_constants.STATUS][0], NBSP, NBSP, 
+			 "%s%s:%s%s"%(lm_d[enstore_constants.STATUS][0], NBSP, NBSP,
 				      lm_d[enstore_constants.LMSTATE])
 	# get the first word of the lm state, we will use this to
 	# tell if this is a bad state or not
@@ -1768,18 +1787,18 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	name = self.server_url(lm, "%s.html"%(lm,))
         table_rows.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.NAME(lm))))
 	if words[0] in BAD_LM_STATES:
-	    table_rows.append(self.alive_row(lm, lm_d[enstore_constants.STATUS], 
+	    table_rows.append(self.alive_row(lm, lm_d[enstore_constants.STATUS],
 					     FUSCHIA, link=lm))
 	else:
 	    table_rows.append(self.alive_row(lm, lm_d[enstore_constants.STATUS],
 					     link = name))
-	# we may have gotten an error while trying to get the info, 
+	# we may have gotten an error while trying to get the info,
 	# so check for a piece of it first
 	if lm_d.has_key(enstore_constants.LMSTATE):
 	    # the rest of the lm information is in a separate table, it starts
 	    # with the suspect volume info
-	    lm_table = HTMLgen.TableLite(cellpadding=0, 
-					 cellspacing=0, align="LEFT", 
+	    lm_table = HTMLgen.TableLite(cellpadding=0,
+					 cellspacing=0, align="LEFT",
 					 bgcolor=YELLOW, width="100%")
 	    lm_table.append(self.xfer_row(lm))
 	    lm_table.append(self.null_row(cols))
@@ -1821,26 +1840,26 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    if string.find(mover_d[enstore_constants.STATUS][0], NBSP) == -1 and \
 	       mover_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
 		mover_d[enstore_constants.STATUS][0] = \
-			      "%s%s:%s%s"%(mover_d[enstore_constants.STATUS][0], 
-					   NBSP, NBSP, 
+			      "%s%s:%s%s"%(mover_d[enstore_constants.STATUS][0],
+					   NBSP, NBSP,
 					   mover_d[enstore_constants.STATE])
 	    # get the first word of the mover state, we will use this
 	    # to tell if this is a bad state or not
 	    words = string.split(mover_d[enstore_constants.STATE])
 	    if words[0] in BAD_MOVER_STATES:
-		return self.alive_row(server, 
-				      mover_d[enstore_constants.STATUS], 
+		return self.alive_row(server,
+				      mover_d[enstore_constants.STATUS],
 				      FUSCHIA, link=name)
 	    else:
-		return self.alive_row(server, 
+		return self.alive_row(server,
 				      mover_d[enstore_constants.STATUS],
 				      link=name)
 	else:
-	    return self.alive_row(server, 
+	    return self.alive_row(server,
 				  mover_d[enstore_constants.STATUS],
 				  link=name)
 
-    # output all of the mover rows 
+    # output all of the mover rows
     def mover_rows(self, table, skeys):
 	for server in skeys:
 	    if enstore_functions2.is_mover(server):
@@ -1960,7 +1979,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 # too general     "USER ERROR"                                : "USERERROR",
 
     def __init__(self, refresh=120, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="encpHelp.html",
 			       system_tag=system_tag)
 	self.align = NO
@@ -1970,8 +1989,8 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	self.description = ""
 	self.error_keys = self.error_text.keys()
 
-    # create the body of the page. the data is a list of lists.  each outer 
-    # list element is a list of the encp data i.e. - 
+    # create the body of the page. the data is a list of lists.  each outer
+    # list element is a list of the encp data i.e. -
     #   [["10:43:49", "d0ensrv1.fnal.gov", "bakken", "55,255", "samnull-1", "3.5", "0.035"]]
     def body(self, data_list):
 	table = self.table_top()
@@ -1979,14 +1998,14 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	# now create the table with the data in it, first do the row with
 	# the headings
 	tr = HTMLgen.TR(valign="CENTER")
-	headings = ["Time", "Node", "User/Storage Group", "Mover Interface", "Bytes", 
+	headings = ["Time", "Node", "User/Storage Group", "Mover Interface", "Bytes",
 		    "Volume", "Network Rate (MB/S)", "Transfer Rate (MB/S)",
                     "Drive Rate (MB/S)", "Disk Rate (MB/S)", "Overall Rate (MB/S)"]
 	num_headings = len(headings)
 	for hding in headings:
 	    tr.append(self.make_th(hding))
 	en_table = HTMLgen.TableLite(tr, border=1, bgcolor=AQUA, width="100%",
-				     cols=num_headings, cellspacing=5, 
+				     cols=num_headings, cellspacing=5,
 				     cellpadding=CELLP)
 	num_errors = 0
 	errors = []
@@ -2008,9 +2027,9 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 		tr.append(HTMLgen.TD(row[1]))
 		tr.append(HTMLgen.TD(row[2]))
 		tr.append(HTMLgen.TD(row[9]))
-		tr.append(HTMLgen.TD(HTMLgen.Href("#%s%s"%(INFOTXT, 
-							   num_successes), 
-						  "%s (%s)"%(row[3], 
+		tr.append(HTMLgen.TD(HTMLgen.Href("#%s%s"%(INFOTXT,
+							   num_successes),
+						  "%s (%s)"%(row[3],
 						HTMLgen.Bold(num_successes)))))
 		self.encp_files.append([row[7], row[8]])
 		tr.append(HTMLgen.TD(row[4]))
@@ -2034,9 +2053,9 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 		tr.append(HTMLgen.TD(row[2]))
 		num_errors = num_errors + 1
 		errors.append(row[3])
-		# we need to check the error text.  if it contains certain 
-		# strings  (specified in error_text), then we will output a 
-		# different string pointing to the actual error message at 
+		# we need to check the error text.  if it contains certain
+		# strings  (specified in error_text), then we will output a
+		# different string pointing to the actual error message at
 		# the bottom of the page.
 		for ekey in self.error_keys:
 		    if string.find(row[3], self.error_text[ekey]) != -1:
@@ -2062,9 +2081,9 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	    en_table.append(tr)
 	for i in range(num_successes):
 	    si = "%s"%(i+1,)
-	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si), 
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si),
 						    size="+2")))
-	    tr.append(HTMLgen.TD(HTMLgen.Name("%s%s"%(INFOTXT, si), 
+	    tr.append(HTMLgen.TD(HTMLgen.Name("%s%s"%(INFOTXT, si),
 					     "%s -> %s"%(self.encp_files[i][0],
 						      self.encp_files[i][1]))))
 	    en_table.append(tr)
@@ -2080,7 +2099,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	    en_table.append(tr)
 	for i in range(num_errors):
 	    si = "%s"%(i+1,)
-	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si), 
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(si),
 						    size="+2",
 						    color=FILE_ERROR_COLOR)))
 	    tr.append(HTMLgen.TD(HTMLgen.Name(si, HTMLgen.Font(errors[i],
@@ -2093,8 +2112,8 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 class EnConfigurationPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh=600, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
-			       help_file="configHelp.html", 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
+			       help_file="configHelp.html",
 			       system_tag=system_tag)
 	self.title = "ENSTORE Configuration"
 	self.script_title_gif = "en_cfg.gif"
@@ -2104,18 +2123,18 @@ class EnConfigurationPage(EnBaseHtmlDoc):
     # create the body of the page. the incoming data is a python dictionary
     def body(self, data_dict):
 	table = self.table_top()
-	# now add a top table with links to the individual servers (as a 
+	# now add a top table with links to the individual servers (as a
 	# shortcut)
 	dkeys = sort_keys(data_dict)
-	caption = HTMLgen.Caption(HTMLgen.Bold(HTMLgen.Font("Shortcuts", 
+	caption = HTMLgen.Caption(HTMLgen.Bold(HTMLgen.Font("Shortcuts",
 							    color=BRICKRED,
 							    size="+2")))
-	shortcut_table = HTMLgen.TableLite(caption, border=1, bgcolor=AQUA, 
+	shortcut_table = HTMLgen.TableLite(caption, border=1, bgcolor=AQUA,
 					   cellspacing=5, cellpadding=CELLP)
 	tr = HTMLgen.TR()
 	num_tds_so_far = 0
 	for server in dkeys:
-	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, 
+	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr,
 						 shortcut_table,
 						 "#%s"%(server,), server)
 	else:
@@ -2124,7 +2143,7 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 	table.append(HTMLgen.TR(HTMLgen.TD(shortcut_table)))
 	table.append(empty_row())
 	# now add the table with the information
-	cfg_table = HTMLgen.TableLite(border=1, bgcolor=AQUA, 
+	cfg_table = HTMLgen.TableLite(border=1, bgcolor=AQUA,
 				      cellspacing=5, cellpadding=CELLP)
 	tr = HTMLgen.TR()
 	for hding in ["Server", "Element", "Value"]:
@@ -2138,7 +2157,7 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 	    for server_key in server_keys:
 		if first_line:
 		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font( \
-			HTMLgen.Name(server, HTMLgen.Bold(server)), 
+			HTMLgen.Name(server, HTMLgen.Bold(server)),
 			size="+1")))
 		    first_line = 0
 		else:
@@ -2153,7 +2172,7 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 		#tr.append(HTMLgen.TD(href))
 		tr.append(HTMLgen.TD(server_dict[server_key]))
 		cfg_table.append(tr)
-		
+
 	# add this table to the main one
 	table.append(HTMLgen.TR(HTMLgen.TD(cfg_table)))
 	self.trailer(table)
@@ -2199,47 +2218,47 @@ class EnLogPage(EnBaseHtmlDoc):
 	dates.reverse()
 	return (dates, log_months)
 
-    # generate the calendar looking months with url's for each day for which 
+    # generate the calendar looking months with url's for each day for which
     # there  exists a log file. the data in logs, should be a dictionary where
     # the log file names are the keys and the value the size of the file
-    def generate_months(self, table, logs, web_host, 
+    def generate_months(self, table, logs, web_host,
 			caption_title="Enstore Log Files"):
 	(dates, sizes) = self.find_months(logs)
 	did_title = 0
 	for (year, month, date) in dates:
-	    caption = HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(date), 
+	    caption = HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(date),
 						   size="+2", color=BRICKRED))
 	    if not did_title:
 		did_title = 1
 		caption.prepend(HTMLgen.BR())
 		caption.prepend(HTMLgen.BR())
-		caption.prepend(HTMLgen.Font(HTMLgen.Bold(caption_title), 
+		caption.prepend(HTMLgen.Font(HTMLgen.Bold(caption_title),
 					     size="+2", color=BRICKRED))
-	    log_table =  HTMLgen.TableLite(caption, bgcolor=AQUA, 
-					   cellspacing=5, 
-					   cellpadding=CELLP, align="LEFT", 
+	    log_table =  HTMLgen.TableLite(caption, bgcolor=AQUA,
+					   cellspacing=5,
+					   cellpadding=CELLP, align="LEFT",
 					   border=2)
 	    tr = HTMLgen.TR()
 	    for day in calendar.day_abbr:
-		tr.append(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(day),size="+1", 
+		tr.append(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(day),size="+1",
 						  color=BRICKRED)))
 	    log_table.append(tr)
-	    # the following generates a  list of lists, which specifies how to draw 
-	    # a calendar with the first of the month occuring in the correct day of 
+	    # the following generates a  list of lists, which specifies how to draw
+	    # a calendar with the first of the month occuring in the correct day of
 	    # the week slot.
 	    mweeks = calendar.monthcalendar(year, month)
 	    for mweek in mweeks:
 		tr = HTMLgen.TR()
 		for day in [0,1,2,3,4,5,6]:
 		    if mweek[day] == 0:
-			# this is null entry represented by a blank entry on the 
+			# this is null entry represented by a blank entry on the
 			# calendar
 			tr.append(empty_data())
 		    else:
 			(size, log) = sizes[date].get(mweek[day], (-1, ""))
 			if size == -1:
 			    # there was no log file for this day
-			    tr.append(HTMLgen.TD(HTMLgen.Bold(mweek[day]), 
+			    tr.append(HTMLgen.TD(HTMLgen.Bold(mweek[day]),
 						 bgcolor=YELLOW))
 			else:
                             # do not change unless you know what you are doing!
@@ -2253,8 +2272,8 @@ class EnLogPage(EnBaseHtmlDoc):
 	    table.append(HTMLgen.TR(HTMLgen.TD(log_table)))
 	    table.append(empty_row())
 
-    # create the body of the page, where http_path is the web server path to the 
-    # files, www_host# is the host where the web server is running, user_logs is a 
+    # create the body of the page, where http_path is the web server path to the
+    # files, www_host# is the host where the web server is running, user_logs is a
     # dictionary that contains user logs and logs is a dictionary where the log file
     # names are the keys and the sizes are the values.
     def body(self, http_path, logs, user_logs, www_host):
@@ -2262,12 +2281,12 @@ class EnLogPage(EnBaseHtmlDoc):
 	# now add the data, first the table with the user specified log files in it
 	log_table = HTMLgen.TableLite(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(\
 	             "User Specified Log Files"), size="+2", color=BRICKRED)),
-				      width="50%", cellspacing=5, cellpadding=CELLP, 
+				      width="50%", cellspacing=5, cellpadding=CELLP,
 				      align="LEFT")
 	if user_logs:
 	    ul_keys = sort_keys(user_logs)
 	    for ul_key in ul_keys:
-		log_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(user_logs[ul_key], 
+		log_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(user_logs[ul_key],
 							str(HTMLgen.Bold(ul_key))))))
 	table.append(HTMLgen.TR(HTMLgen.TD(log_table)))
 	log_table.append(empty_row())
@@ -2275,7 +2294,7 @@ class EnLogPage(EnBaseHtmlDoc):
 	# now create the tables for the different months.
 	self.generate_months(table, logs, "%s%s"%(www_host, http_path))
 	self.trailer(table)
-	self.append(table)							 
+	self.append(table)
 
 def latest_time_sort(one, two):
     if one[0] < two[0]:
@@ -2293,7 +2312,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	self.title = "ENSTORE Alarms"
 	self.script_title_gif = "en_act_alarms.gif"
 	self.source_server = THE_ALARM_SERVER
-	self.description = "%s may also be displayed.%sAnd a %s."%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))), 
+	self.description = "%s may also be displayed.%sAnd a %s."%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))),
                                                                    str(HTMLgen.BR()),
                   str(HTMLgen.Bold(HTMLgen.Href("volume_audit.html", "volume audit"))))
 
@@ -2310,11 +2329,11 @@ class EnAlarmPage(EnBaseHtmlDoc):
 
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
-        for hdr in ["%sKey%s"%(NBSP*8,NBSP*8), "Time\n(last)", "Node", "PID", "User", "Severity", 
+        for hdr in ["%sKey%s"%(NBSP*8,NBSP*8), "Time\n(last)", "Node", "PID", "User", "Severity",
                     "Process", "Error", "Ticket Generated\n(Condition/Type)",
                     "Additional Information"]:
             tr.append(self.make_th(hdr))
-	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
+	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5,
 				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
 	i = 0
 	akeys = self.sort_by_latest_time(alarms)
@@ -2351,10 +2370,10 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	return table
 
     def addButtons(self):
-	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Resolve Selected", 
+	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Resolve Selected",
 						 type="submit",
 						 name=RESOLVESELECTED)))
-	tr.append(HTMLgen.TD(HTMLgen.Input(value="Resolve All", 
+	tr.append(HTMLgen.TD(HTMLgen.Input(value="Resolve All",
 						 type="submit",
 						 name=RESOLVEALL)))
 	tr.append(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset",
@@ -2362,7 +2381,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	tr.append(HTMLgen.TD("Alarms may be cancelled by selecting the alarm(s), pressing the %s button and then reloading the page. All alarms may be cancelled by pressing the %s button."%(str(HTMLgen.Bold(RESOLVESELECTED)),
 		    str(HTMLgen.Bold(RESOLVEALL))), html_escape='OFF'))
         return tr
-        
+
     def body(self, alarms, web_host):
 	table = self.table_top()
 	# now the data
@@ -2371,7 +2390,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	# get rid of the default submit button, we will add our own below
 	form.submit = ''
         tr = self.addButtons()
-	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
+	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr,
 							    width="100%"))))
 	form.append(empty_row())
 	form.append(empty_row())
@@ -2379,7 +2398,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	form.append(empty_row())
 	form.append(empty_row())
         tr = self.addButtons()
-	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
+	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr,
 							    width="100%"))))
 	table.append(form)
 	self.trailer(table)
@@ -2388,7 +2407,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 class EnAlarmSearchPage(EnBaseHtmlDoc):
 
     def __init__(self, background, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=600, background=background, 
+	EnBaseHtmlDoc.__init__(self, refresh=600, background=background,
 			       system_tag=system_tag)
 	self.title = "ENSTORE Alarm Search"
 	self.script_title_gif = "en_alarm_hist.gif"
@@ -2397,11 +2416,11 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
-	for hdr in ["Time", "Node", "PID", "User", "Severity", 
+	for hdr in ["Time", "Node", "PID", "User", "Severity",
 		    "Process", "Error", "Ticket Generated\n(Condition/Type)",
 		    "Additional Information"]:
 	    tr.append(self.make_th(hdr))
-	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
+	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5,
 				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
 	akeys = sort_keys(alarms)
 	for akey in akeys:
@@ -2427,12 +2446,12 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	table.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
 	self.trailer(table)
 	self.append(table)
-	
+
 class EnPlotPage(EnBaseHtmlDoc):
 
     bpd = "%s%s"
 
-    def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif", 
+    def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif",
 		 system_tag="", description="", mount_label=None,
 		 links_l=None, nav_link="", url_gif_dir = ""):
 	EnBaseHtmlDoc.__init__(self, refresh=0, help_file="plotHelp.html",
@@ -2536,7 +2555,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 		td = HTMLgen.TD(HTMLgen.Image(stamp[0]))
 	    trs.append(td)
             text = "%s (%s)%s"%(self.find_label(stamp[0]),
-                                enstore_functions2.format_time(stamp[1]), 
+                                enstore_functions2.format_time(stamp[1]),
                                 NBSP*2)
             #if self.outofdate and stamp[1] < self.yesterday: (commented by Dmitry)
             today = time.time()
@@ -2568,7 +2587,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 		    tr.append(td)
 	    else:
 		table.append(tr)
-	    
+
     def add_leftover_pss(self, table, pss):
 	while pss:
 	    tr = HTMLgen.TR()
@@ -2579,7 +2598,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 		    tr.append(td)
 	    else:
 		table.append(tr)
-	    
+
     def body(self, jpgs, stamps, pss):
 	table = self.table_top()
 	# create a grid of jpg stamp files 3 stamps wide.  attach a link to
@@ -2590,7 +2609,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	if self.links_l:
 	    for link,txt in self.links_l:
 		tr = HTMLgen.TR()
-		tr.append(HTMLgen.TD(HTMLgen.Href(link, 
+		tr.append(HTMLgen.TD(HTMLgen.Href(link,
 						  HTMLgen.Font(txt, size="+2")),
 				     colspan=3, align="LEFT"))
 		plot_table.append(tr)
@@ -2637,7 +2656,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
 	self.description = "%s%sRecent network monitoring results."%(NBSP, NBSP)
         EnBaseHtmlDoc.__init__(self, refresh=refresh, system_tag=system_tag)
 	self.source_server = "The Monitor Server"
-        
+
         #add standard header to  html page, do not need update information
         table_top = self.table_top(add_update=0)
         self.append(table_top)
@@ -2646,7 +2665,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         # in a master table called "table top".   To participate in the standard look
         # and feel we make our table ("perf_table"), put it into a data field, and
         # put the data field into a row, and  then add that row to "table_top"
-        
+
         table_top_row_for_perf_table = HTMLgen.TR(valign="CENTER")
         table_top.append(table_top_row_for_perf_table)
         data_for_perf_table = HTMLgen.TD()
@@ -2657,7 +2676,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
                                            align="CENTER")
         data_for_perf_table.append(self.perf_table)
 
-	# Populate the first row in perf_table with headings 
+	# Populate the first row in perf_table with headings
 	head_row = HTMLgen.TR(valign="CENTER")
         self.perf_table.append(head_row)
         for h in headings:
@@ -2670,10 +2689,10 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         lop off the tail of the table when it becomes too long.
         """
         measurement_row = HTMLgen.TR()
-        
+
         #self.perf_table.append(measurement_row)
-        
-        self.perf_table.contents.insert(1,measurement_row)  
+
+        self.perf_table.contents.insert(1,measurement_row)
         for m in measurement :
             measurement_row.append(HTMLgen.TD(m))
 
@@ -2690,9 +2709,9 @@ class EnSaagPage(EnBaseHtmlDoc):
     yellowball = HTMLgen.Image("yelball.gif", width=17, height=17, border=0)
     checkmark = HTMLgen.Image("checkmark.gif", width=17, height=17, border=0)
 
-    def __init__(self, title="Mass Storage Status-At-A-Glance", gif="ess-aag.gif", 
+    def __init__(self, title="Mass Storage Status-At-A-Glance", gif="ess-aag.gif",
 		 system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=360, help_file="saagHelp.html", 
+	EnBaseHtmlDoc.__init__(self, refresh=360, help_file="saagHelp.html",
 			       system_tag=system_tag)
 	self.title = title
 	self.script_title_gif = gif
@@ -2714,7 +2733,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	return HTMLgen.TD(self.get_gif(dict, key), align=direction)
 
     # the  alt_key is used to specify a more explicit data item than just the key
-    def get_element(self, dict, key, out_dict, offline_dict, alt_key="", 
+    def get_element(self, dict, key, out_dict, offline_dict, alt_key="",
 		    make_link=0):
 	val = dict.get(key, enstore_constants.DOWN)
 	sched = out_dict.get(key, enstore_constants.NOSCHEDOUT)
@@ -2732,7 +2751,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	if offline_dict.has_key(key):
 	    # this element is known to be offline
 	    td = HTMLgen.TD(HTMLgen.Strike(h_alt_key))
-	    # record the fact that this one is offline so we can add the reason 
+	    # record the fact that this one is offline so we can add the reason
 	    # later. we do it later to allow a scheduled outage checkmark to appear
 	    # next to the server name and not after the offline reason
 	    is_offline = 1
@@ -2747,7 +2766,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 		td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(sched,), size="-1")))
 	if is_offline == 1 and offline_dict[key] != "":
 	    td.append(HTMLgen.BR())
-	    td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(offline_dict[key],), 
+	    td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(offline_dict[key],),
 						    size="-1")))
 	return td
 
@@ -2757,13 +2776,13 @@ class EnSaagPage(EnBaseHtmlDoc):
 	if ball_gif.filename == self.redball_gif:
 	    self.background = None
 	    self.bgcolor = "YELLOW"
-	    rb_tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Image("bigredball.gif", 
+	    rb_tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Image("bigredball.gif",
 						     title="Enstore ball has turned red"),
 				       align="CENTER"))
 	    rb_tr.append(HTMLgen.TD(HTMLgen.Image("enstore_is_red.gif"), align="LEFT"))
-	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(rb_tr, cellspacing=1, 
-								 cellpadding=1, border=0, 
-								 align="CENTER", 
+	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(rb_tr, cellspacing=1,
+								 cellpadding=1, border=0,
+								 align="CENTER",
 								 width="90%"))))
 	    while empty_rows > 0:
 		table.append(empty_row())
@@ -2771,7 +2790,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    return 1
 	else:
 	    return None
-	    
+
     def get_med_list(self, dict):
 	keys = dict.keys()
 	keys.sort()
@@ -2789,11 +2808,11 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
 	tr.append(self.get_element(dict, val, outage_d, offline_d, txt))
 
-    def make_overall_table(self, enstat_d, other_d, medstat_d, alarms_d, outage_d, 
+    def make_overall_table(self, enstat_d, other_d, medstat_d, alarms_d, outage_d,
 			   offline_d):
-	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
+	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0,
 				    align="CENTER", width="90%")
-	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Overall Status"), 
+	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Overall Status"),
 						    size="+3", color=BRICKRED)))
 	entable.append(empty_row(6))
 	# first get a list of the media tags we will have (1 per row)
@@ -2842,18 +2861,18 @@ class EnSaagPage(EnBaseHtmlDoc):
 	return entable
 
     def get_time_row(self, dict):
-	# if the dictionary has a time key, then use the value in a row.  else 
+	# if the dictionary has a time key, then use the value in a row.  else
 	# use "???"
 	theTime = dict.get(enstore_constants.TIME, "???")
-	return (HTMLgen.TR(HTMLgen.TD("(as of %s)"%(theTime,), colspan=8, 
+	return (HTMLgen.TR(HTMLgen.TD("(as of %s)"%(theTime,), colspan=8,
 				      align="CENTER")))
 
     def add_data(self, dict, keys, tr, out_dict, offline_dict):
 	if len(keys) > 0:
 	    key = keys.pop(0)
 	    tr.append(self.get_color_ball(dict, key, "RIGHT"))
-	    # by putting something in the last parameter, we are telling the 
-	    # function to make the element it creates a link to the server status 
+	    # by putting something in the last parameter, we are telling the
+	    # function to make the element it creates a link to the server status
 	    # page
 	    tr.append(self.get_element(dict, key, out_dict, offline_dict, "", 2))
 	else:
@@ -2861,21 +2880,21 @@ class EnSaagPage(EnBaseHtmlDoc):
 	return keys
 
     def make_server_table(self, dict, out_dict, offline_dict):
-	ignore = [enstore_constants.ENSTORE, enstore_constants.TIME, 
+	ignore = [enstore_constants.ENSTORE, enstore_constants.TIME,
 		  enstore_constants.URL]
-	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
+	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0,
 				    align="CENTER", width="90%")
-	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Individual Server Status"), 
+	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Individual Server Status"),
 						    size="+3", color=BRICKRED)))
 	entable.append(empty_row(8))
 	# add the individual column headings
 	tr = HTMLgen.TR(empty_header())
-	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Servers"), size="+1", 
+	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Servers"), size="+1",
 					  color=BRICKRED), align="RIGHT", colspan=2))
 	tr.append(empty_header())
 	for hdr in ["Library Managers", "Media Changers"]:
 	    tr.append(empty_header())
-	    tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U(hdr), size="+1", 
+	    tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U(hdr), size="+1",
 					      color=BRICKRED), align="LEFT"))
 	entable.append(tr)
 	# now split up the data into each column
@@ -2915,7 +2934,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	entable.append(empty_row(8))
 	entable.append(empty_row(8))
 	tr = HTMLgen.TR(empty_header())
-	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Movers"), size="+1", 
+	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Movers"), size="+1",
 					  color=BRICKRED), align="RIGHT", colspan=2))
 	entable.append(tr)
 	while len(mv_keys) > 0:
@@ -2925,10 +2944,10 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    mv_keys = self.add_data(mv, mv_keys, tr, out_dict, offline_dict)
 	    mv_keys = self.add_data(mv, mv_keys, tr, out_dict, offline_dict)
 	    entable.append(tr)
-            
-       # now add the migrator information 
+
+       # now add the migrator information
 	tr = HTMLgen.TR(empty_header())
-	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Migrators"), size="+1", 
+	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Migrators"), size="+1",
 					  color=BRICKRED), align="RIGHT", colspan=2))
 	entable.append(tr)
 	while len( migrator_keys) > 0:
@@ -2963,9 +2982,9 @@ class EnSaagPage(EnBaseHtmlDoc):
 	return entable
 
     def make_node_server_table(self, dict):
-	entable = HTMLgen.TableLite(cellspacing=3, cellpadding=3, align="CENTER", 
+	entable = HTMLgen.TableLite(cellspacing=3, cellpadding=3, align="CENTER",
 				    border=2, width="90%", bgcolor=AQUA)
-	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Node/Server Mapping"), 
+	entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Node/Server Mapping"),
 						    size="+3", color=BRICKRED)))
 	cols = 4
 	# arrange each node in a table on the page
@@ -2987,7 +3006,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    entable.append(tr)
 	return entable
 
-    def body(self, enstat_d, other_d, medstat_d, alarms, nodes, outage_d, 
+    def body(self, enstat_d, other_d, medstat_d, alarms, nodes, outage_d,
 	     offline_d, media_tag, status_file_name):
 	# name of file that we will create links to
 	self.status_file_name = status_file_name
@@ -3006,12 +3025,12 @@ class EnSaagPage(EnBaseHtmlDoc):
 	self.check_for_red(enstat_d, table)
 	table.append(HTMLgen.TR(HTMLgen.TD(self.make_overall_table(enstat_d, other_d,
 								   medstat_d, alarms,
-								   outage_d, 
+								   outage_d,
 								   offline_d))))
 	table_spacer(table)
 	# add the table with the individual server status
 	if enstat_d:
-	    table.append(HTMLgen.TR(HTMLgen.TD(self.make_server_table(enstat_d, 
+	    table.append(HTMLgen.TR(HTMLgen.TD(self.make_server_table(enstat_d,
 								      outage_d,
 								      offline_d))))
 	    table_spacer(table)
@@ -3032,9 +3051,9 @@ class EnSaagPage(EnBaseHtmlDoc):
 
 class EnSaagNetworkPage(EnSaagPage):
 
-    def __init__(self, title="ENSTORE Network Status-At-A-Glance", gif="ess-aag.gif", 
+    def __init__(self, title="ENSTORE Network Status-At-A-Glance", gif="ess-aag.gif",
 		 system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=360, help_file="saagNetworkHelp.html", 
+	EnBaseHtmlDoc.__init__(self, refresh=360, help_file="saagNetworkHelp.html",
 			       system_tag=system_tag)
 	self.title = title
 	self.script_title_gif = gif
@@ -3044,9 +3063,9 @@ class EnSaagNetworkPage(EnSaagPage):
     def make_network_table(self, dict, out_dict, offline_dict):
         ignore = [enstore_constants.NETWORK, enstore_constants.BASENODE,
                   enstore_constants.TIME, enstore_constants.URL]
-        entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
+        entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0,
                                     align="CENTER", width="90%")
-        entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Network Interface Status"), 
+        entable.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold("Enstore Network Interface Status"),
                                                     size="+3", color=BRICKRED)))
         entable.append(empty_row())
         # now add the base node row
@@ -3079,7 +3098,7 @@ class EnSaagNetworkPage(EnSaagPage):
 	table = self.table_top()
 	# add the table with the network info
 	if netstat_d:
-	    table.append(HTMLgen.TR(HTMLgen.TD(self.make_network_table(netstat_d, 
+	    table.append(HTMLgen.TR(HTMLgen.TD(self.make_network_table(netstat_d,
 								       outage_d,
 								       offline_d))))
 	    table_spacer(table)
@@ -3092,22 +3111,22 @@ class EnSaagNetworkPage(EnSaagPage):
 
 class EnStatusOnlyPage(EnSaagPage):
 
-    def __init__(self, title="Mass Storage Production System's Status", 
+    def __init__(self, title="Mass Storage Production System's Status",
                  gif="en_all.gif"):
         print "in EnStatusOnlyPage"
         sys.stdout.flush()
         EnBaseHtmlDoc.__init__(self, refresh=370, background="enstore_background.gif")
         print "EnBaseHtmlDoc__init__done"
         sys.stdout.flush()
-        
+
         self.title = title
         self.script_title_gif = gif
         self.source_server = THE_ENSTORE
         self.description = ""
 
     def table_top(self, cols=1):
-        # create the outer table and its rows   
-        table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, 
+        # create the outer table and its rows
+        table = HTMLgen.TableLite(cellspacing=0, cellpadding=0,
                                   align="LEFT", width="800")
         tr = empty_row(3)
         self.script_title(tr)
@@ -3194,7 +3213,7 @@ class EnStatusOnlyPage(EnSaagPage):
 class EnSGIngestPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh=0, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+	EnBaseHtmlDoc.__init__(self, refresh=refresh,
 			       help_file="encpHelp.html",
 			       system_tag=system_tag)
 	self.align = NO
@@ -3204,7 +3223,7 @@ class EnSGIngestPage(EnBaseHtmlDoc):
 	#self.description = ""
 	#self.error_keys = self.error_text.keys()
 
-            
+
     def body(self):
         plots='burn-rate'
         plots_dir = os.path.join(self.web_dir,plots)
@@ -3219,7 +3238,7 @@ class EnSGIngestPage(EnBaseHtmlDoc):
                 stamps.append(filename)
             if filename.find(".jpg") > 0 and filename.find("_stamp") == -1:
                 images.append(filename)
- 
+
         libraries = {}
         for stamp in stamps:
             sep ="_"
@@ -3234,7 +3253,7 @@ class EnSGIngestPage(EnBaseHtmlDoc):
             else:
                 a=b[0]
             s1 ="."
-                  
+
             image = s1.join((a, "jpg"))
             if len(image.split(".")) == 3:
                 lib = image.split(".")[0]
@@ -3246,7 +3265,7 @@ class EnSGIngestPage(EnBaseHtmlDoc):
             if not libraries.has_key(lib):
                 libraries[lib]=[]
             if image in images:
-                libraries[lib].append((sg,os.path.join(plots,stamp), os.path.join(plots,image)))      
+                libraries[lib].append((sg,os.path.join(plots,stamp), os.path.join(plots,image)))
 
 
         libs=libraries.keys()
@@ -3254,11 +3273,11 @@ class EnSGIngestPage(EnBaseHtmlDoc):
         for lib in libs:
             tr = HTMLgen.TR()
             en_table = HTMLgen.TableLite(tr, border=1, bgcolor="#ffff00", width="100%",
-                                         cellspacing=5, 
+                                         cellspacing=5,
                                          cellpadding=CELLP)
-            en_table.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(lib), 
+            en_table.append(HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(lib),
                                                          size="+3", color=BRICKRED)))
-            
+
             rows = len(libraries[lib])/6 # 6 entries per raw
             if len(libraries[lib])%6:
                 rows = rows+1
@@ -3281,11 +3300,11 @@ class EnSGIngestPage(EnBaseHtmlDoc):
                 en_table.append(tr)
 
             self.append(en_table)
-            
+
 
 class EnGeneratedWebPage(EnBaseHtmlDoc):
 
-    def __init__(self, title="Generated Enstore Web Pages", gif="", 
+    def __init__(self, title="Generated Enstore Web Pages", gif="",
 		 system_tag="", description="", mount_label=None,
 		 links_l=None, nav_link="", url_gif_dir = ""):
 	EnBaseHtmlDoc.__init__(self, refresh=0,
@@ -3310,7 +3329,7 @@ class EnGeneratedWebPage(EnBaseHtmlDoc):
         tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(HTMLgen.Href(link,name), size=self.TEXTSIZE,color=self.TEXTCOLOR),align="LEFT")))
         tr.append(HTMLgen.TD(HTMLgen.Font(explanation,size=self.TEXTSIZE,color=self.TEXTCOLOR),valign="CENTER"))
         table.append(tr)
-        
+
     def body(self, directory_list):
 	table = self.table_top()
 	# create a grid of jpg stamp files 3 stamps wide.  attach a link to
@@ -3321,7 +3340,7 @@ class EnGeneratedWebPage(EnBaseHtmlDoc):
 	if self.links_l:
 	    for link,txt in self.links_l:
 		tr = HTMLgen.TR()
-		tr.append(HTMLgen.TD(HTMLgen.Href(link, 
+		tr.append(HTMLgen.TD(HTMLgen.Href(link,
 						  HTMLgen.Font(txt, size="+2")),
 				     colspan=3, align="LEFT"))
 		plot_table.append(tr)
@@ -3333,7 +3352,7 @@ class EnGeneratedWebPage(EnBaseHtmlDoc):
             basename = os.path.basename(filename)
             explanation = ""  #What should this be?
             self.add_row_to_table(plot_table, basename, basename, explanation)
-                
+
         table.append(HTMLgen.TR(HTMLgen.TD(plot_table)))
 	self.trailer(table)
 	self.append(table)

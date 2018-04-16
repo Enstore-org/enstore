@@ -1,6 +1,6 @@
-/* 
+/*
 ** tape operation includes and definitions.
-** since these all derive from mtio, they 
+** since these all derive from mtio, they
 ** are all of the form
 ** struct tapeop { int tape_op, tape_count;} buf;
 ** ioctl(fd, FTT_TAPE_OP, &buf);
@@ -8,7 +8,7 @@
 ** so that we get useful definitions all around.
 */
 #include <sys/types.h>
-#include <sys/mtio.h>
+#include <linux/mtio.h>
 #define tapeop mtop
 #define FTT_TAPE_NOP  MTNOP
 #define FTT_TAPE_RETEN MTRETEN
@@ -19,6 +19,7 @@
 #define FTT_TAPE_FSF MTFSF
 #define FTT_TAPE_FSR MTFSR
 #define FTT_TAPE_WEOF MTWEOF
+#define FTT_TAPE_WEOFI MTWEOFI
 #define FTT_TAPE_UNLOAD MTUNLOAD
 #define FTT_TAPE_OP MTIOCTOP
 #define tape_op mt_op

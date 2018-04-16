@@ -10,14 +10,14 @@ SCSISRC= AIX/ftt_scsi.c IRIX+4/ftt_scsi.c IRIX+5/ftt_scsi.c OSF1/ftt_scsi.c \
 MACHDEPSRC= AIX/ftt_machdep.c IRIX+4/ftt_machdep.c IRIX+5/ftt_machdep.c \
 		OSF1/ftt_machdep.c SunOS/ftt_machdep.c Linux/ftt_machdep.c
 
-SUIDSRC= ftt_suid.c 
+SUIDSRC= ftt_suid.c
 SUIDOBJ= ftt_suid.o
 
 SRC= ftt_open.c ftt_tables.c ftt_skip.c ftt_stats.c ftt_info.c \
 	ftt_rdwr.c ftt_do_scsi.c ftt_error.c ftt_debug.c ftt_global.c \
 	ftt_label.c ftt_higher.c ftt_async.c ftt_find.c\
 	ftt_partition.c ftt_version.c\
-	$(SCSISRC) $(MACHDEPSRC) 
+	$(SCSISRC) $(MACHDEPSRC)
 
 HDR= ftt_private.h ftt_common.h ftt_macros.h local/ftt_mtio.h \
 	ftt_scsi.h ftt_types.h ftt.h ftt_voidtypes.h ftt_defines.h
@@ -32,7 +32,7 @@ CFLAGS=-I. -Ilocal -g  $(WARN) `cat local/flags`
 
 LIB=libftt.a
 
-PROGS=ftt_suid asyncdemo ftt_checktable
+PROGS=ftt_suid asyncdemo ftt_checktable opendemo writefmdemo
 
 all: local $(LIB) $(PROGS)
 
@@ -89,13 +89,13 @@ $(INCDIR)/ftt.h : ftt.h
 $(INCDIR)/ftt_common.h : ftt_common.h
 	cp ftt_common.h $(INCDIR)/
 
-$(INCDIR)/ftt_scsi.h : ftt_scsi.h 
+$(INCDIR)/ftt_scsi.h : ftt_scsi.h
 	cp ftt_scsi.h $(INCDIR)/
 
-$(INCDIR)/ftt_voidtypes.h :ftt_voidtypes.h 
+$(INCDIR)/ftt_voidtypes.h :ftt_voidtypes.h
 	cp ftt_voidtypes.h  $(INCDIR)/
 
-$(INCDIR)/ftt_defines.h : ftt_defines.h 
+$(INCDIR)/ftt_defines.h : ftt_defines.h
 	cp ftt_defines.h  $(INCDIR)/
 
 
@@ -122,6 +122,10 @@ ftt_suid: $(SUIDOBJ) $(LIB)
 
 asyncdemo: asyncdemo.c $(LIB)
 	$(CC) $(CFLAGS) -o $@ asyncdemo.c $(LIB) $(LIBS)
+opendemo: opendemo.c $(LIB)
+	$(CC) $(CFLAGS) -o $@ opendemo.c $(LIB) $(LIBS)
+writefmdemo: writefmdemo.c $(LIB)
+	$(CC) $(CFLAGS) -o $@ writefmdemo.c $(LIB) $(LIBS)
 
 listdemo: listdemo.c $(LIB)
 	$(CC) $(CFLAGS) -o $@ listdemo.c $(LIB) $(LIBS)
@@ -133,11 +137,11 @@ ftt_checktable: ftt_checktable.c $(LIB)
 # this is shotgunning, crude but effective :-)
 $(OBJ): $(HDR)
 
-$(LIB): $(OBJ) 
+$(LIB): $(OBJ)
 	rm -f $(LIB)
 	if [ `uname` = Linux ];then opts=qvs;else opts=qv;fi; ar $$opts $(LIB) $(OBJ)
 
-ftt_scsi.o: $(SCSISRC) 
+ftt_scsi.o: $(SCSISRC)
 	$(CC) $(CFLAGS) -c local/ftt_scsi.c
 
 ftt_machdep.o: $(MACHDEPSRC)

@@ -4,7 +4,7 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <ftt_private.h>
 #include <string.h>
-#include <ftt_mtio.h> 
+#include <ftt_mtio.h>
 
 #ifdef WIN32
 #include <malloc.h>
@@ -44,7 +44,7 @@ static struct tapeop ioctlbuf;
 ** block and perform the mtio call, performing the appropriate
 ** error translation if it fails.
 */
-static int 
+static int
 ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *cdb) {
     int res;
 
@@ -53,7 +53,6 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
     CKNULL("operation name", what);
     CKNULL("operation SCSI CDB", cdb);
     DEBUG1(stderr,"ftt_mtop operation %d n %d to do %s\n", opn, n, what);
-
 
     if ( 0 != (d->scsi_ops & (1 << opn))) {
 		DEBUG2(stderr, "SCSI pass-thru\n");
@@ -64,9 +63,9 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 		}
 		res = ftt_do_scsi_command(d,what,cdb, 6, 0, 0, 120, 0);
 		res = ftt_describe_error(d,opn,"a SCSI pass-through call", res,res, what, 0);
-    
+
 	} else {
-	
+
 		DEBUG2(stderr,"System Call\n");
 
 		if ( 0 > (res = ftt_open_dev(d))) {
@@ -83,7 +82,7 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 			res = ftt_translate_error(d, opn, "an mtio ioctl() call", res, what,0);
 			/*
 			** we do an lseek to reset the file offset counter
-			** so the OS doesn't get hideously confused if it 
+			** so the OS doesn't get hideously confused if it
 			** overflows...  We may need this to be a behavior
 			** flag in the ftt_descriptor and device tables.
 			*/
@@ -99,7 +98,7 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 
 			if ( opn == FTT_OPN_RSKIPFM || opn == FTT_OPN_SKIPFM ) {
 				fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,LowOff,0,0);
-			
+
 			} else if ( opn == FTT_OPN_RSKIPREC || opn == FTT_OPN_SKIPREC ) {
 				fres = SetTapePosition(fh,TAPE_SPACE_RELATIVE_BLOCKS,0,LowOff,0,0);
 			} else if ( opn == FTT_OPN_WRITEFM ) {
@@ -107,31 +106,31 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 			} else if ( opn == FTT_OPN_RETENSION ) {
 				/* go to the end of tape */
 				do {
-					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,99999,0,0); 
+					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,99999,0,0);
 				} while ( fres == NO_ERROR);
 				fres = SetTapePosition(fh,TAPE_SPACE_END_OF_DATA,0,0,0,0);
 				/* now rewind */
 				do {
-					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,(DWORD)-99999,0,0); 
+					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,(DWORD)-99999,0,0);
 				} while ( fres == NO_ERROR);
-				fres = SetTapePosition(fh,TAPE_REWIND,0,0,0,0); 
-				
+				fres = SetTapePosition(fh,TAPE_REWIND,0,0,0,0);
+
 			} else if ( opn == FTT_OPN_UNLOAD  ) {
 				fres = PrepareTape(fh,TAPE_UNLOAD,0);
 			} else if ( opn == FTT_OPN_REWIND  ) {
 				/* this is the trick to avoid Bus reset */
 				do {
-					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,(DWORD)-99999,0,0); 
+					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,(DWORD)-99999,0,0);
 				} while ( fres == NO_ERROR);
-				fres = SetTapePosition(fh,TAPE_REWIND,0,0,0,0); 
+				fres = SetTapePosition(fh,TAPE_REWIND,0,0,0,0);
 			} else if ( opn == FTT_OPN_ERASE   ) {
 				fres = EraseTape(fh,TAPE_ERASE_LONG,0); /* can be SHORT */
 			} else {
 				fres = (DWORD)-1;
 			}
 			res = ftt_translate_error_WIN(d, opn, "win - tape functions ", fres, what,0);
-		}	
-#endif	
+		}
+#endif
 	  }
 	}
     if (res < 0) {
@@ -162,18 +161,18 @@ ftt_skip_fm(ftt_descriptor d, int n) {
 
     if ( n < 0 ) {
         d->last_pos = -1;/* we skipped backwards, so this can't be valid */
-		res = ftt_write_fm_if_needed(d); 	if (res < 0) {return res;}
+		res = ftt_write_fm_if_needed(d); if (res < 0) {return res;}
     }
 
-    res = ftt_skip_fm_internal(d,n); 
+    res = ftt_skip_fm_internal(d,n);
 	if (res   < 0 ) {
 		if ( ftt_errno == FTT_ELEADER )
 			ftt_eprintf("ftt_skip_fm: At BOT after doing a skip filemark");
-		else if (ftt_errno == FTT_EBLANK ) 
+		else if (ftt_errno == FTT_EBLANK )
 			ftt_eprintf("ftt_skip_fm: At EOT after doing a skip filemark");
 		return res;
 	}
-	
+
     res2 = ftt_status(d,0);
     DEBUG3(stderr, "ftt_status returns %d after skip\n", res2);
 
@@ -191,7 +190,7 @@ ftt_skip_fm(ftt_descriptor d, int n) {
 		ftt_eprintf("ftt_skip_fm: At EOT after doing a skip filemark");
 		res = -1;
 	}
-	
+
     return res;
 }
 
@@ -221,10 +220,10 @@ ftt_skip_rec(ftt_descriptor d, int n){
         d->last_pos = -1;/* we skipped backwards, so this can't be valid */
 	    res = ftt_write_fm_if_needed(d);
 	    if (res < 0){return res;}
-        return ftt_mtop(d, -n, FTT_TAPE_RSR, FTT_OPN_RSKIPREC, "ftt_skip_rec", 
+        return ftt_mtop(d, -n, FTT_TAPE_RSR, FTT_OPN_RSKIPREC, "ftt_skip_rec",
 			ftt_cdb_skipbl);
     } else {
-        return ftt_mtop(d, n, FTT_TAPE_FSR, FTT_OPN_SKIPREC, "ftt_skip_rec", 
+        return ftt_mtop(d, n, FTT_TAPE_FSR, FTT_OPN_SKIPREC, "ftt_skip_rec",
 			ftt_cdb_skipbl);
     }
 }
@@ -243,8 +242,8 @@ ftt_rewind(ftt_descriptor d){
     d->current_valid = 1;
     d->last_pos = -1;	/* we skipped backwards, so this can't be valid */
     /*
-    ** we rewind twice in case the silly OS has the 
-    ** asynchronous rewind bit turned on, in which case 
+    ** we rewind twice in case the silly OS has the
+    ** asynchronous rewind bit turned on, in which case
     ** the second one waits for the first one to complete.
     ** Also, rewinding twice doesn't hurt...
     */
@@ -319,7 +318,7 @@ ftt_erase(ftt_descriptor d) {
     d->current_file = 0;
     d->current_valid = 1;
 
-    if ((d->scsi_ops & FTT_OP_ERASE) && (d->flags & FTT_FLAG_SUID_SCSI) 
+    if ((d->scsi_ops & FTT_OP_ERASE) && (d->flags & FTT_FLAG_SUID_SCSI)
 							&& 0 != geteuid()) {
         ftt_close_dev(d);
         switch(ftt_fork(d)){
@@ -355,9 +354,9 @@ ftt_writefm(ftt_descriptor d) {
 
     if (d->flags & FTT_FLAG_CHK_BOT_AT_FMK) {
 
-	/* 
-	** call ftt_status to see if we're at BOT 
-	** we should only do this check on machines that don't 
+	/*
+	** call ftt_status to see if we're at BOT
+	** we should only do this check on machines that don't
 	** need to close the device to get the status.
 	** Note that we need to check current_file and current_block
 	** *first* because ftt_status will reset them if it notices
@@ -385,6 +384,89 @@ ftt_writefm(ftt_descriptor d) {
 		"ftt_writefm", ftt_cdb_writefm);
 }
 
+/* This function repeats ftt_writefm, but only flushes the data.
+The new function is done for backward compatibility
+*/
+int
+ftt_flush_data(ftt_descriptor d) {
+
+    CKOK(d,"ftt_flush_data",1,0);
+    CKNULL("ftt_descriptor", d);
+
+    if (d->flags & FTT_FLAG_CHK_BOT_AT_FMK) {
+
+	/*
+	** call ftt_status to see if we're at BOT
+	** we should only do this check on machines that don't
+	** need to close the device to get the status.
+	** Note that we need to check current_file and current_block
+	** *first* because ftt_status will reset them if it notices
+	** we're at BOT.
+	*/
+        (void)ftt_mtop(d, 0, FTT_TAPE_WEOF, FTT_OPN_WRITEFM,
+		"write filemark 0 == flush", ftt_cdb_writefm);
+
+	if ((d->current_file != 0 || d->current_block > 2) &&
+		(ftt_status(d,0) & FTT_ABOT)) {
+	    ftt_errno = FTT_EUNRECOVERED;
+	    ftt_eprintf(
+"ftt_flush_data: supposed to be at file number %d block number %d, actually at BOT\n\
+	indicating that there was a SCSI reset or other error which rewound\n\
+	the tape behind our back.", d->current_file, d->current_block );
+	    d->unrecovered_error = 2;
+	    d->nresets++;
+	    return -1;
+	}
+    }
+    d->data_direction = FTT_DIR_WRITING;
+    d->current_block = 0;
+    d->current_file++;
+    return ftt_mtop(d, 0, FTT_TAPE_WEOF, FTT_OPN_WRITEFM,
+		"ftt_writefm", ftt_cdb_writefm);
+}
+
+/* This function repeats ftt_writefm, but writes buffered
+tape marks. The new function is done for backward compatibility
+*/
+int
+ftt_writefm_buffered(ftt_descriptor d) {
+
+    CKOK(d,"ftt_writefm_buffered",1,0);
+    CKNULL("ftt_descriptor", d);
+
+    if (d->flags & FTT_FLAG_CHK_BOT_AT_FMK) {
+
+	/*
+	** call ftt_status to see if we're at BOT
+	** we should only do this check on machines that don't
+	** need to close the device to get the status.
+	** Note that we need to check current_file and current_block
+	** *first* because ftt_status will reset them if it notices
+	** we're at BOT.
+	*/
+        (void)ftt_mtop(d, 0, FTT_TAPE_WEOF, FTT_OPN_WRITEFM,
+		"write filemark 0 == flush", ftt_cdb_writefm);
+
+	if ((d->current_file != 0 || d->current_block > 2) &&
+		(ftt_status(d,0) & FTT_ABOT)) {
+	    ftt_errno = FTT_EUNRECOVERED;
+	    ftt_eprintf(
+"ftt_writefm_buffred: supposed to be at file number %d block number %d, actually at BOT\n\
+	indicating that there was a SCSI reset or other error which rewound\n\
+	the tape behind our back.", d->current_file, d->current_block );
+	    d->unrecovered_error = 2;
+	    d->nresets++;
+	    return -1;
+	}
+    }
+    d->data_direction = FTT_DIR_WRITING;
+    d->current_block = 0;
+    d->current_file++;
+    return ftt_mtop(d, 1, FTT_TAPE_WEOFI, FTT_OPN_WRITEFM,
+		"ftt_writefm", ftt_cdb_writefm);
+
+}
+
 int
 ftt_skip_to_double_fm(ftt_descriptor d) {
     char *buf;
@@ -401,7 +483,7 @@ ftt_skip_to_double_fm(ftt_descriptor d) {
 	ftt_eprintf("ftt_skip_to_double_fm: unable to allocate %d byte read buffer, errno %d", blocksize, errno);
 	return -1;
     }
-	
+
     ftt_open_dev(d);
     do {
 	res = ftt_skip_fm(d,1);		   if(res < 0) {free(buf);return res;}
@@ -427,9 +509,9 @@ ftt_write_fm_if_needed(ftt_descriptor d) {
 	saveblock = d->current_block;
 	savedir = d->data_direction;
 	DEBUG3(stderr,"Writing first filemark...\n");
-	res = ftt_writefm(d); 			if (res < 0) { return res; } 
+	res = ftt_writefm(d); if (res < 0) { return res; }
 	DEBUG3(stderr,"Writing second filemark...\n");
-	res = ftt_writefm(d); 			if (res < 0) { return res; }
+	res = ftt_writefm(d); if (res < 0) { return res; }
         DEBUG3(stderr,"skipping -2 filemarks...\n");
         res = ftt_skip_fm_internal(d, -2);	if (res < 0) { return res; }
 	d->last_operation = FTT_OP_SKIPFM;
@@ -449,9 +531,9 @@ ftt_write2fm(ftt_descriptor d) {
 
     if (d->flags & FTT_FLAG_CHK_BOT_AT_FMK) {
 
-	/* 
-	** call ftt_status to see if we're at BOT 
-	** we should only do this check on machines that don't 
+	/*
+	** call ftt_status to see if we're at BOT
+	** we should only do this check on machines that don't
 	** need to close the device to get the status.
 	** Note that we need to check current_file and current_block
 	** *first* because ftt_status will reset them if it notices

@@ -59,7 +59,7 @@ for i in `ls -vI \*.\*`; do
   esac
 
   echo
-  . $i |tee -a $output 2>&1
+  . ./$i |tee -a $output 2>&1
   echo
   echo
   touch $i

@@ -827,7 +827,7 @@ def detect_uncleared_deletion_lists(MY_TASK):
 ### Only files in this section are allowed to use the file_utils.euid_lock
 ### to allow for thread safe use of seteuid().
 
-#Make the file world writeable.  Make sure this only lasts for a short
+#Make the file world writable.  Make sure this only lasts for a short
 # period of time.  The reason this function exists is so that, a file
 # with only read permissions can temporarly be given write permissions so
 # that its metadata can be modified.
@@ -5230,9 +5230,6 @@ def migrate_remaining_volumes(vcc, db, intf):
     return rtn
 
 ##########################################################################
-
-#def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
-#	      location_cookie, deleted, encp, intf):
 def read_file(MY_TASK, read_job, encp, intf):
     #extract shortcuts
     src_file_record = read_job[0]
@@ -5252,49 +5249,49 @@ def read_file(MY_TASK, read_job, encp, intf):
     # make sure the tmp file is not there - need to match the euid/egid
     # with the permissions of the directory and not the file itself.
     if file_utils.e_access(tmp_path, os.F_OK):
-        log(MY_TASK, "tmp file %s exists, removing it first" \
-            % (tmp_path,))
+        log(MY_TASK, "tmp file %s exists, removing it first" % (tmp_path,))
         try:
-                file_utils.remove(tmp_path)
+            file_utils.remove(tmp_path)
         except (OSError, IOError), msg:
-                error_log(MY_TASK, "unable to remove %s as (uid %d, gid %d): %s" % (tmp_path, os.geteuid(), os.getegid(), str(msg)))
-                return 1
+            error_log(MY_TASK, "unable to remove %s as (uid %d, gid %d): %s" % (tmp_path, os.geteuid(), os.getegid(), str(msg)))
+            return 1
 
-    ## Build the encp command line.
-    if intf.priority:
-        use_priority = ["--priority", str(intf.priority)]
-    else:
-        use_priority = ["--priority", str(ENCP_PRIORITY)]
-    if src_file_record['deleted'] == YES:
-        use_override_deleted = ["--override-deleted"]
-        use_path = ["--get-bfid", src_file_record['bfid']]
-    else:
-        use_override_deleted = []
-        use_path = [src_path]
-    if use_threaded_encp:
-        use_threads = ["--threaded"]
-    else:
-        use_threads = []
-    if debug:
-        use_verbose = ["--verbose", "4"]
-    else:
-        use_verbose = []
-    encp_options = ["--delayed-dismount", "2", "--ignore-fair-share",
+    ## Build encp command line in read_file()
+    argv = ["encp"]
+    encp_options = ["--delayed-dismount","2",
+                    "--ignore-fair-share",
                     "--bypass-filesystem-max-filesize-check"]
-    #We need to use --get-bfid here because of multiple copies.
-    #
-    argv = ["encp"] + use_verbose + use_override_deleted + encp_options + \
-           use_priority + use_threads + use_path + [tmp_path]
+    if debug:
+        argv += ["--verbose","4"]
+
+    if src_file_record['deleted'] == YES:
+        argv += ["--override-deleted"]
+        # use --get-bfid to handle multiple copies
+        use_path = ["--get-bfid",src_file_record['bfid']]
+    else:
+        use_path = [src_path]
+
+    argv += encp_options
+    if intf.priority:
+        argv += ["--priority",str(intf.priority)]
+    else:
+        argv += ["--priority",str(ENCP_PRIORITY)]
+
+    if use_threaded_encp:
+        argv += ["--threaded"]
+
+    argv += use_path + [tmp_path]
 
     if debug:
         cmd = string.join(argv)
-        log(MY_TASK, "cmd =", cmd)
+        log(MY_TASK,"cmd =",cmd)
 
     try:
         res = encp.encp(argv)
     except:
         res = 1
         error_log(MY_TASK, "Unable to execute encp", sys.exc_info()[1])
+
     if res == 0:
         ok_log(MY_TASK, "%s %s to %s" \
                % (src_file_record['bfid'], src_path, tmp_path))
@@ -5304,9 +5301,7 @@ def read_file(MY_TASK, read_job, encp, intf):
                   % (src_file_record['bfid'], src_path, tmp_path, encp.err_msg))
         return 1
 
-    #
     detect_uncleared_deletion_lists(MY_TASK)
-
     return 0
 
 def read_files(MY_TASK, read_jobs, encp, intf):
@@ -5331,13 +5326,13 @@ def read_files(MY_TASK, read_jobs, encp, intf):
         # with the permissions of the directory and not the file itself.
 	if file_utils.e_access(tmp_path, os.F_OK):
             log(MY_TASK, "tmp file %s exists, removing it first" % (tmp_path,))
-            try:
-                file_utils.remove(tmp_path)
-            except (OSError, IOError), msg:
-                message = "unable to remove %s as (uid %d, gid %d): %s" \
-                          % (tmp_path, os.geteuid(), os.getegid(), str(msg))
-                error_log(MY_TASK, message)
-                return 1
+        try:
+            file_utils.remove(tmp_path)
+        except (OSError, IOError), msg:
+            message = "unable to remove %s as (uid %d, gid %d): %s" \
+                      % (tmp_path, os.geteuid(), os.getegid(), str(msg))
+            error_log(MY_TASK, message)
+            return 1
 
         src_bfids.append(src_file_record['bfid'])
         src_paths.append(src_path)
@@ -5347,59 +5342,54 @@ def read_files(MY_TASK, read_jobs, encp, intf):
     log(MY_TASK, "copying %s %s %s" \
         % (src_bfids, src_volume_record['external_label'], location_cookies))
 
-    ## Build the encp command line.
-    tmp_path = os.path.dirname(read_jobs[0][5])  #output directory
-    if intf.priority:
-        use_priority = ["--priority", str(intf.priority)]
-    else:
-        use_priority = ["--priority", str(ENCP_PRIORITY)]
-    if use_threaded_encp:
-        use_threads = ["--threaded"]
-    else:
-        use_threads = []
-    if debug:
-        use_verbose = ["--verbose", "4"]
-    else:
-        use_verbose = []
-
-
-    if YES in deleteds:
-        use_override_deleted = ["--override-deleted"]
-        use_path = ["--get-bfids"] + src_bfids
-    else:
-        use_override_deleted = []
-        use_path = src_paths
-
-
-    encp_options = ["--delayed-dismount", "2", "--ignore-fair-share",
+    ## Build encp command line in read_files()
+    argv = ["get"]
+    encp_options = ["--delayed-dismount","2",
+                    "--ignore-fair-share",
                     "--bypass-filesystem-max-filesize-check",
                     "--sequential-filenames"]
-    #We need to use --get-bfid here because of multiple copies.
-    #
-    argv = ["get"] + use_verbose + use_override_deleted + encp_options + \
-           use_priority + use_threads + use_path + [tmp_path]
+    if debug:
+        argv += ["--verbose","4"]
+
+    if YES in deleteds:
+        argv += ["--override-deleted"]
+        # use --get-bfid to handle multiple copies
+        use_path = ["--get-bfids"] + src_bfids
+    else:
+        use_path = src_paths
+
+    argv += encp_options
+
+    if intf.priority:
+        argv += ["--priority",str(intf.priority)]
+    else:
+        argv += ["--priority",str(ENCP_PRIORITY)]
+
+    if use_threaded_encp:
+        argv += ["--threaded"]
+
+    tmp_path = os.path.dirname(read_jobs[0][5])  #output directory
+    argv += use_path + [tmp_path]
 
     if debug:
         cmd = string.join(argv)
         log(MY_TASK, "cmd =", cmd)
 
     try:
-            res = encp.get(argv)
+        res = encp.get(argv)
     except:
-            res = 1
-            error_log(MY_TASK, "Unable to execute encp", sys.exc_info()[1])
+        res = 1
+        error_log(MY_TASK, "Unable to execute encp", sys.exc_info()[1])
+
     if res == 0:
-            ok_log(MY_TASK, "%s %s to %s" \
-                   % (src_bfids, src_paths, tmp_path))
+        ok_log(MY_TASK, "%s %s to %s" % (src_bfids,src_paths,tmp_path))
     else:
-            error_log(MY_TASK,
-                      "failed to copy %s %s to %s, error = %s" \
-                      % (src_bfids, src_paths, tmp_path, encp.err_msg))
-            return 1
+        error_log(MY_TASK,
+                  "failed to copy %s %s to %s, error = %s" \
+                  % (src_bfids, src_paths, tmp_path, encp.err_msg))
+        return 1
 
-    #
     detect_uncleared_deletion_lists(MY_TASK)
-
     return 0
 
 
@@ -6771,16 +6761,16 @@ def swap_metadata(job, fcc, db):
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
 def write_file(MY_TASK,
-	       src_bfid, src_path, tmp_path, mig_path,
+               src_bfid, src_path, tmp_path, mig_path,
                libraries, sg, ff, wrapper,
-	       deleted, encp, intf):
+               deleted, encp, intf):
         __pychecker__ = "unusednames=deleted" #Used to use; need in future?
 
 	# check destination path
 	if not mig_path:     # This can not happen!!!
 		error_log(MY_TASK, "%s is not a pnfs entry" % (mig_path,))
 		return 1
-	# check if the directory is witeable
+	# check if the directory is writable
 	try:
 		(dst_directory, dst_basename) = os.path.split(mig_path)
 		d_stat = file_utils.get_stat(dst_directory)
@@ -6862,42 +6852,48 @@ def write_file(MY_TASK,
 				  str(sys.exc_info()[0]), str(sys.exc_info()[1])))
 			return 1
 
-        ## Build the encp command line.
-        if intf.priority:
-            use_priority = ["--priority", str(intf.priority)]
-        else:
-            use_priority = ["--priority", str(ENCP_PRIORITY)]
-        if use_threaded_encp:
-                use_threads = ["--threaded"]
-        else:
-                use_threads = []
+        ## Build encp command line in write_file()
+        argv = ["encp"]
+        encp_options = ["--ignore-fair-share"]
+
         if debug:
-                use_verbose = ["--verbose", "4"]
+            argv += ["--verbose","4"]
+
+        if intf.priority:
+            argv += ["--priority", str(intf.priority)]
         else:
-                use_verbose = []
+            argv += ["--priority", str(ENCP_PRIORITY)]
+
+        if use_threaded_encp:
+            argv += ["--threaded"]
+
+        # add buffered tapemark argument it present in migration args
+        if intf.buffered_tape_marks:
+            argv += ["--buffered-tape-marks"]
+
         #dismount delay is the number of minutes a mover needs to wait
         # before dismounting a tape.  We set this to 2 minutes for each
         # library that a copy is written into.  This is to give a little
         # extra time to avoid writes bouncing between tapes with lots
         # of mounts and dismounts.
         user_libraries = libraries.split(",")
-        dismount_delay = str(2 * len(user_libraries))
-        encp_options = ["--delayed-dismount", dismount_delay,
-                        "--ignore-fair-share"]
+        dismount_delay = str(2*len(user_libraries))
+        encp_options += ["--delayed-dismount",dismount_delay]
+
         #Override these tags to use the original values from the source tape.
         # --override-path is used to specify the correct path to be used
         # in the wrappers written with the file on tape, since this path
         # should match the original path not the temporary migration path
         # that the rest of the encp process will need to worry about.
-        dst_options = ["--storage-group", sg, "--file-family", ff,
-					   "--file-family-wrapper", wrapper,
-                       "--library", libraries,
-                       "--override-path", src_path,
-                       "--file-family-width", str(intf.file_family_width),
+        dst_options = ["--storage-group",sg,
+                       "--file-family",ff,
+					   "--file-family-wrapper",wrapper,
+                       "--library",libraries,
+                       "--override-path",src_path,
+                       "--file-family-width",str(intf.file_family_width),
                        "--no-crc"]
 
-        argv = ["encp"] + use_verbose + encp_options + use_priority + \
-               dst_options + use_threads + [tmp_path, mig_path]
+        argv += encp_options + dst_options + [tmp_path,mig_path]
 
         if debug:
             cmd = string.join(argv)
@@ -7446,68 +7442,69 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf,
 ## src_path doesn't need to be an actuall path in pnfs.  It could be
 ## "--get-bfid <bfid>" or --get
 def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
-        (src_file_record, src_volume_record, src_path,
-         dst_file_record, dst_volume_record, tmp_path, mig_path) = job
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
-        #src_bfid = src_file_record['bfid']  #shortcuts
-        dst_bfid = dst_file_record['bfid']
+    #src_bfid = src_file_record['bfid']  #shortcuts
+    dst_bfid = dst_file_record['bfid']
 
-	open_log(MY_TASK, "verifying", dst_bfid, src_path, '...')
+    open_log(MY_TASK, "verifying", dst_bfid, src_path, '...')
 
-	## Build the encp command line.
-	if intf.priority:
-		use_priority = ["--priority", str(intf.priority)]
-	else:
-		use_priority = ["--priority", str(ENCP_PRIORITY)]
-	#if deleted == YES:
-        if dst_file_record['deleted'] == YES:
-		use_override_deleted = ["--override-deleted"]
-	else:
-		use_override_deleted = []
-	if intf.use_volume_assert or USE_VOLUME_ASSERT:
-		use_check = ["--check"] #Use encp to check the metadata.
-	else:
-		use_check = []
+    ## Build the encp command line in scan_file()
+    argv = ["encp",
+            "--delayed-dismount","1",
+            "--ignore-fair-share",
+            "--threaded",
+            "--bypass-filesystem-max-filesize-check"]
+
+    if intf.priority:
+        argv += ["--priority", str(intf.priority)]
+    else:
+        argv += ["--priority", str(ENCP_PRIORITY)]
+
+    # if deleted == YES:
+    if dst_file_record['deleted'] == YES:
+        argv += ["--override-deleted"]
+
+    if intf.use_volume_assert or USE_VOLUME_ASSERT:
+        argv += ["--check"] #Use encp to check the metadata.
+    else:
+        # If the src file path begins with two dashes (--) it is
+        # really switches specifying alternate reading methods to
+        # encp.  The most likely are --get-bfid or --override-deleted.
+        #
+        # Deleted files are the most likely, but scaning a multiple
+        # copy is also possible.
         if src_path[0:2] == "--":
-                #If the src file path begins with two dashes (--) it is
-                # really switches specifiying alternate reading methods to
-                # encp.  The most likely are --get-bfid or --override-deleted.
-                #
-                # Deleted files are the most likely, but scaning a multiple
-                # copy is also possible.
-                use_src_path = src_path.split()
+            use_src_path = src_path.split()
         else:
-                use_src_path = [src_path]
+            use_src_path = [src_path]
 
-	encp_options = ["--delayed-dismount", "1", "--ignore-fair-share",
-			"--threaded", "--bypass-filesystem-max-filesize-check"]
-	argv = ["encp"] + encp_options + use_priority + use_override_deleted \
-	       + use_check + use_src_path + [dst_path]
+	argv += use_src_path + [dst_path]
 
-        if debug:
-		cmd = string.join(argv)
-		log(MY_TASK, "cmd =", cmd)
+    if debug:
+        cmd = string.join(argv)
+        log(MY_TASK, "cmd =", cmd)
 
-	#Read the file.
+	# Read the file.
 	try:
-		res = encp.encp(argv)
+            res = encp.encp(argv)
 	except:
-		exc, msg, tb = sys.exc_info()
-		import traceback
-		traceback.print_tb(tb)
-		print exc, msg
-		res = 1
+            exc, msg, tb = sys.exc_info()
+            import traceback
+            traceback.print_tb(tb)
+            print exc, msg
+            res = 1
 
 	if res == 0:
-		close_log("OK")
-		ok_log(MY_TASK, dst_bfid, src_path)
-	else: # error
-		close_log("ERROR")
-		error_log(MY_TASK, "failed on %s %s error = %s"
-			  % (dst_bfid, src_path, encp.err_msg))
-		return 1
+            close_log("OK")
+            ok_log(MY_TASK, dst_bfid, src_path)
+	else:
+            close_log("ERROR")
+            error_log(MY_TASK, "failed on %s %s error = %s"
+                      % (dst_bfid, src_path, encp.err_msg))
+            return 1
 
-        #
         detect_uncleared_deletion_lists(MY_TASK)
 
 	return 0
@@ -9338,7 +9335,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         try:
             make_writeable(mig_path)
         except (OSError, IOError), msg:
-            message = "unable to make writeable file"
+            message = "unable to make writable file"
             error_log(MY_TASK,"%s %s: %s" % (message, mig_path, str(msg)))
             return 1
 
@@ -9582,6 +9579,7 @@ def restore_volume(vol, intf):
 
 class MigrateInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
+        self.buffered_tape_marks = None
         self.priority = 0
         self.spool_dir = None
         self.library = None
@@ -9641,6 +9639,12 @@ class MigrateInterface(option.Interface):
 		]
 
     migrate_options = {
+        option.BUFFERED_TAPE_MARKS:{
+            option.HELP_STRING:
+            "Enable buffered tape marks support",
+            option.VALUE_USAGE:option.IGNORED,
+            option.DEFAULT_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
         option.DEBUG:{option.HELP_STRING:
                 "Output extra debugging information",
                  option.VALUE_USAGE:option.IGNORED,

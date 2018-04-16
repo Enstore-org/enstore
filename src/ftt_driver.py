@@ -26,7 +26,7 @@ class FTTDriver(generic_driver.Driver):
         self._active_time = 0
         self._rate = self._burst_rate = 0
         self._cleaning_bit = 0
-        
+
     def open(self, device=None, mode=None, retry_count=10):
         """Open will return 1 if there's a volume, 0 if there is no volume
         but otherwise OK, -1 or exception on errors"""
@@ -54,7 +54,7 @@ class FTTDriver(generic_driver.Driver):
             if not self.ftt:
                 Trace.log(e_errors.ERROR, "ftt_open returned None")
                 return -1
-                
+
         self.mode = mode
         self._burst_rate = 0
         self._active_time = 0 #time actually spent in read or write call
@@ -63,12 +63,12 @@ class FTTDriver(generic_driver.Driver):
         Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
 
         self._open_dev(retry_count)
-            
+
         if self.fd is None:
             return -1 #or exception?
 
         Trace.trace(25, "ftt_open_dev returns %s" % (self.fd,))
-        
+
         for retry in xrange(retry_count):
             if retry:
                 Trace.trace(25, "retrying status %d" % (retry,))
@@ -85,11 +85,11 @@ class FTTDriver(generic_driver.Driver):
             self._open_dev(2)
         else:
             return 0 #this is BADSWMOUNT
-        
+
         self._rate = self._burst_rate = self._bytes_transferred = 0L
 
         return 1
-    
+
     def _open_dev(self, retry_count):
         self.fd = None
         for retry in xrange(retry_count):
@@ -135,7 +135,7 @@ class FTTDriver(generic_driver.Driver):
                     break
             except:
                 Trace.handle_error()
-                
+
     def rewind(self):
         try:
             #Trace.trace(42, "ftt.rewind()")
@@ -157,26 +157,26 @@ class FTTDriver(generic_driver.Driver):
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.value))
             raise ftt.FTTError, detail
-        except: 
+        except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR,"Unexpected exception in ftt.tell %s %s"%(exc, detail))
             try:
                 Trace.handle_error(exc, detail, tb)
-            except: 
+            except:
                 exc, detail, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR,"Exception while handling error %s %s"%(exc, detail))
             raise ftt.FTTError,detail
-            
+
             #return -1
         return fil, block
-    
+
     def seek(self, target, eot_ok=0): #XXX is eot_ok needed?
         if type(target)==type(""):
             target = long(target)
         try:
             #Trace.trace(42, "ftt.get_position()")
             fil, block = self.ftt.get_position()
-        except ftt.FTTError, detail: 
+        except ftt.FTTError, detail:
             if detail.errno == ftt.ELOST:
                 Trace.log(e_errors.INFO, "seek: lost position, rewinding")
                 self.rewind() #don't know tape position, must rewind
@@ -197,7 +197,7 @@ class FTTDriver(generic_driver.Driver):
             try:
                self.ftt.skip_fm(target-current)
                Trace.log(e_errors.INFO, "skip_fm %s"%(target-current,))
-               
+
             except ftt.FTTError, detail:
                 if detail.errno == ftt.EBLANK and eot_ok: ##XXX is eot_ok needed?
                     ### XXX Damn, this is unrecoverable (for AIT2, at least). What to do?
@@ -224,7 +224,7 @@ class FTTDriver(generic_driver.Driver):
 
     def skipfm(self, n):
         return self.ftt.skip_fm(n)
-    
+
     def fileno(self):
         return self.fd
 
@@ -237,7 +237,7 @@ class FTTDriver(generic_driver.Driver):
             self._bytes_transferred, now-self._start_time))
         if now>self._start_time and self._bytes_transferred:
             Trace.trace(25,  "rate: %.3g MB/sec" % (self._bytes_transferred/(now-self._start_time)/MB))
-        
+
         try:
             #Trace.trace(42, "ftt.close_dev()")
             r = self.ftt.close_dev()
@@ -292,7 +292,7 @@ class FTTDriver(generic_driver.Driver):
                 self._active_time = self._active_time + t
                 self._rate = self._bytes_transferred / self._active_time
         return r
-    
+
     def write(self, buf, offset, nbytes):
         if self.mode != 1:
             Trace.log(e_errors.ERROR, "ftt_driver:write: file not open for writing")
@@ -322,7 +322,7 @@ class FTTDriver(generic_driver.Driver):
                 self._active_time = self._active_time + t
                 self._rate = self._bytes_transferred / self._active_time
         return r
-        
+
     def writefm(self):
         ## Write one and only one filemark.  Letting ftt close the device for us
         ## results in writing two and backspacing over one.
@@ -338,6 +338,48 @@ class FTTDriver(generic_driver.Driver):
             ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "ftt_driver:write_fm %s %s" % (detail, detail.value))
+            # re raise ftt exception
+            raise ftt.FTTError, detail
+            #raise e_errors.WRITE_ERROR, detail
+        if r==-1:
+            ftt.raise_ftt()
+        return r
+
+    def writefm_buffered(self):
+        ## Write one and only one filemark.  Letting ftt close the device for us
+        ## results in writing two and backspacing over one.
+        r=0
+        try:
+            Trace.trace(42, "ftt.writefm_buffered()")
+            r = self.ftt.writefm_buffered()
+            Trace.trace(42,"%s=ftt.writefm_buffered() done"%(r,))
+            #### XXX Hack! Avert your eyes, innocent ones!
+            ## We don't want a subsequent "close" to write extra filemarks.
+            ## ftt_close_dev is being too helpful in the case where the last operation
+            ## was a writefm.  So we tell a lie to ftt...
+            ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
+        except ftt.FTTError, detail:
+            Trace.log(e_errors.ERROR, "ftt_driver:writefm_buffered %s %s" % (detail, detail.value))
+            raise ftt.FTTError, detail
+        if r==-1:
+            ftt.raise_ftt()
+        return r
+
+    def flush_data(self):
+        ## Write one and only one filemark.  Letting ftt close the device for us
+        ## results in writing two and backspacing over one.
+        r=0
+        try:
+            Trace.trace(42, "ftt.flush_data()")
+            r = self.ftt.flush_data()
+            Trace.trace(42,"%s=ftt.flush_data done"%(r,))
+            #### XXX Hack! Avert your eyes, innocent ones!
+            ## We don't want a subsequent "close" to write extra filemarks.
+            ## ftt_close_dev is being too helpful in the case where the last operation
+            ## was a writefm.  So we tell a lie to ftt...
+            ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
+        except ftt.FTTError, detail:
+            Trace.log(e_errors.ERROR, "ftt_driver:flush_data %s %s" % (detail, detail.value))
             # re raise ftt exception
             raise ftt.FTTError, detail
             #raise e_errors.WRITE_ERROR, detail
@@ -378,7 +420,7 @@ class FTTDriver(generic_driver.Driver):
             return -1
         else:
             return 0
-        
+
     def set_mode(self, density=None, compression=None, blocksize=None):
         ##HACK: this seems to trigger a core dump in ftt, and it's
         ## not clear we're really changing the mode anyhow.
@@ -392,7 +434,7 @@ class FTTDriver(generic_driver.Driver):
 
         ## to actually set mode ftt.open_dev() must be used.
         #return 0
-    
+
         r = -1
         try:
             #Trace.trace(42, "ftt.get_mode()")
@@ -401,7 +443,7 @@ class FTTDriver(generic_driver.Driver):
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "get_mode %s %s" % (detail, detail.value))
             return -1
-        
+
         if density is None:
             density = mode[1]
         if compression is None:
@@ -448,7 +490,7 @@ class FTTDriver(generic_driver.Driver):
     UVL7 = "UVL7"
     UVL8 = "UVL8"
     UVL9 = "UVL9"
-    
+
     labels = {80  : [VOL2, UVL1],
               160 : [VOL3, UVL1, UVL2],
               240 : [VOL4, UVL1, UVL2, UVL3],
@@ -484,7 +526,7 @@ class FTTDriver(generic_driver.Driver):
     # the expected length is set to the absolute maximum volume header length that
     # we could possibly get (VOL1-VOL9 + UVL1-UVL9, each 80 bytes = 1440)
     def verify_label(self, volume_label=None, mode=0, expected_length=1440):
-        
+
         buf=expected_length*' '
         try:
             Trace.trace(25, "rewinding tape to check volume label")
@@ -523,14 +565,14 @@ class FTTDriver(generic_driver.Driver):
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "reading VOL1 label: %s %s" % (exc, msg))
             return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], "Traceback"
-        
+
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""
         return self._rate, self._burst_rate
 
     def tape_transfer_time(self):
         return self._active_time
-    
+
     def get_cleaning_bit(self):
         clean = 0
         # to avoid writing filemark during get_stats operation
@@ -555,12 +597,12 @@ class FTTDriver(generic_driver.Driver):
             ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
             stats = self.ftt.get_stats()
         return stats
-    
+
 if __name__ == '__main__':
 
     print "TEST ME!"
-    
 
-            
 
-    
+
+
+

@@ -24,48 +24,53 @@ import time
 #
 QUERY="""
 SELECT t_inodes.ipnfsid,
+       t_inodes.inumber,
        t_inodes.isize,
        t_inodes.imtime,
-       l1.ipnfsid AS layer1,
+       encode(l1.ifiledata,'escape') AS layer1,
        encode(l2.ifiledata,'escape') AS layer2,
-       l4.ipnfsid AS layer4,
-       rp.iretentionpolicy as retention_policy
+       l4.inumber AS layer4,
+       t_inodes.iretention_policy as retention_policy
 FROM t_inodes
-LEFT OUTER JOIN t_level_4 l4 ON (l4.ipnfsid=t_inodes.ipnfsid)
-LEFT OUTER JOIN t_level_1 l1 ON (l1.ipnfsid=t_inodes.ipnfsid)
-LEFT OUTER JOIN t_level_2 l2 ON (l2.ipnfsid=t_inodes.ipnfsid)
-LEFT OUTER JOIN t_retention_policy rp ON (rp.ipnfsid=t_inodes.ipnfsid)
-WHERE (t_inodes.itype=32768
+LEFT OUTER JOIN t_level_4 l4 ON (l4.inumber=t_inodes.inumber)
+LEFT OUTER JOIN t_level_1 l1 ON (l1.inumber=t_inodes.inumber)
+LEFT OUTER JOIN t_level_2 l2 ON (l2.inumber=t_inodes.inumber)
+WHERE t_inodes.itype=32768
   AND t_inodes.iio=0
   AND t_inodes.isize>0
+  AND t_inodes.iaccess_latency = 0
+  AND t_inodes.iretention_policy = 0
   AND ( l4 is NULL OR l1 is NULL OR l2 is NULL )
   AND ((t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours'
-        AND t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours')))
+        AND t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours'))
        OR t_inodes.ipnfsid IN('{}')
 ORDER BY t_inodes.imtime
 """
 
 QUERY1="""
 SELECT t_inodes.ipnfsid,
+       t_inodes.inumber,
        t_inodes.isize,
        t_inodes.imtime,
-       l1.ipnfsid AS layer1,
+       encode(l1.ifiledata,'escape') AS layer1,
        encode(l2.ifiledata,'escape') AS layer2,
-       l4.ipnfsid AS layer4,
-       rp.iretentionpolicy as retention_policy
+       l4.inumber AS layer4,
+       t_inodes.iretention_policy as retention_policy
 FROM t_inodes
-LEFT OUTER JOIN t_level_4 l4 ON (l4.ipnfsid=t_inodes.ipnfsid)
-LEFT OUTER JOIN t_level_1 l1 ON (l1.ipnfsid=t_inodes.ipnfsid)
-LEFT OUTER JOIN t_level_2 l2 ON (l2.ipnfsid=t_inodes.ipnfsid)
-LEFT OUTER JOIN t_retention_policy rp ON (rp.ipnfsid=t_inodes.ipnfsid)
+LEFT OUTER JOIN t_level_4 l4 ON (l4.inumber=t_inodes.inumber)
+LEFT OUTER JOIN t_level_1 l1 ON (l1.inumber=t_inodes.inumber)
+LEFT OUTER JOIN t_level_2 l2 ON (l2.inumber=t_inodes.inumber)
 WHERE t_inodes.itype=32768
   AND t_inodes.iio=0
   AND t_inodes.isize>0
+  AND t_inodes.iaccess_latency = 0
+  AND t_inodes.iretention_policy = 0
   AND ( l4 is NULL OR l1 is NULL OR l2 is NULL )
   AND (t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours'
                         AND t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours')
 ORDER BY t_inodes.imtime
 """
+
 
 def print_yes_no(value):
     if not value:
@@ -204,6 +209,7 @@ if __name__ == "__main__":
         for row in res:
             isVolatile=False
             pnfsid = row['ipnfsid']
+            inumber = row['inumber']
             date   = row['imtime']
             layer2 = row['layer2']
             layer1 = row['layer1']
@@ -215,7 +221,7 @@ if __name__ == "__main__":
                     insert("monitor","enstore","delete from files_with_no_layers where ipnfsid='%s'"%(pnfsid,))
                 continue
             if not layer2 and not layer4 and not layer1 and isize > 0 :
-                pres = select("chimera","enstore","select ilocation from t_locationinfo where ipnfsid='%s' and itype=1"%(pnfsid,))
+                pres = select("chimera","enstore","select ilocation from t_locationinfo where inumber = %s and itype=1"%(inumber,))
                 pools=""
                 if len(pres) > 0:
                     for p in pres:
@@ -250,7 +256,7 @@ if __name__ == "__main__":
                         insert("monitor","enstore","delete from files_with_no_layers where ipnfsid='%s'"%(pnfsid,))
                     continue
             if not layer1 or not layer4 :
-                pres = select("chimera","enstore","select ilocation from t_locationinfo where ipnfsid='%s' and itype=1"%(pnfsid,))
+                pres = select("chimera","enstore","select ilocation from t_locationinfo where inumber = %s and itype=1"%(inumber,))
                 pools=""
                 if len(pres) > 0:
                     for p in pres:
@@ -259,7 +265,7 @@ if __name__ == "__main__":
                         pools = pools[:-1]
                     else:
                         pools = "N/A"
-                rpath = select("chimera","enstore","select inode2path('{}') AS path".format(pnfsid))
+                rpath = select("chimera","enstore","select inumber2path('{}') AS path".format(inumber))
                 path = rpath[0]["path"]
                 f.write(FORMAT.format(date.strftime("%Y-%m-%d %H:%M:%S"),
                                       pnfsid, print_yes_no(layer1),

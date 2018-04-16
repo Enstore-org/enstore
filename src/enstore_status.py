@@ -1,4 +1,3 @@
-#
 # system import
 import sys
 import time
@@ -52,7 +51,7 @@ def add_commas(str):
     l = len(str)
     new_str = ""
     j = 0
-    # the string might have a 'L' at the end to show it was a long int. 
+    # the string might have a 'L' at the end to show it was a long int.
     # avoid it
     if str[l-1] == "L":
         end = l-2
@@ -61,7 +60,7 @@ def add_commas(str):
 
     # count backwards from the end of the string to the beginning
     for i in range(end, -1, -1):
-        if j == 3: 
+        if j == 3:
             j = 0
             new_str = ",%s"%(new_str,)
         new_str = "%s%s"%(str[i], new_str)
@@ -149,7 +148,7 @@ class SgLine:
 
     def __init__(self, line):
 	self.line = line
-        [self.time, self.node, self.pid, self.user, self.status, self.server, 
+        [self.time, self.node, self.pid, self.user, self.status, self.server,
          self.text] = string.split(line, None, 6)
 	if not string.find(self.text, enstore_constants.PENDING) == -1:
 	    # this is an add to the pending queue
@@ -193,7 +192,7 @@ class EnStatus:
 	    dict[enstore_constants.FILE] = mover[enstore_constants.OUTFILE]
 	else:
 	    dict[enstore_constants.FILE] = mover.get(enstore_constants.INFILE, "")
-		
+
 	wrapper = mover['wrapper']
 	dict[enstore_constants.BYTES] = add_commas(str(wrapper['size_bytes']))
 
@@ -212,6 +211,8 @@ class EnStatus:
 	# 'file_family' is not present in a read, use volume family instead
 	if vc.has_key('volume_family'):
 	    dict[enstore_constants.VOLUME_FAMILY] = vc['volume_family']
+	if vc.has_key(enstore_constants.STORAGE_GROUP):
+	    dict[enstore_constants.STORAGE_GROUP] = vc[enstore_constants.STORAGE_GROUP]
 	if vc.has_key('file_family'):
 	    dict[enstore_constants.FILE_FAMILY] = vc['file_family']
 	    dict[enstore_constants.FILE_FAMILY_WIDTH] = \
@@ -228,7 +229,7 @@ class EnStatus:
     def get_pend_dict(self, mover, key, write_key, read_key):
 	# 'mover' not found in pending work
 	dict = {enstore_constants.MOVER : enstore_constants.NOMOVER}
-	self.get_common_q_info(mover, enstore_constants.PENDING, key, write_key, 
+	self.get_common_q_info(mover, enstore_constants.PENDING, key, write_key,
 			       read_key, dict)
 	if mover.has_key(enstore_constants.REJECT_REASON):
 	    dict[enstore_constants.REJECT_REASON] = \
@@ -246,7 +247,7 @@ class EnStatus:
 		self.text[key][enstore_constants.PENDING][enstore_constants.WRITE].append(dict)
 	    else:
 		self.text[key][enstore_constants.PENDING][enstore_constants.READ].append(dict)
-	    
+
 	for mover in work['read_queue']:
 	    dict = self.get_pend_dict(mover, key, writekey, readkey)
 	    self.text[key][enstore_constants.PENDING][enstore_constants.READ].append(dict)
@@ -259,7 +260,7 @@ class EnStatus:
         self.text[key][enstore_constants.WORK] = []
         for mover in work:
             dict = {enstore_constants.MOVER : mover['mover']}
-	    self.get_common_q_info(mover, enstore_constants.WORK, key, writekey, 
+	    self.get_common_q_info(mover, enstore_constants.WORK, key, writekey,
 				   readkey, dict)
  	    dict[enstore_constants.DEQUEUED] = \
 				enstore_functions2.format_time(mover['times']['lm_dequeued'])
@@ -273,8 +274,8 @@ class EnStatus:
     def output_alive(self, host, state, time, key):
         if not self.text.has_key(key):
             self.text[key] = {}
-        self.text[key][enstore_constants.STATUS] = [state, 
-                                                    self.format_host(host), 
+        self.text[key][enstore_constants.STATUS] = [state,
+                                                    self.format_host(host),
                                                     enstore_functions2.format_time(time)]
 
     # output the passed alive status

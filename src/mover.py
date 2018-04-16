@@ -71,6 +71,7 @@ import event_relay_messages
 import file_cache_status
 import scsi_mode_select
 import set_cache_status
+import log_client
 
 DEBUG_LOG=11
 
@@ -236,6 +237,7 @@ class Buffer:
         self.client_crc_on = 0
         self.read_stats = [0,0,0,0,0] # read block timing stats
         self.write_stats = [0,0,0,0,0] # read block timing stats
+        self.buffered_tapemarks = None
 
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
@@ -829,7 +831,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     Accepts enstore commands and launches specified in it metods.
     """
 
-    def __init__(self, csc_address, name):
+    def __init__(self, csc_address, name, logclient=None):
         """
         :type csc_address: :obj:`tuple`
         :arg csc_address: configuration server host name :obj:`str`, configuration server port :obj:`int`
@@ -838,7 +840,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         """
         generic_server.GenericServer.__init__(self, csc_address, name,
-                                              function = self.handle_er_msg)
+                                              function = self.handle_er_msg,
+                                              logc=logclient)
+
+        self.logclient =  logclient
         self.name = name # log name
         self.shortname = name
         self.unique_id = None #Unique id of last transfer, whether success or failure
@@ -923,6 +928,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.error_times = [] # list of times when transfer failed
         self.consecutive_failures = 0 # consecutive error counter
         self.max_consecutive_failures = 2 # maximal number of consecutive errors (configurable)
+        self.media_changer_consecutive_failures = 0 # consecutive error count for media changer requests
         self.max_failures = 3 # maximal number of failures before going OFFLINE (configurable)
         self.failure_interval = 3600 # offline mover if number of failures>self.max_failures within this interval (configurable)
         self.current_work_ticket = {}
@@ -1299,7 +1305,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         """
 
-	self.inq = inquisitor_client.Inquisitor(self.csc)
+	self.inq = inquisitor_client.Inquisitor(self.csc, logc = self.logclient)
 	ticket = self.inq.down(self.name, "set by mover", 15)
 	if not e_errors.is_ok(ticket):
 	    Trace.log(e_errors.ERROR,
@@ -1322,7 +1328,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         # create drivestat client
         try:
-            self.dsc = drivestat_client.dsClient(self.csc, drive_name)
+            self.dsc = drivestat_client.dsClient(self.csc, drive_name, logc = self.logclient)
             self.stats_on = 1
         except:
             Trace.handle_error()
@@ -1619,6 +1625,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.logname = self.config.get('logname', self.name)
         Trace.init(self.logname, self.config.get('include_thread_name', 'yes'))
+        if self.logclient and isinstance(self.logclient, log_client.TCPLoggerClient):
+            Trace.set_max_message_size(MB)
+        Trace.log(e_errors.INFO, "Log client %s"%(self.logclient,))
+
         # do not restart if some mover processes are already running
         cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
         result =  self.shell_command(cmd)
@@ -1637,7 +1647,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 time.sleep(2)
                 sys.exit(-1)
-
         self.restart_unlock()
 
         Trace.log(e_errors.INFO, "starting mover %s. MAX_BUFFER=%s MB" % (self.name, MAX_BUFFER/MB))
@@ -1648,16 +1657,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.state = IDLE
         self.force_clean = 0
+
         # get initial fcc and fcc
         try:
-            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,  logc = self.logclient)
         except:
             self.vcc == None
         try:
-            self.fcc = volume_clerk_client.VolumeClerkClient(self.csc)
+            self.fcc = file_clerk_client.FileClient(self.csc, logc = self.logclient)
         except:
             self.fcc == None
-
 
         #################################
         ### Mover type dependent settings
@@ -1718,7 +1727,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
             self.ip_map = self.config.get('ip_map','')
             self.mcc = media_changer_client.MediaChangerClient(self.csc,
-                                                               self.config['media_changer'])
+                                                               self.config['media_changer'], logc = self.logclient)
             self.mc_keys = self.csc.get(self.mcc.media_changer)
             # STK robot can eject tape by either sending command directly to drive or
             # by pushing a corresponding button
@@ -1762,7 +1771,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.check_sched_down() or self.check_lockfile():
             self.state = OFFLINE
 
-        self.asc = accounting_client.accClient(self.csc, self.logname)
+        self.asc = accounting_client.accClient(self.csc, self.logname, logc = self.logclient)
 
         self.config['name']=self.name
         self.config['product_id']='Unknown'
@@ -3200,7 +3209,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         buffer_empty_t = time.time()   #time when buffer empty has been detected
-        buffer_empty_cnt = 0 # number of times buffer was consequtively empty
+        buffer_empty_cnt = 0 # number of times buffer was consecutively empty
         nblocks = 0L
         bytes_written = 0
         # send a trigger message to the client
@@ -3252,7 +3261,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                      (bytes_written, len(self.header_labels)), error_source=TAPE)
                 return
             try:
-                self.tape_driver.writefm()
+                if self.buffered_tapemarks:
+                    self.tape_driver.writefm_buffered()
+                else:
+                    self.tape_driver.writefm()
             except:
                 exc, detail, tb = sys.exc_info()
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
@@ -3457,15 +3469,22 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.single_filemark or self.eof_labels:
                     Trace.trace(23, "single fm %s eof labels %s"%(self.single_filemark, self.eof_labels))
                     Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
+                    if self.buffered_tapemarks:
+                        self.tape_driver.writefm_buffered()
+                    else:
+                       self.tape_driver.writefm()
                 else:
-                    Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
-                    Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
-                    Trace.trace(23, "skip fm -1")
-                    self.tape_driver.skipfm(-1)
-                    Trace.trace(23, "fm done")
+                     if self.buffered_tapemarks:
+                         self.tape_driver.writefm_buffered()
+                         self.tape_driver.writefm_buffered()
+                     else:
+                         Trace.trace(23, "write fm")
+                         self.tape_driver.writefm()
+                         Trace.trace(23, "write fm")
+                         self.tape_driver.writefm()
+                     Trace.trace(23, "skip fm -1")
+                     self.tape_driver.skipfm(-1)
+                     Trace.trace(23, "fm done")
                 Trace.trace(10, "complete CRC %s"%(self.buffer.complete_crc,))
                 self.eof_labels = self.wrapper.eof_labels(self.buffer.complete_crc)
                 if self.eof_labels:
@@ -3483,12 +3502,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                         # log all running proceses
                         self.log_processes(logit=1)
                         return
+
                     Trace.trace(23, "write fm")
-                    self.tape_driver.writefm()
+                    if self.buffered_tapemarks:
+                        self.tape_driver.writefm_buffered()
+                    else:
+                        self.tape_driver.writefm()
                     if not self.single_filemark:
                         Trace.trace(5, "single fm %s"%(self.single_filemark,))
                         Trace.trace(23, "write fm")
-                        self.tape_driver.writefm()
+                        if self.buffered_tapemarks:
+                           self.tape_driver.writefm_buffered()
+                        else:
+                            self.tape_driver.writefm()
                         Trace.trace(23, "skip fm -1")
                         self.tape_driver.skipfm(-1)
                         Trace.trace(23, "fm done")
@@ -3632,7 +3658,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
         self.media_transfer_time = 0.
         buffer_full_t = 0   #time when buffer full has been detected
-        buffer_full_cnt = 0 # number of times buffer was consequtively full
+        buffer_full_cnt = 0 # number of times buffer was consecutively full
         nblocks = 0
         header_size = 0 # to avoit a silly exception
         #Initialize thresholded transfer notify messages.
@@ -4398,6 +4424,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.unlock_state()
                     return
                 try:
+                  if self.buffered_tapemarks:
+                       self.tape_driver.flush_data()
                   self.tape_driver.writefm()
                   # skip back one position in case when next read fails
                   # in this case tape is in the right position for the next write
@@ -4536,7 +4564,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.assert_ok.clear()
         self.t0 = time.time()
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                         server_address=ticket['vc']['address'])
+                                                         server_address=ticket['vc']['address'], logc = self.logclient)
         vc = ticket['vc']
         self.vol_info.update(vc)
         self.volume_family=vc['volume_family']
@@ -4603,7 +4631,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ic_conf = self.csc.get("info_server")
                 info_c = info_client.infoClient(self.csc,
                                             server_address=(ic_conf['host'],
-                                                            ic_conf['port']))
+                                                            ic_conf['port']), logc = self.logclient)
                 file_info = {}
                 fc_address = ticket['fc']['address']
                 ticket['return_file_list'] = {}
@@ -4824,10 +4852,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         client_reported_fcc_address_family = socket.getaddrinfo(fc['address'][0], None)[0][0]
         if fcc_address_family == client_reported_fcc_address_family:
             self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
-                                                    server_address=fc['address'])
+                                                    server_address=fc['address'], logc = self.logclient)
         if vcc_address_family == client_reported_vcc_address_family:
             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                             server_address=vc['address'])
+                                                             server_address=vc['address'], logc = self.logclient)
         self.vc_address = self.vcc.server_address
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = fc['external_label']
@@ -4927,8 +4955,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
             self.target_location = None
 
+        self.buffered_tapemarks = ticket.get('buffered_tape_marks', False) and enstore_functions2.is_migration_file_family(volume_family.extract_file_family(self.vol_info['volume_family']))
         Trace.trace(10, "finish_transfer_setup: label %s state %s"%(volume_label, state_name(self.save_state)))
         Trace.trace(10, "finish_transfer_setup: ticket %s"%(self.current_work_ticket,))
+        Trace.trace(10, "finish_transfer_setup: buffered tapemarks%s"%(self.buffered_tapemarks,))
         # this is for crc check in ASSERT mode
         Trace.trace(24, "finish_transfer_setup MODE %s"%(mode_name(self.mode),))
         if self.mode == ASSERT:
@@ -6414,6 +6444,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                         else:
                             try:
+                                if self.buffered_tapemarks:
+                                    self.tape_driver.flush_data()
                                 self.tape_driver.writefm()
                             except:
                                 Trace.alarm(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
@@ -6842,6 +6874,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     self.state = IDLE
                 self.current_volume = None
+                if self.last_error[0] == s_status[0]:
+                    self.media_changer_consecutive_failures += 1
+                if self.media_changer_consecutive_failures >= self.max_consecutive_failures:
+                    Trace.log(e_errors.ERROR, "max_consecutive_media_changer_failures (%d) reached"%
+                              (self.max_consecutive_failures,))
+                    self.offline()
+                    return
                 self.last_error = s_status
                 return
             else:
@@ -7794,9 +7833,11 @@ class DiskMover(Mover):
         self.current_volume =  self.vol_info.get('external_label', None)
         self.delay = 31536000  # 1 year
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
-                                                server_address=fc['address'])
+                                                server_address=fc['address'],
+                                                logc = self.logclient)
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                         server_address=vc['address'])
+                                                         server_address=vc['address'],
+                                                         logc = self.logclient)
         ic_conf = self.csc.get("info_server")
         #self.infoc = info_client.infoClient(self.csc,
         #                                    server_address=(ic_conf['host'],
@@ -8545,13 +8586,18 @@ if __name__ == '__main__':
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.ERROR, "Mover Error %s %s"%(exc,msg))
         sys.exit(1)
+    use_tcp_log_client = keys.get('use_tcp_log_client')
 
     import __main__
+
     constructor=getattr(__main__, mc_type)
-    mover = constructor((intf.config_host, intf.config_port), intf.name)
+    logclient = None
+    if use_tcp_log_client:
+        logclient = log_client.TCPLoggerClient(csc,  name = '%s.log'%(intf.name,))
+    mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient)
 
     mover.handle_generic_commands(intf)
-    #mover._do_print({'levels':range(5, 100)})
+    #mover._do_print({'levels':range(300, 302)})
 
     mover.start()
     mover.starting = 0

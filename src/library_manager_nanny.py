@@ -8,7 +8,7 @@ import sys
 import time
 import getopt
 import string
-
+import shutil
 import configuration_client
 import log_client
 import udp_client
@@ -37,6 +37,7 @@ def print_help():
     -m, --mail - mail recipient
     -r, --restart - restart library manager unconditionally.
                     Without this option library manager restart only during off hours.
+    -d, --debug <level1,[level2,....]> - turn on debug levels
     if library managers are not specified they will be taken from the configuration
     """
 
@@ -177,7 +178,7 @@ class LMC(library_manager_client.LibraryManagerClient):
         return killed
 
 
-    def restart(self):
+    def restart(self, debug_levels=None):
         Trace.log(e_errors.INFO, "Will try to restart %s library manager"%(self.server_name, ))
 
         command = 'enstore Estop %s "--just %s"'%(self.host.split('.')[0], self.server_name)
@@ -198,8 +199,14 @@ class LMC(library_manager_client.LibraryManagerClient):
         time.sleep(10)
         if self.is_lm_running():
             Trace.alarm(e_errors.INFO, "Successfully restarted %s library manager"%(self.server_name, ))
-            record_event(lmc.server_name, "RESTARTED")
+            if debug_levels:
+                command = 'enstore lib --do-print %s %s'%(debug_levels,self.server_name)
+                res = enstore_functions2.shell_command(command)
 
+            src = '/var/log/enstore/tmp/enstore/%s.out.sav'%(self.server_name,)
+            dst = '%s.%s'%(src, time.strftime('%Y-%m_%d_%H:%M:%S', time.localtime()))
+            record_event(lmc.server_name, "RESTARTED")
+            shutil.copy(src, dst)
         else:
             Trace.alarm(e_errors.ERROR, "Failed to restart %s library manager"%(self.server_name, ))
 
@@ -209,16 +216,19 @@ class LMC(library_manager_client.LibraryManagerClient):
 mail_recipient = os.environ.get("ENSTORE_MAIL", None)
 prog_name = sys.argv[0].split('/')[-1]
 restart = False
-opts, args = getopt.getopt(sys.argv[1:], "t:h:r", ["timeout", "help", "restart"])
+levels = None
+opts, args = getopt.getopt(sys.argv[1:], "d:t:h:r", ["debug", "timeout", "help", "restart"])
 for o, a in opts:
     if o in ["-t", "--time"]:
         interval = int(a)
-    elif o in ["-m", "--mail"]:
+    if o in ["-m", "--mail"]:
        mail_recipient = a
-    elif o in ["-h", "--help"]:
+    if o in ["-d", "--debug"]:
+        levels = a
+    if o in ["-h", "--help"]:
         print_help()
         sys.exit(0)
-    elif o in ["-r", "--restart"]:
+    if o in ["-r", "--restart"]:
         restart = True
 
 if not mail_recipient:
@@ -315,7 +325,7 @@ try:
                     (t.tm_hour not in xrange(8, 17)) or # weekday before 8:00am or after 5:00pm
                     (restart)): # restart unconditionally
                     # restart LM
-                    lmc.restart()
+                    lmc.restart(levels)
                 else: # weekdays between 8:00 and 17:00
                     Trace.alarm(e_errors.INFO, "Library manager %s does not get restarted during work hours"%(lmc.server_name, ))
                     enstore_mail.send_mail(MY_NAME, "Library manager %s is not responding."%(lmc.server_name,),
