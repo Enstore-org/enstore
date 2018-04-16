@@ -1,0 +1,48 @@
+commit 2e1bdf6468ea8807e9d3fb84a93beafe41a36e26
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Sep 7 16:33:55 2017 -0500
+
+    [migration] BZ:1895 RB:454  set_src_volume_migrated when all files on tape are migrated.
+
+    When some files on tape were migrated manually the migration list is empty when volume migration is rerun. Migration did not set volume as migrated.
+    Instead of returning immediately when migration list is empty allow migrate_volume() to run further and call set_src_volume_migrated().
+
+    RB: http://uqbar.fnal.gov/reviews/r/#[RB]
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=#[BZ]
+
+M	src/migrate_chimera.py
+
+commit b6ef567ba73165a7c13b2b69cbd9ec7431d57ca0
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Sep 1 14:57:22 2017 -0500
+
+    removed plot_queue_length.py from develop
+
+D	src/plot_queue_length.py
+
+commit 7c1ba5206cb35e657302297a29e88ba3c452dc4b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Sep 1 14:53:04 2017 -0500
+
+    This one uses library_manager_nanny.pu outputs in DEBUGLOG to plot queue length.
+
+A	src/plot_queue_length.py
+
+commit 799ff325110b6d7c9a7859e8d12fe7d712d2b041
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Aug 30 11:54:59 2017 -0500
+
+        Added option to unconditionally restart library manager.
+        http://srm.fnal.gov/reviews/r/453/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1894
+
+M	src/library_manager_nanny.py
+
+commit 2d63848695be23783c0f4e6a8f220c8cd96c004f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 29 11:51:44 2017 -0500
+
+        Fixed bug in with statement
+
+M	src/udp_server.py
+

@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.1.0
-Release: 5
+Release: 6
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -84,7 +84,7 @@ echo SWIG_DIR=$SWIG_DIR >> /tmp/enstore-setup
 echo export SWIG_DIR >> /tmp/enstore-setup
 echo SWIG_LIB=$SWIG_DIR/swig_lib >> /tmp/enstore-setup
 echo export SWIG_LIB >> /tmp/enstore-setup
-echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-9.2/bin:"$"PATH >> /tmp/enstore-setup
+echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-9.3/bin:"$"PATH >> /tmp/enstore-setup
 
 %build
 . /tmp/enstore-setup
@@ -242,6 +242,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Mon Apr 16 2018  <moibenko@fnal.gov> -
+- v 6.1.0 release 5.
 * Tue Oct 03 2017  <moibenko@fnal.gov> -
 - v 6.1.0 release 5.
 * Tue Aug 29 2017  <moibenko@fnal.gov> -
