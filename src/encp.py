@@ -2824,15 +2824,18 @@ TIME2NOW=%.02f
 CRC=%s
 STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
 
-    out.write(data_access_layer_format % (inputfile, outputfile, filesize,
-                                          external_label,location_cookie,
-                                          device, device_sn,
-                                          transfer_time, seek_time,
-                                          mount_time, in_queue,
-                                          total, crc, status))
+    try:
+        out.write(data_access_layer_format % (inputfile, outputfile, filesize,
+                                              external_label,location_cookie,
+                                              device, device_sn,
+                                              transfer_time, seek_time,
+                                              mount_time, in_queue,
+                                              total, crc, status))
 
-    out.write('\n')
-    out.flush()
+        out.write('\n')
+        out.flush()
+    except IOError:
+        pass
     if msg:
         msg=str(msg)
         try:

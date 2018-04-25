@@ -2113,8 +2113,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 raise sys.exc_info()[0], sys.exc_info()[1], \
                       sys.exc_info()[2]
         except IndexError:
-            exc, msg, tb = sys.exc_info()
-            Trace.handle_error(exc, msg, tb)
             raise IOError(errno.EIO, "%s: Layer %d is empty: %s" %
                           (os.strerror(errno.EIO),
                            enstore_constants.BFID_LAYER,
