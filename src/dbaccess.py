@@ -356,8 +356,8 @@ class DatabaseAccess:
             res.append(r)
         return res
 
-    def query_tuple(self,s,vlaues):
-        return self.query(s,values)
+    def query_tuple(self, s, values):
+        return self.query(s, values)
 
 
 
