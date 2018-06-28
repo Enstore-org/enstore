@@ -7522,8 +7522,7 @@ def _scan_bfid(MY_TASK,dst_bfid,src_path,wr_path,intf,encp,override_deleted=Fals
     else:
         argv += ["--priority", str(ENCP_PRIORITY)]
 
-    # if deleted == YES:
-    if dst_file_record['deleted'] == YES:
+    if override_deleted:
         argv += ["--override-deleted"]
 
     if intf.use_volume_assert or USE_VOLUME_ASSERT:
@@ -7540,7 +7539,7 @@ def _scan_bfid(MY_TASK,dst_bfid,src_path,wr_path,intf,encp,override_deleted=Fals
         else:
             use_src_path = [src_path]
 
-	argv += use_src_path + [dst_path]
+	argv += use_src_path + [wr_path]
 
     if debug:
         cmd = string.join(argv)
