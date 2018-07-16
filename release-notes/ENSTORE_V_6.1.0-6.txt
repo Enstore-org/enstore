@@ -1,0 +1,245 @@
+commit 5b4a76947cb820e6b3cfb891e5bb9d640adc0ab5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Apr 16 16:11:38 2018 -0500
+
+    enstore rpm _6.1.0-6
+
+A	release-notes/ENSTORE_V_6.1.0-5.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 61272c8f28fa6c6ea3dc00a7a0a1209f423c4161
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Apr 11 17:35:16 2018 -0500
+
+        Fixed mover and ftt_driver.
+        Re-tested
+    http://srm.fnal.gov/reviews/r/501/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1916
+
+M	src/ftt_driver.py
+M	src/mover.py
+
+commit b3ea33ceb75bc442dc9fbc7c8fbdbc451d0ae637
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Apr 5 14:16:09 2018 -0500
+
+        Add buffered tape marks to mover.
+        Add buffered tape marks to use with for tape migration.
+        http://srm.fnal.gov/reviews/r/501
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1916
+
+M	src/ftt.py
+M	src/ftt_driver.py
+M	src/mover.py
+A	test/buf_mod_test.py
+A	test/writefm_test.py
+
+commit 69ad8e8750143138918b4015b9ec4f03ff7df8d4
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Apr 4 11:40:24 2018 -0500
+
+        cms wlcg statistics by Gene
+
+A	crontabs/cms_wlcgstats
+A	sbin/cms_wlcgstats.sh
+
+commit 48fca6976bb41c7b2a43b76dcde48b193584dd32
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Fri Mar 23 12:33:04 2018 -0500
+
+    [migration] BZ:1900 RB:499 add buffered tapemarks to migration BZ:1900 RB:499,470
+
+    get "--buffered-tape-marks" option from command line (encp, migration).
+    add "--buffered-tape-marks" option to encp arguments in write call (migration).
+    refactor building of arguments string in encp call (migration).
+
+    RB: http://uqbar.fnal.gov/reviews/r/499
+    RB: http://uqbar.fnal.gov/reviews/r/470
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1900
+
+M	src/encp.py
+M	src/migrate_chimera.py
+M	src/option.py
+
+commit d872c1e549b0bb9f658c6faf2136035221497e37
+Author: Enstore <enstore@dmsen03.fnal.gov>
+Date:   Thu Feb 22 17:03:30 2018 -0600
+
+    The same name for parameter and global gives an error.
+
+M	src/Trace.py
+
+commit ab50ea365d50db986f95c050088a944745650cb8
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Feb 22 10:36:43 2018 -0600
+
+        Some media change errors are caused by robotic failures.
+        Set mover to OFFLINE if there were consecutive robotic
+        failures > maximum allowed.
+        http://srm.fnal.gov/reviews/r/498/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1911
+
+M	src/mover.py
+
+commit 0cce278f2fe8a4a510ac53913031231741018c9d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Feb 21 16:50:04 2018 -0600
+
+    remove create_entry.cf and removed servicenow_create_entry.cf
+    containing plain passwords
+
+    	RB: http://uqbar.fnal.gov/reviews/r/500/
+    	BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1912
+
+D	etc/create_entry.cf
+D	etc/servicenow_create_entry.cf
+
+commit 8d06dbdfb15795ed2cb066de33b72850d9422c7e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Feb 19 10:24:13 2018 -0600
+
+        Optional TCP/IP communications for log server.
+        Under heavy network traffic a lot of UDP log messages may get lost. TCP/IP communications guaranty message delivery. This change implements TCP/IP log server, running in a separate thread and accepting connections on the same as UDP server port. TCP/IP log client takes messages into intermediate queue and sends the out of it. IF log client looses connection is starts dumping messages into a local file and tries to re-establish connection. The TCP/Client is used in mover.py to guaranty that all messages from movers are logged and in migrator.py to log messages which can be very big in size.
+        http://srm.fnal.gov/reviews/r/497/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1913
+
+M	etc/config_params.html
+M	spec/enstore_RH6_python_2.7.9.spec
+M	src/Trace.py
+M	src/cache/servers/migrator.py
+M	src/callback.py
+M	src/log_client.py
+M	src/log_server.py
+A	src/log_server_proc_tcp.py
+A	src/log_server_stress_test_tcp.py
+M	src/mover.py
+
+commit e4124c62734bfba972078084e653eb5faa08578d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Feb 1 15:31:48 2018 -0600
+
+    Updated guide and added odt version
+
+A	doc/guides/small_files_operations_guide.odt
+M	doc/guides/small_files_operations_guide.pdf
+
+commit 7e57034a7922461a26aa19fc4212a28f850f6661
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Jan 30 11:16:48 2018 -0600
+
+        Add storage group to servers and related LM web page data.
+        http://srm.fnal.gov/reviews/r/494
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1909
+
+M	src/enstore_html.py
+M	src/enstore_status.py
+
+commit 798e2be6f10a157de6d25d96c4a418076c38849d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jan 12 13:37:40 2018 -0600
+
+    Added an option to turn on debugging prints on monitored library manager.
+    Copy the output file to not loose information on restart of monitored library manager.
+    http://srm.fnal.gov/reviews/r/480/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1907
+
+M	src/library_manager_nanny.py
+
+commit 5fc51725e426f680a0b7093a8524321a94ab4268
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Dec 8 09:41:03 2017 -0600
+
+    There was a bug in the last fix.
+    Now it is fixed.
+    http://srm.fnal.gov/reviews/r/478/
+
+M	doc/WWW/index-bottom.html
+
+commit 8017689589fc0803d65e031cfef1f21cbc4f5f8e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Dec 4 11:26:16 2017 -0600
+
+    Updated cms dcache url.
+    http://srm.fnal.gov/reviews/r/478/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1906
+
+M	doc/WWW/index-bottom.html
+
+commit bd4c5a3cd57b30c0524697080f86a8554f721356
+Author: enstore <enstore@stkensrv4n.fnal.gov>
+Date:   Wed Nov 29 13:48:29 2017 -0600
+
+    Change made by John.
+
+M	src/take_out_acsls.sh
+
+commit 1ea18e204c695c32d92d3e6f7a993abd093e3096
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 27 14:55:59 2017 -0600
+
+        replace checkdb with checkdb_PITR in checkdb cron job
+        http://srm.fnal.gov/reviews/r/477/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1904
+
+M	crontabs/checkdb
+
+commit 9e86d411affb7c88499c9b39aee68afb7d0d53be
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Nov 22 15:40:51 2017 -0600
+
+    cron: remove enstoredb pg_dump based backup
+
+    RB: http://srm/reviews/r/475/
+    BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1903
+
+M	crontabs/enstore_db
+
+commit b836ac21181768949778b99c5010fb0fd1a7640d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Nov 22 11:27:17 2017 -0600
+
+    Squashed commit of the following:
+
+    commit 8d924161f1778608dd7517ee53bf54093fff63f5
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Nov 22 11:24:50 2017 -0600
+
+        Implement buffrered tape marks in ftt.
+        http://srm.fnal.gov/reviews/r/469/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1900
+
+    commit 9597247114ca262e23491c18d1467a3dcd71799c
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Oct 25 14:59:45 2017 -0500
+
+        Implemented functions to call scsi command for buffered tape marks.
+        http://srm.fnal.gov/reviews/r/469/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1900
+
+M	ftt/ftt_lib/Linux/ftt_mtio.h
+M	ftt/ftt_lib/Makefile
+M	ftt/ftt_lib/ftt_skip.c
+A	ftt/ftt_lib/writefmdemo.c
+M	modules/SWIG/ftt2.i
+
+commit ce7fe94c99da4986cec1c8168c3b1001238b73b5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 24 13:10:27 2017 -0500
+
+        Set cache_location for package to None.
+        http://srm.fnal.gov/reviews/r/463/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1896
+
+M	src/cache/servers/migrator.py
+
+commit 3f5aa2f882bf8302be867fdd8ef7c5cd648a876d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Oct 6 14:48:34 2017 -0500
+
+    chimera_dump, pnfs_monitor : adapt to new chimera schema
+
+    	RB : http://srm/reviews/r/462/
+
+M	sbin/chimera_dump.py
+M	sbin/pnfs_monitor.py
+

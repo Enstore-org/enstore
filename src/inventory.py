@@ -1375,7 +1375,7 @@ def inventory(output_dir, cache_dir):
             mounts = -1
         mnts = "%6d"%(mounts) #This may be overridden to html tag format.
         if mount_limit.has_key(vv['media_type']):
-            if mounts > mount_limit[vv['media_type']][0]:
+            if mounts > mount_limit[vv['media_type']][0] and vv['library'].find("shelf") == -1:
                 if mounts <= mount_limit[vv['media_type']][1]:
                     msg = '%s (%s) exceeds %d mounts'%(
                            vv['external_label'], vv['media_type'],
