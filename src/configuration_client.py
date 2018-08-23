@@ -1025,7 +1025,7 @@ def do_work(intf):
             for mover_name in movers_list:
                 mover_info = csc.get(mover_name['mover'])
                 print msg_spec % (mover_name['mover'], mover_info['host'],
-                                  mover_info['mc_device'], mover_info['driver'],
+                                  mover_info.get('mc_device','N/A'), mover_info['driver'],
                                   mover_info['library'])
 
     elif intf.list_migrators:

@@ -21,6 +21,9 @@ output=$ENSTORE_HOME/`hostname`.startup
 touch $output
 chown enstore.enstore $output
 estat=0
+if [ -r /dev/changer ]; then
+    chmod a+rw /dev/changer
+fi
 
 case "$1" in
 

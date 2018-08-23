@@ -137,7 +137,7 @@ class MediaChangerClient(generic_client.GenericClient):
 
     def __list_volumes(self, control_socket, ticket):
         __pychecker__ = "unusednames=ticket" #Keep pychecker happy
-        
+
         try:
             d = callback.read_tcp_obj(control_socket, 1800) # 30 min
         except (socket.error, select.error, e_errors.EnstoreError), msg:
@@ -168,7 +168,7 @@ class MediaChangerClient(generic_client.GenericClient):
                      'type' : t[2],
                      'location' : t[3],
                      }
-                
+
                 ticket['volume_list'].append(d)
             except (select.error, socket.error, e_errors.EnstoreError), msg:
                 if msg.errno == errno.ETIMEDOUT:
@@ -182,13 +182,13 @@ class MediaChangerClient(generic_client.GenericClient):
                 break
         else:
             ticket['status'] = (e_errors.OK, None)
-                
+
         return ticket
 
     def list_clean(self, rcv_timeout = 0, rcv_tries = 0):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        
+
         ticket = {'work' : 'list_clean',
                   'callback_addr'  : (host,port)
                   }
@@ -196,14 +196,14 @@ class MediaChangerClient(generic_client.GenericClient):
         if not e_errors.is_ok(rt):
             #print "ERROR", rt
             return rt
-        
+
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
             reply = {'status' : (e_errors.TIMEDOUT,
                          "timeout waiting for media changer callback")}
             return reply
         control_socket, address = listen_socket.accept()
-        
+
         try:
             d = callback.read_tcp_obj(control_socket)
         except (select.error, socket.error, e_errors.EnstoreError), msg:
@@ -216,7 +216,7 @@ class MediaChangerClient(generic_client.GenericClient):
         listen_socket.close()
         control_socket.close()
         return d
-        
+
     def viewdrive(self, drive):
         ticket = {'work' : 'viewdrive',
                   'drive' : drive,
@@ -283,7 +283,7 @@ class MediaChangerClient(generic_client.GenericClient):
         if purge:
             #Remove the volume information from the robot database.
             ticket['purge'] = "yes"
-            
+
         if type(volumeList) != types.ListType:
             Trace.log(e_errors.ERROR, "ERROR:ejectvol volumeList must be a list")
             rt = {'status':(e_errors.WRONGPARAMETER, 1, "volumeList must be a list")}
@@ -304,6 +304,16 @@ class MediaChangerClient(generic_client.GenericClient):
                  }
         return self.send(ticket)
 
+    def update_db(self, volume_address, volume_name,  drive_address, volume_name_in_drive):
+        ticket = {'work'           : 'update_db',
+                  'volume': {'address': volume_address,
+                             'volume':  volume_name,
+                             },
+                  'drive': {'address': drive_address,
+                            'volume': volume_name_in_drive,
+                            }
+                 }
+        return self.send(ticket)
 
 class MediaChangerClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
@@ -435,7 +445,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_NAME:"show",
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN},
-        option.SHOW_DRIVE:{option.HELP_STRING:"",
+        option.SHOW_DRIVE:{option.HELP_STRING:"Returns information about a drive",
                            option.DEFAULT_VALUE:option.DEFAULT,
                            option.DEFAULT_TYPE:option.INTEGER,
                            option.VALUE_USAGE:option.IGNORED,
@@ -509,7 +519,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             mc_info = csc.get(mc_name['name'])
             print msg_spec % (mc_name['name'], mc_info['host'],
                               mc_info['type'])
-            
+
         sys.exit(0)
 
 def do_work(intf):
@@ -587,19 +597,29 @@ def do_work(intf):
     elif intf.show_volume:
         ticket = mcc.viewvol(intf.volume, intf.media_type)
         if e_errors.is_ok(ticket):
+            location = ticket.get("location", "")
+            phys_loc = ticket.get("phys_location", "")
+            s_loc = '%s(%s)'%(location, phys_loc)
             print "%17s %10s %20s %20s" % ("volume", "type",
                                            "state", "location")
             print "%17s %10s %20s %20s" % (intf.volume, ticket['media_type'],
                                            ticket['status'][3],
-                                           ticket.get("location", ""))
+                                           s_loc)
     elif intf.show_drive:
         ticket = mcc.viewdrive(intf.drive)
         if e_errors.is_ok(ticket) and ticket.get("drive_info", None):
             drive_info = ticket['drive_info']
-            print "%12s %15s %15s %15s %8s" % ("name", "state", "status",
+            drive = drive_info.get('location', intf.drive)
+            phys_loc = drive_info.get('phys_location')
+            s = '%s'%(drive, )
+            if phys_loc:
+                s = '%s(%s)'%(drive, phys_loc)
+            print "DI", drive_info
+            print "S", s
+            print "%16s %15s %15s %15s %8s" % ("name", "state", "status",
                                                "type", "volume")
-            print "%12s %15s %15s %15s %8s" % \
-                  (intf.drive, drive_info['state'],
+            print "%16s %15s %15s %15s %8s" % \
+                  (s, drive_info['state'],
                    drive_info.get("status", ""), drive_info['type'],
                    drive_info['volume'])
     elif intf.display:

@@ -40,6 +40,7 @@ import subprocess
 import copy
 import select
 import errno
+import multiprocessing
 
 # enstore imports
 import configuration_client
@@ -59,9 +60,14 @@ import enstore_functions2
 
 
 # The following are used by mtx
-import Queue
 import threading
+try:
+	import mtx # not everyone needs mtx meadia changer, running through library calls
+except:
+	pass
 
+import log_client
+import media_changer_client
 
 def _lock(f, op):
 	dummy = fcntl.fcntl(f.fileno(), fcntl.F_SETLKW,
@@ -87,6 +93,10 @@ ACTION_LOG_LEVEL = 88
 #There exists two work queues.  One involves tape operations.  The other
 # involves queries.
 QUEUE_COUNT = 2
+
+EMPTY='empty' # volume "name" used in some classes
+BUSY='busy' # to indicate, that ther slot is under some activity, like dismout into ths slot.
+INUSE='in use' # to indicate that drive is in use
 
 #Make sure the number of max_work is within bounds.  The
 def bound_max_work(unbound_max_work):
@@ -170,26 +180,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # retry function call - By default don't retry.
     def retry_function(self,function,*args):
-        return apply(function,args)
+	rc = function(*args)
+	return rc
 
-    """
-    #Some replys are longer than UDP allows.  This function sends the
-    # information via TCP.
-    def reply_with_full_answer(self, ticket):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.connect(ticket['callback_addr'])
-            r = callback.write_tcp_obj(sock,ticket)
-            sock.close()
-            if r:
-                Trace.log(e_errors.ERROR,
-                              "Error calling write_tcp_obj. Callback addr. %s"
-                              % (ticket['callback_addr'],))
-        except:
-            Trace.handle_error()
-            Trace.log(e_errors.ERROR,
-                      "Callback address %s" % (ticket['callback_addr'],))
-    """
 
     #########################################################################
     # These functions are named by the media_changer_client.  All of these
@@ -689,7 +682,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #  in child process
 	message = "mcDoWork> child begin %s" % (common_message,)
         Trace.trace(ACTION_LOG_LEVEL, message)
-	#Trace.log(ACTION_LOG_LEVEL, message)
 
         os.close(pipe[0]) #Close reading half of pipe.
 
@@ -787,6 +779,28 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	# a previous request complets doesn't seem correct.  This also leads
 	# into how sts could/should be processed.
         sts = self.doWaitingInserts()
+
+    # simple elapsed timer
+    def delta_t(self,begin):
+            (ut, st,cut, cst,now) = os.times()
+            return (now-begin, now)
+
+    #Kill the process with pid, use cmd as the command string that is
+    # getting killed for logging purposes.
+    def kill_it(self, pid, cmd):
+        message = "killing %d => %s" % (pid, cmd)
+	print timeofday.tod(), message
+	Trace.trace(e_errors.INFO, message)
+	os.kill(pid,signal.SIGTERM)
+	time.sleep(1)
+	p, r = os.waitpid(pid,os.WNOHANG)
+	if p == 0:
+	    message = "kill -9ing %d => %s" % (pid, cmd)
+	    print timeofday.tod(), message
+	    Trace.trace(e_errors.INFO, message)
+	    os.kill(pid, signal.SIGKILL)
+	    time.sleep(2)
+	    p, r = os.waitpid(pid,os.WNOHANG)
 
 #########################################################################
 #
@@ -1123,13 +1137,13 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    #if int(drive.mount) == 1:
 	    #	    use_status = "mounted"
 	    #elif int(drive.mount) == 0:
-	    #	    use_status = "empty"
+	    #	    use_status = EMPTY
 	    #else:
 	    #	    use_status = "unknown"
 	    if drive.volser:
 		    use_status = "mounted"
 	    else:
-		    use_status = "empty"
+		    use_status = EMPTY
 
 	    drive_list.append({"name" : drive.drive_name,
 			       "state" : use_state,
@@ -1402,27 +1416,6 @@ class STK_MediaLoader(MediaLoaderMethods):
                 return str(exc),0,""
         return sts
 
-    # simple elapsed timer
-    def delta_t(self,begin):
-            (ut, st,cut, cst,now) = os.times()
-            return (now-begin, now)
-
-    #Kill the process with pid, use cmd as the command string that is
-    # getting killed for logging purposes.
-    def kill_it(self, pid, cmd):
-        message = "killing %d => %s" % (pid, cmd)
-	print timeofday.tod(), message
-	Trace.trace(e_errors.INFO, message)
-	os.kill(pid,signal.SIGTERM)
-	time.sleep(1)
-	p, r = os.waitpid(pid,os.WNOHANG)
-	if p == 0:
-	    message = "kill -9ing %d => %s" % (pid, cmd)
-	    print timeofday.tod(), message
-	    Trace.trace(e_errors.INFO, message)
-	    os.kill(pid, signal.SIGKILL)
-	    time.sleep(2)
-	    p, r = os.waitpid(pid,os.WNOHANG)
 
     # execute a stk cmd_proc command, but don't wait forever for it to complete
     #mostly stolen from Demo/tkinter/guido/ShellWindow.py - spawn function
@@ -3166,8 +3159,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
 # completed, or the string 'timeout error' if f didn't return in the
 # allotted time.
 def return_by(f, a, t):
-
-    q = Queue.Queue()
+    q = multiprocessing.Queue()
     e = threading.Event()
     h = threading.Thread(target = execute_and_set, \
                          args   = (f, a, e, q))
@@ -3181,7 +3173,6 @@ def return_by(f, a, t):
 # This method executes function f with arguments a, puts the result in
 # queue q and triggers the Event e
 def execute_and_set(f, a, e, q):
-
     q.put(apply(f, a))
     e.set()
     return
@@ -3250,6 +3241,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
 	drive,             # drive id
 	media_type):       # media type
 	"""
+	Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to load pid %s'%(os.getpid(),))
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
 	media_type = ticket['vol_ticket']['media_type']
@@ -3264,6 +3256,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
 	drive,           # drive id
 	media_type):     # media type
 	"""
+	Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to unload pid %s'%(os.getpid(),))
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
 	media_type = ticket['vol_ticket']['media_type']
@@ -3330,7 +3323,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
                 return False
             self.status_valid = 1
 
-        if self.drives[drive] == 'empty':
+        if self.drives[drive] == EMPTY:
             return True
         else:
             return False
@@ -3349,7 +3342,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
         if self.is_empty(dr): # no need to dismount
             return (e_errors.OK, 0, None, "", "")
 
-        s,ignore = self.locate_volume('empty')
+        s,ignore = self.locate_volume(EMPTY)
 
         if -1 == s:
             Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
@@ -3464,7 +3457,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
                     line = string.strip(line)
                     if string.find(line, 'Data Transfer Element') != -1:
                         if string.find(line, 'Empty') > 0:
-                            self.drives.append('empty');
+                            self.drives.append(EMPTY);
                         elif string.find(line, 'VolumeTag') != -1:
                             i1 = string.find(line, '=') + 1
                             i2 = len(line)
@@ -3473,7 +3466,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
                             self.drives.append('unlabelled')
                     elif string.find(line, 'Storage Element') != -1:
                         if string.find(line, 'Empty') > 0:
-                            self.slots.append('empty')
+                            self.slots.append(EMPTY)
                         elif string.find(line, 'VolumeTag') != -1:
                             i1 = string.find(line, '=') + 1
                             i2 = len(line)
@@ -3509,6 +3502,1600 @@ class MTX_MediaLoader(MediaLoaderMethods):
 
         #Trace.log(e_errors.INFO, 'The following command completed: %s mtx -f %s status'%(self.sudo_cmd, self.device_name))
 	return result
+
+    # getVolState in the drive; default overridden for other media changers
+    def getVolState(self, ticket):
+        __pychecker__ = "no-argsused"
+        ticket['status'] = e_errors.OK
+        slot, drive = self.locate_volume(ticket['external_label'])
+	Trace.log(e_errors.INFO, 'getVolState slot:%s, drive %s'%(slot, drive,))
+        if slot < 0 and drive < 0:
+            ticket['status'] = e_errors.MC_VOLNOTFOUND
+        elif slot < 0 and drive >= 0:
+            ticket['state'] = 'M'
+            ticket['location'] = drive
+        elif slot >= 0 and drive < 0:
+            ticket['state'] = 'O'
+            ticket['location'] = slot
+        return (ticket.get('status'), ticket.get('location'), ticket.get('media_type'), ticket.get('state'))
+
+
+    def getDriveState(self, ticket):
+	drive = int(ticket['drive'])
+	rc = [e_errors.OK, 0, '', '']
+	self.status_local()
+	drive_info = {}
+	if drive >= len(self.drives):
+		rc = [e_errors.ERROR, 0, 'No such drive', 'No such drive']
+		drive_info['state'] = 'noinfo'
+		drive_info['state'] = 'noinfo'
+		drive_info['status'] = 'N/A'
+		return rc
+	if self.drives[drive] == EMPTY:
+		drive_info['volume'] = ''
+	else:
+		drive_info['volume'] = self.drives[drive]
+	drive_info['state'] = 'online'
+	drive_info['type'] = 'N/A'
+	if drive_info['volume'] == '':
+		drive_info['status'] = 'available'
+	else:
+		drive_info['status'] = 'in use'
+	ticket['drive_info'] = drive_info
+	return e_errors.OK, 0, '', ''
+
+def get_mtx_status(device):
+	"""
+	to use with new mtx to get information about all tape drives and volumes in the robot.
+	"""
+
+	Trace.log(e_errors.INFO, "get_mtx_status %s"%(device,))
+        message = ""
+        p2cread, p2cwrite = os.pipe()
+        c2pread, c2pwrite = os.pipe()
+
+        pid = os.fork()
+
+        if pid == 0:
+            # Child
+            for i in 0, 1, 2:
+                try:
+                    os.close(i)
+                except os.error:
+                    pass
+            if os.dup(p2cread) <> 0:
+                Trace.log(e_errors.ERROR, 'ERROR: timed_command pc2cread bad read dup')
+            if os.dup(c2pwrite) <> 1:
+                Trace.log(e_errors.ERROR, 'ERROR: timed_command c2pwrite bad write dup')
+            if os.dup(c2pwrite) <> 2:
+                Trace.log(e_errors.ERROR, 'ERROR: timed_command c2pwrite bad error dup')
+            MAXFD = 10 # Max number of file descriptors (os.getdtablesize()???)
+            for i in range(3, MAXFD):
+                try:
+                    os.close(i)
+                except:
+                    pass
+            try:
+                #I know this is hard-coded and inflexible. That is what I want so as to
+                #prevent any possible security problem.
+                mtx.cvar.device = device
+                mtx.cvar.absolute_addressing = 1
+                mtx.open_device()
+                mtx.status()
+            except:
+                exc, msg, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR, 'command failed:  %s %s %s'% (exc, msg, traceback.format_tb(tb)))
+                os._exit(1)
+	    Trace.log(e_errors.INFO, "CHILD exits")
+
+        try:
+            sys.stdout.flush()
+	    sys.stderr.flush()
+            os.close(p2cread)
+            os.close(c2pwrite)
+            os.close(p2cwrite)
+        except:
+            pass
+
+        #wait for child to complete, or kill it
+        start = time.time()
+        active=0
+        (p,r) = (0,0)
+        try:
+            while active<60:
+                p,r = os.waitpid(pid, os.WNOHANG)
+                if p!=0:
+		    Trace.log(e_errors.INFO, "BREAK")
+                    break
+	        #We need to start reading this now for really long responses.
+		# Otherwise, the buffer fills up with the child waiting
+		# for the parent to read something from the full buffer.
+		# And the parent waits for the child to finish.
+	        msg=os.read(c2pread,2000)
+		if msg:
+		    message = message+msg
+		    #print "MSG",  message
+		    #Need to reset the timeout period.
+		    start = time.time()
+		    active = 0
+		else:
+		    active = time.time() - start
+		    time.sleep(1)
+            else:
+                msg1="killing %d" % (pid,)
+                print timeofday.tod(),msg1
+                os.kill(pid,signal.SIGTERM)
+                time.sleep(1)
+                p,r = os.waitpid(pid,os.WNOHANG)
+                if p==0:
+                    msg1="kill -9ing %d" % (pid,)
+                    print timeofday.tod(),msg1
+                    os.kill(pid,signal.SIGKILL)
+                    time.sleep(2)
+                    p,r = os.waitpid(pid,os.WNOHANG)
+        except OSError, detail:
+	    os.close(c2pread)
+            if detail[0] != errno.ECHILD:
+                exc, msg, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR, 'wait for child failed:  %s %s %s'% (exc, msg, traceback.format_tb(tb)))
+		return None
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, 'wait for child failed:  %s %s %s'% (exc, msg, traceback.format_tb(tb)))
+	    os.close(c2pread)
+            return None
+	os.close(c2pread)
+        return message
+
+############################################################
+## This class is for drive and slot addresses matching with IBM addresses
+## It uses direct calls to mtx routines via SWIG interface
+#############################################################
+class MTXN_MediaLoader(MediaLoaderMethods):
+    def update_db(self, ticket):
+        Trace.trace(ACTION_LOG_LEVEL, 'update_db called with %s'%(ticket,))
+	"""
+        ticket = {'work': 'loadvol',
+		  'function':  'mount',
+		  'vol_ticket': vol_info,
+		  'drive_id'       : drive
+		  }
+	 """
+	ticket['function'] = 'updatedb'
+	#Make sure this request has all the necessary information included.
+        return self.DoWork( self.updatedb, ticket)
+
+    def DoWork(self, function, ticket):
+
+        #The function immediately called by dispatching worker should have
+	# set a 'function' field in the ticket.
+        Trace.trace(ACTION_LOG_LEVEL, 'DoWork received %s %s'%(function, ticket))
+        if not ticket.has_key('function'):
+            err_msg = "MISSING FUNCTION KEY"
+	    ticket['status'] = (e_errors.MALFORMED, 0, err_msg)
+	    Trace.log(e_errors.ERROR, "%s" % (ticket['status'],))
+	    return ticket['status']
+
+        # if this a duplicate request, drop it
+	if self.exists_in_work_list(ticket):
+	    message = "duplicate request, drop it %s %s" % \
+		      (repr(ticket['r_a']), repr(ticket['r_a']))
+	    Trace.trace(ACTION_LOG_LEVEL, message)
+	    return
+
+        #Output what we intend to do.
+	common_message = self.get_common_message_string(ticket)
+	Trace.trace(ACTION_LOG_LEVEL, "REQUESTED %s" % (common_message,))
+
+	###
+	### Determine if we need to drop the request for one reason or another.
+	###
+
+	# Let work list length exceed max_work for cleanCycle.
+	if ticket['function'] == "cleanCycle":
+	    pass
+        #elif ticket['function'] in ["homeAndRestart"]:
+	#    pass
+        elif ticket['function'] in ("mount", "dismount", "eject", "insert"):
+            # If we have max number of working children processes, assume
+	    # client will resend the request.
+            if len(self.work_list) >= self.max_work:
+	        message = "MC Overflow: %s %s" % \
+			  (repr(self.max_work), common_message)
+                Trace.log(e_errors.INFO, message)
+
+		#Need to call reply_to_caller() here since the request has
+		# not been processed far enough for WorkDone() to reply
+		# for us.
+		ticket['status'] = (e_errors.MC_QUEUE_FULL, 0,
+				    "retry later")
+		self.reply_to_caller(ticket)
+                return
+	    # Else if the work queue is temporarily closed, assume client
+	    # will resend the request.
+            elif self.workQueueClosed and len(self.work_list) > 0:
+	        message = "MC Queue Closed: %s %s" % \
+			  (repr(len(self.work_list)), common_message)
+                Trace.log(e_errors.INFO, message)
+                return
+
+	    # If drive is doing a clean cycle; drop request and assume client
+	    # will resend the request.
+	    if ticket['function'] in ("mount", "dismount"):
+		for i in self.work_list:
+		    try:
+                        if (i['function'] == "cleanCycle" and \
+			    i.has_key('drive_id') and \
+			    i['drive_id'] == ticket['drive_id']):
+
+			    message = "Dropped %s request for %s in %s, " \
+				      "drive in cleaning cycle." % \
+				      (ticket['function'],
+				       ticket['vol_ticket']['external_label'],
+				       ticket['drive_id'])
+			    Trace.log(e_errors.INFO, message)
+			    return
+		    except:
+		        Trace.handle_error()
+			Trace.log(e_errors.ERROR, "ERROR %s" % (i,))
+	else: # query requests
+	    if len(self.work_query_list) >= self.max_work:
+	        #If the request work list is full, drop request and assume
+		# the client will resent the request.
+		return
+
+        ### Otherwise, we can process work.
+
+	#Output what we are going to do.
+	Trace.log(e_errors.INFO, "PROCESSING %s" % (common_message,))
+
+        # If function is insert and queue not empty: close work queue and
+	# set values to prepare for completing this operation once all
+	# pending requests are fullfilled.
+        if ticket['function'] == "insert":
+            if len(self.work_list) > 0:
+               self.workQueueClosed = 1
+               self.timeInsert = time.time()
+               self.insertRA = ticket['r_a']
+               return
+            else:
+               self.workQueueClosed = 0
+
+        # If not a duplicate request or dropped request; fork the work.
+        self.p = os.pipe()
+	cmd_executor = multiprocessing.Process(target=self.executor, args = (function, ticket, self.p, common_message))
+	#cmd_executor.start()
+	self.add_select_fd(self.p[0]) #wait for reading half of pipe.
+	# add entry to outstanding work
+	self.add_to_work_list(ticket)
+	# log the new work list
+	self.log_work_list(ticket)
+	cmd_executor.start()
+	return
+
+    def executor(self,  function, ticket, comm_pipe, common_message):
+        #  in child process
+	message = "mcDoWork> child begin %s" % (common_message,)
+        Trace.trace(ACTION_LOG_LEVEL, message)
+        # do the work ...
+
+        # ... if this is a mount, dismount first
+        if ticket['function'] == "mount":
+	    message = "mcDoWork> child prepare dismount for %s" % \
+			(common_message,)
+            Trace.trace(ACTION_LOG_LEVEL, message)
+
+	    # don't print a failure  (no tape mounted) message that is
+	    # really a success
+            self.logdetail = 0
+	    # To Do: The downside to passing the volume we want to mount is
+	    # that there is a warning message about the MC expecting to
+	    # unmount that tape.  Some blank value should be passed to
+	    # avoid that false warning.
+	    dismount_ticket = {'work'           : 'unloadvol',
+			       'vol_ticket'     : ticket['vol_ticket'],
+			       'drive_id'       : ticket['drive_id'],
+			       }
+	    sts = self.prepare(dismount_ticket)
+            self.logdetail = 1 # back on
+
+	    message = "%s returned %s" % (message, sts[2])
+            Trace.trace(ACTION_LOG_LEVEL, message)
+
+	    # XXX - Why isn't sts processed for errors here?
+
+	message = "mcDoWork> child doing %s" % (common_message,)
+	Trace.trace(ACTION_LOG_LEVEL, message)
+
+	sts = function(ticket) #Call the function!
+
+	message = "mcDoWork> child %s returned %s" % (common_message, sts)
+	Trace.trace(ACTION_LOG_LEVEL, message)
+
+        ticket["status"] = sts
+        # Send status back to MC parent via pipe then via dispatching_worker
+	# and WorkDone ticket so dispatching_worker calls WorkDone().
+	ticket['work'] = "WorkDone"
+
+        #There must be a better way to write to the pipe connected to the
+	# parent process.  Probably with callback.py.
+	msg = repr(('0','0',ticket))
+	bytecount = "%08d" % (len(msg),)
+	try:
+		os.write(comm_pipe[1],  bytecount)
+		os.write(comm_pipe[1],  msg)
+		os.close(comm_pipe[1])
+	except (OSError, IOError), msg:
+		message = "mcDoWork> child %s failed reporting to parent: %s" \
+			  % (common_message, str(msg))
+		Trace.log(e_errors.ERROR, message)
+	except:
+		Trace.handle_error()
+
+        return
+
+    def WorkDone(self, ticket):
+        # remove work from outstanding work list
+        self.remove_from_work_list(ticket)
+        # log what was done
+        status = ticket.get('status', None)
+        if status and e_errors.is_ok(status[0]):
+            level = e_errors.INFO
+        else:
+            level = e_errors.ERROR
+        common_message = self.get_common_message_string(ticket)
+        Trace.log(level, "FINISHED %s returned %s" % (common_message, status))
+        # log the new work list
+        self.log_work_list(ticket)
+        if not ticket.get('no_reply', None):
+            self.reply_to_caller(ticket)
+	os.close(self.p[1])
+
+    def __init__(self, medch, max_work=1, csc=None):
+
+        MediaLoaderMethods.__init__(self,medch,max_work,csc)
+	Trace.init(self.log_name, 'yes')
+	self.max_work = 1
+	self.work_functions.append('updated_db')
+
+        # Mark our cached status info as invalid
+        self.status_valid = 0;
+	self.DEBUG = True
+        # Read the device name to use.
+        if self.mc_config.has_key('device_name'):
+            self.device_name = self.mc_config['device_name']
+        else:
+            self.device_name = '/dev/sgb' #best guess
+            Trace.log(e_errors.ERROR,
+                      'mtx: no device specified.  Guessing /dev/sgb')
+
+        # Read the value for the timeout on status commands.
+        if self.mc_config.has_key('status_timeout'):
+            self.status_timeout = self.mc_config['status_timeout']
+        else:
+            self.status_timeout = 60 #best guess
+            Trace.log(e_errors.ERROR,
+                      'mtx no status timeout specified.  Using 5 seconds')
+
+        # Read the value for the timeout on mount commands.
+        if self.mc_config.has_key('mount_timeout'):
+            self.mount_timeout = self.mc_config['mount_timeout']
+        else:
+            self.mount_timeout = 300 #best guess
+            Trace.log(e_errors.ERROR,
+                      'mtx no mount timeout specified.  Using %s seconds'%(self.mount_timeout,))
+	self.sudo_cmd = self.mc_config.get('sudo_cmd','')
+
+	## status_local()
+	self.manager = multiprocessing.Manager()
+	self.q = multiprocessing.Queue()
+	self.status_local()
+	#a, b = return_by(self.status_local, (), self.status_timeout)
+	#if a == -1:
+	#	Trace.log(e_errors.ERROR, ' mtx status request timeout')
+
+        Trace.log(e_errors.INFO,
+                  'MTX_MediaLoader initialized with device: %s status time limit: %s mount time limit: %s '%
+                  (self.device_name, self.status_timeout, self.mount_timeout))
+	self.start_mtx_server()
+
+    def _mtx_server(self, read_pipe, write_pipe, err_pipe):
+        print "STARTING"
+	mtx.cvar.device = self.device_name
+	mtx.cvar.absolute_addressing = 1
+	mtx.open_device()
+	mtx.status()
+        Trace.log(e_errors.INFO, "MTX server started")
+
+	for i in 0, 1, 2:
+            try:
+                os.close(i)
+            except os.error:
+                pass
+	if os.dup(read_pipe) <> 0:
+            Trace.log(e_errors.ERROR, '_mtx_server read_pipe bad read dup')
+	if os.dup(write_pipe) <> 1:
+            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad write dup')
+        if os.dup(err_pipe) <> 2:
+            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad error dup')
+	MAXFD = 10 # Max number of file descriptors (os.getdtablesize()???)
+        for i in range(3, MAXFD):
+            try:
+                os.close(i)
+            except:
+                pass
+	Trace.log(e_errors.INFO, "MTX server: Starting loop")
+	while True:
+	    try:
+		r, w, x = select.select([read_pipe], [], [], 60)
+
+	    except (select.error, OSError, IOError), msg:
+		Trace.log(79, "select error in timed_command(): %s" % \
+				  (str(msg),))
+
+		if msg.args[0] in [errno.EINTR]:
+			r, w, x = [], [], []
+			#The process was interupted by a signal; we need
+			# to keep it going.
+			continue
+		else:
+			#We want to jump to the error handling code.
+			raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
+	    except:
+		exc, msg, tb = sys.exc_info()
+		Trace.log(e_errors.ERROR, "MTX server failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
+		return
+	    if read_pipe not in r:
+		    continue
+	    raw_msg = os.read(read_pipe, 2000)
+	    Trace.trace(ACTION_LOG_LEVEL, "MTX server: received: %s"%(raw_msg,))
+	    # message must be: 'cmd', 'arg1, arg2, arg3'
+	    # try to execute:
+	    pars = raw_msg.strip().split(',')
+	    cmd = pars[0]
+	    args = pars[1:len(pars)]
+	    pid_to_send_back = args[2]
+	    Trace.trace(ACTION_LOG_LEVEL, "MTX server: cmd: %s args %s"%(cmd, args))
+	    #func = getattr(self,cmd)
+	    if cmd in ["Load", "Unload"]:
+		    try:
+			Trace.log(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
+			a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
+			Trace.log(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
+			if -1 == a:
+			    Trace.log(ACTION_LOG_LEVEL, ' mtx unmount timeout')
+		    except:
+			Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
+										       sys.exc_info()[1],
+										       sys.exc_info()[2]))
+		    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
+		    sys.stdout.flush()
+		    sys.stderr.flush()
+
+	Trace.log(e_errors.ERROR, "MTX server exited (should never happen)")
+
+    def start_mtx_server(self):
+        self.p2cread, self.p2cwrite = os.pipe()
+        self.c2pread, self.c2pwrite = os.pipe()
+	self.stop_mtx_server = False
+
+	self.server = multiprocessing.Process(target=self._mtx_server, args = (self.p2cread,self.c2pwrite,self.c2pwrite))
+	self.server.start()
+
+
+    def send_command(self, command_string, timeout):
+	#  command_string must be: 'cmd,arg1,arg2,arg3'
+        message = ""
+	now=timeofday.tod()
+        start = time.time()
+        active=0
+	end_of_response = 'pid_%s'%command_string.split(',')[-1]
+	#Trace.trace(ACTION_LOG_LEVEL, 'send_command: expected end of reply %s'%(end_of_response,))
+	Trace.trace(e_errors.INFO, 'send_command: expected end of reply %s'%(end_of_response,))
+	(dum,mark) = self.delta_t(0)
+
+	os.write(self.p2cwrite,command_string)
+        try:
+            while active<timeout:
+		"""
+		For some reason is_alive traces back and
+                if not self.server.is_alive():
+		    #When we detect that the process has exited, leave
+		    # the loop.  This allows us to avoid the ETIMEDOUT
+		    # and re-raised select errors.
+                    break
+		"""
+	        #We need to start reading this now for really long responses.
+		# Otherwise, the buffer fills up with the child waiting
+		# for the parent to read something from the full buffer.
+		# And the parent waits for the child to finish.
+		wait_duration = max(timeout - active, 0)
+		try:
+		    r, w, x = select.select([self.c2pread], [], [], wait_duration)
+		except (select.error, OSError, IOError), msg:
+		    Trace.log(79, "select error in timed_command(): %s" % \
+			      (str(msg),))
+		    if msg.args[0] in [errno.EINTR]:
+		        r, w, x = [], [], []
+			#The process was interupted by a signal; we need
+			# to keep it going.
+			active = time.time() - start
+		        continue
+		    else:
+		        #We want to jump to the error handling code.
+		        raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
+
+		#If nothing was received, we want to wait again instead of
+		# falling into the os.read().  If the robot side hangs
+		# without closing the pipe we can timeout in select(), but
+		# not read().
+		if self.c2pread not in r:
+		    active = time.time() - start
+		    time.sleep(1)
+		    continue
+	        raw_msg = os.read(self.c2pread, 2000)
+		if raw_msg:
+		    if self.DEBUG:
+			if end_of_response in raw_msg:
+				break
+		    message = message + raw_msg
+		    #Need to reset the timeout period.
+		    start = time.time()
+		    active = 0
+		else:
+		    if raw_msg == '':
+		        blanks = blanks+1
+		    active = time.time() - start
+		    time.sleep(1)
+            else:
+	        #We want to jump to the error handling code.
+               a, b = return_by(self.status_local, (), self.status_timeout) # refresh location lists.
+	       if a == -1:
+		       Trace.log(e_errors.ERROR, ' mtx status request timeout')
+	       raise select.error(errno.ETIMEDOUT, None)
+
+	except (KeyboardInterrupt, SystemExit):
+	    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+	    #Log the original error.
+            exc, msg, tb = sys.exc_info()
+	    message = "send_command wait for child failed doing: %s" % (command_string,)
+            Trace.log(e_errors.ERROR, message)
+	    Trace.handle_error(exc, msg, tb)
+	    del tb  #avoid cyclic references
+
+            return -1,[], self.delta_t(mark)[0]
+
+	Trace.trace(ACTION_LOG_LEVEL, "send_command: message %s"%(message,))
+	response = message.split('\012')
+	Trace.trace(ACTION_LOG_LEVEL, "send_command: response %s"%(response,))
+	if 'Load' in command_string or 'Unload' in command_string:
+	    for l in response:
+		if 'Failed' in l:
+		     return (e_errors.ERROR, e_errors.ERROR, '', l)
+	    if '' in message:
+		return (e_errors.OK, e_errors.OK, None, '', '')
+	    else:
+		return (e_errors.ERROR, e_errors.ERROR, [], "", '')
+	else:
+	    return (e_errors.ERROR, e_errors.ERROR, [], "", '')
+
+    #########################################################################
+    # These functions are overridden from the generic class.
+    #########################################################################
+
+    # query robot
+    def query_robot(self, ticket):
+        __pychecker__ = "no-argsused"
+	rc = self.robot_status()
+	return (e_errors.OK, 0, rc, "", "")
+
+    # load volume into the drive;
+    def load(self, ticket):
+        """
+	external_label,    # volume external label
+	drive,             # drive id
+	media_type):       # media type
+	"""
+        drive = ticket['drive_id']
+	external_label = ticket['vol_ticket']['external_label']
+	media_type = ticket['vol_ticket']['media_type']
+        Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to load %s of type %s into drive %s'%(external_label, media_type, drive))
+        return self.retry_function(self.mtx_mount, external_label,
+				   drive, media_type)
+
+    # unload volume from the drive
+    def unload(self, ticket):
+        """
+	external_label,  # volume external label
+	drive,           # drive id
+	media_type):     # media type
+	"""
+        drive = ticket['drive_id']
+	external_label = ticket['vol_ticket']['external_label']
+	media_type = ticket['vol_ticket']['media_type']
+        Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to unload %s of type %s from drive %s'%(external_label, media_type, drive))
+        return self.retry_function(self.mtx_dismount, external_label,
+				   drive, media_type)
+
+    def insert(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"MTX media changer does not support this operation.")
+
+    def eject(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"MTX media changer does not support this operation.")
+
+    #########################################################################
+    # These functions are internal functions specific to MTX media changer.
+    #########################################################################
+
+    # Find the tape and mount it in the drive.
+    def mtx_mount(self,volume, drive, media_type="", view_first=1):
+        __pychecker__ = "unusednames=media_type,view_first"
+
+        try:
+            dr = self.locate_drive(drive) # index in self.drives
+        except:
+            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx_mount unrecognized drive: %s'%(drive,))
+	if dr < 0:
+            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx_mount unrecognized drive: %s'%(drive,))
+
+        s,d = self.locate_volume(volume) # indices in self.slots, and self.drives correspondingly
+        if s == -1:
+            if d == -1:
+                Trace.log(e_errors.ERROR,
+                          'mtx cant mount tape. Not in library')
+                return ('ERROR', e_errors.ERROR, [],'' ,\
+                        'mtx cant mount tape. Not in library')
+	    elif dr == d:
+		return (e_errors.OK, e_errors.OK, [], '', 'Already in drive %s'%(drive,))
+            else:
+                Trace.log(e_errors.ERROR,
+                          'mtx cant mount tape. Already in drive %s'%(drive,))
+                return (e_errors.ERROR, e_errors.MC_VOLNOTHOME, [],'' ,\
+                        'mtx cant mount tape. Already in drive %d'%(d,))
+
+	if not self.is_empty(dr):
+		Trace.log(e_errors.ERROR, 'mtx cant mount tape. Drive %s is not empty: %s'%(dr,self.drives[dr]))
+		return (e_errors.ERROR, e_errors.MC_DRVNOTEMPTY, [],'' ,
+			'mtx cant mount tape. Drive %s is not empty: %s'%(drive,self.drives[dr]['volume']))
+        Trace.log(e_errors.INFO, 'found %s in slot %s ...mounting'%(volume, self.slots[s]['address']))
+	rc = self.send_command('Load,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'],  os.getpid()), self.mount_timeout)
+	if rc[1] == e_errors.OK:
+	    Trace.trace(ACTION_LOG_LEVEL, 'updating DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+	    mutable_dict = self.slots[s]
+	    mutable_dict['volume'] = EMPTY
+	    self.slots[s] = mutable_dict
+	    mutable_dict = self.drives[dr]
+	    mutable_dict['volume'] = volume
+	    self.drives[dr] = mutable_dict
+	    Trace.trace(ACTION_LOG_LEVEL, 'updated DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+
+	return rc
+
+    # is tape drive empty
+    def is_empty(self, drive_index):
+        if 0 == self.status_valid:
+            a, b = return_by(self.status_local, (), self.status_timeout)
+            if -1 == a:
+                Trace.log(e_errors.ERROR, 'mtx status request timeout')
+                return False
+            self.status_valid = 1
+
+        if self.drives[drive_index]['volume'] == EMPTY:
+            return True
+        else:
+            return False
+
+    # Find a free slot and unmount the tape from the drive.
+    def mtx_dismount(self,volume, drive, media_type="", view_first=1):
+        __pychecker__ = "unusednames=media_type,view_first"
+
+        try:
+            dr = self.locate_drive(drive) # index in self.drives
+        except:
+            Trace.log(e_errors.ERROR, 'mtx_dismount unrecognized drive: %s'%(drive,))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx_dismount unrecognized drive: %s'%(drive,))
+
+	if dr < 0:
+            Trace.log(e_errors.ERROR, 'mtx_dismount unrecognized drive: %s'%(drive,))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx_dismount unrecognized drive: %s'%(drive,))
+
+        s,d = self.locate_volume(volume) # indices in self.slots, and self.drives correspondingly
+	if s > -1 and d < 0:
+	    # not in drive
+	    return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx unload: Not in drive. In slot %s'%(s,))
+
+	if self.is_empty(dr): # no need to dismount
+            return (e_errors.OK, 0, None, "", "")
+
+        s,ignore = self.locate_volume(EMPTY)
+
+        if -1 == s:
+            Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx unload: No free slots')
+
+        ignore,d = self.locate_volume(volume)
+
+        if dr != d:
+            Trace.log(e_errors.ERROR, ' mtx unload: %s is in %s, not %s'%
+                      (volume, self.drives[d]['address'], drive))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx unload: %s is not in %s'%
+                    (volume, drive))
+
+
+        Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive, \
+                  '...dismounting'))
+	rc = self.send_command('Unload,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'], os.getpid()), self.mount_timeout)
+	if rc[1] == e_errors.OK:
+            Trace.trace(ACTION_LOG_LEVEL, 'updating DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+	    mutable_dict = self.slots[s]
+	    mutable_dict['volume'] = volume
+	    self.slots[s] = mutable_dict
+	    mutable_dict = self.drives[dr]
+            mutable_dict['volume'] = EMPTY
+	    self.drives[dr] = mutable_dict
+            Trace.trace(ACTION_LOG_LEVEL, 'updated DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+	Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: send_command returned %s"%(rc,))
+	return rc
+
+    # This method indicates where the tape is located within the
+    # library by returning two numbers.  The first number is the slot
+    # number containing the tape or negative one if the tape is not in
+    # a slot.  The second number is the drive number the tape is in or
+    # negative one if the tape is not in a drive.  (slots and drives
+    # are both indexted starting at zero.)  If both numbers are
+    # negative one then the tape is not in the library.  If both
+    # numbers are not negative one then there is either a bug in this
+    # function or multiple tapes that have the same label in the
+    # library.
+    def locate_volume(self, vol):
+        Trace.trace(ACTION_LOG_LEVEL, ' looking for volume %s'%(vol,))
+        if 0 == self.status_valid:
+            a, b = return_by(self.status_local, (), self.status_timeout)
+            if -1 == a:
+                Trace.log(e_errors.ERROR, ' mtx status request timeout')
+                return -1, -1
+            self.status_valid = 1
+        found = False
+        idx_drive = 0
+        for d in self.drives:
+            if vol == d['volume']:
+                found = True;
+                break
+	if found:
+            idx_drive = self.drives.index(d)
+
+        if not found:
+            idx_drive = -1
+	else:
+	    Trace.trace(ACTION_LOG_LEVEL, 'found in drive %s'%(d['address'],))
+
+        found = False
+        idx_slot = 0
+        for s in self.slots:
+            if vol == s['volume']:
+                found = True
+                break
+	if found:
+	    idx_slot = self.slots.index(s)
+
+        if not found:
+            idx_slot = -1
+	else:
+	    Trace.trace(ACTION_LOG_LEVEL, 'found in slot %s'%(s['address'],))
+
+        return idx_slot, idx_drive
+
+    def locate_drive(self, drive_address):
+        Trace.trace(ACTION_LOG_LEVEL, ' looking for drive %s'%(drive_address,))
+	if 0 == self.status_valid:
+              a, b = return_by(self.status_local, (), self.status_timeout)
+	      if -1 == a:
+		      Trace.log(e_errors.ERROR, ' mtx status request timeout')
+		      return -1
+	      self.status_valid = 1
+        found = False
+        idx_drive = 0
+	drive_addr = drive_address
+	if isinstance(drive_addr, str) and drive_addr.isdigit():
+		drive_addr = int(drive_address)
+	if isinstance(drive_addr, int):
+		key = 'address'
+	else:
+		key = 'location'
+	for d in self.drives:
+            if drive_addr == d[key]:
+                found = True;
+                break
+	if found:
+            idx_drive = self.drives.index(d)
+
+        if not found:
+            idx_drive = -1
+        return idx_drive
+
+    #  This method tries to have device 'device' load or unload the tape in
+    #  or from drive number drive back into slot number 'slot'.  The return
+    #  value is anything that MTX printed to stderr.  If mtx hangs,
+    #  this method will never return.
+    def load_unload_local(self, slot, drive, load_command):
+        Trace.log(e_errors.INFO, "MTX %s slot %s drive %s"%(load_command, slot, drive))
+        if load_command not in ("Load", "Unload"):
+            return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
+        if load_command == "Load":
+		mtx.Move(slot, drive)
+        else:
+		mtx.Move(drive, slot)
+
+    # This method blocks while it returns the status of the media
+    # changer at the specified device.
+    # A return value are any messages that mtx printed to stderr.
+    # If mtx hangs, this method will never return.
+    def status_local(self):
+	Trace.log(ACTION_LOG_LEVEL, 'status_local')
+	result = get_mtx_status(self.device_name)
+	self.slots = self.manager.list()
+	self.drives = self.manager.list()
+        errorString = ''
+        if result:
+	      	lines = result.split('\n')
+                index = 0
+                line = lines[index]
+                while '' != line:
+                    line = string.strip(line)
+		    lel = line.split()
+                    if string.find(line, 'Data Transfer Element') != -1:
+			# Expected format:
+			#   Data Transfer Element 257 Phys Loc F2,C1,R2,Z0 SN  00078D2B6E ID ULT3580-TD8 :Empty
+                        # or :
+                        # Data Transfer Element 270 Phys Loc F2,C4,R4,Z0 SN  00078D2B59 ID ULT3580-TD8 :Full (Storage Element 1038 Loaded):VolumeTag = VQ0006L8
+			self.drives.append({}) # mutable dictionary
+			d =    self.drives[-1]
+			d['address'] =  int(lel[3])
+			loc_and_zone = lel[6].split(':')[0]
+			zone_index = loc_and_zone.find('Z')
+			d['location'] =  loc_and_zone[0:zone_index-1] # throw ,Z
+			d['zone'] = loc_and_zone[zone_index:len(loc_and_zone)]
+			d['SN'] = lel[8]
+			d['type'] = lel[10].split(':')[0]
+			d['volume'] = EMPTY
+			if string.find(line, 'Empty') != -1:
+				pass # just to leave status as empty
+			elif string.find(line, 'VolumeTag') != -1:
+                            i1 = string.find(line, '=') + 1
+                            i2 = len(line)
+			    d['volume'] = string.strip(line[i1:i2])
+                            # self.drives.append(string.strip(line[i1:i2]))
+                        else:
+                            #self.drives.append('unlabelled')
+			    d['volume'] = 'unlabelled'
+			self.drives[-1] = d
+                    elif string.find(line, 'Storage Element') != -1:
+			# Expected format     Storage Element 1025 Phys Loc F08,C02,R01,T00  :Full  :VolumeTag=VQ0033L8
+                        # or:
+                        # Storage Element 1037 Phys Loc EMPTY :Empty :VolumeTag=
+			self.slots.append({}) # mutable dictionary
+			d = self.slots[-1]
+			d['address'] =  int(lel[2])
+			d['location'] =  lel[5]
+			d['volume'] = EMPTY
+			if string.find(line, 'Empty') != -1:
+				pass # just to leave status as empty
+                        elif string.find(line, 'VolumeTag') != -1:
+                            i1 = string.find(line, '=') + 1
+                            i2 = len(line)
+			    d['volume'] = string.strip(line[i1:i2])
+                            #self.slots.append(string.strip(line[i1:i2]))
+                        else:
+			    d['volume'] = 'unlabelled'
+			self.slots[-1] = d
+                    index = index+1
+                    line = lines[index]
+		self.status_valid = 1
+	else:
+            Trace.log(e_errors.ERROR,
+                      'mtx status returned no result %s'%(result,))
+        return errorString
+
+    # return status of all drives and slots
+    def robot_status(self):
+        result = enstore_functions2.shell_command("%s mtx -f %s status | grep 'Data Transfer Element'"%(self.sudo_cmd, self.device_name))
+
+	return result
+
+    # getVolState in the drive; default overridden for other media changers
+    def getVolState(self, ticket):
+        __pychecker__ = "no-argsused"
+        ticket['status'] = e_errors.OK
+        slot, drive = self.locate_volume(ticket['external_label'])
+	Trace.trace(ACTION_LOG_LEVEL, 'getVolState slot:%s, drive %s'%(slot, drive,))
+        if slot < 0 and drive < 0:
+            ticket['status'] = e_errors.MC_VOLNOTFOUND
+        elif slot < 0 and drive >= 0:
+            ticket['state'] = 'M'
+            ticket['phys_location'] = ('%s,%s'%(self.drives[drive]['location'], self.drives[drive]['zone']))
+            ticket['location'] = self.drives[drive]['address']
+	    ticket['SN'] = self.drives[drive]['SN']
+        elif slot >= 0:
+		if drive < 0 or ticket['external_label'] == EMPTY:
+			ticket['state'] = 'O'
+			ticket['location'] = self.slots[slot]['address']
+			ticket['phys_location'] = self.slots[slot]['location']
+        return (ticket.get('status'), ticket.get('location'), ticket.get('media_type'), ticket.get('state'))
+
+    def getDriveState(self, ticket):
+	try:
+		drive = self.locate_drive(ticket['drive'])
+	except:
+		drive = -1
+	drive_info = {}
+	if drive < 0:
+		rc = [e_errors.ERROR, 0, 'No such drive', ticket['drive']]
+		drive_info['state'] = 'noinfo'
+		drive_info['status'] = 'N/A'
+		return rc
+	if self.drives[drive]['volume'] == EMPTY:
+		drive_info['volume'] = ''
+	else:
+		drive_info['volume'] = self.drives[drive]['volume']
+	drive_info['state'] = 'online'
+	drive_info['type'] = self.drives[drive]['type']
+	drive_info['phys_location'] = ('%s,%s'%(self.drives[drive]['location'], self.drives[drive]['zone']))
+	drive_info['location'] = self.drives[drive]['address']
+	drive_info['SN'] = self.drives[drive]['SN']
+	if drive_info['volume'] == '':
+		drive_info['status'] = 'available'
+	else:
+		drive_info['status'] = 'in use'
+	ticket['drive_info'] = drive_info
+	rc = [e_errors.OK, self.drives[drive]['location'], '', '']
+	return rc
+
+    def listDrives(self, ticket):
+	    Trace.log(e_errors.INFO, 'MTX listDrives, called %s'%(ticket,))
+	    drive_list = []
+	    for d in self.drives:
+		    drive_info = copy.copy(d)
+		    drive_info['name'] = ('%s(%s,%s)'%(d['address'], d['location'], d['zone']))
+		    drive_info['state'] = 'online'
+		    drive_info['type'] = d['type']
+		    if drive_info['volume'] ==  EMPTY:
+			    drive_info['status'] = 'available'
+			    drive_info['volume'] = ''
+		    else:
+			    drive_info['status'] = 'in use'
+		    drive_list.append(drive_info)
+	    ticket['drive_list'] = drive_list
+	    return (e_errors.OK, 0, None)
+
+    def updatedb(self, ticket):
+        Trace.trace(ACTION_LOG_LEVEL, 'updatedb: ticket %s'%(ticket,))
+	rc = [e_errors.OK, 0, '', '']
+	if not ticket['drive']['address']:
+		# request to re-load staus information
+		Trace.log(e_errors.INFO, 'Starting robot inventory')
+		a, b = return_by(self.status_local, (), self.status_timeout)
+		Trace.log(e_errors.INFO, 'Robot inventory finished')
+		if -1 == a:
+			Trace.log(e_errors.ERROR, ' mtx status request timeout')
+			rc[0] = e_erros.ERROR
+		rc[3] = 'Robot inventory finished'
+		return rc
+
+	drive = self.locate_drive(ticket['drive']['address'])
+	drive = self.locate_drive(ticket['drive']['address'])
+	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: drive index %s'%(drive,))
+	if drive < 0:
+		return [e_errors.ERROR, 0, 'No such drive', 'No such drive']
+	drive_info = self.drives[drive]
+
+        found = False
+        idx_slot = 0
+        for s in self.slots:
+            if ticket['volume']['address'] == s['address']:
+                found = True
+                break
+
+	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: slot %s'%(s,))
+	if found:
+	    idx_slot = self.slots.index(s)
+	else:
+		return [e_errors.ERROR, 0, 'No slot wit address %s'%(ticket['volume']['address'],), 'No such slot']
+	slot_info = self.slots[idx_slot]
+	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: slot[%s] %s'%(idx_slot, slot_info,))
+
+	drive_info['volume'] = ticket['drive']['volume']
+	slot_info['volume'] = ticket['volume']['volume']
+	self.drives[drive] = drive_info
+	self.slots[idx_slot] = slot_info
+	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: returning %s'%(rc,))
+	return rc
+
+    def listSlots(self, ticket):
+	    Trace.trace(ACTION_LOG_LEVEL, 'listSlots')
+	    slot_list = []
+	    total = len(self.slots)
+	    used = 0
+	    free = 0
+	    for slot in self.slots:
+		    if slot['volume'] == EMPTY:
+			    free += 1
+		    else:
+			    used += 1
+	    slot_list.append({'media_type': 'all',
+			      'total': total,
+			      'used': used,
+			      'free': free,
+			      'disabled': 0,
+			      'location':0,
+			      })
+	    ticket['slot_list'] = slot_list
+	    return (e_errors.OK, 0, None)
+
+############################################################
+## This class is for drive and slot addresses matching with IBM addresses.
+## It uses direct calls to mtx routines via SWIG interface.
+## This class implements media changer functionality to get used inside of  the mover code.
+## The tape drive, served by the mover must enable Control Path.
+#############################################################
+
+class MTXN_Local_MediaLoader(MediaLoaderMethods):
+
+    def loadvol(self, vol_info, mover, drive):
+        ticket = {'work': 'loadvol',
+		  'function':  'mount',
+		  'vol_ticket': vol_info,
+		  'drive_id'       : drive
+		  }
+ 	Trace.trace(ACTION_LOG_LEVEL, "loadvol %s" % (ticket,))
+	#Make sure this request has all the necessary information included.
+	check_status = self.check_mount_ticket(ticket)
+	if not e_errors.is_ok(check_status[0]):
+	    return check_status
+
+        return self.DoWork( self.load, ticket)
+
+    # wrapper method for client - server communication
+    def unloadvol(self, vol_info, mover, drive):
+        ticket = {'work': 'unloadvol',
+		  'function':  'dismount',
+		  'vol_ticket': vol_info,
+		  'drive_id'       : drive
+		  }
+ 	Trace.trace(ACTION_LOG_LEVEL, "unloadvol %s" % (ticket,))
+	if vol_info['external_label'] == 'Unknown':
+		# client wants to dismount volume, but does not know its labe
+		# check if any volume is in drive
+		rc = self.locate_drive(drive)
+		Trace.trace(ACTION_LOG_LEVEL, "unloadvol: drive info %s"%(rc,))
+		if e_errors.is_ok(rc) and rc['drive_info']['status'] == INUSE:
+			ticket['vol_ticket'] = {'external_label': rc['drive_info']['volume'],
+						'media_type':''}
+		else:
+			return ticket
+
+	#Make sure this request has all the necessary information included.
+	check_status = self.check_mount_ticket(ticket)
+	if not e_errors.is_ok(check_status[0]):
+	    return check_status
+
+        return self.DoWork( self.unload, ticket)
+
+    def GetWork(self):
+	ticket = {'status':(e_errors.OK, 0, None),
+		        'max_work':  self.max_work,
+		  }
+        return ticket
+
+    def DoWork(self, function, ticket):
+        if not ticket.has_key('function'):
+            err_msg = "MISSING FUNCTION KEY"
+	    ticket['status'] = (e_errors.MALFORMED, 0, err_msg)
+	    Trace.log(e_errors.ERROR, "%s" % (ticket['status'],))
+	    return ticket['status']
+
+        #Output what we intend to do.
+	common_message = self.get_common_message_string(ticket)
+	Trace.trace(ACTION_LOG_LEVEL, "REQUESTED %s" % (common_message,))
+
+	###
+	### Determine if we need to drop the request for one reason or another.
+	###
+
+	# Let work list length exceed max_work for cleanCycle.
+	if ticket['function'] == "cleanCycle":
+	    pass
+        #elif ticket['function'] in ["homeAndRestart"]:
+	#    pass
+        elif ticket['function'] in ("mount", "dismount", "eject", "insert"):
+            # If we have max number of working children processes, assume
+	    # client will resend the request.
+            if self.work_in_progress:
+	        message = "MC Overflow: %s %s" % \
+			  (repr(self.max_work), common_message)
+                Trace.trace(ACTION_LOG_LEVEL, message)
+
+		ticket['status'] = (e_errors.MC_QUEUE_FULL, 0,
+				    "retry later")
+                return ticket
+
+        ### Otherwise, we can process work.
+
+	#Output what we are going to do.
+	Trace.trace(ACTION_LOG_LEVEL, "PROCESSING %s" % (common_message,))
+
+	self.work_in_progress = True
+	return self.executor(function, ticket, common_message)
+
+    def executor(self,  function, ticket, common_message):
+        #  in child process
+	message = "mcDoWork> begin %s" % (common_message,)
+        Trace.trace(ACTION_LOG_LEVEL, message)
+
+        # do the work ...
+
+        # ... if this is a mount, dismount first
+        if ticket['function'] == "mount":
+	    message = "mcDoWork> prepare dismount for %s" % \
+			(common_message,)
+            Trace.trace(ACTION_LOG_LEVEL, message)
+
+	    # don't print a failure  (no tape mounted) message that is
+	    # really a success
+            self.logdetail = 0
+	    # To Do: The downside to passing the volume we want to mount is
+	    # that there is a warning message about the MC expecting to
+	    # unmount that tape.  Some blank value should be passed to
+	    # avoid that false warning.
+	    dismount_ticket = {'work'           : 'unloadvol',
+			       'vol_ticket'     : ticket['vol_ticket'],
+			       'drive_id'       : ticket['drive_id'],
+			       }
+	    sts = self.prepare(dismount_ticket)
+            self.logdetail = 1 # back on
+
+	    message = "%s returned %s" % (message, sts[2])
+            Trace.trace(ACTION_LOG_LEVEL, message)
+
+	    # XXX - Why isn't sts processed for errors here?
+
+	message = "mcDoWork> doing %s" % (common_message,)
+	Trace.trace(ACTION_LOG_LEVEL, message)
+
+	sts = function(ticket) #Call the function!
+
+	message = "mcDoWork> function %s returned %s" % (common_message, sts)
+	Trace.trace(ACTION_LOG_LEVEL, message)
+
+        ticket["status"] = sts
+	self.work_in_progress = False
+        return ticket
+
+    def __init__(self, argdict):
+	csc = argdict.get('csc')
+	medch = argdict.get('name')
+	mc_device  = argdict.get('mc_device')
+	status_timeout = argdict.get('status_timeout', 60)
+	mount_timeout = argdict.get('mount_timeout', 300)
+	debug =  argdict.get('debug', False)
+
+        generic_server.GenericServer.__init__(self, csc, medch,
+                                              function = self.handle_er_msg)
+
+	Trace.init(self.log_name, 'yes')
+	self.max_work = 1
+
+        # Mark our cached status info as invalid
+        self.status_valid = 0;
+	self.DEBUG = debug
+	self.device_name = mc_device
+
+	self.status_timeout = status_timeout
+	self.mount_timeout = mount_timeout
+	self.sudo_cmd = ''
+	Trace.log(e_errors.INFO, 'remote MC %s'%(argdict.get('remote_media_changer'),))
+	self.mcc = media_changer_client.MediaChangerClient(csc, argdict.get('remote_media_changer'))
+
+	self.manager = multiprocessing.Manager()
+
+	self.start_mtx_server()
+        Trace.log(e_errors.INFO,
+                  'MTX_MediaLoader initialized with device: %s status time limit: %s mount time limit: %s '%
+                  (self.device_name, self.status_timeout, self.mount_timeout))
+	self.work_in_progress = False # set to True when work is in progress
+
+    def _mtx_server(self, read_pipe, write_pipe, err_pipe):
+	mtx.cvar.device = self.device_name
+	mtx.cvar.absolute_addressing = 1
+	mtx.open_device()
+	mtx.status()
+	sys.stdout.flush()
+	sys.stderr.flush()
+        Trace.log(e_errors.INFO, "MTX server started")
+
+	for i in 0, 1, 2:
+            try:
+                os.close(i)
+            except os.error:
+                pass
+	if os.dup(read_pipe) <> 0:
+            print 'ERROR: _mtx_server read_pipe bad read dup'
+            Trace.log(e_errors.ERROR, '_mtx_server read_pipe bad read dup')
+	if os.dup(write_pipe) <> 1:
+            print 'ERROR: _mtx_server write_pipe bad write dup'
+            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad write dup')
+        if os.dup(err_pipe) <> 2:
+            print 'ERROR: _mtx_server write_pipe: bad error dup'
+            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad error dup')
+	'''
+	MAXFD = 10 # Max number of file descriptors (os.getdtablesize()???)
+        for i in range(3, MAXFD):
+            try:
+                os.close(i)
+            except:
+                pass
+	'''
+	Trace.log(e_errors.INFO, "MTX server: Starting loop")
+	while True:
+            if self.stop_mtx_server.is_set():
+		  Trace.log(e_errors.INFO, "MTX server: Received stop command, exiting")
+		  break
+	    try:
+		r, w, x = select.select([read_pipe], [], [], 60)
+
+	    except (select.error, OSError, IOError), msg:
+		Trace.log(79, "select error in timed_command(): %s" % \
+				  (str(msg),))
+
+		if msg.args[0] in [errno.EINTR]:
+			r, w, x = [], [], []
+			#The process was interupted by a signal; we need
+			# to keep it going.
+			continue
+		else:
+			#We want to jump to the error handling code.
+			raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
+	    except:
+		exc, msg, tb = sys.exc_info()
+		Trace.log(e_errors.ERROR, "MTX server failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
+		return
+	    if read_pipe not in r:
+		    continue
+	    raw_msg = os.read(read_pipe, 2000)
+	    Trace.log(e_errors.INFO, "MTX server: received: %s"%(raw_msg,))
+	    # message must be: 'cmd', 'arg1, arg2, arg3'
+	    # try to execute:
+	    pars = raw_msg.strip().split(',')
+	    cmd = pars[0]
+	    args = pars[1:len(pars)]
+	    Trace.trace(ACTION_LOG_LEVEL, "MTX server: cmd: %s args:%s "%(cmd, args))
+	    if cmd in ["Load", "Unload"]:
+		    try:
+			Trace.trace(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
+			pid_to_send_back = args[2]
+			a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
+
+			Trace.trace(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
+			if a == -1:
+			    Trace.log(e_errors.ERROR, ' mtx mount / unmount timeout')
+		    except:
+			Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
+										       sys.exc_info()[1],
+										       sys.exc_info()[2]))
+		    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
+		    sys.stdout.flush()
+		    sys.stderr.flush()
+
+	Trace.log(e_errors.ERROR, "MTX server exited (should never happen)")
+
+    def start_mtx_server(self):
+        self.p2cread, self.p2cwrite = os.pipe()
+        self.c2pread, self.c2pwrite = os.pipe()
+	self.stop_mtx_server = multiprocessing.Event()
+
+	self.server = multiprocessing.Process(target=self._mtx_server, args = (self.p2cread,self.c2pwrite,self.c2pwrite))
+	self.server.start()
+
+    def send_command(self, command_string, timeout):
+	#  command_string must be: 'cmd,arg1,arg2,arg3'
+        message = ""
+	now=timeofday.tod()
+        start = time.time()
+        active=0
+	end_of_response = 'pid_%s'%command_string.split(',')[-1]
+	Trace.trace(ACTION_LOG_LEVEL, 'send_command: expected end of reply %s'%(end_of_response,))
+	(dum,mark) = self.delta_t(0)
+
+        os.write(self.p2cwrite,command_string)
+        try:
+            while active<timeout:
+	        #We need to start reading this now for really long responses.
+		# Otherwise, the buffer fills up with the child waiting
+		# for the parent to read something from the full buffer.
+		# And the parent waits for the child to finish.
+		wait_duration = max(timeout - active, 0)
+		try:
+		    r, w, x = select.select([self.c2pread], [], [], wait_duration)
+		except (select.error, OSError, IOError), msg:
+		    Trace.log(79, "select error in timed_command(): %s" % \
+			      (str(msg),))
+		    if msg.args[0] in [errno.EINTR]:
+		        r, w, x = [], [], []
+			#The process was interupted by a signal; we need
+			# to keep it going.
+			active = time.time() - start
+		        continue
+		    else:
+		        #We want to jump to the error handling code.
+		        raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
+
+		#If nothing was received, we want to wait again instead of
+		# falling into the os.read().  If the robot side hangs
+		# without closing the pipe we can timeout in select(), but
+		# not read().
+		if self.c2pread not in r:
+		    active = time.time() - start
+		    time.sleep(1)
+		    continue
+	        raw_msg = os.read(self.c2pread, 2000)
+		if raw_msg:
+		    if self.DEBUG:
+		        print "RAW_MSG", raw_msg
+		    if end_of_response in raw_msg:
+			    break
+		    message = message + raw_msg
+		    #Need to reset the timeout period.
+		    start = time.time()
+		    active = 0
+		else:
+		    if raw_msg == '':
+		        blanks = blanks+1
+		    active = time.time() - start
+		    time.sleep(1)
+            else:
+	       raise select.error(errno.ETIMEDOUT, None)
+
+	except (KeyboardInterrupt, SystemExit):
+	    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+	    #Log the original error.
+            exc, msg, tb = sys.exc_info()
+	    message = "send_command wait for child failed doing: %s" % (command_string,)
+            Trace.log(e_errors.ERROR, message)
+	    Trace.handle_error(exc, msg, tb)
+	    del tb  #avoid cyclic references
+            return -1,[], self.delta_t(mark)[0]
+
+	Trace.trace(ACTION_LOG_LEVEL, "send_command: message %s"%(message,))
+	response = message.split('\012')
+	Trace.trace(ACTION_LOG_LEVEL, "send_command: response %s"%(response,))
+	if 'Load' in command_string or 'Unload' in command_string:
+	    for l in response:
+		if 'Failed' in l:
+		     return (e_errors.ERROR, e_errors.ERROR, '', l)
+	    if '' in message:
+		    return (e_errors.OK, e_errors.OK, None, '', '')
+	    else:
+		    return (e_errors.ERROR, e_errors.ERROR, [], "", '')
+
+	else:
+	    return (e_errors.ERROR, e_errors.ERROR, [], "", '')
+
+    #########################################################################
+    # These functions are overridden from the generic class.
+    #########################################################################
+
+    # query robot
+    def query_robot(self, ticket):
+        __pychecker__ = "no-argsused"
+	rc = self.robot_status()
+	return (e_errors.OK, 0, rc, "", "")
+
+    # load volume into the drive;
+    def load(self, ticket):
+        """
+	external_label,    # volume external label
+	drive,             # drive id
+	media_type):       # media type
+	"""
+        drive = ticket['drive_id']
+	external_label = ticket['vol_ticket']['external_label']
+	media_type = ticket['vol_ticket']['media_type']
+        Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to load %s of type %s into drive %s'%(external_label, media_type, drive))
+        return self.retry_function(self.mtx_mount, external_label,
+				   drive, media_type)
+
+    # unload volume from the drive
+    def unload(self, ticket):
+        """
+	external_label,  # volume external label
+	drive,           # drive id
+	media_type):     # media type
+	"""
+        drive = ticket['drive_id']
+	external_label = ticket['vol_ticket']['external_label']
+	media_type = ticket['vol_ticket']['media_type']
+        Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to unload %s of type %s from drive %s'%(external_label, media_type, drive))
+        return self.retry_function(self.mtx_dismount, external_label,
+				   drive, media_type)
+
+    def insert(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"MTX media changer does not support this operation.")
+
+    def eject(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"MTX media changer does not support this operation.")
+
+    #########################################################################
+    # These functions are internal functions specific to MTX media changer.
+    #########################################################################
+
+    def update_db(self, volume_address, volume_name,  drive_address, volume_name_in_drive):
+        Trace.trace(ACTION_LOG_LEVEL, ' update_db %s %s %s %s'%(volume_address, volume_name,  drive_address, volume_name_in_drive))
+	return self.mcc.update_db(volume_address, volume_name,  drive_address, volume_name_in_drive)
+
+    # Find the tape and mount it in the drive.
+    def mtx_mount(self,volume, drive, media_type="", view_first=1):
+       __pychecker__ = "unusednames=media_type,view_first"
+       Trace.log(e_errors.INFO, "mtx_mount %s %s"%(volume, drive))
+       dt = self.locate_drive(drive)
+       Trace.trace(ACTION_LOG_LEVEL, "LOCATE DRIVE returned %s"%(dt,))
+       if not e_errors.is_ok(dt):
+            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(dt,))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx_mount unrecognized drive: %s'%(drive,))
+
+       drive_info = dt['drive_info']
+       if drive_info['status'] == 'in use':
+	       if drive_info['volume'] == volume:
+		       return (e_errors.OK, e_errors.OK, [], '', 'Already in drive %s'%(drive,))
+       elif  drive_info['status'] != 'available':
+		Trace.log(e_errors.ERROR, 'mtx cant mount tape. Drive %s is not empty: %s'%(drive, drive_info['volume']))
+		return (e_errors.ERROR, e_errors.MC_DRVNOTEMPTY, [],'' ,
+			'mtx cant mount tape. Drive %s is not empty: %s'%(drive, drive_info['volume']))
+       vt = self.locate_volume(volume)
+       Trace.trace(ACTION_LOG_LEVEL, "LOCATE VOLUME returned %s"%(vt,))
+       if not e_errors.is_ok(vt):
+            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized volume: %s'%(volume,))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx_mount unrecognized volume: %s'%(volume,))
+
+       if vt['state'] == 'M':
+	       return (e_errors.ERROR, e_errors.ERROR, [], '', 'Mounted in another device %s'%(vt['location'],))
+       elif vt['state'] != 'O':
+	       return (e_errors.ERROR, e_errorsERROR, [], '', 'volume %s state%s'%(volume, vt['state'],))
+       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
+       Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
+       if rc[1] == e_errors.OK:
+	    rt = self.update_db(vt['location'], EMPTY,  drive, volume)
+	    if not e_errors.is_ok(rt):
+	       return (e_errors.ERROR, e_errors.ERROR, [], '', 'update location failed with %s'%(rt,))
+       return rc
+
+    # Find a free slot and unmount the tape from the drive.
+    def mtx_dismount(self,volume, drive, media_type="", view_first=1):
+       __pychecker__ = "unusednames=media_type,view_first"
+       Trace.log(e_errors.INFO, "mtx_dismount %s %s"%(volume, drive))
+       dt = self.locate_drive(drive)
+       if not e_errors.is_ok(dt):
+            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx_mount unrecognized drive: %s'%(drive,))
+       Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: drive query %s"%(dt,))
+       drive_info = dt['drive_info']
+       if drive_info['status'] != 'in use':
+            return (e_errors.OK, 0, None, "", "") # no need to dismount
+       else:
+	    if drive_info['volume'] != volume:
+		    return ('ERROR', e_errors.ERROR, [],'' ,\
+				    'mtx unload: %s is not in %d'%(volume, drive))
+       vt = self.locate_volume(EMPTY)
+       Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: volume_query %s"%(vt,))
+       if not e_errors.is_ok(vt):
+            Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
+            return ('ERROR', e_errors.ERROR, [],'' ,\
+                    'mtx unload: No free slots')
+
+       Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive,  '...dismounting'))
+       # Set free slot busy to avoid conflicts with parallel mover requests.
+       rt = self.update_db(vt['location'], BUSY, drive, volume)
+       if not e_errors.is_ok(rt):
+	       # updatedb failed, so fail the dismount request
+	       rt = self.update_db(vt['location'], EMPTY, drive, volume)
+	       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
+
+       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
+       if rc[1] == e_errors.OK:
+	    rt = self.update_db(vt['location'], volume, drive, EMPTY)
+	    if not e_errors.is_ok(rt):
+	       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
+       return rc
+
+    # This method indicates where the tape is located within the
+    # library by returning two numbers.  The first number is the slot
+    # number containing the tape or negative one if the tape is not in
+    # a slot.  The second number is the drive number the tape is in or
+    # negative one if the tape is not in a drive.  (slots and drives
+    # are both indexted starting at zero.)  If both numbers are
+    # negative one then the tape is not in the library.  If both
+    # numbers are not negative one then there is either a bug in this
+    # function or multiple tapes that have the same label in the
+    # library.
+    def locate_volume(self, vol):
+        Trace.trace(ACTION_LOG_LEVEL, ' looking for volume %s'%(vol,))
+	return self.mcc.viewvol(vol, '')
+
+    def locate_drive(self, drive_address):
+        Trace.trace(ACTION_LOG_LEVEL, ' looking for drive %s'%(drive_address,))
+	return self.mcc.viewdrive(drive_address)
+
+   #  This method tries to have device 'device' load or unload the tape in
+    #  or from drive number drive back into slot number 'slot'.  The return
+    #  value is anything that MTX printed to stderr.  If mtx hangs,
+    #  this method will never return.
+    def load_unload_local(self, slot, drive, load_command):
+        if load_command not in ("Load", "Unload"):
+            return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
+        if load_command == "Load":
+		mtx.Move(slot, drive)
+        else:
+		mtx.Move(drive, slot)
+
+    # return status of all drives and slots
+    def robot_status(self):
+        result = enstore_functions2.shell_command("%s mtx -f %s status | grep 'Data Transfer Element'"%(self.sudo_cmd, self.device_name))
+	return result
+
+    # getVolState in the drive; default overridden for other media changers
+    def getVolState(self, ticket):
+        __pychecker__ = "no-argsused"
+        ticket['status'] = e_errors.OK
+        slot, drive = self.locate_volume(ticket['external_label'])
+        if slot < 0 and drive < 0:
+            ticket['status'] = e_errors.MC_VOLNOTFOUND
+        elif slot < 0 and drive >= 0:
+            ticket['state'] = 'M'
+            ticket['location'] = drive
+        elif slot >= 0 and drive < 0:
+            ticket['state'] = 'O'
+            ticket['location'] = slot
+        return (ticket.get('status'), ticket.get('location'), ticket.get('media_type'), ticket.get('state'))
+
+    def getDriveState(self, ticket):
+	# drive = int(ticket['drive'])
+	drive = ticket['drive']
+	rc = [e_errors.OK, 0, '', '']
+
+	Trace.log(e_errors.INFO, 'calling viewdrive %s'%(drive,))
+	drive_info = self.mcc.viewdrive(drive)
+	Trace.log(e_errors.INFO, 'drive_info %s'%(drive_info,))
+	ticket .update(drive_info)
+	return e_errors.OK, 0, '', ''
+
+    def listDrives(self, ticket):
+	drive_list = self.mcc.list_drives()
+	ticket.update(drive_list)
+	return e_errors.OK, 0, '', ''
 
 #########################################################################
 #
@@ -3549,11 +5136,6 @@ class IBM_3584_MediaLoader(MediaLoaderMethods):
                 exc,val,tb = Trace.handle_error()
                 return str(exc),0,""
         return sts
-
-    # simple elapsed timer
-    def delta_t(self,begin):
-            (ut, st,cut, cst,now) = os.times()
-            return (now-begin, now)
 
     # execute a stk cmd_proc command, but don't wait forever for it to complete
     #mostly stolen from Demo/tkinter/guido/ShellWindow.py - spawn function
