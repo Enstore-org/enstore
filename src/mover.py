@@ -72,6 +72,7 @@ import file_cache_status
 import scsi_mode_select
 import set_cache_status
 import log_client
+import media_changer
 
 DEBUG_LOG=11
 
@@ -182,6 +183,21 @@ def is_threshold_passed(bytes_transfered, bytes_notified, bytes_to_transfer,
         return 1
 
     return 0
+
+def shell_command(command):
+    """
+    Execute shell command.
+
+    :type command: :obj:`str`
+    :arg command: shell command.
+    """
+
+    res = enstore_functions2.shell_command(command)
+    if res:
+        result = res[0] # stdout
+    else:
+        result = None
+    return result
 
 class Buffer:
     """
@@ -831,7 +847,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     Accepts enstore commands and launches specified in it metods.
     """
 
-    def __init__(self, csc_address, name, logclient=None):
+    def __init__(self, csc_address, name, logclient=None, media_changer_client = None):
         """
         :type csc_address: :obj:`tuple`
         :arg csc_address: configuration server host name :obj:`str`, configuration server port :obj:`int`
@@ -844,6 +860,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                               logc=logclient)
 
         self.logclient =  logclient
+        self.mcc = media_changer_client
         self.name = name # log name
         self.shortname = name
         self.unique_id = None #Unique id of last transfer, whether success or failure
@@ -1085,21 +1102,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         return fcc_reply
 
-    def shell_command(self, command):
-        """
-        Execute shell command.
-
-        :type command: :obj:`str`
-        :arg command: shell command.
-        """
-
-        res = enstore_functions2.shell_command(command)
-        if res:
-            result = res[0] # stdout
-        else:
-            result = None
-        return result
-
     def init_data_buffer(self):
         """
         Prepare data buffer for data transfer between media and client.
@@ -1113,7 +1115,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer, crc_seed=self.crc_seed)
         if self.log_mover_state:
             cmd = "EPS | grep %s"%(self.name,)
-            result =  self.shell_command(cmd)
+            result =  shell_command(cmd)
             Trace.log(e_errors.INFO,"Init d_b LOG: PS %s"%(result,))
         Trace.trace(10, "init_data_buffer finished")
 
@@ -1130,7 +1132,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
         if self.log_mover_state or logit:
             cmd = "EPS | grep %s"%(self.name,)
-            result =  self.shell_command(cmd)
+            result =  shell_command(cmd)
             Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
             thread = threading.currentThread()
             if thread:
@@ -1166,7 +1168,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             # that it usally fits into udp message and
             # still is detailed enough
             cmd = "ps -eo user,start,args --cols 100"
-            result =  self.shell_command(cmd)
+            result =  shell_command(cmd)
             Trace.log(e_errors.INFO,"LOG: All running processes \n%s"%(result,))
             thread = threading.currentThread()
             if thread:
@@ -1205,14 +1207,18 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.on_start=0
             return
         cmd = "EPS | grep %s"%(self.name,)
-        result =  self.shell_command(cmd)
+        result =  shell_command(cmd)
         if result == None:
             return
 
         # parse the line
         #result[0].split('\t')
         mem_u = 0.
-        z=result[0].split(' ')
+        try:
+            z=result[0].split(' ')
+        except IndexError, detail:
+            Trace.log(e_errors.WARNING, 'unexpected command return: %s' %(result,))
+            return 1
         #print z
         if z[0] == 'root':
             c = 0
@@ -1252,7 +1258,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.syslog_match:
             try:
                 cmd = "$ENSTORE_DIR/src/match_syslog.py '%s'"%(self.syslog_match)
-                result =  self.shell_command(cmd)
+                result =  shell_command(cmd)
                 if result:
                     for l in result:
                         Trace.log(e_errors.INFO,"SYSLOG Entry:[%s] %s"%(l[:-1],self.current_volume))
@@ -1360,7 +1366,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         Get tape stats.
 
         """
-
         try:
             self.stats = self.tape_driver.get_stats()
             self.block_n = self.stats[self.ftt.BLOCK_NUMBER]
@@ -1521,6 +1526,28 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   write_prot,
                                   self.name)
 
+    def find_mc_drive_address(self, serial_num):
+        """
+        Find media changed drive address corresponding to this mover (for TS4500)
+        :type serial_num: :obj:`str`
+        :arg serial_num: drive serial number
+        :arg drives_table: cvs file, obtained from IBM GUI, containing drives information
+        :rtype: :obj:`int` drive elemen address in TS4500
+        """
+
+        if not serial_num:
+            return None
+
+        ticket = {}
+        mcc_reply = self.mcc.list_drives(ticket)
+        if not e_errors.is_ok(mcc_reply):
+            return None
+        Trace.trace(e_errors.INFO, 'list_drives returned SN %s'%(mcc_reply,))
+        for d in mcc_reply['drive_list']:
+            if serial_num == d.get('SN'):
+                return d.get('address'), d.get('location')
+        return None
+
     def fetch_tape_device(self):
         """
         Tape device is /dev/rmt/tps<n>d<m>n.
@@ -1631,7 +1658,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         # do not restart if some mover processes are already running
         cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
-        result =  self.shell_command(cmd)
+        result =  shell_command(cmd)
         if result:
             if len(result) > 1:
                 Trace.alarm(e_errors.ERROR,"mover is already running, can not restart: %s"%(result,))
@@ -1657,6 +1684,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.state = IDLE
         self.force_clean = 0
+
+        #self.device = device
 
         # get initial fcc and fcc
         try:
@@ -1726,15 +1755,20 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mover_type = self.config.get('type','')
             self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
             self.ip_map = self.config.get('ip_map','')
-            self.mcc = media_changer_client.MediaChangerClient(self.csc,
-                                                               self.config['media_changer'], logc = self.logclient)
-            self.mc_keys = self.csc.get(self.mcc.media_changer)
-            # STK robot can eject tape by either sending command directly to drive or
-            # by pushing a corresponding button
-            if self.mc_keys.has_key('type') and self.mc_keys['type'] == 'STK_MediaLoader':
+            use_local_mc = self.config.get('use_local_mc')
+            if  self.mcc:
+                time.sleep(20)
                 self.can_force_eject = 1
             else:
-                self.can_force_eject = 0
+                self.mcc = media_changer_client.MediaChangerClient(self.csc,
+                                                                   self.config['media_changer'], logc = self.logclient)
+                self.mc_keys = self.csc.get(self.mcc.media_changer)
+                # STK robot can eject tape by either sending command directly to drive or
+                # by pushing a corresponding button
+                if self.mc_keys.has_key('type') and self.mc_keys['type'] == 'STK_MediaLoader':
+                    self.can_force_eject = 1
+                else:
+                    self.can_force_eject = 0
 
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, self.name, self.config)
@@ -1874,6 +1908,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.ftt = __import__("ftt")
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = 0
+
             if self.state == IDLE:
                 good_label = 1
                 try:
@@ -1892,6 +1927,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ALARM, "Can not start: %s"%(detail,))
                     print "Can not start: %s"%(detail,)
                     sys.exit(-1)
+                if use_local_mc:
+                    # Find and set mc drive address
+                    self.mc_device, self.mc_device_phys_location = self.find_mc_drive_address(self.config['serial_num'] )
+                    if not self.mc_device:
+                        Trace.alarm(e_errors.ERROR,'Can not find media changer address for this mover. Will terminate')
+                        sys.exit(-1)
+                    Trace.log(e_errors.INFO, 'MC drive address: %s physical location %s serial number %s'%(self.mc_device, self.mc_device_phys_location, self.config['serial_num'] ))
 
                 if self.config['product_id'] in ("T10000C", "T10000D"):
                     # for T10000C/D set Allow Maximum Capacity (AMC)
@@ -1920,6 +1962,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                     #self.write_counter = 0 # this flag is used in write_tape to verify tape position
                     if status[0]==e_errors.OK:
                         self.current_volume = status[1]
+                        found = False
+                        for i in range(2):
+                            v = self.vcc.inquire_vol(self.current_volume)
+                            if type(v) is type({}) and v.has_key('status') and v['status'][0]==e_errors.OK:
+                                self.vol_info.update(v)
+                                found = True
+                                break
+                            elif v['status'][0] == e_errors.NO_VOLUME:
+                                # Try to add media type as suffix
+                                # TS4500 tapes have labels like VQ0000L8
+                                if self.media_type:
+                                    self.current_volume = self.current_volume+self.media_type
+                                else:
+                                    break
+                        if not found:
+                            Trace.log(e_errors.ERROR, "Can not identify volume %s. Exiting"%(self.current_volume,))
+
                         if self.state == OFFLINE:
                             Trace.log(e_errors.INFO, "Mover is OFFLINE. Performing dismount at startup")
                             self.dismount_volume(after_function=self.offline)
@@ -4179,7 +4238,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if self.client_socket:
                         # get netstat for this socket
                         data_port = self.client_socket.getsockname()[1]
-                        rc = self.shell_command("netstat -t | grep %s"%(data_port,))
+                        rc = shell_command("netstat -t | grep %s"%(data_port,))
                         Trace.trace(22, "write_client: netstat: %s"%(rc,))
                     pass
                 self.bytes_written = self.bytes_written + bytes_written
@@ -7116,6 +7175,74 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.log_processes(logit=1)
         return
 
+    def loadvol(self, vol_ticket):
+        """
+        Load volume into drive using local media changer. For use in TS4500 library.
+
+        This method is invoked via :class:`dispatching_worker.DispatchingWorker`.
+        The corresponding enstore command is::
+
+           enstore mover --mount <mover_name>
+
+        :type vol_ticket: :obj:`dict`
+        :arg vol_ticket: ticket received from mover client
+        """
+
+        if self.state != IDLE:
+            vol_ticket['status'] = (e_errors.ERROR, 'Mover is in state %s'%(state_name(self.state),))
+            self.reply_to_caller(vol_ticket)
+            return
+        Trace.notify("loading %s %s" % (self.shortname, vol_ticket['external_label']))
+        self.state = MOUNT_WAIT
+        mcc_reply = self.mcc.loadvol(vol_ticket, self.name, self.mc_device)
+        status = mcc_reply.get('status') # this status is 5-tuple like ('ok', 'ok', None, '', '')
+        if status and status[0] == e_errors.OK:
+            Trace.notify("loaded %s %s" % (self.shortname, vol_ticket['external_label']))
+            self.current_volume = vol_ticket['external_label']
+            self.state = HAVE_BOUND
+        self.reply_to_caller(mcc_reply)
+
+    def unloadvol(self, vol_ticket):
+        """
+        Unload volume from drive using local media changer. For use in TS4500 library.
+
+        This method is invoked via :class:`dispatching_worker.DispatchingWorker`.
+        The corresponding enstore command is::
+
+           enstore mover --mount <mover_name>
+
+        :type vol_ticket: :obj:`dict`
+        :arg vol_ticket: ticket received from mover client
+        """
+        if not self.state in (HAVE_BOUND, IDLE): # IDLE: tape may be in the mouth of the drive but not in the drive.
+            vol_ticket['status'] = (e_errors.ERROR, 'Mover is in state %s'%(state_name(self.state),))
+            self.reply_to_caller(vol_ticket)
+            return
+        Trace.notify("unload %s %s" % (self.shortname, vol_ticket['external_label']))
+        self.state = DISMOUNT_WAIT
+        mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
+        status = mcc_reply.get('status') # this status is 5-tuple like ('ok', 'ok', None, '', '')
+        if status and status[0] == e_errors.OK:
+            self.state = IDLE
+        self.reply_to_caller(mcc_reply)
+
+    def viewdrive(self, ticket):
+        """
+        View drive information in robotic library via local media changer. Analog of corresponding media changer command.
+        This method is invoked via :class:`dispatching_worker.DispatchingWorker`.
+        The corresponding enstore command is::
+
+           enstore mover --show-drive <mover_name>
+
+        """
+
+        ticket['drive'] = self.mc_device
+        mcc_reply = self.mcc.viewdrive(ticket)
+        Trace.log(e_errors.INFO, 'viewdrive returned %s'%(mcc_reply,))
+
+        status = mcc_reply.get('status') # this status is 5-tuple like ('ok', 'ok', None, '', '')
+        self.reply_to_caller(mcc_reply)
+
     def timer(self, key):
         if not self.current_work_ticket:
             return
@@ -8569,6 +8696,61 @@ class DiskMover(Mover):
         self.reply_to_caller(ticket)
         return
 
+def identify_mc_device(device):
+    """
+    This method is for TS4500 robotic library
+    :type device: :obj:`str`
+    :arg device: tape device in dev/rmt
+    :rtype: media changer device name in /dev
+    """
+
+    # assumig tape device format /dev/rmt/tpsNdMn
+    ret = None
+    ds = device[12:]
+    device_host = ds[:ds.find('d')]
+    Trace.trace(10, 'device %s, device host %s'%(ds, device_host,))
+
+    # now look in dmesg
+
+    path_to_classes = '/sys/class/scsi_changer'
+    if not os.path.exists(path_to_classes):
+        return None
+
+    changers = os.listdir(path_to_classes)
+    for ch in changers:
+        host = os.listdir(os.path.join(path_to_classes, ch, 'device/scsi_device'))[0].split(':')[0] # scsi devise is in format: 10:0:0:1
+        sg = os.listdir(os.path.join(path_to_classes, ch, 'device/scsi_generic'))[0]
+        with open(os.path.join(path_to_classes, ch, 'device/type'), 'r') as f:
+            sg_type = f.readline()[:-1]
+        Trace.trace(10, 'host=%s sg=%s sg type=%s'%(host , sg, sg_type))
+        Trace.trace(10, 'host=%s sg=%s sg type=%s'%(host , sg, sg_type))
+
+        if device_host == host and sg_type == '8': # 8 is the media cnagre device type
+            ret = sg
+            break
+
+    # check if corresponding device exists
+    if ret:
+        changer_dev = '/dev/changer-%s'%(ret,)
+        Trace.trace(10, ' changer device %s'%(changer_dev,))
+        if os.path.exists(changer_dev):
+            Trace.log(e_errors.INFO, 'media changer device %s'%(changer_dev,))
+            return changer_dev
+        else:
+            return None
+
+#@staticmethod
+def create_instance(module_name, class_name, parameters):
+    """
+    Factory method:  create instance of dynamically loaded module
+    Stolen from Dmitry
+    """
+    import importlib
+    my_module = importlib.import_module(module_name)
+    clazz = getattr(my_module, class_name)
+    instance = clazz(parameters)
+    return instance
+
 if __name__ == '__main__':
 
     if len(sys.argv)<2:
@@ -8590,14 +8772,30 @@ if __name__ == '__main__':
 
     import __main__
 
+    #Trace.do_print([10, 100])
+
     constructor=getattr(__main__, mc_type)
     logclient = None
     if use_tcp_log_client:
         logclient = log_client.TCPLoggerClient(csc,  name = '%s.log'%(intf.name,))
-    mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient)
+    use_local_mc = keys.get('use_local_mc')
+    media_changer_cl = None
+    if use_local_mc:
+        mcc_module = use_local_mc.get('module')
+        mcc_class = use_local_mc.get('class')
+        mcc_parameters = use_local_mc.get('parameters')
+        mcc_parameters['csc'] = csc
+        mc_device = identify_mc_device(keys.get('device'))
+        mcc_parameters['remote_media_changer'] = keys.get('media_changer')
+        if not mc_device:
+            Trace.log(e_errors.ERROR, "Can not start. Can not identify media changer device")
+            sys.exit(-1)
+        mcc_parameters['mc_device'] = mc_device
+        media_changer_cl = create_instance(mcc_module, mcc_class, mcc_parameters)
+    mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient, media_changer_client = media_changer_cl)
 
     mover.handle_generic_commands(intf)
-    #mover._do_print({'levels':range(300, 302)})
+    #mover._do_print({'levels':range(10, 100)})
 
     mover.start()
     mover.starting = 0
@@ -8606,6 +8804,10 @@ if __name__ == '__main__':
             mover.serve_forever()
         except SystemExit:
             Trace.log(e_errors.INFO, "mover %s exiting." % (mover.name,))
+            if use_local_mc:
+                mover.mcc.quit({})
+                mover.mcc.stop_mtx_server.set()
+                time.sleep(10)
             os._exit(0)
             break
         except:

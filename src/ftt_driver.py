@@ -415,6 +415,8 @@ class FTTDriver(generic_driver.Driver):
                     del(p)
                     if s:
                         Trace.log(e_errors.ERROR, "eject: mt rewind failed: %s" % (r,))
+                elif string.find(r, "No medium found") >= 0: # there is no media no need to offline
+                    ok = 1
         if not ok:
             Trace.log(e_errors.ERROR, "eject: failed after 3 tries")
             return -1

@@ -96,6 +96,9 @@ Devcodes Devcodes.c  -I$(PYTHONINC) $(BITS_FLAG)
 
 checksumc checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a $(BITS_FLAG)
 #_checksum checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a $(BITS_FLAG)
+#mtxc mtx_wrap_thread.c  -I$(PYTHONINC) -I$(ENSTORE_DIR)/mtx/mtx-1.3.12 libmtx.a $(BITS_FLAG)
+mtxc mtx_wrap_thread.c  -I$(PYTHONINC) /usr/share/doc/mtx-1.3.12/contrib/libmtx.so $(BITS_FLAG)
+#mtxc mtx_wrap_thread.c  -I$(PYTHONINC) -I$(ENSTORE_DIR)/mtx/mtx-1.3.12 mtx_ns.o $(BITS_FLAG)
 
 socket_extc socket_ext_wrap.c  -I$(PYTHONINC) $(BITS_FLAG)
 #_socket_ext socket_ext_wrap.c  -I$(PYTHONINC) $(BITS_FLAG)
