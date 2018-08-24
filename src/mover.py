@@ -1377,7 +1377,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.write_errors = long(self.stats[self.ftt.WRITE_ERRORS])
 
         except (self.ftt.FTTError, TypeError), detail:
-            self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+            self.transfer_failed(e_errors.ERROR, "error getting stats %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
             return
 
     def update_stat(self):
@@ -1386,6 +1386,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         and send it to drivestat server to enter into drivestat DB.
 
         """
+        self.stats = None # need to initialize to something 
         if self.driver_type != 'FTTDriver':
             return
         if self.tape_driver and self.tape_driver.ftt:
@@ -1751,6 +1752,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.do_eject = 1
             self.do_cleaning = 1
             self.rem_stats = 1
+            self.stats_on = 0 # to make TS4500 mover happy
+            self.stats = None # to make TS4500 mover happy
             default_media_type = '8MM'
             self.mover_type = self.config.get('type','')
             self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
@@ -8795,11 +8798,14 @@ if __name__ == '__main__':
 
     mover.start()
     mover.starting = 0
+    Trace.log(e_errors.INFO, "mover %s STARTED." % (mover.name,))
     while 1:
         try:
             mover.serve_forever()
         except SystemExit:
             Trace.log(e_errors.INFO, "mover %s exiting." % (mover.name,))
+            if  mover.mcc:
+                mover.mcc.quit()
             os._exit(0)
         except:
             try:
