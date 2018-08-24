@@ -2160,13 +2160,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break
             elif cur_thread_name == 'tape_thread':
                 Trace.log(e_errors.INFO,"restart was called from tape thread")
+        if  self.mcc:
+            self.mcc.quit()
 
-        # release data buffer
-        #Trace.log(e_errors.INFO, "releasing data buffer")
-        #if self.buffer:
-        #    self.buffer.clear()
-        #    del(self.buffer)
-        #    self.buffer = None
         if do_restart:
             cmd = '/usr/bin/at now+1minute'
             ecmd = "enstore start --just %s\n"%(self.name,)
@@ -8793,7 +8789,7 @@ if __name__ == '__main__':
         mcc_parameters['mc_device'] = mc_device
         media_changer_cl = create_instance(mcc_module, mcc_class, mcc_parameters)
     mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient, media_changer_client = media_changer_cl)
-
+        
     mover.handle_generic_commands(intf)
     #mover._do_print({'levels':range(10, 100)})
 
@@ -8804,12 +8800,7 @@ if __name__ == '__main__':
             mover.serve_forever()
         except SystemExit:
             Trace.log(e_errors.INFO, "mover %s exiting." % (mover.name,))
-            if use_local_mc:
-                mover.mcc.quit({})
-                mover.mcc.stop_mtx_server.set()
-                time.sleep(10)
             os._exit(0)
-            break
         except:
             try:
                 exc, msg, tb = sys.exc_info()
