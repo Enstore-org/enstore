@@ -3237,7 +3237,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
 	drive,             # drive id
 	media_type):       # media type
 	"""
-	Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to load pid %s'%(os.getpid(),))	
+	Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to load pid %s'%(os.getpid(),))
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
 	media_type = ticket['vol_ticket']['media_type']
@@ -3252,7 +3252,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
 	drive,           # drive id
 	media_type):     # media type
 	"""
-	Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to unload pid %s'%(os.getpid(),))	
+	Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to unload pid %s'%(os.getpid(),))
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
 	media_type = ticket['vol_ticket']['media_type']
@@ -3540,7 +3540,6 @@ class MTX_MediaLoader(MediaLoaderMethods):
 	ticket['drive_info'] = drive_info
 	return e_errors.OK, 0, '', ''
 
- 
 def get_mtx_status(device):
 	"""
 	to use with new mtx to get information about all tape drives and volumes in the robot.
@@ -3602,7 +3601,7 @@ def get_mtx_status(device):
             while active<60:
                 p,r = os.waitpid(pid, os.WNOHANG)
                 if p!=0:
-		    Trace.log(e_errors.INFO, "BREAK")	
+		    Trace.log(e_errors.INFO, "BREAK")
                     break
 	        #We need to start reading this now for really long responses.
 		# Otherwise, the buffer fills up with the child waiting
@@ -3616,7 +3615,6 @@ def get_mtx_status(device):
 		    start = time.time()
 		    active = 0
 		else:
-		    #print "ACTIVE", active	
 		    active = time.time() - start
 		    time.sleep(1)
             else:
@@ -3770,7 +3768,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	self.log_work_list(ticket)
 	cmd_executor.start()
 	return
-        
+
     def executor(self,  function, ticket, comm_pipe, common_message):
         #  in child process
 	message = "mcDoWork> child begin %s" % (common_message,)
@@ -3902,7 +3900,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	mtx.cvar.device = self.device_name
 	mtx.cvar.absolute_addressing = 1
 	mtx.open_device()
-	mtx.status()	
+	mtx.status()
         Trace.log(e_errors.INFO, "MTX server started")
 
 	for i in 0, 1, 2:
@@ -3992,7 +3990,6 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	#Trace.trace(ACTION_LOG_LEVEL, 'send_command: expected end of reply %s'%(end_of_response,))
 	Trace.trace(e_errors.INFO, 'send_command: expected end of reply %s'%(end_of_response,))
 	(dum,mark) = self.delta_t(0)
-	
 	os.write(self.p2cwrite,command_string)
         try:
             while active<timeout:
@@ -4072,11 +4069,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	if 'Load' in command_string or 'Unload' in command_string:
 	    for l in response:
 		if 'Failed' in l:
-		     return (e_errors.ERROR, e_errors.ERROR, '', l) 
+		     return (e_errors.ERROR, e_errors.ERROR, '', l)
 	    if '' in message:
 		return (e_errors.OK, e_errors.OK, None, '', '')
 	    else:
-            	return (e_errors.ERROR, e_errors.ERROR, [], "", '')
+		return (e_errors.ERROR, e_errors.ERROR, [], "", '')
 	else:
 	    return (e_errors.ERROR, e_errors.ERROR, [], "", '')
 
@@ -4146,7 +4143,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
             return ('ERROR', e_errors.ERROR, [],'' ,\
                     'mtx_mount unrecognized drive: %s'%(drive,))
-		
+
         s,d = self.locate_volume(volume) # indices in self.slots, and self.drives correspondingly
         if s == -1:
             if d == -1:
@@ -4209,7 +4206,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, 'mtx_dismount unrecognized drive: %s'%(drive,))
             return ('ERROR', e_errors.ERROR, [],'' ,\
                     'mtx_dismount unrecognized drive: %s'%(drive,))
-		
+
         s,d = self.locate_volume(volume) # indices in self.slots, and self.drives correspondingly
 	if s > -1 and d < 0:
 	    # not in drive
@@ -4248,9 +4245,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             mutable_dict['volume'] = EMPTY
 	    self.drives[dr] = mutable_dict
             Trace.trace(ACTION_LOG_LEVEL, 'updated DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
-	
 	Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: send_command returned %s"%(rc,))
-	
 	return rc
 
     # This method indicates where the tape is located within the
@@ -4369,14 +4364,12 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			d['address'] =  int(lel[3])
 			loc_and_zone = lel[6].split(':')[0]
 			zone_index = loc_and_zone.find('Z')
-			
 			d['location'] =  loc_and_zone[0:zone_index-1] # throw ,Z
 			d['zone'] = loc_and_zone[zone_index:len(loc_and_zone)]
 			d['SN'] = lel[8]
 			d['type'] = lel[10].split(':')[0]
 			d['volume'] = EMPTY
-			
- 			if string.find(line, 'Empty') != -1:
+			if string.find(line, 'Empty') != -1:
 				pass # just to leave status as empty
 			elif string.find(line, 'VolumeTag') != -1:
                             i1 = string.find(line, '=') + 1
@@ -4385,7 +4378,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                             # self.drives.append(string.strip(line[i1:i2]))
                         else:
                             #self.drives.append('unlabelled')
-			    d['volume'] = 'unlabelled'	
+			    d['volume'] = 'unlabelled'
 			self.drives[-1] = d
                     elif string.find(line, 'Storage Element') != -1:
 			# Expected format     Storage Element 1025 Phys Loc F08,C02,R01,T00  :Full  :VolumeTag=VQ0033L8
@@ -4441,7 +4434,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         return (ticket.get('status'), ticket.get('location'), ticket.get('media_type'), ticket.get('state'))
 
     def getDriveState(self, ticket):
-	try:   
+	try:
 		drive = self.locate_drive(ticket['drive'])
 	except:
 		drive = -1
@@ -4475,7 +4468,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		    drive_info = copy.copy(d)
 		    drive_info['name'] = ('%s(%s,%s)'%(d['address'], d['location'], d['zone']))
 		    drive_info['state'] = 'online'
-		    drive_info['type'] = d['type'] 
+		    drive_info['type'] = d['type']
 		    if drive_info['volume'] ==  EMPTY:
 			    drive_info['status'] = 'available'
 			    drive_info['volume'] = ''
@@ -4512,7 +4505,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             if ticket['volume']['address'] == s['address']:
                 found = True
                 break
-	
+
 	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: slot %s'%(s,))
 	if found:
 	    idx_slot = self.slots.index(s)
@@ -4548,13 +4541,12 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			      })
 	    ticket['slot_list'] = slot_list
 	    return (e_errors.OK, 0, None)
-		
-	
+
 ############################################################
 ## This class is for drive and slot addresses matching with IBM addresses.
 ## It uses direct calls to mtx routines via SWIG interface.
 ## This class implements media changer functionality to get used inside of  the mover code.
-## The tape drive, served by the mover must enable Control Path.   
+## The tape drive, served by the mover must enable Control Path.
 #############################################################
 
 class MTXN_Local_MediaLoader(MediaLoaderMethods):
@@ -4604,7 +4596,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 		        'max_work':  self.max_work,
 		  }
         return ticket
-	    
+
     def DoWork(self, function, ticket):
         Trace.trace(ACTION_LOG_LEVEL, 'DoWork received %s %s'%(function, ticket))
         if not ticket.has_key('function'):
@@ -4645,7 +4637,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 
 	self.work_in_progress = True
 	return self.executor(function, ticket, common_message)
-        
+
     def executor(self,  function, ticket, common_message):
         #  in child process
 	message = "mcDoWork> begin %s" % (common_message,)
@@ -4700,7 +4692,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 
         generic_server.GenericServer.__init__(self, csc, medch,
                                               function = self.handle_er_msg)
-       
+
  	Trace.init(self.log_name, 'yes')
 	self.max_work = 1
 
@@ -4727,7 +4719,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 	mtx.cvar.device = self.device_name
 	mtx.cvar.absolute_addressing = 1
 	mtx.open_device()
-	mtx.status()	
+	mtx.status()
 	sys.stdout.flush()
 	sys.stderr.flush()
         Trace.log(e_errors.INFO, "MTX server started")
@@ -4794,7 +4786,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 			Trace.trace(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
 			pid_to_send_back = args[2]
 			a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
-			
+
 			Trace.trace(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
 			if a == -1:
 			    Trace.log(e_errors.ERROR, ' mtx mount / unmount timeout')
@@ -4805,7 +4797,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 		    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
 		    sys.stdout.flush()
 		    sys.stderr.flush()
-			
+
 	Trace.log(e_errors.ERROR, "MTX server exited (should never happen)")
 
     def start_mtx_server(self):
@@ -4905,7 +4897,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 	if 'Load' in command_string or 'Unload' in command_string:
 	    for l in response:
 		if 'Failed' in l:
-		     return (e_errors.ERROR, e_errors.ERROR, '', l) 
+		     return (e_errors.ERROR, e_errors.ERROR, '', l)
 	    if '' in message:
 		return (e_errors.OK, e_errors.OK, None, '', '')
 	    else:
@@ -4969,7 +4961,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
     def update_db(self, volume_address, volume_name,  drive_address, volume_name_in_drive):
         Trace.trace(ACTION_LOG_LEVEL, ' update_db %s %s %s %s'%(volume_address, volume_name,  drive_address, volume_name_in_drive))
 	return self.mcc.update_db(volume_address, volume_name,  drive_address, volume_name_in_drive)
-	    
+
     # Find the tape and mount it in the drive.
     def mtx_mount(self,volume, drive, media_type="", view_first=1):
        __pychecker__ = "unusednames=media_type,view_first"
@@ -5101,7 +5093,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 	# drive = int(ticket['drive'])
 	drive = ticket['drive']
 	rc = [e_errors.OK, 0, '', '']
-	
+
 	Trace.log(e_errors.INFO, 'calling viewdrive %s'%(drive,))
 	drive_info = self.mcc.viewdrive(drive)
 	Trace.log(e_errors.INFO, 'drive_info %s'%(drive_info,))

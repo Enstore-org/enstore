@@ -1386,7 +1386,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         and send it to drivestat server to enter into drivestat DB.
 
         """
-        self.stats = None # need to initialize to something 
+        self.stats = None # need to initialize to something
         if self.driver_type != 'FTTDriver':
             return
         if self.tape_driver and self.tape_driver.ftt:
@@ -8792,7 +8792,7 @@ if __name__ == '__main__':
         mcc_parameters['mc_device'] = mc_device
         media_changer_cl = create_instance(mcc_module, mcc_class, mcc_parameters)
     mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient, media_changer_client = media_changer_cl)
-        
+
     mover.handle_generic_commands(intf)
     #mover._do_print({'levels':range(10, 100)})
 
