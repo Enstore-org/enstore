@@ -137,7 +137,6 @@ class MediaChangerClient(generic_client.GenericClient):
 
     def __list_volumes(self, control_socket, ticket):
         __pychecker__ = "unusednames=ticket" #Keep pychecker happy
-
         try:
             d = callback.read_tcp_obj(control_socket, 1800) # 30 min
         except (socket.error, select.error, e_errors.EnstoreError), msg:
@@ -168,7 +167,6 @@ class MediaChangerClient(generic_client.GenericClient):
                      'type' : t[2],
                      'location' : t[3],
                      }
-
                 ticket['volume_list'].append(d)
             except (select.error, socket.error, e_errors.EnstoreError), msg:
                 if msg.errno == errno.ETIMEDOUT:
@@ -194,7 +192,6 @@ class MediaChangerClient(generic_client.GenericClient):
                   }
         rt = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(rt):
-            #print "ERROR", rt
             return rt
 
         r, w, x = select.select([listen_socket], [], [], 15)
@@ -343,6 +340,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.list_slots = 0
         self.list_clean = 0
         self.list = 0
+        self.update = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -483,7 +481,14 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                                                   option.VALUE_NAME:"media_type",
                                                   option.VALUE_TYPE:option.STRING}],
                        },
-        }
+          option.UPDATE:{option.HELP_STRING:
+                       "update the status information. Use with caution as it causes inventory of the whole TS4500 library",
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN,
+                       },
+      }
 
     def parse_options(self):
         generic_client.GenericClientInterface.parse_options(self)
@@ -614,8 +619,6 @@ def do_work(intf):
             s = '%s'%(drive, )
             if phys_loc:
                 s = '%s(%s)'%(drive, phys_loc)
-            print "DI", drive_info
-            print "S", s
             print "%16s %15s %15s %15s %8s" % ("name", "state", "status",
                                                "type", "volume")
             print "%16s %15s %15s %15s %8s" % \
@@ -667,6 +670,11 @@ def do_work(intf):
                                                     volume['current_usage'],
                                                     volume['remaining_usage'],
                                                     )
+    elif intf.update:
+        print 'This may take about a minute'
+        ticket = mcc.update_db(None, None, None, None)
+        print ticket['status']
+
     else:
         intf.print_help()
         sys.exit(0)

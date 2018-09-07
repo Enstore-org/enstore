@@ -3845,7 +3845,12 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         self.log_work_list(ticket)
         if not ticket.get('no_reply', None):
             self.reply_to_caller(ticket)
-	os.close(self.p[1])
+	try:
+		os.close(self.p[1])
+	except:
+		exc, msg, tb = sys.exc_info()
+		Trace.log(e_errors.ERROR, "WorkDone failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
+		del tb
 
     def __init__(self, medch, max_work=1, csc=None):
 
@@ -4692,8 +4697,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 
         generic_server.GenericServer.__init__(self, csc, medch,
                                               function = self.handle_er_msg)
-
- 	Trace.init(self.log_name, 'yes')
+	Trace.init(self.log_name, 'yes')
 	self.max_work = 1
 
         # Mark our cached status info as invalid
@@ -4901,8 +4905,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 	    if '' in message:
 		return (e_errors.OK, e_errors.OK, None, '', '')
 	    else:
-            	return (e_errors.ERROR, e_errors.ERROR, [], "", '')
-
+		return (e_errors.ERROR, e_errors.ERROR, [], "", '')
 	else:
 	    return (e_errors.ERROR, e_errors.ERROR, [], "", '')
 
