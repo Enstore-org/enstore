@@ -1,0 +1,156 @@
+commit f700cade0d06c1f2a5bfef1eeaf91ac5c13ec7cf
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Sep 7 10:30:22 2018 -0500
+
+    Added update status to media changer.
+    Added exception processing.
+
+M	src/media_changer.py
+M	src/media_changer_client.py
+
+commit b288303fcaebe312015165b6fc2a9f620bc82255
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Aug 24 16:54:47 2018 -0500
+
+    Removed WS
+
+M	src/media_changer.py
+M	src/mover.py
+
+commit ccace1eed6031ad8bb3071850357773fcf494bf7
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Aug 24 16:39:07 2018 -0500
+
+    Fix stop and restart.
+
+M	src/mover.py
+
+commit bc59b5c73f7cfb4504b947846a0520bd34761d84
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Aug 24 14:17:15 2018 -0500
+
+    Address Setup comment. Fix stop and restart.
+    
+    Modified Setup, replaced hardcoded value.
+    Fixed stop and restart of the mover. It was not stopping all child processes.
+
+M	modules/Setup
+M	src/media_changer.py
+M	src/mover.py
+
+commit a81d3c61cc71a9b36af6e6c9e5e66d52ad3c7d7b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Aug 23 10:34:46 2018 -0500
+
+    New media loader classes and modifications for TS4500 tape library.
+    
+    This change is to interface media changer and movers with TS4500 tape library using modified mtx tool. The original mtx tool is a command-line interface. The modified mtx tool provides a library of routines to load / unload media into tape drives. It is more effective than the old approach, because it queries robot only once which saves tens of seconds for actual mount / dismount commands. In addition it provides information about tape drive and storage elements and their physical location.
+    
+    http://srm.fnal.gov/reviews/r/510
+    http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1934
+
+M	bin/enstore-boot
+M	modules/SWIG/Makefile
+A	modules/SWIG/mtx.i
+M	modules/Setup
+M	src/configuration_client.py
+M	src/ftt_driver.py
+M	src/media_changer.py
+M	src/media_changer_client.py
+M	src/mover.py
+M	src/mover_client.py
+
+commit 7e80e97fee4124112b12391238e5b467b8f44b3b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Sep 7 10:26:50 2018 -0500
+
+    encp : handle comma separated list of libraries on command line
+    
+    RB : http://srm.fnal.gov/reviews/r/519/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1940
+
+M	src/encp.py
+
+commit c2727302f775afbf871cebf8cee6aef12919d200
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Sep 6 19:43:21 2018 -0500
+
+        delfile : handle extended namespace dictionary
+    
+        RB : http://srm.fnal.gov/reviews/r/514/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1938
+
+M	src/delfile_chimera.py
+
+commit 2e7e23f8488b5a3a09be0871fcf34ec0f3e04e79
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Sep 6 19:40:35 2018 -0500
+
+    chimera: use replica DB to produce chimera dump
+    
+    RB : http://srm.fnal.gov/reviews/r/515/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1937
+
+M	sbin/chimera_dump.py
+
+commit d967d68b058cad6d8990cadd909a4a774a5a2839
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Sep 6 19:37:54 2018 -0500
+
+    config_params.html:
+    
+        describe namespace database paramaters`
+    
+         RB : http://srm.fnal.gov/reviews/r/516/
+
+M	etc/config_params.html
+
+commit cfc97c1b1ddb7898606d454f0ba18fbadae7f83f
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Wed Sep 5 15:51:06 2018 -0500
+
+    [scripts] BZ:1928 RB:517 change tape_aid_wrapper: d0en/cdfen/stken icap,ocap
+    
+    change tape_aid_wrapper per Jon's request, the item 3) at BZ 1928:
+        3. /opt/enstore/bin/tape_aid_wrapper  (for cdfen, d0en and stken)
+    
+    RB: http://uqbar.fnal.gov/reviews/r/517
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1928
+
+M	bin/tape_aid_wrapper
+
+commit 228c72d0595c3e0409ce6e6de110db07d54a7d24
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Wed Sep 5 15:37:32 2018 -0500
+
+    [plots] BZ:1928 RB:518 remove plots for decommissioned robots SL8500-4 and SL8500-5
+    
+    John H., BZ-1928:
+    On Tue May 15, SL8500-4 and SL8500-5 robots were both decommissioned, thus some web pages  need to be modified to no longer report info for them. Also and the tape_aid_wrapper script needs to be modified for use of input and output caps.  Changes are needed in all production instances for all the affected web pages and script.
+    
+    RB: http://uqbar.fnal.gov/reviews/r/518
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1928
+
+M	etc/volume_audit.html
+
+commit e0460a5543d64777d6650fa3ea65ff1f0dc30e26
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Aug 6 11:10:51 2018 -0500
+
+        Fix process_request.
+    
+        This part of process_request was never used, because use_threads was not set
+        in configuration. In a single threaded mode library manager may hang all
+        movers if process_request takes a long time, for instance, when it timeouts
+        on the request to volume clerk. Using multithreaded request processing may
+        help in such situations. I want to try the multithreaded mode under heavy
+        request load.
+
+M	src/library_manager.py
+
+commit 2ba5d07f8c97a7ffc3f58674cc8a47f0a859f17b
+Merge: e0db287 3a83873
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jul 16 16:08:31 2018 -0500
+
+    Merge branch 'release/6.2.0-0' into develop
