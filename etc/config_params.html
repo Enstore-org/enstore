@@ -1057,19 +1057,126 @@ state. Default - do not restart</td>
 </th>
 </tr>
 
-<tr><td><a NAME="dbhost">dbhost</a></td><td>chimera database host machine</td>
+<tr><td><a NAME="name">name</a></td><td> Name of namespace - any string. Enstore can support multiple namespaces. A unique name has to identify a namespace.</td>
 	   <td>Mandatory</td><td>None</td>
+
+<tr><td></td>
+<td><table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Default</font></strong>
+</th>
 </tr>
-<tr><td><a NAME="dbport">dbport</a></td><td>chimera database port</td>
-	   <td>Mandatory</td><td>None</td>
+    <tr><td>master</td><td> dictionary describing connection parameters to master database</td>
+</td>
+ <td>Mandatory</td><td>None</td>
+</tr>
+<tr>
+<td></td>
+<td><table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+ <tr><th align="CENTER"><strong><font color="#770000">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Default</font></strong>
+</th>
+<tr><td> dbhost </td> <td> Host runnning namespace database </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbname </td> <td> Database name  </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbport </td> <td> Database port  </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbuser </td> <td> Database user  </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbuser_reader </td> <td> Database read-only user  </td> <td>Mandatory</td><td>None</td> </tr>
+</table>
+<td>Mandatory</td><td>None</td>
+</tr>
+</table>
+</td>
+ <td>Mandatory</td><td>None</td>
 </tr>
 
-<tr><td><a NAME="dbname">dbname</a></td><td>chimera database name</td>
-	   <td>Mandatory</td><td>None</td>
+
+<tr><td></td>
+<td><table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Default</font></strong>
+</th>
 </tr>
-<tr><td><a NAME="dbuser">dbuser</a></td><td>chimera database user
-           </td>
-	   <td>Mandatory</td><td>None</td>
+    <tr><td>replica</td><td> dictionary describing connection parameters to replica database</td>
+</td>
+ <td>Mandatory</td><td>None</td>
+</tr>
+<tr>
+<td></td>
+<td><table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+ <tr><th align="CENTER"><strong><font color="#770000">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Default</font></strong>
+</th>
+<tr><td> dbhost </td> <td> Host runnning namespace database </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbname </td> <td> Database name  </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbport </td> <td> Database port  </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbuser </td> <td> Database user  </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dbuser_reader </td> <td> Database read-only user  </td> <td>Mandatory</td><td>None</td> </tr>
+</table>
+<td>Mandatory</td><td>None</td>
+</tr>
+</table>
+</td>
+ <td>Mandatory</td><td>None</td>
+</tr>
+
+<tr><td></td>
+<td><table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Default</font></strong>
+</th>
+</tr>
+    <tr><td>backup</td><td>Dictionary describing database backup parameters   </td>
+</td>
+ <td>Mandatory</td><td>None</td>
+</tr>
+<tr>
+<td></td>
+<td><table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+ <tr><th align="CENTER"><strong><font color="#770000">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000">Default</font></strong>
+</th>
+<tr><td> host </td> <td> Backup destination host  </td> <td>Mandatory</td><td>None</td> </tr>
+<tr><td> dir </td> <td> Backup destination directory  </td> <td>Mandatory</td><td>None</td> </tr>
+</table>
+<td>Mandatory</td><td>None</td>
+</tr>
+</table>
+</td>
+ <td>Mandatory</td><td>None</td>
+</tr>
+
+
+
 </table>
 
 
