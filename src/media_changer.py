@@ -4070,11 +4070,12 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
 	Trace.trace(ACTION_LOG_LEVEL, "send_command: message %s"%(message,))
 	response = message.split('\012')
+	#response = message
 	Trace.trace(ACTION_LOG_LEVEL, "send_command: response %s"%(response,))
 	if 'Load' in command_string or 'Unload' in command_string:
 	    for l in response:
 		if 'Failed' in l:
-		     return (e_errors.ERROR, e_errors.ERROR, '', l)
+		     return (e_errors.ERROR, e_errors.ERROR, '', response)
 	    if '' in message:
 		return (e_errors.OK, e_errors.OK, None, '', '')
 	    else:
@@ -4897,11 +4898,13 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 
 	Trace.trace(ACTION_LOG_LEVEL, "send_command: message %s"%(message,))
 	response = message.split('\012')
+	#response = message
 	Trace.trace(ACTION_LOG_LEVEL, "send_command: response %s"%(response,))
 	if 'Load' in command_string or 'Unload' in command_string:
 	    for l in response:
 		if 'Failed' in l:
-		     return (e_errors.ERROR, e_errors.ERROR, '', l)
+		     #return (e_errors.ERROR, e_errors.ERROR, '', l)
+		     return (e_errors.ERROR, e_errors.ERROR, '', response)
 	    if '' in message:
 		return (e_errors.OK, e_errors.OK, None, '', '')
 	    else:
@@ -4995,12 +4998,24 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 	       return (e_errors.ERROR, e_errors.ERROR, [], '', 'Mounted in another device %s'%(vt['location'],))
        elif vt['state'] != 'O':
 	       return (e_errors.ERROR, e_errorsERROR, [], '', 'volume %s state%s'%(volume, vt['state'],))
-       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
-       Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
-       if rc[1] == e_errors.OK:
-	    rt = self.update_db(vt['location'], EMPTY,  drive, volume)
-	    if not e_errors.is_ok(rt):
-	       return (e_errors.ERROR, e_errors.ERROR, [], '', 'update location failed with %s'%(rt,))
+       retry_count = 4
+       while retry_count > 0:
+	       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
+	       Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
+	       if rc[1] == e_errors.OK:
+		    rt = self.update_db(vt['location'], EMPTY,  drive, volume)
+		    if not e_errors.is_ok(rt):
+		       return (e_errors.ERROR, e_errors.ERROR, [], '', 'update location failed with %s'%(rt,))
+		    break
+	       else:
+		    Trace.log(e_errors.INFO, "Load returned: %s"%(rc,))
+		    if isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3]:
+			    # retry
+			    Trace.log(e_errors.INFO, 'retrying mtx_mount %s %s'%(volume, drive))
+			    time.sleep(1)
+			    retry_count -= 1
+		    else:
+			    break
        return rc
 
     # Find a free slot and unmount the tape from the drive.
@@ -5034,12 +5049,24 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 	       # updatedb failed, so fail the dismount request
 	       rt = self.update_db(vt['location'], EMPTY, drive, volume)
 	       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
-
-       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
-       if rc[1] == e_errors.OK:
-	    rt = self.update_db(vt['location'], volume, drive, EMPTY)
-	    if not e_errors.is_ok(rt):
-	       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
+       retry_count = 4
+       while retry_count > 0:
+	       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
+	       if rc[1] == e_errors.OK:
+		    rt = self.update_db(vt['location'], volume, drive, EMPTY)
+		    if not e_errors.is_ok(rt):
+		       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
+		    break
+	       else:
+		    Trace.log(e_errors.INFO, "Unload returned: %s"%(rc,))  
+		    if isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3]:
+			    # retry
+			    Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%(volume, drive))
+			    time.sleep(1)
+			    retry_count -= 1
+		    else:
+			    break
+	       
        return rc
 
     # This method indicates where the tape is located within the
