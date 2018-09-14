@@ -4350,8 +4350,12 @@ class MTXN_MediaLoader(MediaLoaderMethods):
     def status_local(self):
 	Trace.log(ACTION_LOG_LEVEL, 'status_local')
 	result = get_mtx_status(self.device_name)
-	self.slots = self.manager.list()
-	self.drives = self.manager.list()
+	if hasattr(self, 'slots'): # clear lists
+		while self.slots: a = self.slots.pop()
+		while self.drives: a = self.drives.pop()
+	else:
+		self.slots = self.manager.list()
+		self.drives = self.manager.list()
         errorString = ''
         if result:
 	      	lines = result.split('\n')
