@@ -252,41 +252,17 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket,300,10)
         return rt
 
-    def insertvol(self, IOarea, inNewLib = None, FakeIOOpen = None):
+    def insertvol(self, external_label = None):
         ticket = {'work'         : 'insertvol',
-                  'IOarea_name'  : IOarea,
-                  'newlib'       : inNewLib
+                  'external_label'  : external_label,
          }
-        if type(IOarea) != types.ListType:
-            Trace.log(e_errors.ERROR, "ERROR:insertvol IOarea must be a list")
-            rt = {'status':(e_errors.WRONGPARAMETER, 1, "IOarea must be a list")}
-            return rt
-        if FakeIOOpen == FAKEOPENIODOOR:
-            ticket["FakeIOOpen"] = "yes"
         rt = self.send(ticket,300,10)
         return rt
 
-    def ejectvol(self, volumeList, IOarea = None, FakeIOOpen = None,
-                 purge = None):
+    def ejectvol(self, external_label = None):
         ticket = {'work'         : 'ejectvol',
-                  'volList'      : volumeList,
-                  #'IOarea_name'  : IOarea,
-                  #'media_type'   : media_type,
+                  'volList'      : [external_label],
                   }
-        if IOarea:
-            #Include this only when we want to specify where the tape should
-            # go.
-            ticket['IOarea_name'] = IOarea
-        if purge:
-            #Remove the volume information from the robot database.
-            ticket['purge'] = "yes"
-
-        if type(volumeList) != types.ListType:
-            Trace.log(e_errors.ERROR, "ERROR:ejectvol volumeList must be a list")
-            rt = {'status':(e_errors.WRONGPARAMETER, 1, "volumeList must be a list")}
-            return rt
-        if FakeIOOpen == FAKEOPENIODOOR:
-            ticket["FakeIOOpen"] = "yes"
         rt = self.send(ticket,300,10)
         return rt
 
@@ -374,10 +350,10 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
                          option.USER_LEVEL:option.ADMIN},
-        option.INSERT:{option.HELP_STRING:"Insert tapes into robot.",
+        option.INSERT:{option.HELP_STRING:"Insert tape into robot.",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
-                       option.VALUE_LABEL:"insert area list",
+                       option.VALUE_LABEL:'[volume|"all"]',
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN,
                        },
@@ -549,42 +525,27 @@ def do_work(intf):
         ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive)
         del vcc
     elif intf.insert:
-        #Wait for a human response.
-        zz = raw_input("Insert volumes from I/O area. Do not mix media types."
-                       "\nWhen I/O door is closed hit return:")
-
-        #intf.args equals a list of insert areas.  "I01", "I08", etc.
-        if zz == FAKEOPENIODOOR:
-            ticket = mcc.insertvol(intf.args, FakeIOOpen = zz)
+        print 'Updating DB before inserting. This may take about a minute'
+        rt = mcc.update_db(None, None, None, None)
+        if e_errors.is_ok(rt):
+            try:
+                vol = intf.args[0]
+            except IndexError:
+                vol = None
+            if vol == 'all':
+                while True:
+                    ticket = mcc.insertvol(None)
+                    print ticket['status']
+                    if not e_errors.is_ok(ticket):
+                        break
+            else:
+                ticket = mcc.insertvol(vol)
+                print ticket['status']
         else:
-            ticket = mcc.insertvol(intf.args)
-
-        #print out the inserted tapes and IO areas
-        if e_errors.is_ok(ticket):
-            for volume, info in ticket.get('inserted', {}).items():
-                print "%s: %s" % (volume, info['IOarea_name'])
+            print rt['status']
     elif intf.eject:
-        #Wait for a human response.
-        zz = raw_input("Eject volumes into I/O area. Do not mix media types."
-                       "\nWhen I/O door is closed hit return:")
-
-        ##intf.args equals a list of volumes.  The second optional arguement
-        ## is a list of eject areas ("E01", "E08", etc.).  If it is python
-        ## false, an eject area is randomly choosen.
-        if intf.ioarea:
-            ioarea = intf.ioarea
-        else:
-            ioarea = [] #randomly choose area
-        if zz == FAKEOPENIODOOR:
-            ticket=mcc.ejectvol(intf.args, ioarea, FakeIOOpen = zz,
-                                purge = intf.remove)
-        else:
-            ticket=mcc.ejectvol(intf.args, ioarea, purge = intf.remove)
-
-        #print out the ejected tapes and IO areas
-        if e_errors.is_ok(ticket):
-            for volume, info in ticket.get('ejected', {}).items():
-                print "%s: %s" % (volume, info['IOarea_name'])
+        ticket=mcc.ejectvol(intf.args[0])
+        print ticket
     elif intf.max_work  >= 0:
         ticket=mcc.set_max_work(intf.max_work)
     elif intf.get_work:

@@ -224,10 +224,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # wrapper method for client - server communication
     def insertvol(self, ticket):
         ticket['function'] = "insert"
-        if not ticket.has_key('newlib'):
-            ticket['status'] = (e_errors.WRONGPARAMETER, 37, "new library name not specified")
-            Trace.log(e_errors.ERROR, "ERROR:insertvol new library name not specified")
-            return
         return self.DoWork( self.insert, ticket)
 
     # wrapper method for client - server communication
@@ -553,9 +549,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 			     (ticket['function'],
 			      ticket['drive'])
 	elif ticket['function'] in ("insert",):
-	    common_message = "%s %s" % \
-			     (ticket['function'],
-			      ticket['IOarea_name'])
+	    common_message = "%s" % \
+			     (ticket['function'],)
 	elif ticket['function'] in ("eject",):
 	    common_message = "%s %s" % \
 			     (ticket['function'],
@@ -4102,7 +4097,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	"""
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
-	media_type = ticket['vol_ticket']['media_type']
+	media_type = ticket['vol_ticket'].get('media_type', 'unknown')
         Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to load %s of type %s into drive %s'%(external_label, media_type, drive))
         return self.retry_function(self.mtx_mount, external_label,
 				   drive, media_type)
@@ -4116,21 +4111,109 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	"""
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
-	media_type = ticket['vol_ticket']['media_type']
+	media_type = ticket['vol_ticket'].get('media_type', 'unknown')
         Trace.log(e_errors.INFO, 'MTX_MediaLoader: request to unload %s of type %s from drive %s'%(external_label, media_type, drive))
         return self.retry_function(self.mtx_dismount, external_label,
 				   drive, media_type)
 
     def insert(self, ticket):
         __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
-        return (e_errors.NOT_SUPPORTED, 0,
-		"MTX media changer does not support this operation.")
-
+	if  ticket.get('external_label'):
+		s, d = self.locate_volume(ticket['external_label'])
+		if d >= 0:
+			return (e_errors.ERROR, '%s is in drive %s, can not be inserted'%(ticket['external_label'], self.drives[d]['address']), None, None)
+		if s < 0:
+			return (e_errors.ERROR, e_errors.MC_VOLNOTFOUND, ticket['external_label'], 'Volume not found')
+		if not 'IMPORT/EXPORT' in self.slots[s]['location']:
+			return (e_errors.ERROR, '%s is not in  IMPORT/EXPORT slot (%s)'%(ticket['external_label'], self.slots[s]['location']), None, None)
+	else:
+		# Find first not empty Import/export slot
+		for imp in self.slots:
+			if 'IMPORT/EXPORT' in imp['location'] and not EMPTY in  imp['volume']:
+				s = self.slots.index(imp)
+				break
+		else:
+			return (e_errors.ERROR, 'Nothing to import', None, None)
+			
+	s_slot, d = self.locate_volume(EMPTY)
+	if s_slot < 0:
+		return (e_errors.ERROR, '%s can not be inserted, no free slots'%(ticket['external_label'],), None, None)
+	
+	stor_el = self.slots[s_slot]
+	imp_el = self.slots[s]
+	self.slots[s_slot] = stor_el
+	retry_count = 4
+	while retry_count  > 0:
+		rc = self.send_command('Unload,%s,%s,%s'%(stor_el['address'], imp_el['address'], os.getpid()), self.mount_timeout)
+		Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
+		if rc[1] == e_errors.OK:
+			imp_el['volume'] = EMPTY
+			stor_el['volume'] = self.slots[s]['volume']
+			self.slots[s] = imp_el
+			self.slots[s_slot] =  stor_el
+			rc = list(rc)
+			rc[3] = "Imported %s from %s to %s"%(stor_el['volume'], imp_el['address'], stor_el['address'])
+			rc = tuple(rc)
+			break
+		else: 
+			Trace.log(e_errors.INFO, "Unload for insert command returned: %s"%(rc,))
+			if isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3]:
+				Trace.log(e_errors.INFO, 'retrying insert %s %s'%( imp_el, stor_el))
+				time.sleep(1)
+				retry_count -= 1
+			else:
+				break
+	return rc
+  				    
     def eject(self, ticket):
         __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
-        return (e_errors.NOT_SUPPORTED, 0,
-		"MTX media changer does not support this operation.")
+	try: 
+		external_label = ticket['volList'][0]
+	except:
+		return (e_errors.ERROR, 'nothing to eject', '%s'%(ticket,), None)
+	s_slot, d = self.locate_volume(external_label)
+	if d >= 0:
+		return (e_errors.ERROR, '%s is in drive %s, can not be ejected'%(external_label, self.drives[d]['address']), None, None)
+	
+	if s_slot < 0:
+		return (e_errors.ERROR, e_errors.MC_VOLNOTFOUND, external_label, 'Volume not found')
+	if 'IMPORT/EXPORT' in self.slots[s_slot]['location']:
+		return (e_errors.ERROR, '%s is in  IMPORT/EXPORT slot (%s)'%(external_label, self.slots[s]['location']), None, None)
 
+	# Find first empty Import / export slot
+	for imp in self.slots:
+		if 'IMPORT/EXPORT' in imp['location'] and EMPTY in  imp['volume']:
+			s = self.slots.index(imp)
+			break
+	else:
+		return (e_errors.ERROR, 'No empty IMPORT/EXPORT slots', None, None)
+    
+	stor_el = self.slots[s_slot]
+	imp_el = self.slots[s]
+	self.slots[s_slot] = stor_el
+	retry_count = 4
+	while retry_count  > 0:
+		rc = self.send_command('Unload,%s,%s,%s'%(imp_el['address'], stor_el['address'], os.getpid()), self.mount_timeout)
+		Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
+		if rc[1] == e_errors.OK:
+			imp_el['volume'] = self.slots[s_slot]['volume']
+			stor_el['volume'] = EMPTY
+			self.slots[s] = imp_el
+			self.slots[s_slot] =  stor_el
+			rc = list(rc)
+			rc[3] = "Ejected %s from %s to %s"%(imp_el['volume'], stor_el['address'], imp_el['address'])
+			rc = tuple(rc)
+			break
+		else: 
+			Trace.log(e_errors.INFO, "Unload for eject command returned: %s"%(rc,))
+			if isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3]:
+				Trace.log(e_errors.INFO, 'retrying insert %s %s'%( imp_el, stor_el))
+				time.sleep(1)
+				retry_count -= 1
+			else:
+				break
+	return rc
+	
     #########################################################################
     # These functions are internal functions specific to MTX media changer.
     #########################################################################
@@ -4290,6 +4373,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         idx_slot = 0
         for s in self.slots:
             if vol == s['volume']:
+		if vol == EMPTY:
+			if 'IMPORT/EXPORT' in s['location']:
+				continue # we do not want to dismount into IMPORT/EXPORT storage element under normal conditions
                 found = True
                 break
 	if found:
@@ -4498,11 +4584,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		Trace.log(e_errors.INFO, 'Robot inventory finished')
 		if -1 == a:
 			Trace.log(e_errors.ERROR, ' mtx status request timeout')
-			rc[0] = e_erros.ERROR
+			rc[0] = e_errors.ERROR
 		rc[3] = 'Robot inventory finished'
 		return rc
 
-	drive = self.locate_drive(ticket['drive']['address'])
 	drive = self.locate_drive(ticket['drive']['address'])
 	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: drive index %s'%(drive,))
 	if drive < 0:
