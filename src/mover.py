@@ -1762,10 +1762,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             if  self.mcc:
                 time.sleep(20)
                 self.can_force_eject = 1
+                self.local_mcc = True
             else:
                 self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                                    self.config['media_changer'], logc = self.logclient)
                 self.mc_keys = self.csc.get(self.mcc.media_changer)
+                self.local_mcc = False
                 # STK robot can eject tape by either sending command directly to drive or
                 # by pushing a corresponding button
                 if self.mc_keys.has_key('type') and self.mc_keys['type'] == 'STK_MediaLoader':
@@ -2163,7 +2165,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break
             elif cur_thread_name == 'tape_thread':
                 Trace.log(e_errors.INFO,"restart was called from tape thread")
-        if  self.mcc:
+        if  self.local_mcc:
             self.mcc.quit()
 
         if do_restart:
@@ -8804,7 +8806,7 @@ if __name__ == '__main__':
             mover.serve_forever()
         except SystemExit:
             Trace.log(e_errors.INFO, "mover %s exiting." % (mover.name,))
-            if  mover.mcc:
+            if  mover.local_mcc:
                 mover.mcc.quit()
             os._exit(0)
         except:
