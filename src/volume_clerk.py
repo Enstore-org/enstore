@@ -2309,9 +2309,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if mover_type != 'DiskMover':
             try:
                 if self.lm_is_paused(library):
-                    ticket['status'] = (e_errors.BROKEN, 'Too many volumes set to NOACCESS')
+                    ticket['status'] = (e_errors.BROKEN,
+                                        'Too many volumes set to NOACCESS')
                     self.reply_to_caller(ticket)
-                return
+                    return
             except RuntimeError as e:
                 ticket['status'] = (e_errors.BROKEN, str(e))
                 self.reply_to_caller(ticket)
