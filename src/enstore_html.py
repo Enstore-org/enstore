@@ -17,7 +17,6 @@ import e_errors
 import enstore_constants
 import mover_constants
 import volume_family
-import configuration_client
 from en_eval import en_eval
 
 YES = 1
@@ -193,17 +192,6 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
         self.nav_link = ""
         self.do_nav_table = 1
         sys.stdout.flush()
-        config_dict = configuration_client.get_config_dict(5, 2)
-
-        if config_dict:
-            inq = config_dict.get(enstore_constants.INQUISITOR, {})
-            sys.stdout.flush()
-            if inq:
-                self.web_dir = inq.get('html_file','/local/ups/prd/www_pages/enstore')
-            else:
-               self.web_dir = '/local/ups/prd/www_pages/enstore'
-        else:
-            self.web_dir = '/local/ups/prd/www_pages/enstore'
 
 
     # generate the three button navigation table for the top of each of the
@@ -3212,17 +3200,12 @@ class EnStatusOnlyPage(EnSaagPage):
 
 class EnSGIngestPage(EnBaseHtmlDoc):
 
-    def __init__(self, refresh=0, system_tag=""):
+    def __init__(self, dir, refresh=0, system_tag=""):
 	EnBaseHtmlDoc.__init__(self, refresh=refresh,
-			       help_file="encpHelp.html",
 			       system_tag=system_tag)
 	self.align = NO
 	self.title = "Tape Ingest Rates by Storage Group"
-	#self.script_title_gif = "encph.gif"
-	#self.source_server = THE_INQUISITOR
-	#self.description = ""
-	#self.error_keys = self.error_text.keys()
-
+        self.web_dir = dir
 
     def body(self):
         plots='burn-rate'

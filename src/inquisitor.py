@@ -1188,7 +1188,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         else:
             now = aTime
         server = self.server_d.get(name, None)
-        if server:
+        if server and server.host:
             self.serverfile.output_alive(server.host, ALIVE, now, name)
             self.new_server_status = 1
             server.is_alive()

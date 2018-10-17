@@ -380,6 +380,12 @@ def connect_to_callback(ip_addr, interface_ip = None, timeout = 30):
             else:
                 connect_socket.close()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            try:
+                connect_socket.close()
+            except:
+                pass
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
 
     if r or w:
