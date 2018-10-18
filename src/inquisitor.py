@@ -24,6 +24,8 @@ import traceback
 
 # enstore imports
 import monitored_server
+import migrator_client
+import mover_client
 import event_relay_messages
 import dispatching_worker
 import generic_server
@@ -55,7 +57,7 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "network" : enstore_constants.NETWORK,
 	      "alarms" : enstore_constants.ANYALARMS,
               "dispatcher": enstore_constants.DISPR,
-              "lm_director": enstore_constants.LMD, 
+              "lm_director": enstore_constants.LMD,
               }
 
 server_keys = server_map.keys()
@@ -966,8 +968,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         rtn = 1          # assume no timeouts
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "get new state from %s"%(mover.name,))
-        self.mover_state[mover.name] = mover.client.status(self.alive_rcv_timeout,
-							   self.alive_retries)
+        mc = mover_client.MoverClient(self.csc, mover.name)
+
+        self.mover_state[mover.name] = mc.status(self.alive_rcv_timeout,
+                                                 self.alive_retries)
+        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
+				   "got new state from %s %s"%(mover.name,
+                                                               self.mover_state[mover.name],))
 	mover.check_status_ticket(self.mover_state[mover.name])
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
 	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
@@ -987,8 +994,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "get new state from %s"%(migrator.name,))
 
-        self.migrator_state[migrator.name] = migrator.client.status(self.alive_rcv_timeout,
-							   self.alive_retries)
+        mc = migrator_client.MigratorClient(self.csc, migrator.name)
+
+        self.migrator_state[migrator.name] = mc.status(self.alive_rcv_timeout,
+                                                       self.alive_retries)
         mig_state = self.migrator_state[migrator.name]
 	migrator.check_status_ticket(mig_state)
         self.serverfile.output_migratorstatus(mig_state, migrator.name)
@@ -1249,7 +1258,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 
 
-                        
+
                 # if server is a library_manager, we need to get some extra status
                 if enstore_functions2.is_library_manager(aServer):
                     rtn = self.update_library_manager(server)
