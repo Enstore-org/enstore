@@ -1378,7 +1378,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 	self.acls_uname = self.mc_config.get('acls_uname', 'UNKNOWN')
 	self.driveCleanTime = self.mc_config.get('DriveCleanTime',
 						 {'9840':[60,1],'9940':[60,1]})
-
+	self.acssa_version = self.mc_config.get('acssa_version',  'UNKNOWN')
         self.prepare = self.unload
         self.DEBUG = 0
         print "STK MediaLoader initialized"
@@ -1424,6 +1424,9 @@ class STK_MediaLoader(MediaLoaderMethods):
         p2cread, p2cwrite = os.pipe()
         c2pread, c2pwrite = os.pipe()
         command = "(echo %s;echo logoff)|/export/home/ACSSS/bin/cmd_proc 2>&1" % (cmd,)
+	if self.acssa_version == '8.4':
+		command = "(echo %s)|/export/home/ACSSS/bin/cmd_proc 2>&1" % (cmd,)
+	Trace.trace(e_errors.INFO, "Sending %s"%(command,))
         cmd_lookfor = "ACSSA> %s" % (cmd,)
 
         # can not use dispatching work fork because we are already child.
@@ -4134,11 +4137,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 				break
 		else:
 			return (e_errors.ERROR, 'Nothing to import', None, None)
-			
+
 	s_slot, d = self.locate_volume(EMPTY)
 	if s_slot < 0:
 		return (e_errors.ERROR, '%s can not be inserted, no free slots'%(ticket['external_label'],), None, None)
-	
+
 	stor_el = self.slots[s_slot]
 	imp_el = self.slots[s]
 	self.slots[s_slot] = stor_el
@@ -4155,7 +4158,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			rc[3] = "Imported %s from %s to %s"%(stor_el['volume'], imp_el['address'], stor_el['address'])
 			rc = tuple(rc)
 			break
-		else: 
+		else:
 			Trace.log(e_errors.INFO, "Unload for insert command returned: %s"%(rc,))
 			if isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3]:
 				Trace.log(e_errors.INFO, 'retrying insert %s %s'%( imp_el, stor_el))
@@ -4164,17 +4167,17 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			else:
 				break
 	return rc
-  				    
+
     def eject(self, ticket):
         __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
-	try: 
+	try:
 		external_label = ticket['volList'][0]
 	except:
 		return (e_errors.ERROR, 'nothing to eject', '%s'%(ticket,), None)
 	s_slot, d = self.locate_volume(external_label)
 	if d >= 0:
 		return (e_errors.ERROR, '%s is in drive %s, can not be ejected'%(external_label, self.drives[d]['address']), None, None)
-	
+
 	if s_slot < 0:
 		return (e_errors.ERROR, e_errors.MC_VOLNOTFOUND, external_label, 'Volume not found')
 	if 'IMPORT/EXPORT' in self.slots[s_slot]['location']:
@@ -4187,7 +4190,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			break
 	else:
 		return (e_errors.ERROR, 'No empty IMPORT/EXPORT slots', None, None)
-    
+
 	stor_el = self.slots[s_slot]
 	imp_el = self.slots[s]
 	self.slots[s_slot] = stor_el
@@ -4204,7 +4207,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			rc[3] = "Ejected %s from %s to %s"%(imp_el['volume'], stor_el['address'], imp_el['address'])
 			rc = tuple(rc)
 			break
-		else: 
+		else:
 			Trace.log(e_errors.INFO, "Unload for eject command returned: %s"%(rc,))
 			if isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3]:
 				Trace.log(e_errors.INFO, 'retrying insert %s %s'%( imp_el, stor_el))
@@ -4213,7 +4216,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			else:
 				break
 	return rc
-	
+
     #########################################################################
     # These functions are internal functions specific to MTX media changer.
     #########################################################################
@@ -4527,7 +4530,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			ticket['state'] = 'O'
 			ticket['location'] = self.slots[slot]['address']
 			ticket['phys_location'] = self.slots[slot]['location']
-        return (ticket.get('status'), ticket.get('location'), ticket.get('media_type'), ticket.get('state'))
+        return (ticket.get('status'), '%s(%s)'%(ticket.get('location'), ticket.get('phys_location')), ticket.get('media_type'), ticket.get('state'))
 
     def getDriveState(self, ticket):
 	try:
@@ -5061,34 +5064,34 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
     def mtx_mount(self,volume, drive, media_type="", view_first=1):
        __pychecker__ = "unusednames=media_type,view_first"
        Trace.log(e_errors.INFO, "mtx_mount %s %s"%(volume, drive))
-       dt = self.locate_drive(drive)
-       Trace.trace(ACTION_LOG_LEVEL, "LOCATE DRIVE returned %s"%(dt,))
-       if not e_errors.is_ok(dt):
-            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(dt,))
-            return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx_mount unrecognized drive: %s'%(drive,))
-
-       drive_info = dt['drive_info']
-       if drive_info['status'] == 'in use':
-	       if drive_info['volume'] == volume:
-		       return (e_errors.OK, e_errors.OK, [], '', 'Already in drive %s'%(drive,))
-       elif  drive_info['status'] != 'available':
-		Trace.log(e_errors.ERROR, 'mtx cant mount tape. Drive %s is not empty: %s'%(drive, drive_info['volume']))
-		return (e_errors.ERROR, e_errors.MC_DRVNOTEMPTY, [],'' ,
-			'mtx cant mount tape. Drive %s is not empty: %s'%(drive, drive_info['volume']))
-       vt = self.locate_volume(volume)
-       Trace.trace(ACTION_LOG_LEVEL, "LOCATE VOLUME returned %s"%(vt,))
-       if not e_errors.is_ok(vt):
-            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized volume: %s'%(volume,))
-            return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx_mount unrecognized volume: %s'%(volume,))
-
-       if vt['state'] == 'M':
-	       return (e_errors.ERROR, e_errors.ERROR, [], '', 'Mounted in another device %s'%(vt['location'],))
-       elif vt['state'] != 'O':
-	       return (e_errors.ERROR, e_errorsERROR, [], '', 'volume %s state%s'%(volume, vt['state'],))
        retry_count = 4
        while retry_count > 0:
+	       dt = self.locate_drive(drive)
+	       Trace.trace(ACTION_LOG_LEVEL, "LOCATE DRIVE returned %s"%(dt,))
+	       if not e_errors.is_ok(dt):
+		    Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(dt,))
+		    return ('ERROR', e_errors.ERROR, [],'' ,\
+			    'mtx_mount unrecognized drive: %s'%(drive,))
+
+	       drive_info = dt['drive_info']
+	       if drive_info['status'] == 'in use':
+		       if drive_info['volume'] == volume:
+			       return (e_errors.OK, e_errors.OK, [], '', 'Already in drive %s'%(drive,))
+	       elif  drive_info['status'] != 'available':
+			Trace.log(e_errors.ERROR, 'mtx cant mount tape. Drive %s is not empty: %s'%(drive, drive_info['volume']))
+			return (e_errors.ERROR, e_errors.MC_DRVNOTEMPTY, [],'' ,
+				'mtx cant mount tape. Drive %s is not empty: %s'%(drive, drive_info['volume']))
+	       vt = self.locate_volume(volume)
+	       Trace.trace(ACTION_LOG_LEVEL, "LOCATE VOLUME returned %s"%(vt,))
+	       if not e_errors.is_ok(vt):
+		    Trace.log(e_errors.ERROR, 'mtx_mount unrecognized volume: %s'%(volume,))
+		    return ('ERROR', e_errors.ERROR, [],'' ,\
+			    'mtx_mount unrecognized volume: %s'%(volume,))
+
+	       if vt['state'] == 'M':
+		       return (e_errors.ERROR, e_errors.ERROR, [], '', 'Mounted in another device %s'%(vt['location'],))
+	       elif vt['state'] != 'O':
+		       return (e_errors.ERROR, e_errorsERROR, [], '', 'volume %s state%s'%(volume, vt['state'],))
 	       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
 	       Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
 	       if rc[1] == e_errors.OK:
@@ -5111,35 +5114,35 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
     def mtx_dismount(self,volume, drive, media_type="", view_first=1):
        __pychecker__ = "unusednames=media_type,view_first"
        Trace.log(e_errors.INFO, "mtx_dismount %s %s"%(volume, drive))
-       dt = self.locate_drive(drive)
-       if not e_errors.is_ok(dt):
-            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
-            return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx_mount unrecognized drive: %s'%(drive,))
-       Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: drive query %s"%(dt,))
-       drive_info = dt['drive_info']
-       if drive_info['status'] != 'in use':
-            return (e_errors.OK, 0, None, "", "") # no need to dismount
-       else:
-	    if drive_info['volume'] != volume:
-		    return ('ERROR', e_errors.ERROR, [],'' ,\
-				    'mtx unload: %s is not in %d'%(volume, drive))
-       vt = self.locate_volume(EMPTY)
-       Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: volume_query %s"%(vt,))
-       if not e_errors.is_ok(vt):
-            Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
-            return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx unload: No free slots')
-
-       Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive,  '...dismounting'))
-       # Set free slot busy to avoid conflicts with parallel mover requests.
-       rt = self.update_db(vt['location'], BUSY, drive, volume)
-       if not e_errors.is_ok(rt):
-	       # updatedb failed, so fail the dismount request
-	       rt = self.update_db(vt['location'], EMPTY, drive, volume)
-	       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
        retry_count = 4
        while retry_count > 0:
+	       dt = self.locate_drive(drive)
+	       if not e_errors.is_ok(dt):
+		    Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
+		    return ('ERROR', e_errors.ERROR, [],'' ,\
+			    'mtx_mount unrecognized drive: %s'%(drive,))
+	       Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: drive query %s"%(dt,))
+	       drive_info = dt['drive_info']
+	       if drive_info['status'] != 'in use':
+		    return (e_errors.OK, 0, None, "", "") # no need to dismount
+	       else:
+		    if drive_info['volume'] != volume:
+			    return ('ERROR', e_errors.ERROR, [],'' ,\
+					    'mtx unload: %s is not in %d'%(volume, drive))
+	       vt = self.locate_volume(EMPTY)
+	       Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: volume_query %s"%(vt,))
+	       if not e_errors.is_ok(vt):
+		    Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
+		    return ('ERROR', e_errors.ERROR, [],'' ,\
+			    'mtx unload: No free slots')
+
+	       Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive,  '...dismounting'))
+	       # Set free slot busy to avoid conflicts with parallel mover requests.
+	       rt = self.update_db(vt['location'], BUSY, drive, volume)
+	       if not e_errors.is_ok(rt):
+		       # updatedb failed, so fail the dismount request
+		       rt = self.update_db(vt['location'], EMPTY, drive, volume)
+		       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
 	       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
 	       if rc[1] == e_errors.OK:
 		    rt = self.update_db(vt['location'], volume, drive, EMPTY)
@@ -5147,7 +5150,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 		       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
 		    break
 	       else:
-		    Trace.log(e_errors.INFO, "Unload returned: %s"%(rc,))  
+		    Trace.log(e_errors.INFO, "Unload returned: %s"%(rc,))
 		    if isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3]:
 			    # retry
 			    Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%(volume, drive))
@@ -5155,7 +5158,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 			    retry_count -= 1
 		    else:
 			    break
-	       
+
        return rc
 
     # This method indicates where the tape is located within the
