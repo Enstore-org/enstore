@@ -5092,6 +5092,8 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 		       return (e_errors.ERROR, e_errors.ERROR, [], '', 'Mounted in another device %s'%(vt['location'],))
 	       elif vt['state'] != 'O':
 		       return (e_errors.ERROR, e_errorsERROR, [], '', 'volume %s state%s'%(volume, vt['state'],))
+	       Trace.log(e_errors.INFO, 'mtx_mount %s location %s physical location %s into %s'%
+			 (volume, vt['location'], vt['phys_location'],drive))
 	       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
 	       Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
 	       if rc[1] == e_errors.OK:
@@ -5143,6 +5145,8 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods):
 		       # updatedb failed, so fail the dismount request
 		       rt = self.update_db(vt['location'], EMPTY, drive, volume)
 		       return (e_errors.ERROR, e_errorsERROR, [], '', 'update location failed with %s'%(rt,))
+	       Trace.log(e_errors.INFO, 'mtx_dismount %s location %s physical location %s from %s'%
+			 (volume, vt['location'], vt['phys_location'],drive))
 	       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
 	       if rc[1] == e_errors.OK:
 		    rt = self.update_db(vt['location'], volume, drive, EMPTY)
