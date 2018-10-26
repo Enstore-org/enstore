@@ -1144,28 +1144,9 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if not lib.endswith(".library_manager"):
             lib += ".library_manager"
         media_changer = self.csc.get_media_changer(lib)
-        if media_changer:
-            if isinstance(media_changer, types.StringType):
-                self.media_changers[library] = media_changer
-                return media_changer
-            elif isinstance(media_changer, types.DictType):
-                if e_errors.is_ok(media_changer):
-                    m_changer = media_changer.get("media_changer")
-                    if not m_changer:
-                        raise RuntimeError("Failed to get_media_changer for library {}"
-                                               .format(library))
-                else:
-                    raise RuntimeError("Failed to get_media_changer for library {}, {}"
-                                       .format(library,
-                                       str(media_changer.get("status"))))
-            else:
-                raise RuntimeError("Failed to get_media_changer for library {}. Unexpected return type {}"
-                                    .format(library,
-                                    type(media_changer)))
-        else:
-            # raise RuntimeError("Failed to get_media_changer for library {}"
-            #                       .format(library))
-            self.media_changers[library] = media_changer
+        self.media_changers[library] = media_changer
+        return media_changer
+
 
     def init_media_changer_list(self):
         result = self.csc.get_library_managers()
