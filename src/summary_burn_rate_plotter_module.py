@@ -184,24 +184,16 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             ### Get current tape information for all tapes currently in use.
             ###
 
-            #Get them for each media type.
-            sql_cmd = (" select "
-                       " v1.media_type, "
-                       " count(v_blank.media_type)   as blank, "
-                       " count(v_written.media_type) as written "
-                       " from volume v1 "
-                       " full join (select * from volume where (file_family='none' and wrapper='none') ) "
-                       "     as v_blank "
-                       "     on v_blank.id=v1.id "
-                       " full join (select * from volume where (file_family != 'none' or wrapper != 'none') ) "
-                       "     as v_written "
-                       "     on v_written.id=v1.id "
-                       " where v1.system_inhibit_0 != 'DELETED' "
-                       "     and v1.library not like 'shelf-%' "
-                       "     and v1.media_type != 'disk' "
-                       "     and v1.media_type != 'null' "
-                       " group by v1.media_type "
-                       " order by v1.media_type "
+            #Get blank and written tape counts for each media type.
+            sql_cmd = ("select media_type,"
+                       "    sum(case when file_family  = 'none' and wrapper = 'none' then 1 else 0 end) as blank,"
+                       "    sum(case when file_family != 'none' or wrapper != 'none' then 1 else 0 end) as written "
+                       "from volume"
+                       "    where system_inhibit_0 != 'DELETED'"
+                       "        and library not like 'shelf-%'"
+                       "        and media_type not in ('disk', 'null')"
+                       "    group by media_type"
+                       "    order by media_type"
                        )
 
             edb_res = edb.query(sql_cmd).getresult() #Get the values from the DB.
