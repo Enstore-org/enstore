@@ -185,15 +185,24 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             ###
 
             #Get them for each media type.
-            sql_cmd = "select v1.media_type, " \
-                      "count(v2.media_type) as blank," \
-                      "count(v3.media_type) as written " \
-                      "from volume v1 " \
-                      "full join (select * from volume where eod_cookie = 'none')"\
-                      " as v2 on v1.id=v2.id " \
-                      "full join (select * from volume where eod_cookie != 'none')"\
-                      " as v3 on v3.id=v1.id " \
-                      "group by v1.media_type"
+            sql_cmd = (" select "
+                       " v1.media_type, "
+                       " count(v_blank.media_type)   as blank, "
+                       " count(v_written.media_type) as written "
+                       " from volume v1 "
+                       " full join (select * from volume where (file_family='none' and wrapper='none') ) "
+                       "     as v_blank "
+                       "     on v_blank.id=v1.id "
+                       " full join (select * from volume where (file_family != 'none' or wrapper != 'none') ) "
+                       "     as v_written "
+                       "     on v_written.id=v1.id "
+                       " where v1.system_inhibit_0 != 'DELETED' "
+                       "     and v1.library not like 'shelf-%' "
+                       "     and v1.media_type != 'disk' "
+                       "     and v1.media_type != 'null' "
+                       " group by v1.media_type "
+                       " order by v1.media_type "
+                       )
 
             edb_res = edb.query(sql_cmd).getresult() #Get the values from the DB.
 
