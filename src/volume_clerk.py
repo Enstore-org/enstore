@@ -1185,11 +1185,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             self.rw_lock.release_read()
         try:
             self.rw_lock.acquire_write()
-            if m_changer not in self.paused_lms:
-                data = self.paused_lms.setdefault(m_changer, {'paused': 0,
-                                                              'noaccess_cnt': 0,
-                                                              'noaccess_time': time.time()
-                                                              })
+            data = self.paused_lms.setdefault(m_changer, {'paused': 0,
+                                                          'noaccess_cnt': 0,
+                                                          'noaccess_time': time.time()
+                                                          })
             now = time.time()
             if data['noaccess_cnt'] == 0:
                 self.paused_lms[m_changer]['noaccess_time'] = now
