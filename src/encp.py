@@ -8195,8 +8195,11 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
     request_copy_list = []
     if use_copies > 0:
 
-        parmameter_libraries = e.output_library.split(",")
-        tag_libraries = t.get_library(os.path.dirname(work_ticket['outfile'])).split(",")
+        libraries = []
+        if  e.output_library:
+            libraries = e.output_library.split(",")
+        else:
+            libraries = t.get_library(os.path.dirname(work_ticket['outfile'])).split(",")
 
         #Determine the starting copy number.  This will only happen if
         # --file-family is used to specify a "_copy_#" file family.  Only
@@ -8216,17 +8219,14 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             # the library tag.  In both cases, the library should be a
             # comma seperated list of library manager short names.
             try:
-                current_library = parmameter_libraries[n_copy]
+                current_library = libraries[n_copy]
             except IndexError:
-                try:
-                    current_library = tag_libraries[n_copy]
-                except IndexError:
-                    #We get here if n copies were requested, but less than
-                    # that number of libraries were found.
-                    raise EncpError(None,
-                                    "Too many copies requested for the "
-                                    "number of configured copy libraries.",
-                                    e_errors.USERERROR)
+                #We get here if n copies were requested, but less than
+                # that number of libraries were found.
+                raise EncpError(None,
+                                "Too many copies requested for the "
+                                "number of configured copy libraries.",
+                                e_errors.USERERROR)
 
             for work_ticket in request_list:
                 copy_ticket = copy.deepcopy(work_ticket)

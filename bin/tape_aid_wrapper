@@ -123,15 +123,14 @@ case ${gang}@${location} in
   *en@FCC2)  # some locations unambiguously define a library
      robot=8500F1
      sun=fntt2
-     # keep d0en tapes in SL8500-5 and cdfen and stken in SL8500-3
      case ${gang} in
        cdfen)
 	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
 	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
 	  ;;
        d0en)
-	  icap="1,9,0"       # acs 1, lsm 5, (rail 2), cap A
-	  ocap="1,9,0"       # acs 1, lsm 9, (rail 2), cap A
+	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
 	  ;;
        stken)
 	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
@@ -162,7 +161,7 @@ case ${gang}@${location} in
      case ${lib} in
        G1)
 	  robot="8500G1"
-	  icap="0,9,0"       # acs 0, lsm 9, (rail 2), cap A
+	  icap="0,1,0"       # acs 0, lsm 1, (rail 2), cap A
 	  ocap="0,5,0"       # acs 0, lsm 5, (rail 2), cap A
 	  sun="fntt-gcc"
 	  ;;

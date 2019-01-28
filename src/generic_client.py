@@ -299,6 +299,9 @@ class GenericClient:
         except TypeError, detail:
              x = {'status' : (e_errors.UNKNOWN,
                                  "%s: %s" % (self.server_name, str(detail)))}
+        except ValueError, detail:
+             x = {'status' : (e_errors.UNKNOWN,
+                                 "%s: %s" % (self.server_name, str(detail)))}
 
         #If the short answer says that the real answer is too long, continue
         # with obtaining the information over TCP.
@@ -326,6 +329,12 @@ class GenericClient:
             except (socket.error), msg:
                 message = "failed to establish control socket: %s" % (str(msg),)
                 x['status'] = (e_errors.NET_ERROR, message)
+
+            except ValueError, detail:
+                x = {'status' : (e_errors.UNKNOWN,
+                                 "%s: %s" % (self.server_name, str(detail)))}
+
+
 
             if e_errors.is_ok(x):
                 #Read the data.

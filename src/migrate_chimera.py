@@ -7527,19 +7527,19 @@ def _scan_bfid(MY_TASK,dst_bfid,src_path,wr_path,intf,encp,override_deleted=Fals
 
     if intf.use_volume_assert or USE_VOLUME_ASSERT:
         argv += ["--check"] #Use encp to check the metadata.
-    else:
-        # If the src file path begins with two dashes (--) it is
-        # really switches specifying alternate reading methods to
-        # encp.  The most likely are --get-bfid or --override-deleted.
-        #
-        # Deleted files are the most likely, but scaning a multiple
-        # copy is also possible.
-        if src_path[0:2] == "--":
-            use_src_path = src_path.split()
-        else:
-            use_src_path = [src_path]
 
-	argv += use_src_path + [wr_path]
+    # If the src file path begins with two dashes (--) it is
+    # really switches specifying alternate reading methods to
+    # encp.  The most likely are --get-bfid or --override-deleted.
+    #
+    # Deleted files are the most likely, but scaning a multiple
+    # copy is also possible.
+    if src_path[0:2] == "--":
+        use_src_path = src_path.split()
+    else:
+        use_src_path = [src_path]
+
+    argv += use_src_path + [wr_path]
 
     if debug:
         cmd = string.join(argv)

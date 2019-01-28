@@ -83,7 +83,7 @@ def main(intf):
         return False
 
     fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
-    namespaceDictionary = fcc.csc.get('namespace', None)
+    namespaceDictionary = fcc.csc.get('namespace')
 
     if not namespaceDictionary:
         sys.stderr.write("No namespace dictionary in configuration root.\n")
@@ -100,14 +100,19 @@ def main(intf):
         connectionPool = None
         cursor = None
         db = None
+
+        dbcon = value
+        if "master" in value :
+            dbcon = value.get("master")
+
         try:
             connectionPool = PooledDB.PooledDB(psycopg2,
                                                maxconnections = 1,
                                                blocking = True,
-                                               host = value.get('dbhost', 'localhost'),
-                                               port = value.get('dbport', 5432),
-                                               user = value.get('dbuser', 'enstore'),
-                                               database = value.get('dbname', 'chimera'))
+                                               host = dbcon.get('dbhost', 'localhost'),
+                                               port = dbcon.get('dbport', 5432),
+                                               user = dbcon.get('dbuser', 'enstore'),
+                                               database = dbcon.get('dbname', 'chimera'))
             db = connectionPool.connection()
             cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             #

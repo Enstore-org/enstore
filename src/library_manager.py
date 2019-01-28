@@ -22,8 +22,6 @@ import copy
 import threading
 
 # enstore imports
-
-
 import volume_clerk_client
 import file_clerk_client
 import callback
@@ -286,13 +284,20 @@ class Requests:
 
         # call the user function
         t = time.time()
-        Trace.trace(self.trace_level,"Requests:process_request: function %s"%(function_name, ))
+        Trace.trace(self.trace_level,"Requests:process_request: function %s"%(function_name,))
 
-        if function_name in ('mover_idle', 'mover_busy', 'mover_bound_volume', 'mover_error'):
+        if function_name in ('mover_idle', 'mover_bound_volume'):
             if self.lm_server.use_threads:
                 thread_name = ticket['mover']
                 Trace.trace(self.trace_level, "Requests:process_request:thread starting %s"%(thread_name,))
-                dispatching_worker.run_in_thread(thread_name, self.lm_server.request_thread, (function, ticket,))
+                #self.lm_server.run_in_thread(thread_name, self.lm_server.request_thread, args = (function, ticket)) # leave here as the alternative, but slower
+
+                thread = threading.Thread(group=None,
+                                          target=self.lm_server.request_thread,
+                                          name = thread_name,
+                                          args = (function, ticket))
+
+                thread.start()
                 self.worker.done_cleanup(ticket)
             else:
                 Trace.trace(self.trace_level, "Requests:process_request: calling %s(%s)"%(function, ticket))
@@ -2046,7 +2051,7 @@ class LibraryManagerMethods:
             self.checked_keys.append(check_key)
         active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
         Trace.trace(self.trace_level+4, "fair_share: SG LIMIT %s"%(self.get_sg_limit(storage_group),))
-        if len(active_volumes) >= self.get_sg_limit(storage_group)+ease:
+        if (len(active_volumes) >= self.get_sg_limit(storage_group)+ease) and len(self.idle_movers) == 0:
             rq.ticket["reject_reason"] = ("PURSUING",None)
             self.sg_exceeded = (True, storage_group)
             Trace.trace(self.trace_level+4, "fair_share: active work limit exceeded for %s" % (storage_group,))
@@ -3361,7 +3366,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.use_threads = self.keys.get('use_threads', False)
         if self.use_threads:
             self.in_progress_lock = threading.Lock()
-            self.mover_request_in_progress = False # this is needed only in threaded mode.
         # allow running some methods as forked unix processes
         # False bay default
         self.do_fork = self.keys.get('do_fork', False)
@@ -3422,13 +3426,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(5, 'removing %s from %s'%((function, ticket), self.mover_rq_in_progress))
             self.mover_rq_in_progress.remove((function, ticket))
         '''
-        #self.set_mover_request_in_progress(False)
-
-    def set_mover_request_in_progress(self, value=False):
-        if self.mover_request_in_progress != value:
-            self.in_progress_lock.acquire()
-            self.mover_request_in_progress = value
-            self.in_progress_lock.release()
 
     def accept_request(self, ticket):
         Trace.trace(self.my_trace_level+100,"accept_request:queue %s max rq %s priority %s"%
@@ -4013,21 +4010,23 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         """
 
         t=time.time()
+        saved_reply_address = mticket.get('r_a', None)
+        nowork = {'work': 'no_work', 'r_a': saved_reply_address}
         Trace.trace(5, "mover_idle: %s"%(mticket['mover'],))
         if self.lm_lock == e_errors.MOVERLOCKED:
-            mticket['work'] = 'no_work'
-            Trace.trace(5, "mover_idle: mover request in progress sending nowork %s"%(mticket,))
-            self.reply_to_caller(mticket)
+            Trace.trace(5, "mover_idle: mover request in progress sending nowork %s"%(nowork,))
+            self.reply_to_caller(nowork)
         else:
             if self.use_threads:
-                if not self.mover_request_in_progress:
-                    self.set_mover_request_in_progress(value=True)
-                    self._mover_idle(mticket)
-                    self.set_mover_request_in_progress(value=False)
+                if not self.in_progress_lock.acquire(False):
+                    Trace.trace(5, "mover_idle: mover request in progress sending nowork %s"%(nowork,))
+                    self.reply_to_caller(nowork)
                 else:
-                    mticket['work'] = 'no_work'
-                    Trace.trace(5, "mover_idle: mover request in progress sending nowork %s"%(mticket,))
-                    self.reply_to_caller(mticket)
+                    # the lock was acquired
+                    try:
+                        self._mover_idle(mticket)
+                    finally:
+                        self.in_progress_lock.release()
             else:
                self._mover_idle(mticket)
         Trace.trace(7, "mover_idle:timing mover_idle %s %s %s"%
@@ -4391,15 +4390,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         """
 
         t=time.time()
+        saved_reply_address = mticket.get('r_a', None)
+        nowork = {'work': 'no_work', 'r_a': saved_reply_address}
         Trace.trace(5, "mover_bound_volume %s"%(mticket['mover'],))
         if self.use_threads:
-            if not self.mover_request_in_progress:
-               self.set_mover_request_in_progress(value=True)
-               self._mover_bound_volume(mticket)
-               self.set_mover_request_in_progress(value=False)
+            if not self.in_progress_lock.acquire(False):
+                Trace.trace(5, "mover_bound_volume: mover request in progress sending nowork %s"%(nowork,))
+                self.reply_to_caller(nowork)
             else:
-                mticket['work'] = 'no_work'
-                self.reply_to_caller(mticket)
+                # the lock was acquired
+                try:
+                    self._mover_bound_volume(mticket)
+                finally:
+                    self.in_progress_lock.release()
         else:
             self._mover_bound_volume(mticket)
         Trace.trace(7, "mover_bound_volume: timing mover_bound_volume %s %s %s"%

@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 6.2.0
-Release: 0
+Version: 6.3.1
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -242,6 +242,36 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Wed Jan 23 2019  <moibenko@fnal.gov> -
+- v 6.3.1 release 0. Uses new mtx rpm which updates elemets structure every time status is called.
+* Mon Jan 14 2019  <moibenko@fnal.gov> -
+- v 6.3.0 release 13. Fixed listSlots to not fail on keyerror.
+* Tue Jan 8 2019  <moibenko@fnal.gov> -
+- v 6.3.0 release 12. Added listClean and listVolumes to MTXN media changer
+* Tue Jan 8 2019  <moibenko@fnal.gov> -
+- v 6.3.0 release 11. Restored MC lost changes.
+* Fri Jan 4 2019  <moibenko@fnal.gov> -
+- v 6.3.0 release 10. LM fair share change. Process DNS resolution errors.
+* Thu Dec 20 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 9. Create log dir if it does not exist
+* Wed Dec 05 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 8. Added more retry cases
+* Mon Nov 05 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 7. Ignore media type in mtx mount/dismount
+* Thu Nov 01 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 6. Fixed bugs in media changer mount / dismount retries. Noe enstore_display for entv without lookup calls.
+* Tue Oct 30 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 5. Fixed mover.py. Disk mover had exception due to missing loc_mover var.
+* Mon Oct 29 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 4. Added retries on mount / dismount failures with error processing.
+* Thu Oct 25 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 3. included LTO8 into ftt_tables and enabled compression. MC mods
+* Tue Oct 23 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 2. MC: adopt new ACSSA CLI version, reload loaction info on retry
+* Thu Sep 27 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 1. bug fix in mover to not stop media changer on exit
+* Fri Sep 7 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 0. added new mtx support for TS4500 robotic library (stacker actually)
 * Mon Jul 16 2018  <moibenko@fnal.gov> -
 - v 6.2.0 release 0. - last release, which does not include new code for TS4500
 * Mon Apr 16 2018  <moibenko@fnal.gov> -

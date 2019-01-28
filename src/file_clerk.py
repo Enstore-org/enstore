@@ -1162,18 +1162,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 				Trace.log(e_errors.INFO,  "Failed to extract '%s' from configuration"%(AMQP_BROKER,))
 
         #Retrieve database information from the configuration.
-        Trace.log(e_errors.INFO,"determine dbHome and jouHome")
+        Trace.log(e_errors.INFO,"determine dbHome")
 
         try:
             dbInfo = self.csc.get('database')
             dbHome = dbInfo['db_dir']
-            try:  # backward compatible
-                jouHome = dbInfo['jou_dir']
-            except:
-                jouHome = dbHome
         except:
             dbHome = os.environ['ENSTORE_DIR']
-            jouHome = dbHome
 
         self.sequentialQueueSize     = self.keys.get('sequential_queue_size',SEQUENTIAL_QUEUE_SIZE)
 	self.parallelQueueSize       = self.keys.get('parallel_queue_size',PARALLEL_QUEUE_SIZE)
@@ -1184,7 +1179,7 @@ class FileClerkMethods(FileClerkInfoMethods):
                                       port=dbInfo.get('db_port',None),
                                       user=dbInfo.get('dbuser',None),
                                       database=dbInfo.get('dbname',None),
-                                      jou=jouHome,
+                                      auto_journal=0,
                                       max_connections=self.max_connections,
                                       max_idle=int(self.max_connections*0.9+0.5))
 

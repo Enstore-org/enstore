@@ -726,7 +726,10 @@ def get_all_systems(csc=None):
     config_servers = {}
     for system_name, csc_addr in known_config_servers.items():
         new_csc = configuration_client.ConfigurationClient(csc_addr)
-        config_servers[system_name] = new_csc
+        new_csc.new_config_obj.enable_caching()
+        rtn_ticket = csc.dump_and_save(timeout = 10, retry = 3)
+        if e_errors.is_ok(rtn_ticket):
+            config_servers[system_name] = new_csc
 
     #Special section for test systems that are not in their own
     # config file's 'known_config_servers' section.
@@ -823,6 +826,7 @@ def get_csc(system_name = None, timeout = 3, retry = 3):
 
         #Cache the entire configuration.
         rtn_ticket = csc.dump_and_save(timeout = timeout, retry = retry)
+        csc.new_config_obj.enable_caching()
 
         #Cache the default configuration server.
         if e_errors.is_ok(rtn_ticket):

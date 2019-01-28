@@ -809,7 +809,8 @@ char *AIT_density_trans[MAX_TRANS_DENSITY] = {
 };
 char *Ultrium_density_trans[MAX_TRANS_DENSITY] = {
         "unknown",
-        "LTO-1",
+	"LTO-8",
+	"M8",
         0
 };
 char *STK_density_trans[MAX_TRANS_DENSITY] = {
@@ -1155,7 +1156,21 @@ ftt_dev_entry devtable[] = {
        { "rmt/tps%dd%dn",  0,  1, 0x40,  0,  0,FTT_RDNW,  0, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "ULT06242-XXX", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER, FTT_OP_STATUS, ftt_trans_table_Linux,Ultrium_density_trans,
+{"Linux", "ULT3580-TD8", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER, FTT_OP_STATUS, ftt_trans_table_Linux,Ultrium_density_trans,
+       "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
+    /*   string          den mod   hwd pas fxd   rewind 1st */
+    /*   ======          === ===   === === ===   ====== === */
+    /* Default */
+       { "rmt/tps%dd%dn",  0,  0, 0x5e,  0,  0,       0,  1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "sc/sc%dd%d",    -1,  0,   -1,  1,  0,       0,  1, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "rmt/tps%dd%dn",  0,  0, 0x5e,  0,  0, FTT_RDNW,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",  0,  1, 0x5e,  0,  0, FTT_RDNW,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",  0,  1, 0x5e,  0,  0, 0,  0, LINUX_MAX_BLKSIZE},
+        { 0 },
+    }},    
+{"Linux", "ULT06242-XXX", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER, FTT_OP_STATUS, ftt_trans_table_Linux,Ultrium_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod   hwd pas fxd   rewind 1st */
     /*   ======          === ===   === === ===   ====== === */

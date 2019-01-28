@@ -184,16 +184,17 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             ### Get current tape information for all tapes currently in use.
             ###
 
-            #Get them for each media type.
-            sql_cmd = "select v1.media_type, " \
-                      "count(v2.media_type) as blank," \
-                      "count(v3.media_type) as written " \
-                      "from volume v1 " \
-                      "full join (select * from volume where eod_cookie = 'none')"\
-                      " as v2 on v1.id=v2.id " \
-                      "full join (select * from volume where eod_cookie != 'none')"\
-                      " as v3 on v3.id=v1.id " \
-                      "group by v1.media_type"
+            #Get blank and written tape counts for each media type.
+            sql_cmd = ("select media_type,"
+                       "    sum(case when file_family  = 'none' and wrapper = 'none' then 1 else 0 end) as blank,"
+                       "    sum(case when file_family != 'none' or wrapper != 'none' then 1 else 0 end) as written "
+                       "from volume"
+                       "    where system_inhibit_0 != 'DELETED'"
+                       "        and library not like 'shelf-%'"
+                       "        and media_type not in ('disk', 'null')"
+                       "    group by media_type"
+                       "    order by media_type"
+                       )
 
             edb_res = edb.query(sql_cmd).getresult() #Get the values from the DB.
 

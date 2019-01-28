@@ -6,7 +6,6 @@ import string
 import enstore_constants
 import enstore_functions
 import migrator_client
-import mover_client
 import library_manager_client
 import e_errors
 import Trace
@@ -66,7 +65,7 @@ class MonitoredServer:
 
     def __init__(self, config, name, hung_interval=None):
 	self.name = name
-	# set this to now because we will check this before any of the servers 
+	# set this to now because we will check this before any of the servers
 	# heartbeats have been forwarded to us
 	self.last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
 	self.output_last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
@@ -112,7 +111,7 @@ class MonitoredServer:
         else:
             rtn = self.last_alive
         return rtn
-        
+
 
     def check_recent_alive(self, event_relay):
 	if self.alive_interval == NO_HEARTBEAT:
@@ -129,7 +128,7 @@ class MonitoredServer:
 		# we can only determine REALLY if we are hung, if we know that the
 		# event relay is still alive.  determine that first
 		enstore_functions.inqTrace(enstore_constants.INQSERVERTIMESDBG,
-		    "%s Past Interval: %s, Hung Interval: %s, ER Alive: %s"%(self.name, 
+		    "%s Past Interval: %s, Hung Interval: %s, ER Alive: %s"%(self.name,
 								    past_interval,
 								    self.hung_interval,
 								    event_relay.is_alive()))
@@ -185,9 +184,9 @@ class MonitoredInquisitor(MonitoredServer):
 
     def update_default_alive_interval(self, config):
 	global DEFAULT_ALIVE_INTERVAL, DEFAULT_HUNG_INTERVAL
-	DEFAULT_ALIVE_INTERVAL = config.get('default_alive_interval', 
+	DEFAULT_ALIVE_INTERVAL = config.get('default_alive_interval',
 					    DEFAULT_ALIVE_INTERVAL)
-	DEFAULT_HUNG_INTERVAL = config.get('default_hung_interval', 
+	DEFAULT_HUNG_INTERVAL = config.get('default_hung_interval',
 					    DEFAULT_HUNG_INTERVAL)
 
     def update_config(self, new_config):
@@ -197,7 +196,7 @@ class MonitoredInquisitor(MonitoredServer):
     def get_hung_interval(self, server_name, config=None):
 	if config is None:
 	    config = self.config
-	return(config.get("hung_intervals", {}).get(server_name, 
+	return(config.get("hung_intervals", {}).get(server_name,
 						   DEFAULT_HUNG_INTERVAL))
 
     def __init__(self, config):
@@ -295,7 +294,6 @@ class MonitoredMigrator(MonitoredServer):
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name, DEFAULT_MIGRATOR_HUNG_INTERVAL)
 	self.csc = csc
-	self.client = migrator_client.MigratorClient(self.csc, self.name)
 	self.status_keys = self.STATUS_FIELDS.keys()
 
 class MonitoredMover(MonitoredServer):
@@ -317,7 +315,6 @@ class MonitoredMover(MonitoredServer):
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name, DEFAULT_MOVER_HUNG_INTERVAL)
 	self.csc = csc
-	self.client = mover_client.MoverClient(self.csc, self.name)
 	self.status_keys = self.STATUS_FIELDS.keys()
 
 

@@ -81,6 +81,7 @@ EXfer EXfer.c  -I$(PYTHONINC) -D`uname` $(QUOTAS) adler32.a $(POSIX4) $(RT) $(GE
 
 # NOTE: "=" can not be on the same line with module definition
 FTT_DEF=FTT_DIR=
+MTX_LIB=`rpm -ql mtx | grep libmtx.so`
 
 
 IPC IPC.c  -I$(PYTHONINC) $(BITS_FLAG)
@@ -96,6 +97,7 @@ Devcodes Devcodes.c  -I$(PYTHONINC) $(BITS_FLAG)
 
 checksumc checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a $(BITS_FLAG)
 #_checksum checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a $(BITS_FLAG)
+mtxc mtx_wrap_thread.c  -I$(PYTHONINC) $(MTX_LIB) $(BITS_FLAG)
 
 socket_extc socket_ext_wrap.c  -I$(PYTHONINC) $(BITS_FLAG)
 #_socket_ext socket_ext_wrap.c  -I$(PYTHONINC) $(BITS_FLAG)

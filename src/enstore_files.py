@@ -1017,12 +1017,12 @@ class EnstoreIngestRatesFile(EnFile):
     def __init__(self, file):
 	EnFile.__init__(self, file)
         self.file_name = "%s.new"%(file,)
+        self.html_dir = enstore_functions2.get_dir(file)
 
     # format the config entry and write it to the file
     def write(self):
         if self.openfile:
-            doc = enstore_html.EnSGIngestPage()
-
+            doc = enstore_html.EnSGIngestPage(self.html_dir)
             doc.body()
 	    self.do_write(str(doc))
 
