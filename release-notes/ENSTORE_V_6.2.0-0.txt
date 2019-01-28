@@ -1,0 +1,84 @@
+commit 3a83873c1fae96845bb1acc6290832fa38f8cad2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jul 16 16:05:11 2018 -0500
+
+    enstore rpm 6.2.0.0 - last vesrsion before including modifications for TS4500.
+
+A	release-notes/ENSTORE_V_6.1.0-6.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit e0db287300d2fa74ebd996cb2c1109809ca45f2f
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Jun 28 16:26:35 2018 -0500
+
+    [migration] BZ:#1658 RB:#507 bug fix: use proper variable names in _scan_bfid() migration with packaging
+
+    RB: http://uqbar.fnal.gov/reviews/r/507
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1658
+
+M	src/migrate_chimera.py
+
+commit 562f2fcdc8426ce99c2507ec1d4b56e710475fa5
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Mon Jun 25 16:37:33 2018 -0500
+
+    Merge migration-package branch: Implemention of migration with packaging (stage 1.5).
+
+    RB 276, BZ 1658
+    The bug fix patch follows to fix names in _scan_bfid()
+
+    commit f129651859ed88133eea5d39f4838471deeff3c2
+    Merge: 4be62e2 5fe2a1c
+    Author: Alex Kulyavtsev <aik@fnal.gov>
+    Date:   Wed May 30 15:07:08 2018 -0500
+
+        rebased (merged) with develop 5fe2a1c (after production 6.1.0-6)
+
+M	src/migrate_chimera.py
+
+commit 5fe2a1c419be3cd56f1255df544ee2e0044a2ccc
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu May 17 16:46:25 2018 -0500
+
+    dbaccess : BUG FIX, fix variable name
+
+       RB : http://uqbar.fnal.gov/reviews/r/506/
+       BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1926
+
+M	src/dbaccess.py
+
+commit b239c8a3a2d639eef2c77de824c532b2729eb679
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu May 17 11:20:44 2018 -0500
+
+    delfile: report OperationalError as alarm. Use prepared statement and follow PEP8 standard
+
+    	RB : http://uqbar.fnal.gov/reviews/r/505/
+    	BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1925
+
+M	src/delfile_chimera.py
+
+commit fe48697c43dcebc08409391ae9115d488d50ff9b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Apr 26 16:46:55 2018 -0500
+
+    inventory : do not alarm on mount exceeded for shelf libraries
+                RB: http://srm.fnal.gov/reviews/r/504/
+                BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1914
+
+M	src/inventory.py
+
+commit 6d1bb12fbc3579ebf555ea0180c66a8437a9b4de
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Apr 25 16:11:06 2018 -0500
+
+    encp: handle tracebacks that have to to w/ running out of
+          space when redirecting output to a file and missing
+          layer files
+
+          RB : http://srm/reviews/r/503/
+          BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1920
+
+M	src/chimera.py
+M	src/encp.py
+
