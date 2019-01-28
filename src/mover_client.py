@@ -24,7 +24,9 @@ import option
 import generic_client
 import Trace
 import configuration_client
+import volume_clerk_client
 import enstore_functions2
+import e_errors
 
 R_TO = 30
 R_T = 3
@@ -65,7 +67,26 @@ class MoverClient(generic_client.GenericClient):
 
     def dump(self, rcv_timeout=R_TO, tries=R_T):
         return self.send({"work" : "dump"}, rcv_timeout, tries)
-    
+
+    def loadvol(self, vol_ticket):
+        vol_ticket['work'] =  'loadvol'
+        rt = self.send(vol_ticket, 300, 3)
+        if not e_errors.is_ok(rt):
+            Trace.log(e_errors.ERROR, "loadvol %s" % (rt['status'],))
+        return rt
+
+    def unloadvol(self, vol_ticket):
+        vol_ticket['work'] =  'unloadvol'
+        rt = self.send(vol_ticket,300,3)
+        if not e_errors.is_ok(rt):
+            Trace.log(e_errors.ERROR, "unloadvol %s" % (rt['status'],))
+        return rt
+
+    def viewdrive(self):
+        ticket = {'work' : 'viewdrive',
+                  }
+        rt = self.send(ticket)
+        return rt
 
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
@@ -86,6 +107,10 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.mover_dump = 0
         self.warm_restart = 0
         self.list = 0
+        self.dismount = 0
+        self.mount = 0
+        self.show_drive = 0
+
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -99,6 +124,16 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                             option.DEFAULT_TYPE:option.INTEGER,
                             option.VALUE_USAGE:option.IGNORED,
                             option.USER_LEVEL:option.ADMIN},
+        option.DISMOUNT:{option.HELP_STRING:"",
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.VALUE_NAME:"volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"external_label",
+                      option.USER_LEVEL:option.ADMIN,
+                      option.FORCE_SET_DEFAULT:option.FORCE,
+                      },
         option.DOWN:{option.HELP_STRING:"set mover to offline state",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
@@ -116,6 +151,16 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN},
+        option.MOUNT:{option.HELP_STRING:"",
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.VALUE_NAME:"volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"external_label",
+                      option.USER_LEVEL:option.ADMIN,
+                      option.FORCE_SET_DEFAULT:option.FORCE,
+                      },
         option.MOVER_DUMP:{option.HELP_STRING:
                      "send mover internals to stdout",
                      option.DEFAULT_VALUE:option.DEFAULT,
@@ -146,6 +191,12 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_LABEL:"e_mail_address",
                        option.USER_LEVEL:option.ADMIN},
+        option.SHOW_DRIVE:{option.HELP_STRING:"Returns information about a drive",
+                           option.DEFAULT_VALUE:option.DEFAULT,
+                           option.DEFAULT_TYPE:option.INTEGER,
+                           option.VALUE_USAGE:option.IGNORED,
+                           option.USER_LEVEL:option.ADMIN,
+                           },
         option.STATUS:{option.HELP_STRING:"print mover status",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
@@ -178,7 +229,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
     """
 
     parameters = ["mover_name"]
-        
+
     def parse_options(self):
         generic_client.GenericClientInterface.parse_options(self)
 
@@ -211,9 +262,9 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         for mover_name in movers_list:
             mover_info = csc.get(mover_name['mover'])
             print msg_spec % (mover_name['mover'], mover_info['host'],
-                              mover_info['mc_device'], mover_info['driver'],
+                              mover_info.get('mc_device', 'N/A'), mover_info['driver'],
                               mover_info['library'])
-        
+
         sys.exit(0)
 
 def do_work(intf):
@@ -247,6 +298,32 @@ def do_work(intf):
         ticket = movc.device_dump(intf.sendto, intf.notify, intf.alive_rcv_timeout, intf.alive_retries)
     elif intf.mover_dump:
         ticket = movc.dump(intf.alive_rcv_timeout, intf.alive_retries)
+    elif intf.dismount:
+        vcc = volume_clerk_client.VolumeClerkClient(movc.csc)
+        vol_ticket = vcc.inquire_vol(intf.volume)
+        ticket = movc.unloadvol(vol_ticket)
+        print ticket['status']
+    elif intf.mount:
+        vcc = volume_clerk_client.VolumeClerkClient(movc.csc)
+        vol_ticket = vcc.inquire_vol(intf.volume)
+        ticket = movc.loadvol(vol_ticket)
+        print ticket['status']
+        del vcc
+    elif intf.show_drive:
+        ticket = movc.viewdrive()
+        if e_errors.is_ok(ticket) and ticket.get("drive_info", None):
+            drive_info = ticket['drive_info']
+            drive = drive_info.get('location', ticket['drive'])
+            phys_loc = drive_info.get('phys_location')
+            s = '%s'%(drive, )
+            if phys_loc:
+                s = '%s(%s)'%(drive, phys_loc)
+            print "%16s %15s %15s %15s %8s" % ("name", "state", "status",
+                                               "type", "volume")
+            print "%16s %15s %15s %15s %8s" % \
+                  (s, drive_info['state'],
+                   drive_info.get("status", ""), drive_info['type'],
+                   drive_info['volume'])
     else:
         intf.print_help()
         sys.exit(0)

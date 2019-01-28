@@ -1,19 +1,19 @@
 ############################################################
-#  
+#
 # $Id$
 #
 
 SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c \
 	../checksum_wrap_thread.c ../socket_ext_wrap.c \
 	../strbuffer_wrap_thread.c ../ftt2_wrap_thread.c \
-	../runon_wrap.c ../enroute_wrap.c
+	../runon_wrap.c ../enroute_wrap.c ../mtx_wrap_thread.c
 
 SWIG_GENERATED_PY_FILES=../aci_shadow.py ../derrno.py ../checksum.py \
 	../ftt2.py ../socket_ext.py ../strbuffer.py ../enroute.py \
-	../runon.py
+	../runon.py ../mtx.py
 
 all: $(SWIG_GENERATED_PY_FILES) $(SWIG_GENERATED_C_FILES)
-# SWIG_GENERATED_PY_FILES are automatically created 
+# SWIG_GENERATED_PY_FILES are automatically created
 #at the same time as the C files
 
 clean:
@@ -42,7 +42,7 @@ clean:
 
 
 ../checksum_wrap_thread.c: checksum.i
-	swig -shadow -python -D__STDC__ checksum.i 
+	swig -shadow -python -D__STDC__ checksum.i
 	./threadit.py < checksum_wrap.c > ../checksum_wrap_thread.c
 	rm checksum_wrap.c
 	mv checksum.py ..
@@ -63,8 +63,8 @@ clean:
 
 
 ../socket_ext_wrap.c: socket_ext.i
-	swig -shadow -python socket_ext.i 
-	mv socket_ext_wrap.c .. 
+	swig -shadow -python socket_ext.i
+	mv socket_ext_wrap.c ..
 	mv socket_ext.py ..
 
 ../socket_ext.py: ../socket_ext_wrap.c
@@ -97,3 +97,11 @@ clean:
 	fi
 
 ../runon.py: ../runon_wrap.c
+
+../mtx_wrap_thread.c: mtx.i
+	swig -I$(ENSTORE_DIR)/mtx/mtx-1.3.12 -shadow -python mtx.i
+	./threadit.py < mtx_wrap.c > ../mtx_wrap_thread.c ; \
+	rm mtx_wrap.c ;
+	mv mtx.py ..
+
+../mtx.py: ../mtx_wrap_thread.c

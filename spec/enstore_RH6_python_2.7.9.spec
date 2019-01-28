@@ -1,6 +1,6 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 6.2.0
+Version: 6.3.0
 Release: 0
 License: GPL
 Group: System Environment/Base
@@ -242,6 +242,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Sep 7 2018  <moibenko@fnal.gov> -
+- v 6.3.0 release 0. added new mtx support for TS4500 robotic library (stacker actually)
 * Mon Jul 16 2018  <moibenko@fnal.gov> -
 - v 6.2.0 release 0. - last release, which does not include new code for TS4500
 * Mon Apr 16 2018  <moibenko@fnal.gov> -

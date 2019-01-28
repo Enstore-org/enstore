@@ -2051,7 +2051,7 @@ class LibraryManagerMethods:
             self.checked_keys.append(check_key)
         active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
         Trace.trace(self.trace_level+4, "fair_share: SG LIMIT %s"%(self.get_sg_limit(storage_group),))
-        if len(active_volumes) >= self.get_sg_limit(storage_group)+ease:
+        if (len(active_volumes) >= self.get_sg_limit(storage_group)+ease) and len(self.idle_movers) == 0:
             rq.ticket["reject_reason"] = ("PURSUING",None)
             self.sg_exceeded = (True, storage_group)
             Trace.trace(self.trace_level+4, "fair_share: active work limit exceeded for %s" % (storage_group,))

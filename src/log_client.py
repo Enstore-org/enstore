@@ -417,7 +417,10 @@ class TCPLoggerClient(LoggerClient):
         except KeyError:
             user_name = '%s'%(os.geteuid(),)
         # if there are problems with connection to log server dump messages locally
-        self.dump_file = os.path.join(enstore_functions.get_enstore_tmp_dir(), user_name,  name)
+        dirpath = os.path.join(enstore_functions.get_enstore_tmp_dir(), user_name)
+        if not os.path.exists(dirpath):
+            os.makedirs(dirpath)
+        self.dump_file = os.path.join(dirpath, name)
         self.dump_here = open(self.dump_file, 'a')
 
         self.lock = threading.Lock()

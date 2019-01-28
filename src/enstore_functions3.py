@@ -40,7 +40,7 @@ def is_volume_tape(volume):
     if type(volume) == types.StringType:
         if re.search("^[A-Z0-9]{6}(.deleted){0,1}$", volume):
             return 1   #If passed a volume.
-        elif re.search("^[A-Z0-9]{6}(L)[0-9]{1}(.deleted){0,1}$", volume):
+        elif re.search("^[A-Z0-9]{6}(L|M)[0-9]{1}(.deleted){0,1}$", volume):
             # LTO1,2 have L1 or L2 suffix
             return 1
         elif re.search("^[A-Z0-9]{6}(JC|JY|J)(.deleted){0,1}$", volume):
