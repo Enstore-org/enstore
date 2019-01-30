@@ -3895,7 +3895,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		Trace.alarm(e_errors.ERROR, 'can not get intial status, exiting with %s'%(rc,))
 		self.server.terminate()
 		sys.exit(1)
-		
+
     def _mtx_server(self, read_pipe, write_pipe, err_pipe):
 	mtx.cvar.device = self.device_name
 	mtx.cvar.absolute_addressing = 1
