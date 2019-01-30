@@ -3765,7 +3765,6 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         # If not a duplicate request or dropped request; fork the work.
         self.p = os.pipe()
 	cmd_executor = multiprocessing.Process(target=self.executor, args = (function, ticket, self.p, common_message))
-	#cmd_executor.start()
 	self.add_select_fd(self.p[0]) #wait for reading half of pipe.
 	# add entry to outstanding work
 	if not  ticket['function'] in ('listClean', 'listVolumes'):
@@ -3875,7 +3874,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	self.device_name = self.mc_config.get('device_name', '/dev/changer')
 
         # Read the value for the timeout on status commands.
-	self.status_timeout = self.mc_config.get('status_timeout', 60)
+	self.status_timeout = self.mc_config.get('status_timeout', 300)
 
         # Read the value for the timeout on mount commands.
 	self.mount_timeout = self.mc_config.get('mount_timeout', 300)
@@ -3886,21 +3885,22 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	self.manager = multiprocessing.Manager()
 	self.q = multiprocessing.Queue()
 	self.mtx_server_started = self.manager.Value('i',0)
-	#self.status_local()
 
         Trace.log(e_errors.INFO,
                   '%s initialized with device: %s status time limit: %s mount time limit: %s '%
                   (self.__class__.__name__, self.device_name, self.status_timeout, self.mount_timeout))
 	self.start_mtx_server()
-	self.status_local()
-
+	rc = self.status_local()
+	if not e_errors.is_ok(rc[0]):
+		Trace.alarm(e_errors.ERROR, 'can not get intial status, exiting with %s'%(rc,))
+		self.server.terminate()
+		sys.exit(1)
+		
     def _mtx_server(self, read_pipe, write_pipe, err_pipe):
-        print "STARTING"
 	mtx.cvar.device = self.device_name
 	mtx.cvar.absolute_addressing = 1
 	mtx.open_device()
         Trace.log(e_errors.INFO, "MTX server started")
-
 	for i in 0, 1, 2:
             try:
                 os.close(i)
@@ -3985,8 +3985,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		else:
 			time.sleep(1)
 	if t >= self.status_timeout:
-		msg = 'mtx server not responded in %s s. Exiting'%(self.status_timeout,)
+		msg = 'mtx server not started %s s. Exiting'%(self.status_timeout,)
 		Trace.alarm(e_errors.ERROR, msg)
+		self.server.terminate()
 		os._exit(1)
 
     def receive_reply(self, end_of_response, timeout):
@@ -4558,7 +4559,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	rc = self.get_mtx_status()
 	if not e_errors.is_ok(rc[0]):
 		Trace.log(e_errors.ERROR, 'get_mtx_status returned: %s'%(rc[0],))
-		return
+		return (e_errors.ERROR, 'get_mtx_status returned: %s'%(rc[0],))
 	if hasattr(self, 'slots'): # clear lists
 		while self.slots:
 			try:
@@ -4637,7 +4638,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		self.status_valid = 1
 	else:
             Trace.log(e_errors.ERROR, 'mtx status returned no result %s'%(result,))
-        return errorString
+	if errorString:
+		rc = (e_errors.ERROR,  errorString, '')
+	else:
+		rc = (e_errors.OK, '', '')
+        return rc
 
     # return status of all drives and slots
     def robot_status(self):
