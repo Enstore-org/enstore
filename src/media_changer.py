@@ -3861,15 +3861,17 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
 	Trace.init(self.log_name, 'yes')
+	print time.ctime(), 'STARTING'
 	self.max_work = 1
 	self.work_functions.append('updatedb')
 	self.work_functions.append('getVolState')
- 	self.query_functions.remove('getVolState')
- 	self.work_functions.append('getDriveState')
- 	self.query_functions.remove('getDriveState')
-       # Mark our cached status info as invalid
+	self.query_functions.remove('getVolState')
+	self.work_functions.append('getDriveState')
+	self.query_functions.remove('getDriveState')
+	# Mark our cached status info as invalid
         self.status_valid = 0;
 	self.debug = self.mc_config.get('debug', False)
+	self.debug_messaging = self.mc_config.get('debug_messaging', False)
         # Read the device name to use.
 	self.device_name = self.mc_config.get('device_name', '/dev/changer')
 
@@ -3895,6 +3897,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		Trace.alarm(e_errors.ERROR, 'can not get intial status, exiting with %s'%(rc,))
 		self.server.terminate()
 		sys.exit(1)
+	print time.ctime(),  'STARTED'
 
     def _mtx_server(self, read_pipe, write_pipe, err_pipe):
 	mtx.cvar.device = self.device_name
@@ -4039,7 +4042,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		    continue
 	        raw_msg = os.read(self.c2pread, 2000)
 		if raw_msg:
-                    if self.debug:
+                    if self.debug_messaging:
 			    print 'RAW_MSG', raw_msg
 		    if end_of_response in raw_msg:
 			    message = message+raw_msg[:raw_msg.find(end_of_response)] # in the last line leave all, but end_of_response
@@ -4085,7 +4088,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	response = message.split('\012')
 	#response = message
 	if  'status' in command_string and self.debug:
-		ofn = '/var/log/enstore/tmp/enstore/%s.mtx_status.out'%(end_of_response,)
+		ofn = '/var/log/enstore/tmp/enstore/%s_%s.mtx_status.out'%(self.name, end_of_response,)
 		Trace.log(e_errors.INFO, 'the output of the status command is in %s'%(ofn,))
 		of = open(ofn, 'w')
 		for l in response:
@@ -4765,9 +4768,13 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         found = False
         idx_slot = 0
         for s in self.slots:
-            if ticket['volume']['address'] == s['address']:
-                found = True
-                break
+            try:
+		    if ticket['volume']['address'] == s['address']:
+			    found = True
+			    break
+	    except:
+		    Trace.handle_error()
+		    return [e_errors.ERROR, 0, 'exception in updatedb']
 
 	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: slot %s'%(s,))
 	if found:
@@ -5100,15 +5107,19 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 	status_timeout = argdict.get('status_timeout', 300)
 	mount_timeout = argdict.get('mount_timeout', 300)
 	debug =  argdict.get('debug', False)
+	debug_messaging =  argdict.get('debug_messaging', False)
 
         generic_server.GenericServer.__init__(self, csc, medch,
                                               function = self.handle_er_msg)
 	Trace.init(self.log_name, 'yes')
+	print time.ctime(), 'STARTING'
+
 	self.max_work = 1
 
         # Mark our cached status info as invalid
         self.status_valid = 0;
 	self.debug = debug
+	self.debug_messaging = debug_messaging
 	self.device_name = mc_device
 
 	self.status_timeout = status_timeout
@@ -5125,84 +5136,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
                   '%s initialized with device: %s status time limit: %s mount time limit: %s '%
                   (self.__class__.__name__, self.device_name, self.status_timeout, self.mount_timeout))
 	self.work_in_progress = False # set to True when work is in progress
-
-    def _mtx_server(self, read_pipe, write_pipe, err_pipe):
-	mtx.cvar.device = self.device_name
-	mtx.cvar.absolute_addressing = 1
-	mtx.open_device()
-        Trace.log(e_errors.INFO, "MTX server started")
-
-	for i in 0, 1, 2:
-            try:
-                os.close(i)
-            except os.error:
-                pass
-	if os.dup(read_pipe) <> 0:
-            Trace.log(e_errors.ERROR, '_mtx_server read_pipe bad read dup')
-	if os.dup(write_pipe) <> 1:
-            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad write dup')
-        if os.dup(err_pipe) <> 2:
-            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad error dup')
-	"""
-	MAXFD = 10 # Max number of file descriptors (os.getdtablesize()???)
-        for i in range(3, MAXFD):
-            try:
-                os.close(i)
-            except:
-                pass
-	"""
-	self.mtx_server_started.value = 1
-	Trace.log(e_errors.INFO, "MTX server: Starting loop")
-	while True:
-	    try:
-		r, w, x = select.select([read_pipe], [], [], 10)
-
-	    except (select.error, OSError, IOError), msg:
-		Trace.log(79, "select error in mtx_server(): %s" % \
-				  (str(msg),))
-
-		if msg.args[0] in [errno.EINTR]:
-			r, w, x = [], [], []
-			#The process was interupted by a signal; we need
-			# to keep it going.
-			continue
-		else:
-			#We want to jump to the error handling code.
-			raise sys.exc_info()[0], sys.exc_info()[1], \
-			      sys.exc_info()[2]
-	    except:
-		exc, msg, tb = sys.exc_info()
-		Trace.log(e_errors.ERROR, "MTX server failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
-		return
-	    if read_pipe not in r:
-		    continue
-	    raw_msg = os.read(read_pipe, 2000)
-	    Trace.log(e_errors.INFO, "MTX server: received: %s"%(raw_msg,))
-	    # message must be: 'cmd', 'arg1, arg2, arg3'
-	    # try to execute:
-	    pars = raw_msg.strip().split(',')
-	    cmd = pars[0]
-	    args = pars[1:len(pars)]
-	    pid_to_send_back = args[2]
-	    Trace.trace(ACTION_LOG_LEVEL, "MTX server: cmd: %s args:%s "%(cmd, args))
-	    if cmd in ["Load", "Unload"]:
-		    try:
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
-			a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
-			if a == -1:
-			    Trace.log(e_errors.ERROR, ' mtx mount / unmount timeout')
-		    except:
-			Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
-										       sys.exc_info()[1],
-										       sys.exc_info()[2]))
-	    elif cmd == 'status':
-		    mtx.status()
-	    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
-	    sys.stdout.flush()
-	    sys.stderr.flush()
-
-	Trace.log(e_errors.ERROR, "MTX server exited (should never happen)")
+	print time.ctime(), 'STARTED'
 
     def get_mtx_status(self):
 	t = 0
