@@ -5360,7 +5360,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 		    break
 	       else:
 		       Trace.log(e_errors.INFO, "Unload returned: %s"%(rc,))
-		       if self.do_retry(rc, retuned_by_mtx_mount=True):
+		       if self.do_retry(rc, retuned_by_mtx_mount=False):
 			       Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%(volume, drive))
 			       time.sleep(1)
 			       retry_count -= 1
