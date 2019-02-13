@@ -3957,16 +3957,23 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	    Trace.log(ACTION_LOG_LEVEL, "MTX server: cmd: %s args %s"%(cmd, args))
 	    #func = getattr(self,cmd)
 	    if cmd in ["Load", "Unload"]:
-		    try:
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
-			a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
-			if -1 == a:
-			    Trace.log(ACTION_LOG_LEVEL, ' mtx unmount timeout')
-		    except:
-			Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
-										       sys.exc_info()[1],
-										       sys.exc_info()[2]))
+		    retry_cnt = 2
+		    while retry_cnt:
+			    try:
+				Trace.log(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
+				a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
+				Trace.log(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
+				if -1 == a:
+				    Trace.log(ACTION_LOG_LEVEL, ' mtx unmount timeout')
+				    retry_cnt -= 1
+				else:
+					break
+			    except:
+				Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
+											       sys.exc_info()[1],
+											       sys.exc_info()[2]))
+				break
+
 	    elif cmd == 'status':
 		    mtx.status()
 	    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
@@ -5386,18 +5393,6 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
     def locate_drive(self, drive_address):
         Trace.log(ACTION_LOG_LEVEL, ' looking for drive %s'%(drive_address,))
 	return self.mcc.viewdrive(drive_address)
-
-   #  This method tries to have device 'device' load or unload the tape in
-    #  or from drive number drive back into slot number 'slot'.  The return
-    #  value is anything that MTX printed to stderr.  If mtx hangs,
-    #  this method will never return.
-    def load_unload_local(self, slot, drive, load_command):
-        if load_command not in ("Load", "Unload"):
-            return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
-        if load_command == "Load":
-		mtx.Move(slot, drive)
-        else:
-		mtx.Move(drive, slot)
 
     # return status of all drives and slots
     def robot_status(self):
