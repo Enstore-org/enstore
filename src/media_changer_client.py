@@ -287,7 +287,7 @@ class MediaChangerClient(generic_client.GenericClient):
                             'volume': volume_name_in_drive,
                             }
                  }
-        return self.send(ticket)
+        return self.send(ticket, 300, 3)
 
 class MediaChangerClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
