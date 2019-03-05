@@ -287,7 +287,15 @@ class MediaChangerClient(generic_client.GenericClient):
                             'volume': volume_name_in_drive,
                             }
                  }
-        return self.send(ticket, 300, 3)
+        if all (v == None for v in (volume_address, volume_name,  drive_address, volume_name_in_drive)):
+            # on the server side there will be inventory running for quite a while
+            to = 300
+            retry = 3
+        else:
+            # the server will return the reply pretty fast
+            to = RCV_TIMEOUT
+            retry = RCV_TRIES
+        return self.send(ticket, to, retry)
 
 class MediaChangerClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
