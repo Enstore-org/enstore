@@ -4669,8 +4669,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		ticket['status'] = e_errors.OK
 		slot, drive = self.locate_volume(ticket['external_label'])
 		Trace.log(ACTION_LOG_LEVEL, 'getVolState slot:%s, drive %s'%(slot, drive,))
-		if slot < 0 and drive < 0:
-                    retry_count -= 1
+		if (slot < 0 and drive < 0) or (slot > 0 and drive >= 0):
+		    # if volume is not in drive and not in slot
+		    # or volume is in drive and in slot - retry with inventory
+		    retry_count -= 1
 		    if retry_count > 0:
 			    self.status_valid = 0 # this will cause an inventory
 			    Trace.log(ACTION_LOG_LEVEL, 'getVolState retrying')
