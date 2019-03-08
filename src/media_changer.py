@@ -5116,7 +5116,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 	mc_device  = argdict.get('mc_device')
 	status_timeout = argdict.get('status_timeout', 300)
 	mount_timeout = argdict.get('mount_timeout', 300)
-	mount_retries = argdict.get('mount_timeout', 2)
+	mount_retries = argdict.get('mount_retries', 2)
 	debug =  argdict.get('debug', False)
 	debug_messaging =  argdict.get('debug_messaging', False)
 
