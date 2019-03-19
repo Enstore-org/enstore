@@ -5399,8 +5399,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         save_state = self.state
 
-        if (cur_thread_name == 'net_thread' or
-            (cur_thread_name == 'media_thread' and exc == e_errors.DISMOUNTFAILED) or
+        if ((cur_thread_name == 'net_thread') or
+            (cur_thread_name == 'media_thread' and exc in (e_errors.DISMOUNTFAILED,
+                                                           e_errors.READ_VOL1_READ_ERR,
+                                                           e_errors.WRITE_VOL1_READ_ERR)) or
             encp_gone):
             #For the 2nd entry in if ... If dismount fails close net_driver (data connection).
             # If there is a preemptive dismount and net_driver is not closed,
@@ -5538,7 +5540,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     if cur_thread_name and cur_thread_name == 'media_thread':
                         Trace.log(e_errors.INFO, "Trying to dismount volume (13) %s"%(self.current_volume,))
-                        self.dismount_volume(after_function=self.idle)
+                        if  not (exc in (e_errors.READ_VOL1_READ_ERR, e_errors.WRITE_VOL1_READ_ERR)):
+                            after_func = self.idle
+                        else:
+                            after_func = after_dismount_function
+                        self.dismount_volume(after_function=after_func)
                     else:
                         Trace.log(e_errors.INFO, "Trying to dismount volume (14) %s"%(self.current_volume,))
                         self.run_in_thread('media_thread', self.dismount_volume, after_function=after_dismount_function)
