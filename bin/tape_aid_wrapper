@@ -163,13 +163,13 @@ case ${gang}@${location} in
 	  robot="8500G1"
 	  icap="0,1,0"       # acs 0, lsm 1, (rail 2), cap A
 	  ocap="0,5,0"       # acs 0, lsm 5, (rail 2), cap A
-	  sun="fntt-gcc"
+	  sun="fntt1"
 	  ;;
        GS)
 	  robot="8500GS"
 	  icap="2,1,0"       # acs 2, lsm 1, (rail 2), cap A
 	  ocap="2,1,0"       # acs 2, lsm 1, (rail 2), cap A
-	  sun="fntt"
+	  sun="fntt1"
 	  ;;
        *) exit 1
 	  ;;
