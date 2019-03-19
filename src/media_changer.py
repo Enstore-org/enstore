@@ -4181,6 +4181,33 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         return self.retry_function(self.mtx_dismount, external_label,
 				   drive, media_type)
 
+    def do_retry(self, ret_val, retuned_by_mtx_mount=False):
+	    retry = False
+	    update_db = False
+	    if (ret_val[0] == -1):
+		    return True
+	    try:
+		    if ((isinstance(ret_val[3], list) and
+			 (('mtx: Request Sense: Sense Key=Unit Attention' in ret_val[3])
+			  or ('mtx: Request Sense: Sense Key=Aborted Command' in ret_val[3])
+			  or ('mtx: Request Sense: Sense Key=Illegal Request' in ret_val[3])))):
+			    if 'mtx: Request Sense: Sense Key=Illegal Request' in ret_val[3]:
+				    if retuned_by_mtx_mount:
+					    update_db = True
+				    else:
+					    if  (('mtx: Request Sense: Additional Sense Code = 3B' in ret_val[3])
+						 and ('mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3])): # Medium Destination Element Full
+						    update_db = False
+				    if update_db:
+					    Trace.log(e_errors.INFO, 'will update db')
+					    rt = self.update_db({'drive': {'address': None}}) # lost element info: do inventory
+					    Trace.log(e_errors.INFO, 'update db returned %s'%(rt,))
+			    retry = True
+	    except:
+		    Trace.handle_error()
+		    retry = True
+	    return retry
+
     def insert(self, ticket):
         __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
 	Trace.log(ACTION_LOG_LEVEL, 'insert %s'%(ticket))
@@ -4210,6 +4237,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			return (e_errors.ERROR, '%s can not be inserted, no free slots'%(ticket['external_label'],), None, None)
 
 		stor_el = self.slots[s_slot]
+		stor_el['volume'] = BUSY
 		imp_el = self.slots[s]
 		self.slots[s_slot] = stor_el
 		Trace.log(ACTION_LOG_LEVEL, 'insert:  inserting %s from %s to %s'%
@@ -4227,7 +4255,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			break
 		else:
 			Trace.log(e_errors.INFO, "Unload for insert command returned: %s"%(rc,))
-			if (rc[0] == -1) or  ((isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3])):
+			if stor_el['volume'] == BUSY:
+				stor_el['volume']  = EMPTY
+				self.slots[s_slot] = stor_el
+			if self.do_retry(rc, retuned_by_mtx_mount=False):
 				# retry
 				# rc[0] == -1 - timeout
 				Trace.log(e_errors.INFO, 'retrying insert %s %s'%( imp_el, stor_el))
@@ -4400,17 +4431,41 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
         Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive, \
                   '...dismounting'))
-	rc = self.send_command('Unload,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'], os.getpid()), self.mount_timeout*self.mount_retries+10)
-	if rc[1] == e_errors.OK:
-            Trace.trace(ACTION_LOG_LEVEL, 'updating DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
-	    mutable_dict = self.slots[s]
-	    mutable_dict['volume'] = volume
-	    self.slots[s] = mutable_dict
-	    mutable_dict = self.drives[dr]
-            mutable_dict['volume'] = EMPTY
-	    self.drives[dr] = mutable_dict
-            Trace.trace(ACTION_LOG_LEVEL, 'updated DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
-	Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: send_command returned %s"%(rc,))
+	retry_count = 4
+	while retry_count  > 0:
+		s,ignore = self.locate_volume(EMPTY)
+		if -1 == s:
+			Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
+			return ('ERROR', e_errors.ERROR, [],'' ,\
+					'mtx unload: No free slots')
+		stor_el = self.slots[s]
+		stor_el['volume'] = BUSY
+		self.slots[s] = stor_el
+
+		rc = self.send_command('Unload,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'], os.getpid()), self.mount_timeout*self.mount_retries+10)
+		if rc[1] == e_errors.OK:
+		    Trace.trace(ACTION_LOG_LEVEL, 'updating DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+		    stor_el = self.slots[s]
+		    stor_el['volume'] = volume
+		    self.slots[s] = stor_el
+		    drive_el = self.drives[dr]
+		    drive_el['volume'] = EMPTY
+		    self.drives[dr] = drive_el
+		    Trace.trace(ACTION_LOG_LEVEL, 'updated DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+		    break
+		else:
+			Trace.log(e_errors.INFO, "Unload command returned: %s"%(rc,))
+			if stor_el['volume'] == BUSY:
+				stor_el['volume']  = EMPTY
+			if self.do_retry(rc, retuned_by_mtx_mount=False):
+				# retry
+				# rc[0] == -1 - timeout
+				Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%( drive_el, stor_el))
+				time.sleep(1)
+				retry_count -= 1
+			else:
+				break
+		Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: send_command returned %s"%(rc,))
 	return rc
 
     # This method indicates where the tape is located within the
