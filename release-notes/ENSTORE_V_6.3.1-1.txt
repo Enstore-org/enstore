@@ -1,0 +1,683 @@
+commit 2d604542738d1e77d0d95f16df0751cfce245de5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jan 28 12:52:51 2019 -0600
+
+    enstore rpm 6.3.1-1
+
+A	release-notes/ENSTORE_V_6.2.0-0.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 092e1a03421d8bb689cec325698d4b4cb9c1dd25
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jan 28 12:17:03 2019 -0600
+
+    commit dc1e64ce5492fcf37ef71a9c8dfe3ed701376268
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Jan 28 12:10:11 2019 -0600
+
+        Changes per review comments.
+
+    commit 65b064008bbedaacd6999d87b4c5ddeb60adb255
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Fri Jan 25 13:48:18 2019 -0600
+
+        Fixed typo
+
+    commit 55fc04257f2463ed6b9229b9c688113791ba10ad
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Fri Jan 25 13:37:40 2019 -0600
+
+        Removed viewDataCartridges and viewDrives
+
+        There is a new way to do this and do not have pw in repo.
+
+    commit d0fde50585e89d92b28fd7e1c7d6d1f72771041d
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Jan 24 16:54:24 2019 -0600
+
+        One more fix for no DNS service.
+
+    commit 52c8e6137b982366808b16690eca35344671f278
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Jan 24 16:51:36 2019 -0600
+
+        MTXN_Local_MediaLoader is now subclass  of MTXN_MediaLoader.
+
+        There also will be no status message in the .out file
+
+    commit 513960bb6eb96e7685cb32c7c728dcef371555a1
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Jan 23 14:24:47 2019 -0600
+
+        Send status command to mtx_server.
+
+    commit c76f97ad6c6a6c0b55a8554d75a7239e9f89c489
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Jan 17 14:31:30 2019 -0600
+
+        Back to sending alarm for Connection to data ip failed
+
+    commit 36391d4731c0d6eab0fe0a69e760b6cd30fa6d77
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Jan 17 12:35:11 2019 -0600
+
+        Minor fixes
+
+    commit 02113542457ca55c6a4b1f4306785898dc136117
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Jan 14 10:38:30 2019 -0600
+
+        Fixed listSlots to not fail on keyerror.
+
+    commit cfbcb431f6a6309b34fc796db50531c5cf380a2e
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Fri Jan 11 16:01:53 2019 -0600
+
+        Added listClean and listVolumes to MTXN media changer
+
+    commit 457828f1a6af98105f982bc7bc2654153276beb5
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Jan 9 10:58:45 2019 -0600
+
+        Do not lookup volume "emty" in drives in locate_volume
+
+        BZ 1971
+
+    commit ef851a8b734c2758e7e92d7c8678ce5aae4ca0af
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Tue Jan 8 15:12:26 2019 -0600
+
+        Minor MC change.
+
+    commit a2f2902198a3e940d5bfa17ef5d4403818a8ce50
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Tue Jan 8 14:20:44 2019 -0600
+
+        Restored lost changes.
+
+    commit c91b822929889cd8026c785e8e652ae6d7ae98d7
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Fri Jan 4 16:31:55 2019 -0600
+
+        Let fair share enable hipri request if there are idle movers.
+
+    commit e3e47fe503e49875247d74b0651ff7effc121cbe
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Fri Jan 4 16:28:59 2019 -0600
+
+        Treat gaierrors (DNS resolution failures).
+        Add Sn to mtx_mount / dismount messages.
+
+    commit 1cf194c6b7e522458a962fd4016cfd2c9fa9ce77
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Dec 20 10:21:17 2018 -0600
+
+        Create local log directory if it does not exist.
+
+    commit f5ced09a09b6b5afb9f3d031660ada2b2217f79e
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Dec 17 09:26:50 2018 -0600
+
+        Process some previously uncaught exceptions
+
+    commit 1f04b2307897727e908bfc93ddc2bb804b17aab6
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Dec 5 11:36:05 2018 -0600
+
+        Added more retry cases.
+        Fixed 2nd dismount attempt on exceptions getting ftt stats.
+
+    commit bacee007a8be5fb29432be7d9548fbffdd456bb8
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Nov 28 16:06:42 2018 -0600
+
+        Process exceptions internally.
+
+    commit 41adc154cc5783482c8c3498ba96f07680f3da35
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Nov 14 10:53:20 2018 -0600
+
+        Address index error
+
+    commit 055e7f37bdf089c59241dc9e90032d3fba2612a1
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Nov 12 13:14:33 2018 -0600
+
+        Retry mount/dismount/insert/eject on timeout.
+
+    commit 7f8189f571451b942a59c7f53c0ae5f6e344631e
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Nov 12 12:30:56 2018 -0600
+
+        Added lost changes. Changed ssh to enrsh.
+
+    commit d4135a7cf894839ee81600391bc1adc083aa8793
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Nov 8 10:51:51 2018 -0600
+
+        Do maybe_clean first and then set state to HAVE_BOUND to avoid race conditions.
+
+    commit a531a5e929fe2e24a464bea1e21c7449f288f55d
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Nov 7 10:24:20 2018 -0600
+
+        When mount or dismount fails call IBM CLI remotrely to save the current status as seen by TS4500 library.
+
+    commit fcadf18a671c9b8e8605b9f043c0d8005a325691
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Nov 5 16:55:02 2018 -0600
+
+        Ignore media type om mount / dismount im mtx local MC
+
+    commit 63d274ab57cb0fa1b36029229c9c8777e7d3722c
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Nov 1 14:44:25 2018 -0500
+
+        Fixed bugs for mount and dismount retries.
+
+    commit a3faf95d1fad11d0a181fe023962c5ed6c626052
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Tue Oct 30 10:08:53 2018 -0500
+
+        Disk mover had exception due to absence of self.local_mover
+
+    commit 69c19e93763ea544391b847b060a54380f729382
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Oct 29 16:40:29 2018 -0500
+
+        Do inventory on geVolsState retry.
+
+    commit dfe81af3beab1e86711944d6a6fd6810ab2b7d57
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Oct 29 13:19:38 2018 -0500
+
+        Included "already Full" into dismount error processing.
+
+    commit 5e344f46007ae6c41f3f08cedb1db0f6903a08ca
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Fri Oct 26 12:48:01 2018 -0500
+
+        Actually this one os correct for the last commit.
+
+    commit 3689f6ee724eefa1551e5d47d00cb87259a2497e
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Fri Oct 26 12:41:56 2018 -0500
+
+        Only one insert or updatedb or getVolState is allowed.
+
+        This is to allow database update request at a time.
+
+    commit 0f96d111631e1d76ddeaa8fb499ac8e166be192a
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:17:37 2018 -0500
+
+        	modified:   media_changer.py
+
+    commit d708c74147af6385bea6896e20c3efe6ef0fad16
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:13:29 2018 -0500
+
+        	modified:   ../src/enstore_functions3.py
+
+    commit 115f15b7c6927523d0fd0d3d9c6005022fa25449
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:11:50 2018 -0500
+
+        	new file:   ENSTORE_V_6.3.0-0.txt
+        	modified:   ../spec/enstore_RH6_python_2.7.9.spec
+
+    commit 360ac7e02c65fb4193be1be88d83891caab21203
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:09:03 2018 -0500
+
+        	modified:   media_changer_client.py
+        	modified:   mover.py
+        	modified:   mover_client.py
+
+    commit 734ff49d9987f1207785e3df61faa7a284ad189d
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:05:49 2018 -0500
+
+        	modified:   media_changer.py
+
+    commit 6e644d2456709ccabeec53608b517e0df54f8700
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:04:51 2018 -0500
+
+        	modified:   ftt_driver.py
+
+    commit 2507a41406e5b2ec19deeab4f6489a99670c3f6d
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:01:44 2018 -0500
+
+        configuration_client.py
+
+    commit 9990e5e1e49bb42478536c2441fb111765d8e3f4
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 16:00:10 2018 -0500
+
+         SWIG/Makefile and SWIG/mtx.i
+
+    commit bb96fc4814b9eb138f594298b6f58e5df9a38456
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 15:57:21 2018 -0500
+
+        Added Setup
+
+    commit 6bd50ed2d868f631068c5dd0c564008a59369723
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Oct 25 15:55:25 2018 -0500
+
+            New media loader classes and modifications for TS4500 tape library.
+
+            This change is to interface media changer and movers with TS4500 tape library using modified mtx tool. The original
+
+            http://srm.fnal.gov/reviews/r/510
+            http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1934
+
+M	bin/enstore-boot
+M	modules/SWIG/Makefile
+A	modules/SWIG/mtx.i
+M	modules/Setup
+A	release-notes/ENSTORE_V_6.3.0-0.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+M	src/configuration_client.py
+M	src/enstore_functions3.py
+M	src/ftt_driver.py
+M	src/library_manager.py
+M	src/log_client.py
+M	src/media_changer.py
+M	src/media_changer_client.py
+M	src/mover.py
+M	src/mover_client.py
+
+commit 55fd6809e4bfbf958a44af06f281a36c554efe92
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Jan 10 15:31:27 2019 -0600
+
+    [migration] BZ:1972 RB:537 fix regression in _scan_bfid()
+
+    migrate_chimera scan does not provide file name to encp when called with "use-volume-assert"
+    resulting in error reported in encp call: "USERERROR: not enough arguments specified"
+
+    RB: http://uqbar.fnal.gov/reviews/r/537
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1972
+
+M	src/migrate_chimera.py
+
+commit 0dc7a608c088ae3470682f62bcd055cf93591d74
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Dec 13 12:04:15 2018 -0600
+
+    volume_clerk: bug fix
+      a leftover 'if' statement rendered variable undefined
+
+      RB : http://srm.fnal.gov/reviews/r/536
+      BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1963
+
+M	src/volume_clerk.py
+
+commit b68e3a76f6fdc011785e8bddf8d6beedcfb56d88
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Dec 6 15:48:49 2018 -0600
+
+    [plots] BZ:1949 RB:533 fix sql query in summary_burn_rate_plotter_module to ignore DELETED, shelved, etc tapes
+
+    Tape counts reported in comments on burn rate plots
+       http://www-stken.fnal.gov/enstore/all_sg_burn_rates.html
+    were different from counts reported on quotas page
+       http://www-stken.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS
+
+    The discrepancy is for all types of media including t10k.
+
+    Modify sql query in summary_burn_rate_plotter_module to ignore tapes with inhibit DELETED; libraries shelf-*; media disk, null.
+
+    RB: http://uqbar.fnal.gov/reviews/r/533
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1949
+
+M	src/summary_burn_rate_plotter_module.py
+
+commit 9e1e2ed67fa036b61c75fb1dcdb0ed0ba5e61d48
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Dec 6 14:42:06 2018 -0600
+
+    rb533 r2
+
+M	src/summary_burn_rate_plotter_module.py
+
+commit 7781d12ea92653fdde276179549bbc99334ca2bf
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Dec 6 11:07:43 2018 -0600
+
+    [plots] BZ:1941 RB:532 add constants CAP_* RATE_* to add CD-LTO8F1/L8/M8 to burn rate plots
+
+    scripts preparing burn rates look for media capacity CAP* constants in enstore_constants.py to decide if we need to prepare plots for the media.
+    Add constants:
+      CAP_M8
+      CAP_L8
+      CAP_LTO8
+    and similarly for RATE_* to enbale plots generation.
+
+    RB: http://uqbar.fnal.gov/reviews/r/532
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1941
+
+M	src/enstore_constants.py
+
+commit 1c73723a33cf6dbcbf7f24f4c4313295be3dcf5f
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Dec 5 11:25:33 2018 -0600
+
+    file_clerk: disable auto-journal
+
+        RB : http://srm/reviews/r/534/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1960
+
+M	src/file_clerk.py
+
+commit 824d195149475289e4e308deae5d1bc59725e278
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Wed Nov 28 14:48:18 2018 -0600
+
+    [WWW] BZ:1949 RB:535 Add LTO8 and M8 ingest plots to main enstore page
+
+    Add plots on page http://www-ccf.fnal.gov/enstore/ under "Ingest Rates by Media Type."
+
+    RB: http://uqbar.fnal.gov/reviews/r/535
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1949
+
+M	doc/WWW/index-bottom.html
+
+commit 26ef02b5d7d6ab261eed87a86736618baf4d329b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Nov 21 10:54:06 2018 -0600
+
+        Added LTO8 (ULT3580-TD8) to ftt_tables. Modified it to allow compression.
+
+        http://srm.fnal.gov/reviews/r/527/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1950
+
+M	ftt/ftt_lib/ftt_tables.c
+
+commit 65a15a570cc7c4beb143af468e676b1c9b31b5f0
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Nov 2 11:38:37 2018 -0500
+
+    Added entv spec for rpmbuild
+
+A	spec/entv.spec
+
+commit d560862fba15385ae9b4a8dc6acba31b558883ff
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Nov 1 14:39:50 2018 -0500
+
+        ENTV: download configuration, do not call lookup.
+
+        Entv was extensively calling configuration client do_lookup.
+        It was due to the bug in enstore_display. This change fixes this bug.
+        The whole configuration is loaded on start of entv and when it is
+        reloaded into configuration server. No lookup configuration server
+        calls are done anymore. This change will substantially reduce
+        the load on configuration server.
+
+        http://srm.fnal.gov/reviews/r/530/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1953
+
+M	src/enstore_display.py
+
+commit c34dcc92b40140facd2316e220915f37034c4923
+Merge: 6de4ce8 cdaf6c7
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Oct 29 15:42:05 2018 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 6de4ce8d53c106e6b4b1c7a94c9e72e727e16333
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Oct 29 14:46:40 2018 -0500
+
+    configuration_client : fix get_media_changer function
+
+      RB : http://srm/reviews/r/529/
+      BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1951
+
+M	src/configuration_client.py
+
+commit cdaf6c72c8fd774304e8bfa08eb0dc9f56fc8f2b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Oct 29 14:46:40 2018 -0500
+
+    fix configuration_client again
+
+M	src/configuration_client.py
+
+commit 5c2c0a8cdd71f4736661e1f711d5f2c224f71c21
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Oct 26 16:42:27 2018 -0500
+
+    revert change to configuration_client
+
+    Patch 736bccdcb44a8731274e2768427271c936ce75eb inroduced a bug expecting
+    status key in reply which was never there. This patch fixes it.
+
+    	RB : http://srm.fnal.gov/reviews/r/528
+            BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1951
+
+M	src/configuration_client.py
+M	src/volume_clerk.py
+
+commit 2114ec5956ba3ce8f2d24a0b1f1f32d7eebc788e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Oct 18 16:48:07 2018 -0500
+
+    monitored_server: remove references to mover and migrator clients.
+
+    Inquisitor holds a list of monitored_servers.
+    Each monitored server corresponds to a Enstore server
+    (mover, LM, VC ....).
+
+    Each monitored server holds on to a client of the
+    corresponding server. There seems to be a socket associated w/
+    each client. These are never garbage collected as inqusiotor holds
+    on to monitored_server references. As number of servers
+    increase so the number of file descriptors held by inquisitor.
+
+    UNKNOWN state observed for the movers was result of
+    handling "Too many open file descriptors" - inqusitor does
+    not crash, but it could not update server status also.
+
+    This atch removes references to clients from
+    monitored_server.MonitoredMover and monitored_server.MonitoredMigrator
+
+    (monitored_server.MonitoredLibraryManager remains untouched
+    to minimize changes to inquisitor that uses these classes.
+    Since # of LMs is small, this should be a good patch for the time being)
+
+    	RB: http://srm.fnal.gov/reviews/r/525/
+    	BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1948
+
+M	src/inquisitor.py
+M	src/monitored_server.py
+
+commit e9381a0467cac33f75ae4bb5489407c6a7dca460
+Merge: 7a0ddc7 223dc78
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Oct 17 11:48:03 2018 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 7a0ddc7ce778f969c08e409e13c290e245f58366
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Oct 17 11:43:19 2018 -0500
+
+    volume_clerk: fix indentation of return statement when checking
+                  for paused LMs
+
+    	RB : http://uqbar.fnal.gov/reviews/r/522/
+    	BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1947
+
+M	src/volume_clerk.py
+
+commit 223dc7845b72adb78652df25242c08f28e1193a4
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Oct 17 11:43:19 2018 -0500
+
+    volume_clerk: fix indentation of return statement when chacking
+                  for paised LM
+
+    	RB : http://uqbar.fnal.gov/reviews/r/522/
+    	BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1947
+
+M	src/volume_clerk.py
+
+commit ef294619a6b5a44324bae84c6718b4d0f72c16da
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Oct 17 10:34:00 2018 -0500
+
+    enstore_html cron:    use more concise interval directive in cron tab
+
+    	RB : http://uqbar.fnal.gov/reviews/r/524/
+    	BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1946
+
+M	crontabs/enstore_html
+
+commit 8c58010aa32c93f7c1936e51ddd80d3ece28e408
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Oct 17 10:26:46 2018 -0500
+
+    enstore_html: remove dependency on configuration_client add exeption handling on generic_client and callback modules
+
+    Inquisitor bombards configuration_server with dump request unnecessarily. This
+    was traced to a dependency on configuration_client in one of the HTML building
+    modules. This fix removes this dependency.
+
+    	RB: http://uqbar.fnal.gov/reviews/r/523/
+    	BZ: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1945
+
+M	src/callback.py
+M	src/enstore_files.py
+M	src/enstore_html.py
+M	src/generic_client.py
+M	src/inquisitor.py
+
+commit 736bccdcb44a8731274e2768427271c936ce75eb
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Oct 11 16:29:50 2018 -0500
+
+    volume clerk: improvements
+
+        1) next_write_volume calls config managaer to
+           get media_changer for a library. We have seen
+           config server timeouts on this operation. Config
+           server timeout translates into volume_clerk timeout
+
+           solution: maintain cache of library_manager -> media_changer
+           map. Create it on start up and remake it on configuration
+           server reload (in addition to checking and re-querying if
+           keys are missign on every call to next_write_volume
+
+        2) stop using journaling
+
+        3) fixed various IDE PEP8 compliances.
+
+        4) modify config_server to be more explicit about
+           failure when replying to the caller
+        5) check is_lm_paused only for tapes (not disk movers or
+           null movers)
+
+M	src/configuration_client.py
+M	src/volume_clerk.py
+
+commit 7e80e97fee4124112b12391238e5b467b8f44b3b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Sep 7 10:26:50 2018 -0500
+
+    encp : handle comma separated list of libraries on command line
+
+    RB : http://srm.fnal.gov/reviews/r/519/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1940
+
+M	src/encp.py
+
+commit c2727302f775afbf871cebf8cee6aef12919d200
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Sep 6 19:43:21 2018 -0500
+
+        delfile : handle extended namespace dictionary
+
+        RB : http://srm.fnal.gov/reviews/r/514/
+        BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1938
+
+M	src/delfile_chimera.py
+
+commit 2e7e23f8488b5a3a09be0871fcf34ec0f3e04e79
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Sep 6 19:40:35 2018 -0500
+
+    chimera: use replica DB to produce chimera dump
+
+    RB : http://srm.fnal.gov/reviews/r/515/
+    BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1937
+
+M	sbin/chimera_dump.py
+
+commit d967d68b058cad6d8990cadd909a4a774a5a2839
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Sep 6 19:37:54 2018 -0500
+
+    config_params.html:
+
+        describe namespace database paramaters`
+
+         RB : http://srm.fnal.gov/reviews/r/516/
+
+M	etc/config_params.html
+
+commit cfc97c1b1ddb7898606d454f0ba18fbadae7f83f
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Wed Sep 5 15:51:06 2018 -0500
+
+    [scripts] BZ:1928 RB:517 change tape_aid_wrapper: d0en/cdfen/stken icap,ocap
+
+    change tape_aid_wrapper per Jon's request, the item 3) at BZ 1928:
+        3. /opt/enstore/bin/tape_aid_wrapper  (for cdfen, d0en and stken)
+
+    RB: http://uqbar.fnal.gov/reviews/r/517
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1928
+
+M	bin/tape_aid_wrapper
+
+commit 228c72d0595c3e0409ce6e6de110db07d54a7d24
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Wed Sep 5 15:37:32 2018 -0500
+
+    [plots] BZ:1928 RB:518 remove plots for decommissioned robots SL8500-4 and SL8500-5
+
+    John H., BZ-1928:
+    On Tue May 15, SL8500-4 and SL8500-5 robots were both decommissioned, thus some web pages  need to be modified to no longer report info for them. Also and the tape_aid_wrapper script needs to be modified for use of input and output caps.  Changes are needed in all production instances for all the affected web pages and script.
+
+    RB: http://uqbar.fnal.gov/reviews/r/518
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1928
+
+M	etc/volume_audit.html
+
+commit e0460a5543d64777d6650fa3ea65ff1f0dc30e26
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Aug 6 11:10:51 2018 -0500
+
+        Fix process_request.
+
+        This part of process_request was never used, because use_threads was not set
+        in configuration. In a single threaded mode library manager may hang all
+        movers if process_request takes a long time, for instance, when it timeouts
+        on the request to volume clerk. Using multithreaded request processing may
+        help in such situations. I want to try the multithreaded mode under heavy
+        request load.
+
+M	src/library_manager.py
+
+commit 2ba5d07f8c97a7ffc3f58674cc8a47f0a859f17b
+Merge: e0db287 3a83873
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jul 16 16:08:31 2018 -0500
+
+    Merge branch 'release/6.2.0-0' into develop
