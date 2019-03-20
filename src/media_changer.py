@@ -3765,7 +3765,6 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         # If not a duplicate request or dropped request; fork the work.
         self.p = os.pipe()
 	cmd_executor = multiprocessing.Process(target=self.executor, args = (function, ticket, self.p, common_message))
-	#cmd_executor.start()
 	self.add_select_fd(self.p[0]) #wait for reading half of pipe.
 	# add entry to outstanding work
 	if not  ticket['function'] in ('listClean', 'listVolumes'):
@@ -3862,23 +3861,26 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
 	Trace.init(self.log_name, 'yes')
+	print time.ctime(), 'STARTING'
 	self.max_work = 1
 	self.work_functions.append('updatedb')
 	self.work_functions.append('getVolState')
- 	self.query_functions.remove('getVolState')
- 	self.work_functions.append('getDriveState')
- 	self.query_functions.remove('getDriveState')
-       # Mark our cached status info as invalid
+	self.query_functions.remove('getVolState')
+	self.work_functions.append('getDriveState')
+	self.query_functions.remove('getDriveState')
+	# Mark our cached status info as invalid
         self.status_valid = 0;
 	self.debug = self.mc_config.get('debug', False)
+	self.debug_messaging = self.mc_config.get('debug_messaging', False)
         # Read the device name to use.
 	self.device_name = self.mc_config.get('device_name', '/dev/changer')
 
         # Read the value for the timeout on status commands.
-	self.status_timeout = self.mc_config.get('status_timeout', 60)
+	self.status_timeout = self.mc_config.get('status_timeout', 300)
 
         # Read the value for the timeout on mount commands.
 	self.mount_timeout = self.mc_config.get('mount_timeout', 300)
+	self.mount_retries = self.mc_config.get('mount_retries', 2)
 	self.sudo_cmd = self.mc_config.get('sudo_cmd','')
 
 	self.cli_host = self.mc_config.get('remote_cli') # host where CLI can be run on (used for diagnostics)
@@ -3886,21 +3888,23 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	self.manager = multiprocessing.Manager()
 	self.q = multiprocessing.Queue()
 	self.mtx_server_started = self.manager.Value('i',0)
-	#self.status_local()
 
         Trace.log(e_errors.INFO,
                   '%s initialized with device: %s status time limit: %s mount time limit: %s '%
                   (self.__class__.__name__, self.device_name, self.status_timeout, self.mount_timeout))
 	self.start_mtx_server()
-	self.status_local()
+	rc = self.status_local()
+	if not e_errors.is_ok(rc[0]):
+		Trace.alarm(e_errors.ERROR, 'can not get intial status, exiting with %s'%(rc,))
+		self.server.terminate()
+		sys.exit(1)
+	print time.ctime(),  'STARTED'
 
     def _mtx_server(self, read_pipe, write_pipe, err_pipe):
-        print "STARTING"
 	mtx.cvar.device = self.device_name
 	mtx.cvar.absolute_addressing = 1
 	mtx.open_device()
         Trace.log(e_errors.INFO, "MTX server started")
-
 	for i in 0, 1, 2:
             try:
                 os.close(i)
@@ -3954,16 +3958,23 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	    Trace.log(ACTION_LOG_LEVEL, "MTX server: cmd: %s args %s"%(cmd, args))
 	    #func = getattr(self,cmd)
 	    if cmd in ["Load", "Unload"]:
-		    try:
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
-			a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
-			if -1 == a:
-			    Trace.log(ACTION_LOG_LEVEL, ' mtx unmount timeout')
-		    except:
-			Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
-										       sys.exc_info()[1],
-										       sys.exc_info()[2]))
+		    retry_cnt = self.mount_retries
+		    while retry_cnt:
+			    try:
+				Trace.log(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
+				a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
+				Trace.log(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
+				if -1 == a:
+				    Trace.log(ACTION_LOG_LEVEL, ' mtx load / unload timeout')
+				    retry_cnt -= 1
+				else:
+					break
+			    except:
+				Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
+											       sys.exc_info()[1],
+											       sys.exc_info()[2]))
+				break
+
 	    elif cmd == 'status':
 		    mtx.status()
 	    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
@@ -3985,8 +3996,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		else:
 			time.sleep(1)
 	if t >= self.status_timeout:
-		msg = 'mtx server not responded in %s s. Exiting'%(self.status_timeout,)
+		msg = 'mtx server not started %s s. Exiting'%(self.status_timeout,)
 		Trace.alarm(e_errors.ERROR, msg)
+		self.server.terminate()
 		os._exit(1)
 
     def receive_reply(self, end_of_response, timeout):
@@ -4038,7 +4050,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		    continue
 	        raw_msg = os.read(self.c2pread, 2000)
 		if raw_msg:
-                    if self.debug:
+                    if self.debug_messaging:
 			    print 'RAW_MSG', raw_msg
 		    if end_of_response in raw_msg:
 			    message = message+raw_msg[:raw_msg.find(end_of_response)] # in the last line leave all, but end_of_response
@@ -4084,7 +4096,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	response = message.split('\012')
 	#response = message
 	if  'status' in command_string and self.debug:
-		ofn = '/var/log/enstore/tmp/enstore/%s.mtx_status.out'%(end_of_response,)
+		ofn = '/var/log/enstore/tmp/enstore/%s_%s.mtx_status.out'%(self.name, end_of_response,)
 		Trace.log(e_errors.INFO, 'the output of the status command is in %s'%(ofn,))
 		of = open(ofn, 'w')
 		for l in response:
@@ -4169,6 +4181,33 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         return self.retry_function(self.mtx_dismount, external_label,
 				   drive, media_type)
 
+    def do_retry(self, ret_val, retuned_by_mtx_mount=False):
+	    retry = False
+	    update_db = False
+	    if (ret_val[0] == -1):
+		    return True
+	    try:
+		    if ((isinstance(ret_val[3], list) and
+			 (('mtx: Request Sense: Sense Key=Unit Attention' in ret_val[3])
+			  or ('mtx: Request Sense: Sense Key=Aborted Command' in ret_val[3])
+			  or ('mtx: Request Sense: Sense Key=Illegal Request' in ret_val[3])))):
+			    if 'mtx: Request Sense: Sense Key=Illegal Request' in ret_val[3]:
+				    if retuned_by_mtx_mount:
+					    update_db = True
+				    else:
+					    if  (('mtx: Request Sense: Additional Sense Code = 3B' in ret_val[3])
+						 and ('mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3])): # Medium Destination Element Full
+						    update_db = False
+				    if update_db:
+					    Trace.log(e_errors.INFO, 'will update db')
+					    rt = self.update_db({'drive': {'address': None}}) # lost element info: do inventory
+					    Trace.log(e_errors.INFO, 'update db returned %s'%(rt,))
+			    retry = True
+	    except:
+		    Trace.handle_error()
+		    retry = True
+	    return retry
+
     def insert(self, ticket):
         __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
 	Trace.log(ACTION_LOG_LEVEL, 'insert %s'%(ticket))
@@ -4198,6 +4237,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			return (e_errors.ERROR, '%s can not be inserted, no free slots'%(ticket['external_label'],), None, None)
 
 		stor_el = self.slots[s_slot]
+		stor_el['volume'] = BUSY
 		imp_el = self.slots[s]
 		self.slots[s_slot] = stor_el
 		Trace.log(ACTION_LOG_LEVEL, 'insert:  inserting %s from %s to %s'%
@@ -4215,7 +4255,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			break
 		else:
 			Trace.log(e_errors.INFO, "Unload for insert command returned: %s"%(rc,))
-			if (rc[0] == -1) or  ((isinstance(rc[3], list) and 'mtx: Request Sense: Sense Key=Unit Attention' in rc[3])):
+			if stor_el['volume'] == BUSY:
+				stor_el['volume']  = EMPTY
+				self.slots[s_slot] = stor_el
+			if self.do_retry(rc, retuned_by_mtx_mount=False):
 				# retry
 				# rc[0] == -1 - timeout
 				Trace.log(e_errors.INFO, 'retrying insert %s %s'%( imp_el, stor_el))
@@ -4316,7 +4359,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		return (e_errors.ERROR, e_errors.MC_DRVNOTEMPTY, [],'' ,
 			'mtx cant mount tape. Drive %s is not empty: %s'%(drive,self.drives[dr]['volume']))
         Trace.log(e_errors.INFO, 'found %s in slot %s ...mounting'%(volume, self.slots[s]['address']))
-	rc = self.send_command('Load,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'],  os.getpid()), self.mount_timeout)
+	rc = self.send_command('Load,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'],  os.getpid()), self.mount_timeout*self.mount_retries+10)
 	if rc[1] == e_errors.OK:
 	    Trace.trace(ACTION_LOG_LEVEL, 'updating DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
 	    mutable_dict = self.slots[s]
@@ -4388,17 +4431,41 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
         Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive, \
                   '...dismounting'))
-	rc = self.send_command('Unload,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'], os.getpid()), self.mount_timeout)
-	if rc[1] == e_errors.OK:
-            Trace.trace(ACTION_LOG_LEVEL, 'updating DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
-	    mutable_dict = self.slots[s]
-	    mutable_dict['volume'] = volume
-	    self.slots[s] = mutable_dict
-	    mutable_dict = self.drives[dr]
-            mutable_dict['volume'] = EMPTY
-	    self.drives[dr] = mutable_dict
-            Trace.trace(ACTION_LOG_LEVEL, 'updated DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
-	Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: send_command returned %s"%(rc,))
+	retry_count = 4
+	while retry_count  > 0:
+		s,ignore = self.locate_volume(EMPTY)
+		if -1 == s:
+			Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
+			return ('ERROR', e_errors.ERROR, [],'' ,\
+					'mtx unload: No free slots')
+		stor_el = self.slots[s]
+		stor_el['volume'] = BUSY
+		self.slots[s] = stor_el
+
+		rc = self.send_command('Unload,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'], os.getpid()), self.mount_timeout*self.mount_retries+10)
+		if rc[1] == e_errors.OK:
+		    Trace.trace(ACTION_LOG_LEVEL, 'updating DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+		    stor_el = self.slots[s]
+		    stor_el['volume'] = volume
+		    self.slots[s] = stor_el
+		    drive_el = self.drives[dr]
+		    drive_el['volume'] = EMPTY
+		    self.drives[dr] = drive_el
+		    Trace.trace(ACTION_LOG_LEVEL, 'updated DB: slots[%s]=%s drives[%s]=%s'%(s,self.slots[s], dr, self.drives[dr]))
+		    break
+		else:
+			Trace.log(e_errors.INFO, "Unload command returned: %s"%(rc,))
+			if stor_el['volume'] == BUSY:
+				stor_el['volume']  = EMPTY
+			if self.do_retry(rc, retuned_by_mtx_mount=False):
+				# retry
+				# rc[0] == -1 - timeout
+				Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%( drive_el, stor_el))
+				time.sleep(1)
+				retry_count -= 1
+			else:
+				break
+		Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: send_command returned %s"%(rc,))
 	return rc
 
     # This method indicates where the tape is located within the
@@ -4558,7 +4625,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	rc = self.get_mtx_status()
 	if not e_errors.is_ok(rc[0]):
 		Trace.log(e_errors.ERROR, 'get_mtx_status returned: %s'%(rc[0],))
-		return
+		return (e_errors.ERROR, 'get_mtx_status returned: %s'%(rc[0],))
 	if hasattr(self, 'slots'): # clear lists
 		while self.slots:
 			try:
@@ -4637,7 +4704,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		self.status_valid = 1
 	else:
             Trace.log(e_errors.ERROR, 'mtx status returned no result %s'%(result,))
-        return errorString
+	if errorString:
+		rc = (e_errors.ERROR,  errorString, '')
+	else:
+		rc = (e_errors.OK, '', '')
+        return rc
 
     # return status of all drives and slots
     def robot_status(self):
@@ -4653,8 +4724,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		ticket['status'] = e_errors.OK
 		slot, drive = self.locate_volume(ticket['external_label'])
 		Trace.log(ACTION_LOG_LEVEL, 'getVolState slot:%s, drive %s'%(slot, drive,))
-		if slot < 0 and drive < 0:
-                    retry_count -= 1
+		if (slot < 0 and drive < 0) or (slot > 0 and drive >= 0):
+		    # if volume is not in drive and not in slot
+		    # or volume is in drive and in slot - retry with inventory
+		    retry_count -= 1
 		    if retry_count > 0:
 			    self.status_valid = 0 # this will cause an inventory
 			    Trace.log(ACTION_LOG_LEVEL, 'getVolState retrying')
@@ -4760,9 +4833,13 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         found = False
         idx_slot = 0
         for s in self.slots:
-            if ticket['volume']['address'] == s['address']:
-                found = True
-                break
+            try:
+		    if ticket['volume']['address'] == s['address']:
+			    found = True
+			    break
+	    except:
+		    Trace.handle_error()
+		    return [e_errors.ERROR, 0, 'exception in updatedb']
 
 	Trace.trace(ACTION_LOG_LEVEL, 'updatedb: slot %s'%(s,))
 	if found:
@@ -5094,20 +5171,26 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 	mc_device  = argdict.get('mc_device')
 	status_timeout = argdict.get('status_timeout', 300)
 	mount_timeout = argdict.get('mount_timeout', 300)
+	mount_retries = argdict.get('mount_retries', 2)
 	debug =  argdict.get('debug', False)
+	debug_messaging =  argdict.get('debug_messaging', False)
 
         generic_server.GenericServer.__init__(self, csc, medch,
                                               function = self.handle_er_msg)
 	Trace.init(self.log_name, 'yes')
+	print time.ctime(), 'STARTING'
+
 	self.max_work = 1
 
         # Mark our cached status info as invalid
         self.status_valid = 0;
 	self.debug = debug
+	self.debug_messaging = debug_messaging
 	self.device_name = mc_device
 
 	self.status_timeout = status_timeout
 	self.mount_timeout = mount_timeout
+	self.mount_retries = mount_retries
 	self.sudo_cmd = ''
 	Trace.log(e_errors.INFO, 'remote MC %s'%(argdict.get('remote_media_changer'),))
 	self.mcc = media_changer_client.MediaChangerClient(csc, argdict.get('remote_media_changer'))
@@ -5120,84 +5203,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
                   '%s initialized with device: %s status time limit: %s mount time limit: %s '%
                   (self.__class__.__name__, self.device_name, self.status_timeout, self.mount_timeout))
 	self.work_in_progress = False # set to True when work is in progress
-
-    def _mtx_server(self, read_pipe, write_pipe, err_pipe):
-	mtx.cvar.device = self.device_name
-	mtx.cvar.absolute_addressing = 1
-	mtx.open_device()
-        Trace.log(e_errors.INFO, "MTX server started")
-
-	for i in 0, 1, 2:
-            try:
-                os.close(i)
-            except os.error:
-                pass
-	if os.dup(read_pipe) <> 0:
-            Trace.log(e_errors.ERROR, '_mtx_server read_pipe bad read dup')
-	if os.dup(write_pipe) <> 1:
-            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad write dup')
-        if os.dup(err_pipe) <> 2:
-            Trace.log(e_errors.ERROR, '_mtx_server write_pipe bad error dup')
-	"""
-	MAXFD = 10 # Max number of file descriptors (os.getdtablesize()???)
-        for i in range(3, MAXFD):
-            try:
-                os.close(i)
-            except:
-                pass
-	"""
-	self.mtx_server_started.value = 1
-	Trace.log(e_errors.INFO, "MTX server: Starting loop")
-	while True:
-	    try:
-		r, w, x = select.select([read_pipe], [], [], 10)
-
-	    except (select.error, OSError, IOError), msg:
-		Trace.log(79, "select error in mtx_server(): %s" % \
-				  (str(msg),))
-
-		if msg.args[0] in [errno.EINTR]:
-			r, w, x = [], [], []
-			#The process was interupted by a signal; we need
-			# to keep it going.
-			continue
-		else:
-			#We want to jump to the error handling code.
-			raise sys.exc_info()[0], sys.exc_info()[1], \
-			      sys.exc_info()[2]
-	    except:
-		exc, msg, tb = sys.exc_info()
-		Trace.log(e_errors.ERROR, "MTX server failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
-		return
-	    if read_pipe not in r:
-		    continue
-	    raw_msg = os.read(read_pipe, 2000)
-	    Trace.log(e_errors.INFO, "MTX server: received: %s"%(raw_msg,))
-	    # message must be: 'cmd', 'arg1, arg2, arg3'
-	    # try to execute:
-	    pars = raw_msg.strip().split(',')
-	    cmd = pars[0]
-	    args = pars[1:len(pars)]
-	    pid_to_send_back = args[2]
-	    Trace.trace(ACTION_LOG_LEVEL, "MTX server: cmd: %s args:%s "%(cmd, args))
-	    if cmd in ["Load", "Unload"]:
-		    try:
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: calling load_unload_local")
-			a,b = return_by(self.load_unload_local, (int(args[0]), int(args[1]), cmd), self.mount_timeout)
-			Trace.log(ACTION_LOG_LEVEL, "MTX server: load_unload_local returned %s %s"%(a,b))
-			if a == -1:
-			    Trace.log(e_errors.ERROR, ' mtx mount / unmount timeout')
-		    except:
-			Trace.log(e_errors.ERROR, 'error in mtx server: %s %s %s'%(sys.exc_info()[0],
-										       sys.exc_info()[1],
-										       sys.exc_info()[2]))
-	    elif cmd == 'status':
-		    mtx.status()
-	    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
-	    sys.stdout.flush()
-	    sys.stderr.flush()
-
-	Trace.log(e_errors.ERROR, "MTX server exited (should never happen)")
+	print time.ctime(), 'STARTED'
 
     def get_mtx_status(self):
 	t = 0
@@ -5210,7 +5216,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 		msg = 'mtx server not responded in %s s'%(self.status_timeout,)
 		Trace.alarm(e_errors.ERROR, msg)
 		return (e_errors.ERROR, e_errors.ERROR, [], '', msg)
-	rc = self.send_command('status,%s,%s,%s'%('', '',  os.getpid()), self.mount_timeout)
+	rc = self.send_command('status,%s,%s,%s'%('', '',  os.getpid()), self.status_timeout)
 	return rc
 
     def start_mtx_server(self):
@@ -5356,7 +5362,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 		       return (e_errors.ERROR, e_errors.ERROR, [], '', 'volume %s state%s'%(volume, vt['state'],))
 	       Trace.log(e_errors.INFO, 'mtx_mount %s from %s(%s) into %s(%s) SN %s'%
 			 (volume, vt['location'], vt['phys_location'],drive, drive_info['phys_location'], drive_info['SN']))
-	       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
+	       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout*self.mount_retries+10)
 	       Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
 	       if rc[1] == e_errors.OK:
 		    rt = self.update_db(vt['location'], EMPTY,  drive, volume)
@@ -5411,7 +5417,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 		       return (e_errors.ERROR, e_errors.ERROR, [], '', 'update location failed with %s'%(rt,))
 	       Trace.log(e_errors.INFO, 'mtx_dismount %s location %s(%s) from drive %s(%s) SN %s'%
 			 (volume, vt['location'], vt['phys_location'],drive, drive_info['phys_location'], drive_info['SN']))
-	       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout)
+	       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout*self.mount_retries+10)
 	       if rc[1] == e_errors.OK:
 		    rt = self.update_db(vt['location'], volume, drive, EMPTY)
 		    if not e_errors.is_ok(rt):
@@ -5421,7 +5427,7 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 		    break
 	       else:
 		       Trace.log(e_errors.INFO, "Unload returned: %s"%(rc,))
-		       if self.do_retry(rc, retuned_by_mtx_mount=True):
+		       if self.do_retry(rc, retuned_by_mtx_mount=False):
 			       Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%(volume, drive))
 			       time.sleep(1)
 			       retry_count -= 1
@@ -5447,18 +5453,6 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
     def locate_drive(self, drive_address):
         Trace.log(ACTION_LOG_LEVEL, ' looking for drive %s'%(drive_address,))
 	return self.mcc.viewdrive(drive_address)
-
-   #  This method tries to have device 'device' load or unload the tape in
-    #  or from drive number drive back into slot number 'slot'.  The return
-    #  value is anything that MTX printed to stderr.  If mtx hangs,
-    #  this method will never return.
-    def load_unload_local(self, slot, drive, load_command):
-        if load_command not in ("Load", "Unload"):
-            return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
-        if load_command == "Load":
-		mtx.Move(slot, drive)
-        else:
-		mtx.Move(drive, slot)
 
     # return status of all drives and slots
     def robot_status(self):

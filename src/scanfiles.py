@@ -1029,7 +1029,10 @@ def check_vol(vol):
     warn = []
     info = []
 
-    tape_ticket = infc.tape_list(vol)
+    # Get list of files on tape:
+    #   all_files=False -- get list of all physical files on tape
+    #                      including packages but not constituent files.
+    tape_ticket = infc.tape_list(vol,all_files=False,skip_unknown=True)
     if not e_errors.is_ok(tape_ticket):
         errors_and_warnings(vol, ['can not get tape_list info'], [], [])
         return
