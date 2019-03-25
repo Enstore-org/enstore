@@ -874,6 +874,13 @@ def nullify_pnfs(pname):
         f.write("\n");
         f.close()
 
+# replacement for pnfs_find()
+def chimera_get_path(pnfsid):
+    return chimera.ChimeraFS(pnfsid).get_path()[0]
+
+def chimera_get_file_size(pnfsid):
+    return chimera.ChimeraFS(pnfsid).get_file_size
+
 def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
               alt_file_record = None, intf = None):
 
@@ -926,10 +933,8 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
         if exc_value.args[0] in [errno.EEXIST, errno.ENOENT]:
             try:
                 if bfid2:
-                    #If the migration is interupted
-                    # part way through the swap, we need
-                    # to check if the other bfid is
-                    # current in layer 1.
+                    # If the migration is interrupted part way through the swap,
+                    # we need to check if the other bfid is current in layer 1.
                     src = __find_chimeraid_path(pnfs_id, bfid2,
                                  file_record = alt_file_record,
                                  path_type = use_path_type)
@@ -5270,17 +5275,17 @@ def read_file(MY_TASK, read_job, encp, intf):
     #extract shortcuts
     src_file_record = read_job[0]
     src_volume_record = read_job[1]
-    src_path = read_job[2]
+#    src_path = read_job[2]
     tmp_path = read_job[5]
 
     log(MY_TASK, "copying %s %s %s" \
         % (src_file_record['bfid'], src_volume_record['external_label'],
            src_file_record['location_cookie']))
 
-    if src_file_record['deleted'] == NO and not os.access(src_path, os.R_OK):
-        error_log(MY_TASK, "%s %s is not readable" \
-                  % (src_file_record['bfid'], src_path))
-        return 1
+#    if src_file_record['deleted'] == NO and not os.access(src_path, os.R_OK):
+#        error_log(MY_TASK, "%s %s is not readable" \
+#                  % (src_file_record['bfid'], src_path))
+#        return 1
 
     # make sure the tmp file is not there - need to match the euid/egid
     # with the permissions of the directory and not the file itself.
@@ -5302,10 +5307,9 @@ def read_file(MY_TASK, read_job, encp, intf):
 
     if src_file_record['deleted'] == YES:
         argv += ["--override-deleted"]
-        # use --get-bfid to handle multiple copies
-        use_path = ["--get-bfid",src_file_record['bfid']]
-    else:
-        use_path = [src_path]
+
+    # always use "--get-bfid BFID"
+    use_path = ["--get-bfid",src_file_record['bfid']]
 
     argv += encp_options
     if intf.priority:
@@ -5329,12 +5333,12 @@ def read_file(MY_TASK, read_job, encp, intf):
         error_log(MY_TASK, "Unable to execute encp", sys.exc_info()[1])
 
     if res == 0:
-        ok_log(MY_TASK, "%s %s to %s" \
-               % (src_file_record['bfid'], src_path, tmp_path))
+        ok_log(MY_TASK, "%s to %s" \
+               % (src_file_record['bfid'], tmp_path))
     else:
         error_log(MY_TASK,
-                  "failed to copy %s %s to %s, error = %s" \
-                  % (src_file_record['bfid'], src_path, tmp_path, encp.err_msg))
+                  "failed to copy %s to %s, error = %s" \
+                  % (src_file_record['bfid'], tmp_path, encp.err_msg))
         return 1
 
     detect_uncleared_deletion_lists(MY_TASK)
@@ -5352,11 +5356,12 @@ def read_files(MY_TASK, read_jobs, encp, intf):
         src_path = read_jobs[i][2]
         tmp_path = read_jobs[i][5]
 
-        if src_file_record['deleted'] == NO \
-               and not os.access(src_path, os.R_OK):
-            error_log(MY_TASK, "%s %s is not readable" \
-                      % (src_file_record['bfid'], src_path))
-            return 1
+#        Not using src path - no check needed.
+#        if src_file_record['deleted'] == NO \
+#               and not os.access(src_path, os.R_OK):
+#            error_log(MY_TASK, "%s %s is not readable" \
+#                      % (src_file_record['bfid'], src_path))
+#            return 1
 
         # make sure the tmp file is not there - need to match the euid/egid
         # with the permissions of the directory and not the file itself.
@@ -5389,10 +5394,9 @@ def read_files(MY_TASK, read_jobs, encp, intf):
 
     if YES in deleteds:
         argv += ["--override-deleted"]
-        # use --get-bfid to handle multiple copies
-        use_path = ["--get-bfids"] + src_bfids
-    else:
-        use_path = src_paths
+
+    # always use "--get-bfid BFID"
+    use_path = ["--get-bfids"] + src_bfids
 
     argv += encp_options
 
@@ -5418,11 +5422,11 @@ def read_files(MY_TASK, read_jobs, encp, intf):
         error_log(MY_TASK, "Unable to execute encp", sys.exc_info()[1])
 
     if res == 0:
-        ok_log(MY_TASK, "%s %s to %s" % (src_bfids,src_paths,tmp_path))
+        ok_log(MY_TASK, "%s to %s" % (src_bfids,tmp_path))
     else:
         error_log(MY_TASK,
-                  "failed to copy %s %s to %s, error = %s" \
-                  % (src_bfids, src_paths, tmp_path, encp.err_msg))
+                  "failed to copy %s to %s, error = %s" \
+                  % (src_bfids, tmp_path, encp.err_msg))
         return 1
 
     detect_uncleared_deletion_lists(MY_TASK)
@@ -5647,60 +5651,71 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                 time_to_get_src_path = time.time()
 
             #Handle finding the name differently for migration and duplication.
+            # FIXME: this call may go away as I do not call pnfs_find()
+            #        but I have to check for dependencies.
             use_bfid, alt_bfid, use_file_record, use_alt_file_record = \
                       search_order(src_bfid, src_file_record,
                                    dst_bfid, dst_file_record,
                                    is_it_copied, is_it_swapped, fcc, db)
 
-            #We need to do this for files marked and unmarked deleted.  The reason
+            # We need to do this for files marked and unmarked deleted.  The reason
             # for doing this with the deleted files is to catch cases were the
             # metadata is inconsistent between PNFS and Enstore DB.
             try:
-                #Determine if the destination volume contains just deleted files.
-                if dst_volume_record:
-                    is_deleted_volume = is_deleted_file_family(dst_volume_record['volume_family'])
-                else:
-                    is_deleted_volume = False
+                # Determine if the destination volume contains just deleted files.
+                is_deleted_volume = dst_volume_record and \
+                        is_deleted_file_family(dst_volume_record['volume_family'])
 
-                if dst_volume_record and is_deleted_volume \
-                   and dst_file_record['deleted'] == YES:
-                    #When re-running migration, try and avoid looking for a
-                    # file in PNFS that was deleted the first time around.
+                # Set src_path for deleted or files being migrated.
+                # Do not try to find pnfs path of the file:
+                #  this is epensive and it fails when user moved (mv) file in pnfs.
+                # We will migrate file by bfid. Use dummy name as src_path.
+
+                # is_deleted_volume assumes dst_volume_record is not None
+                if is_deleted_volume and dst_file_record['deleted'] == YES:
                     src_path = "deleted-%s-%s" % (src_bfid, tmp_path)
                 else:
-                    try:
-                        src_path = pnfs_find(use_bfid, alt_bfid,
-                                             src_file_record['pnfsid'],
-                                             file_record = use_file_record,
-                                             alt_file_record = use_alt_file_record,
-                                             intf = intf)
-                    except:
-                        if src_file_record['deleted'] == YES and \
-                           str(sys.exc_info()[1]).find("replaced") != -1:
-                            #We can get here if:
-                            # 1) bfid1 migrated to bfid2
-                            # 2) bfid2 migrated to bfid3
-                            # 3) migration is rerun for bfid1
-                            #This happens because bfid3 is the primary file
-                            # in PNFS now.
-                            src_path = "deleted-%s-%s" % (src_bfid, tmp_path)
-                        else:
-                            raise sys.exc_info()[0], sys.exc_info()[1], \
-                                  sys.exc_info()[2]
+                    src_path = chimera_get_path(src_file_record['pnfsid'])
+#                    try:
+#                        src_path = pnfs_find(use_bfid, alt_bfid,
+#                                             src_file_record['pnfsid'],
+#                                             file_record = use_file_record,
+#                                             alt_file_record = use_alt_file_record,
+#                                             intf = intf)
+#                    except:
+#                        if src_file_record['deleted'] == YES and \
+#                           str(sys.exc_info()[1]).find("replaced") != -1:
+#                            #We can get here if:
+#                            # 1) bfid1 migrated to bfid2
+#                            # 2) bfid2 migrated to bfid3
+#                            # 3) migration is rerun for bfid1
+#                            #This happens because bfid3 is the primary file
+#                            # in PNFS now.
+#                            src_path = "deleted-%s-%s" % (src_bfid, tmp_path)
+#                        else:
+#                            raise sys.exc_info()[0], sys.exc_info()[1], \
+#                                  sys.exc_info()[2]
 
-                #There is/was a bug in migrate that allowed for a destination
+                # There is/was a bug in migrate that allowed for a destination
                 # file to be set deleted while the PNFS entry was perfectly
-                # correct.  Detect and correct this situation here.
+                # correct.  Detect this situation here.
+                #   AK: I do not want to correct it here.
 
                 if is_it_swapped and dst_file_record['deleted'] == YES \
-                       and not is_deleted_volume:
-
-                    # Fix the deleted status of the file.
-                    if mark_undeleted(MY_TASK, dst_bfid, None , db):
-                        error_log(MY_TASK,
-                              "bfid %s is marked deleted, but %s exists in PNFS"
-                                  % (dst_bfid, src_path))
-                        return
+                    and not is_deleted_volume:
+#                    AK: I did not check the file is actually in pnfs with pnfs_find()
+#                    so I do not fix anything in the file table, just warn:
+#
+#                    # Fix the deleted status of the file.
+#                    if mark_undeleted(MY_TASK, dst_bfid, None , db):
+#                        error_log(MY_TASK,
+#                              "bfid %s is marked deleted, but %s exists in PNFS"
+#                                  % (dst_bfid, src_path))
+#                        return
+                        message = ("src_bfid {} is swapped but "
+                                   "dst_bfid {} is marked deleted"
+                                   ).format(src_bfid,dst_bfid)
+                        warning_log(MY_TASK, message)
 
                 #If the migration is interupted after the copy, but before the
                 # swap we don't want to modify the src_file_record.  There must
@@ -5714,6 +5729,8 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                 #                  % (src_bfid, src_path))
                 #        return
             except (OSError, IOError), msg:
+                # FIXME: I do not call pnfs_find() anymore
+                # FIXME: so this exception processing block is not needed
                 src_path = None
 
                 #The file has been migrated, however the file has been
@@ -7108,19 +7125,19 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                     error_log(MY_TASK, "No valid migration path found: %s" \
                               % (src_bfid,))
                     return
-    else:
+    else: # if is_it_copied - file not copied
         if not mig_path:
             mig_path = migration_path(src_path, src_file_record)
+            # migration file is undefined for active file, set it
             if mig_path == None and src_file_record['deleted'] != NO:
-                #We need to use the original pathname, since the file is
+                # We need to use the original pathname, since the file is
                 # currently deleted (and /pnfs/fs was not able to be found).
-
-                mig_path = migration_path(src_file_record['pnfs_name0'],
-                                          src_file_record)
+                # FIXME: Try pnfs name as originally written name in onfs
+                # FIXME: but this may fail for files 'mv'ed in pnfs.
+                mig_path = migration_path(src_file_record['pnfs_name0'],src_file_record)
             if mig_path == None:
                 #Is PNFS mounted?
-                error_log(MY_TASK, "No valid migration path found: %s" \
-                          % (src_bfid,))
+                error_log(MY_TASK, "No valid migration path found: %s" % (src_bfid,))
                 return
 
         #Try and catch situations were an error left a zero
@@ -7138,12 +7155,14 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                 src_size = src_file_record['size']
             else:
                 src_size = None
+
         try:
             tmp_size = long(os.stat(tmp_path)[stat.ST_SIZE])
         except (OSError, IOError):
             #We likely get here when the file is already
             # removed from the spooling directory.
             tmp_size = None
+
         if src_size != tmp_size:
             error_log(MY_TASK,
                       "size check mismatch %s(current %s, temp %s)" \
@@ -7152,8 +7171,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                 log(MY_TASK, "removing %s" % (tmp_path,))
                 file_utils.remove(tmp_path)
             except (OSError, IOError), msg:
-                log(MY_TASK, "error removing %s: %s" \
-                    % (tmp_path, str(msg)))
+                log(MY_TASK, "error removing %s: %s" % (tmp_path, str(msg)))
             return
 
         #The library value can consist of a comma seperated list
@@ -7181,11 +7199,11 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
         ff = migration_file_family(src_bfid, file_family, fcc, intf,
                                    src_file_record['deleted'])
 
-        ## At this point src_path points to the original file's
-        ## location in pnfs, tmp_path points to the temporary
-        ## location on disk and mig_path points to the
-        ## migration path in pnfs where the new copy is
-        ## written to.
+        ## At this point
+        ##   src_path points to the original file's location in pnfs,
+        ##   tmp_path points to the temporary location on disk and
+        ##   mig_path points to the migration path in pnfs
+        ##            where the new copy is written to.
 
         rtn_code = write_file(MY_TASK, src_bfid, src_path,
                               tmp_path, mig_path,
@@ -7581,88 +7599,70 @@ def get_filenames(MY_TASK, job, is_multiple_copy, fcc, db, intf):
     dst_bfid = dst_file_record['bfid']
     likely_path = dst_file_record['pnfs_name0']
 
-    is_already_migrated = False  #In case the destination is also a source.
+    is_already_migrated = False  # The destination is also the source in other migration
 
-    if is_deleted_file_family(dst_volume_record['volume_family']):
-        use_deleted = YES
-    else:
-        use_deleted = dst_file_record['deleted']
-
-    if use_deleted == YES:
-        use_path = "--override-deleted --get-bfid %s" \
-                   % (dst_bfid,)
+    # deleted tapes or files
+    if is_deleted_file_family(dst_volume_record['volume_family']) \
+    or YES == dst_file_record['deleted'] :
+        # FIXME: use pnfs path for file referenced by pnfsid
+        use_path = "--override-deleted --get-bfid %s" % (dst_bfid,)
         pnfs_path = likely_path #Is anything else more correct?
+        return (pnfs_path, use_path)
+
+    # FIXME: review bfid1,bfid2,fr1,fr2: we do not need it all when using chimera_get_path()
+
+    # Active files
+    if is_multiple_copy:
+        original_reply = fcc.find_the_original(dst_bfid)
+        if e_errors.is_ok(original_reply) \
+        and original_reply['original'] != None \
+        and original_reply['original'] != dst_bfid:
+            f0 = get_file_info(MY_TASK, original_reply['original'], fcc, db)
+            if original_reply['original'] == src_bfid:
+                bfid1,bfid2 = src_bfid, dst_bfid
+            else:
+                bfid1,bfid2 = original_reply['original'], src_bfid
+            fr1,fr2 = f0, src_file_record
+            pnfsid = f0['pnfsid']
+        else:
+            raise ValueError("No original copy found for %s." % (dst_bfid,))
+    else: # if is_multiple_copy:
+        bfid1,bfid2 = dst_bfid, None
+        fr1,fr2     = dst_file_record, None
+        pnfsid = dst_file_record['pnfsid']
+
+    # get the file path in pnfs
+    # FIXME: review exeption processing. We may not need it all.
+    try:
+        pnfs_path = chimera_get_path(pnfsid)
+        #pnfs_path = pnfs_find(bfid1, bfid2, pnfsid, fr1, fr2, intf)
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError), msg:
+        dst_bfid2 = is_copied(dst_bfid, fcc, db)
+        if msg.args[0] == errno.EEXIST and dst_bfid2:
+            # We have determined that the destination file has already become
+            # a source file for a different migration.
+            pnfs_path = likely_path
+            is_already_migrated = True
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    if type(pnfs_path) == type([]):
+        pnfs_path = pnfs_path[0]
+
+    # If the target is a multiple copy just do encp read by corresponding bfid
+    if is_multiple_copy \
+    or is_already_migrated:
+        use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
     else:
-        if is_multiple_copy:
-            original_reply = fcc.find_the_original(dst_bfid)
-            if e_errors.is_ok(original_reply) \
-               and original_reply['original'] != None \
-               and original_reply['original'] != dst_bfid:
-                f0 = get_file_info(MY_TASK, original_reply['original'], fcc, db)
-
-                if original_reply['original'] == src_bfid:
-                    bfid1 = src_bfid
-                    bfid2 = dst_bfid
-                else:
-                    bfid1 = original_reply['original']
-                    bfid2 = src_bfid
-
-                fr1 = f0
-                fr2 = src_file_record
-
-                pnfsid = f0['pnfsid']
-            else:
-                raise ValueError("No original copy found for %s." % (dst_bfid,))
-        else:
-            bfid1 = dst_bfid
-            bfid2 = None
-
-            fr1 = dst_file_record
-            fr2 = None
-
-            pnfsid = dst_file_record['pnfsid']
-
-        try:
-            # get the real path
-            #pnfs_path = find_pnfs_file.find_chimeraid_path(
-            #    pnfs_id, dst_bfid,
-            #    likely_path = likely_path,
-            #    path_type = find_pnfs_file.FS)
-            pnfs_path = pnfs_find(bfid1, bfid2, pnfsid, fr1, fr2, intf)
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], \
-                  sys.exc_info()[2]
-        except (OSError, IOError), msg:
-            dst_bfid2 = is_copied(dst_bfid, fcc, db)
-            if msg.args[0] == errno.EEXIST and dst_bfid2:
-                    #We have determined that the destination
-                    # file has already become a source file
-                    # for a different migration.
-                    pnfs_path = likely_path
-                    is_already_migrated = True
-            else:
-                    raise sys.exc_info()[0], sys.exc_info()[1], \
-                          sys.exc_info()[2]
-        except:
-            raise sys.exc_info()[0], sys.exc_info()[1], \
-                  sys.exc_info()[2]
-
-        if type(pnfs_path) == type([]):
-            pnfs_path = pnfs_path[0]
-
-        #If the true target is a multiple copy, we need to make sure
-        # we read the correct file.
-        if is_already_migrated:
-            use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
-        elif is_multiple_copy:
-            use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
-        else:
-            use_path = pnfs_path
-
+        use_path = pnfs_path
 
     return (pnfs_path, use_path)
 
-#This function contains common code for cleanup between migration and
+# This function contains common code for cleanup between migration and
 # duplication.
 def cleanup_after_scan_common(MY_TASK, mig_path):
 
@@ -7796,6 +7796,7 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
             return None
 
         # make sure the migration path has been removed
+        # FIXME: using pnfs_name0 is not correct for files 'mv'ed in pnfs.
         likely_path = dst_file_record['pnfs_name0']
         mig_path = migration_path(likely_path, src_file_record)
         # cleanup_after_scan() reports its own errors.
