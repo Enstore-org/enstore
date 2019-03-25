@@ -546,7 +546,10 @@ def do_work(intf):
                     ticket = mcc.insertvol(None)
                     print ticket['status']
                     if not e_errors.is_ok(ticket):
-                        break
+                        if ticket['status'][0] == e_errors.MC_QUEUE_FULL:
+                            time.sleep(2)
+                        else:
+                            break
             else:
                 ticket = mcc.insertvol(vol)
                 print ticket['status']
