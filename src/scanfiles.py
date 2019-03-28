@@ -580,7 +580,7 @@ def verify_filedb_info(fr):
         fr['status'] = (e_errors.OK, None)
 
     if e_errors.is_ok(fr):
-        if fr.get('deleted', None) == "no":
+        if fr.get('deleted', None) == "no":  # active file
             # Look for missing file database information.
             filedb_pnfs_name0 = fr.get('pnfs_name0', "")
             if filedb_pnfs_name0 in ["", None, "None"]:
@@ -1041,15 +1041,17 @@ def check_vol(vol):
         errors_and_warnings(vol, ['can not get inquire_vol info'], [], [])
         return
 
+    # Check if there are files with matching locations on this tape.
     tape_list = tape_ticket['tape_list']
     for i in range(len(tape_list)):
-        #First check if there are files with matching locations on this tape.
+        if tape_list[i]['deleted'] in  ["yes", "unknown"]:
+            continue
         for j in range(len(tape_list)):
-            if i == j:
-                #Skip the current file.
+            if j == i: # Skip the current file.
                 continue
-            if tape_list[i]['location_cookie'] == \
-                   tape_list[j]['location_cookie']:
+            if tape_list[j]['deleted'] in ["yes", "unknown"]:
+                    continue
+            if tape_list[i]['location_cookie'] == tape_list[j]['location_cookie']:
                 if tape_list[i]['bfid'] < tape_list[j]['bfid']:
                     age = "another newer"
                 elif tape_list[i]['bfid'] > tape_list[j]['bfid']:
@@ -1067,24 +1069,25 @@ def check_vol(vol):
                 message = 'volume %s has %s duplicate location %s (%s, %s)' % \
                           (vol, age, tape_list[i]['location_cookie'],
                            tape_list[i]['bfid'], tape_list[j]['bfid'])
-                if tape_list[i]['deleted'] in  ["yes", "unknown"] or \
-                   tape_list[j]['deleted'] in ["yes", "unknown"]:
-                    #This is a possible situation:
-                    # 1) The file clerk assigns a new bfid.
-                    # 2) The volume clerk fails to update the EOD cookie.
-                    # 3) The error is propagated back to encp, resulting
-                    #    in a failure of the transfer.
-                    # 4) With the EOD cookie not updated the same position
-                    #    on tape is used.  Since the first file was
-                    #    deemed failed and marked deleted, we don't consider
-                    #    reaching this part of the scan a problem.
-                    continue
-                #elif volume_ticket['library'].find("shelf") != -1:
-                #    #If the volume is no longer available, we need to skip
-                #    # this check.
-                #    warn = [message,]
-                else:
-                    err = [message,]
+#                if tape_list[i]['deleted'] in  ["yes", "unknown"] or \
+#                   tape_list[j]['deleted'] in ["yes", "unknown"]:
+#                    #This is a possible situation:
+#                    # 1) The file clerk assigns a new bfid.
+#                    # 2) The volume clerk fails to update the EOD cookie.
+#                    # 3) The error is propagated back to encp, resulting
+#                    #    in a failure of the transfer.
+#                    # 4) With the EOD cookie not updated the same position
+#                    #    on tape is used.  Since the first file was
+#                    #    deemed failed and marked deleted, we don't consider
+#                    #    reaching this part of the scan a problem.
+#                    continue
+#                #elif volume_ticket['library'].find("shelf") != -1:
+#                #    #If the volume is no longer available, we need to skip
+#                #    # this check.
+#                #    warn = [message,]
+#                else:
+#                    err = [message,]
+                err = [message,]
                 errors_and_warnings(vol, err, warn, info)
                 break
 
@@ -1119,11 +1122,15 @@ def check_vol(vol):
 #Intermediate function to handle scanning a list of files from check_vol(),
 # with different lists scanned in different threads.
 def check_bit_files(file_record_list, volume_record={}):
+    global intf_of_scanfiles
 
+    intf = intf_of_scanfiles
     for file_record in file_record_list:
-        check_bit_file(file_record['bfid'],
-                       {'file_record' : file_record,
-                        'volume_record' : volume_record})
+        if file_record['deleted'] == "no" \
+        or intf.with_deleted and file_record['deleted'] == "yes":
+#           print file_record['bfid']," deleted ",file_record['deleted'] # DEBUG
+            check_bit_file(file_record['bfid'],
+                {'file_record' : file_record,'volume_record' : volume_record})
 
 last_db_tried = ("", (-1, ""))
 search_list = []
@@ -1153,7 +1160,7 @@ def check_bit_file(bfid, bfid_info = None):
     prefix = bfid
 
     if not bfid:
-        err.append("no bifd given")
+        err.append("no bfid given")
         errors_and_warnings(prefix, err, warn, info)
         return
 
@@ -1240,10 +1247,12 @@ def check_bit_file(bfid, bfid_info = None):
     else:
         src_bfids = response_dict['src_bfid']
         dst_bfids = response_dict['dst_bfid']
+
     if src_bfids and bfid in src_bfids:
         is_migrated_copy = True
     else:
         is_migrated_copy = False
+
     if dst_bfids and bfid in dst_bfids:
         is_migrated_to_copy = True
     else:
@@ -2089,56 +2098,57 @@ class ScanfilesInterface(option.Interface):
 
         self.infile = None
         self.bfid = 0
-	self.vol = 0
+        self.vol = 0
         self.file_threads = 3
         self.directory_threads = 1
         self.profile = 0
         self.old_path = []
         self.new_path = []
         self.threaded = 0
+        self.with_deleted = False
 
         option.Interface.__init__(self, args=args, user_mode=user_mode)
-
 
     def valid_dictionaries(self):
         return (self.help_options, self.scanfile_options)
 
     #  define our specific parameters
-    parameters = ["[target_path [target_path_2 ...]] | [bfid [bfid2 ...]]"]
+    parameters = ["[TARGET_PATHS | BFIDS | VOLUMES]"]
 
     scanfile_options = {
-        #--bfid is considered obsolete
+        # --bfid is considered obsolete:
         option.BFID:{option.HELP_STRING:"treat input as bfids",
-                         option.VALUE_USAGE:option.IGNORED,
-                         option.DEFAULT_VALUE:option.DEFAULT,
-                         option.DEFAULT_TYPE:option.INTEGER,
-                         option.USER_LEVEL:option.HIDDEN},
-        #--bfid is considered obsolete
-        option.FILE_THREADS:{option.HELP_STRING:"Number of threads in files.",
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_TYPE:option.INTEGER,
-                         option.USER_LEVEL:option.HIDDEN,},
-        option.INFILE:{option.HELP_STRING:"Use the contents of this file"
-                       " as a list of targets to scan.",
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_TYPE:option.STRING,
-                         option.USER_LEVEL:option.USER,},
-        option.PROFILE:{option.HELP_STRING:"Display profile info on exit.",
-                            option.VALUE_USAGE:option.IGNORED,
-                            option.USER_LEVEL:option.ADMIN,},
-        option.THREADED:{option.HELP_STRING:
-                         "Use multiple threads.  This will interlace the"
-                         " output.",
-                         option.DEFAULT_TYPE:option.INTEGER,
-                         option.DEFAULT_NAME:"threaded",
-                         option.DEFAULT_VALUE:1,
-                         option.USER_LEVEL:option.USER,},
-        #--vol is considered obsolete
+                option.VALUE_USAGE:option.IGNORED,
+                option.DEFAULT_VALUE:option.DEFAULT,
+                option.DEFAULT_TYPE:option.INTEGER,
+                option.USER_LEVEL:option.HIDDEN},
+        option.FILE_THREADS:{option.HELP_STRING:"number of processing threads",
+                option.VALUE_USAGE:option.REQUIRED,
+                option.VALUE_TYPE:option.INTEGER,
+                option.USER_LEVEL:option.HIDDEN,},
+        option.INFILE:{option.HELP_STRING:"read list of targets to scan from file",
+                option.VALUE_USAGE:option.REQUIRED,
+                option.VALUE_TYPE:option.STRING,
+                option.USER_LEVEL:option.USER,},
+        option.PROFILE:{option.HELP_STRING:"display profile info on exit",
+                option.VALUE_USAGE:option.IGNORED,
+                option.USER_LEVEL:option.ADMIN,},
+        option.THREADED:{option.HELP_STRING:"use multiple threads"
+                " (will interlace the output)",
+                option.DEFAULT_TYPE:option.INTEGER,
+                option.DEFAULT_NAME:"threaded",
+                option.DEFAULT_VALUE:1,
+                option.USER_LEVEL:option.USER,},
+        option.WITH_DELETED:{option.HELP_STRING:"Include deleted files in volume scan",
+                option.VALUE_USAGE:option.IGNORED,
+                option.VALUE_TYPE:option.INTEGER,
+                option.USER_LEVEL:option.USER,},
+        # --vol is considered obsolete:
         option.VOL:{option.HELP_STRING:"treat input as volumes",
-                         option.VALUE_USAGE:option.IGNORED,
-                         option.DEFAULT_VALUE:option.DEFAULT,
-                         option.DEFAULT_TYPE:option.INTEGER,
-                         option.USER_LEVEL:option.HIDDEN},
+                option.VALUE_USAGE:option.IGNORED,
+                option.DEFAULT_VALUE:option.DEFAULT,
+                option.DEFAULT_TYPE:option.INTEGER,
+                option.USER_LEVEL:option.HIDDEN},
         }
 
     def parse_options(self):
@@ -2165,7 +2175,7 @@ def handle_signal(sig, frame):
 
 def main(intf_of_scanfiles, file_object, file_list):
     # intf_of_scanfiles has been used before.  Probably will be used again.
-    # This quites pychecker for the time being.
+    # This quiets pychecker for the time being.
     __pychecker__ = "unusednames=intf_of_scanfiles"
 
     try:
