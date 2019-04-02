@@ -9054,7 +9054,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
                                         vcc, db)
         if not e_errors.is_ok(src_volume_record):
             error_log(MY_TASK, src_volume_record['status'])
-            sys.exit(1)
+            return 1
 
     #Determine if the file has been copied to a new tape already.  Need to
     # worry if the file has been migrated to multiple copies.
@@ -9069,22 +9069,22 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         if check_dst_bfid == src_bfid:
             error_log("bfid %s is a destination bfid not"
                       " a source bfid" % (src_bfid,))
-            sys.exit(1)
+            return 1
         if (check_src_bfid, check_dst_bfid) == (None, None):
             error_log("bfid %s has not been %s" % (src_bfid, INHIBIT_STATE))
-            sys.exit(1)
+            return 1
 
     if dst_bfid:
         dst_file_record = get_file_info(MY_TASK, dst_bfid, fcc, db)
         if not e_errors.is_ok(dst_file_record):
             error_log(MY_TASK, dst_file_record['status'])
-            sys.exit(1)
+            return 1
 
         dst_volume_record = get_volume_info(MY_TASK, dst_file_record['external_label'],
                                             vcc, db)
         if not e_errors.is_ok(dst_volume_record):
             error_log(MY_TASK, dst_volume_record['status'])
-            sys.exit(1)
+            return 1
     else:
         dst_file_record = None
         dst_volume_record = None
@@ -9104,10 +9104,10 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     if migration_type_answer == None:
         #Some sort of error.
         error_log("bfid %s is not %s" % (src_bfid, INHIBIT_STATE))
-        sys.exit(1)
+        return 1
     elif not migration_type_answer:
         error_log("bfid %s is not a %s bfid" % (src_bfid, MIGRATION_NAME.lower()))
-        sys.exit(1)
+        return 1
 
     #We need to handle restoring a multiple copy.
     ob_reply = fcc.find_the_original(src_bfid)
@@ -9147,14 +9147,14 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
             # we don't know whether to do an active or deleted file restore.
             if not e_errors.is_ok(extra_file_record):
                 error_log(MY_TASK, extra_file_record['status'])
-                sys.exit(1)
+                return 1
             if extra_file_record['deleted'] != dst_file_record['deleted']:
                 error_log(MY_TASK, "Not all destination deleted statuses are"
                           " the same: (%s, %s) != (%s, %s)" % \
                           (dst_bfid, dst_file_record['deleted'],
                            extra_file_record['bfid'],
                            extra_file_record['deleted']))
-                sys.exit(1)
+                return 1
 
             #If we are restoring a file with extra migration copies, add
             # this to the list of metadata to check.
@@ -9189,7 +9189,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
                          src_file_record['bfid'],
                          src_file_record['location_cookie'],
                          src_file_record['pnfsid']))
-            sys.exit(1)
+            return 1
         break
     else:
         if dst_file_record['deleted'] in (NO,):
@@ -9198,7 +9198,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
                       % (active_bfid, nonactive_bfid,
                          src_file_record['pnfsid'])
             error_log(MY_TASK, message)
-            sys.exit(1)
+            return 1
 
         #Just set this to something.
         src = src_file_record['pnfs_name0']
@@ -9208,7 +9208,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     # also checks to make sure the layer 1 bfid information
     # matches too; which should remove all duplicates.  The only
     # possible duplicates would be things like the same pnfs
-    # filesystem mounted one machine in different locations; and
+    # filesystem mounted on machine in different locations; and
     # in this case taking the first one is fine.
     if type(src) == type([]):
         src = src[0]
@@ -9228,14 +9228,14 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         f_original = fcc.bfid_info(original_bfid)
         if not e_errors.is_ok(f_original):
             error_log(MY_TASK, f_original['status'])
-            sys.exit(1)
+            return 1
         f_rec = f_original
 
         # obtain original volume information
         v_original = vcc.inquire_vol(f_original['external_label'])
         if not e_errors.is_ok(v_original):
             error_log(MY_TASK, v_original['status'])
-            sys.exit(1)
+            return 1
         v_rec = v_original
 
     p.volume = f_rec['external_label']
@@ -9306,7 +9306,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         message = "impossible situation: found destination bfid, " \
                       "but no destination file record"
         error_log(MY_TASK, message)
-        sys.exit(1)
+        return 1
 
     ###########################################################
     # Make the metadata changes.
@@ -9493,7 +9493,7 @@ def restore_files(bfids, intf, src_volume_record=None):
         src_file_record = get_file_info(MY_TASK, bfid, fcc, db)
         if not e_errors.is_ok(src_file_record):
             error_log(MY_TASK, src_file_record['status'])
-            sys.exit(1)
+            return 1
 
         restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record)
 
