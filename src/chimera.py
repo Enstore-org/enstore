@@ -898,12 +898,9 @@ def get_enstore_admin_mount_point(chimeraid = None):
                 access_path = access_file(mount_path, chimeraid)
                 try:
                     file_utils.get_stat(access_path)
+                    list_of_admin_mountpoints.append(mount_path)
                 except OSError, msg:
-                    if msg.errno in [errno.ENOENT]:
-                        continue
-                    else:
-                        list_of_admin_mountpoints.append(mount_path)
-
+                   pass
 
     return list_of_admin_mountpoints
 
