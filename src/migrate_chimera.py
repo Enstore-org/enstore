@@ -9588,6 +9588,8 @@ def restore_volume(vol, intf):
 class MigrateInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
         self.buffered_tape_marks = None
+        self.check_data = None
+        self.check_only_meta = None
         self.priority = 0
         self.spool_dir = None
         self.library = None
@@ -9653,6 +9655,17 @@ class MigrateInterface(option.Interface):
             "Enable buffered tape marks support",
             option.VALUE_USAGE:option.IGNORED,
             option.DEFAULT_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.CHECK_DATA:{option.HELP_STRING:
+            "Scan destination: read file data with encp to /dev/null",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.CHECK_ONLY_META:{option.HELP_STRING:
+            "Scan destination: verify only file medatadata without tape IO; "
+            "encp called with --check",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
             option.USER_LEVEL:option.ADMIN,},
         option.DEBUG:{option.HELP_STRING:
             "Output extra debugging information",
@@ -9836,17 +9849,6 @@ class MigrateInterface(option.Interface):
         option.USE_VOLUME_ASSERT:{option.HELP_STRING:
             "Scan destination: use volume assert for IO (mover only). "
             "Metadata checked too with encp --check .",
-            option.VALUE_USAGE:option.IGNORED,
-            option.VALUE_TYPE:option.INTEGER,
-            option.USER_LEVEL:option.ADMIN,},
-        option.SCAN_DATA:{option.HELP_STRING:
-            "Scan destination: read file data with encp to /dev/null ",
-            option.VALUE_USAGE:option.IGNORED,
-            option.VALUE_TYPE:option.INTEGER,
-            option.USER_LEVEL:option.ADMIN,},
-        option.SCAN_ONLY_META:{option.HELP_STRING:
-            "Scan destination: verify only file medatadata without tape IO; "
-            "encp called with --check",
             option.VALUE_USAGE:option.IGNORED,
             option.VALUE_TYPE:option.INTEGER,
             option.USER_LEVEL:option.ADMIN,},
