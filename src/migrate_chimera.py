@@ -9588,8 +9588,8 @@ def restore_volume(vol, intf):
 class MigrateInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
         self.buffered_tape_marks = None
-        self.check_data = None
-        self.check_only_meta = None
+        self.check_data = 0
+        self.check_only_meta = 1
         self.priority = 0
         self.spool_dir = None
         self.library = None
