@@ -457,6 +457,8 @@ def init(intf):
     global debug_p
     global use_threaded_encp
     global proc_limit
+    global do_vol_assert
+    global encp_check_metadata_only
 
     #Make getting debug information from the command line possible.
     if intf.debug:
@@ -628,6 +630,22 @@ def init(intf):
 
     if debug:
         log("spool_dir check okay")
+
+    # encp_check_metadata_only triggers "--check" option when scanning file
+    # data not read in this case.
+    # We encp_check_metadata_only when doing volume_assert.
+    do_vol_assert = intf.use_volume_assert or USE_VOLUME_ASSERT
+    encp_check_metadata_only = 1
+    if do_vol_assert:
+         encp_check_metadata_only = 1
+    elif intf.check_data:
+        encp_check_metadata_only = 0
+    elif intf.check_only_meta:
+        encp_check_metadata_only = 1
+
+    if debug:
+        log("encp_check_metadata_only=$s  do_vol_assert=%s"
+            % (encp_check_metadata_only,do_vol_assert,)
 
     return
 
@@ -7526,6 +7544,8 @@ def scan_file(MY_TASK, job, src_path, wr_path, intf, encp):
 # override_deleted - boolean. We wish --override-deleted in encp for deleted file.
 def _scan_bfid(MY_TASK,dst_bfid,src_path,wr_path,intf,encp,override_deleted=False):
 
+    global encp_check_metadata_only
+
     open_log(MY_TASK, "verifying", dst_bfid, src_path, '...')
 
     ## Build the encp command line in scan_file()
@@ -7543,7 +7563,7 @@ def _scan_bfid(MY_TASK,dst_bfid,src_path,wr_path,intf,encp,override_deleted=Fals
     if override_deleted:
         argv += ["--override-deleted"]
 
-    if intf.use_volume_assert or USE_VOLUME_ASSERT:
+    if encp_check_metadata_only:
         argv += ["--check"] #Use encp to check the metadata.
 
     # If the src file path begins with two dashes (--) it is
@@ -8065,12 +8085,13 @@ def final_scan(thread_num, scan_list, intf, deleted_files = NO):
 # deal with deleted file
 # if it is a migrated deleted file, check it, too
 def final_scan_volume(vol, intf):
+    global do_vol_assert
+
     MY_TASK = "FINAL_SCAN_VOLUME"
 
     # get an encp
     threading.currentThread().setName('FINAL_SCAN')
     encp = encp_wrapper.Encp(tid='FINAL_SCAN')
-    do_vol_assert = intf.use_volume_assert or USE_VOLUME_ASSERT
     volume_assert = volume_assert_wrapper.VolumeAssert(tid='FINAL_SCAN')
     (fcc,vcc) = get_clerks()
 
@@ -8345,7 +8366,8 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 # volume_record - If all of these files in the list belong on the same tape,
 #                 then this should be set to the volume information in the DB.
 def migrate(file_records, intf, volume_record=None):
-	global errors
+        global errors
+        global do_vol_assert
 
 	errors = 0
 
@@ -8507,7 +8529,7 @@ def migrate(file_records, intf, volume_record=None):
                                                         job[3]['location_cookie']))
 
 
-                if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
+                if not do_vol_assert:
                         #Just put them into the round-robin order.
                         use_jobs_lists = []
                         use_deleted_jobs_lists = []
