@@ -644,8 +644,8 @@ def init(intf):
         encp_check_metadata_only = 1
 
     if debug:
-        log("encp_check_metadata_only=$s  do_vol_assert=%s"
-            % (encp_check_metadata_only,do_vol_assert,)
+        log("encp_check_metadata_only=%s  do_vol_assert=%s"
+            % (encp_check_metadata_only,do_vol_assert,))
 
     return
 
