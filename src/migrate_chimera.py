@@ -457,6 +457,8 @@ def init(intf):
     global debug_p
     global use_threaded_encp
     global proc_limit
+    global do_vol_assert
+    global encp_check_metadata_only
 
     #Make getting debug information from the command line possible.
     if intf.debug:
@@ -628,6 +630,22 @@ def init(intf):
 
     if debug:
         log("spool_dir check okay")
+
+    # encp_check_metadata_only triggers "--check" option when scanning file
+    # data not read in this case.
+    # We encp_check_metadata_only when doing volume_assert.
+    do_vol_assert = intf.use_volume_assert or USE_VOLUME_ASSERT
+    encp_check_metadata_only = 1
+    if do_vol_assert:
+         encp_check_metadata_only = 1
+    elif intf.check_data:
+        encp_check_metadata_only = 0
+    elif intf.check_only_meta:
+        encp_check_metadata_only = 1
+
+    if debug:
+        log("encp_check_metadata_only=%s  do_vol_assert=%s"
+            % (encp_check_metadata_only,do_vol_assert,))
 
     return
 
@@ -7485,6 +7503,8 @@ def scan_file(my_task, job, src_path, wr_path, intf, encp):
 # override_deleted - boolean. We wish --override-deleted in encp for deleted file.
 def _scan_bfid(my_task,dst_bfid,src_path,wr_path,intf,encp,override_deleted=False):
 
+    global encp_check_metadata_only
+
     open_log(my_task, "verifying", dst_bfid, src_path, '...')
 
     ## Build the encp command line in scan_file()
@@ -7502,7 +7522,7 @@ def _scan_bfid(my_task,dst_bfid,src_path,wr_path,intf,encp,override_deleted=Fals
     if override_deleted:
         argv += ["--override-deleted"]
 
-    if intf.use_volume_assert or USE_VOLUME_ASSERT:
+    if encp_check_metadata_only:
         argv += ["--check"] #Use encp to check the metadata.
 
     # If the src file path begins with two dashes (--) it is
@@ -8024,12 +8044,13 @@ def final_scan(thread_num, scan_list, intf, deleted_files = NO):
 # deal with deleted file
 # if it is a migrated deleted file, check it, too
 def final_scan_volume(vol, intf):
+    global do_vol_assert
+
     my_task = "FINAL_SCAN_VOLUME"
 
     # get an encp
     threading.currentThread().setName('FINAL_SCAN')
     encp = encp_wrapper.Encp(tid='FINAL_SCAN')
-    do_vol_assert = intf.use_volume_assert or USE_VOLUME_ASSERT
     volume_assert = volume_assert_wrapper.VolumeAssert(tid='FINAL_SCAN')
     (fcc,vcc) = get_clerks()
 
@@ -8304,7 +8325,8 @@ def set_dst_volume_migrated(my_task, vol, sg, ff, wp, vcc, db):
 # volume_record - If all of these files in the list belong on the same tape,
 #                 then this should be set to the volume information in the DB.
 def migrate(file_records, intf, volume_record=None):
-	global errors
+        global errors
+        global do_vol_assert
 
 	errors = 0
 
@@ -8466,7 +8488,7 @@ def migrate(file_records, intf, volume_record=None):
                                                         job[3]['location_cookie']))
 
 
-                if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
+                if not do_vol_assert:
                         #Just put them into the round-robin order.
                         use_jobs_lists = []
                         use_deleted_jobs_lists = []
@@ -9545,6 +9567,8 @@ def restore_volume(vol, intf):
 class MigrateInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
         self.buffered_tape_marks = None
+        self.check_data = None
+        self.check_only_meta = None
         self.priority = 0
         self.spool_dir = None
         self.library = None
@@ -9589,20 +9613,20 @@ class MigrateInterface(option.Interface):
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
     def valid_dictionaries(self):
-#        return (self.help_options, self.migrate_options)
         return (self.help_options, self.migrate_options, self.trace_options)
 
     #  define our specific parameters
     parameters = [
-		"[bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
-                "[media_type [library [storage_group [file_family [file_family_width] [wrapper]]]]]]",
-		"--restore [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
-		"--scan [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
-		"--migrated-from <vol1 [vol2 [vol3 ...]]>",  #volumes only
-		"--migrated-to <vol1 [vol2 [vol3 ...]]>",  #volumes only
-		"--status [bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
-		"--show <media_type> [library [storage_group [file_family [wrapper]]]]]",
-		]
+        "[media_type [library [storage_group [file_family "
+                  "[file_family_width] [wrapper]]]]]]",
+        "bfid ... | volume ... | file ... | volume:loc",
+        "--restore bfid ... | volume ... | file ... | volume:loc",
+        "--scan    bfid ... | volume ... | file ... | volume:loc",
+        "--status  bfid ... | volume ... | file ... | volume:loc",
+        "--migrated-from vol ...",  #volumes only
+        "--migrated-to   vol ...",  #volumes only
+        "--show media_type [library [storage_group [file_family [wrapper]]]]]",
+        ]
 
     migrate_options = {
         option.BUFFERED_TAPE_MARKS:{
@@ -9610,6 +9634,17 @@ class MigrateInterface(option.Interface):
             "Enable buffered tape marks support",
             option.VALUE_USAGE:option.IGNORED,
             option.DEFAULT_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.CHECK_DATA:{option.HELP_STRING:
+            "Scan destination: read file data with encp to /dev/null",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.CHECK_ONLY_META:{option.HELP_STRING:
+            "Scan destination: verify only file medatadata without tape IO; "
+            "encp called with --check",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
             option.USER_LEVEL:option.ADMIN,},
         option.DEBUG:{option.HELP_STRING:
             "Output extra debugging information",
@@ -9621,205 +9656,192 @@ class MigrateInterface(option.Interface):
             option.VALUE_TYPE:option.INTEGER,
             option.VALUE_USAGE:option.OPTIONAL,
             option.FORCE_SET_DEFAULT:option.FORCE,
-            option.VALUE_LABEL:"debug_level",
-             },
+            option.VALUE_LABEL:"debug_level",},
         option.DESTINATION_ONLY:{option.HELP_STRING:
-            "Used with --status to only list "
-            "output assuming the volume is a "
-            "destination volume.",
-        option.VALUE_USAGE:option.IGNORED,
+            "Used with --status to only list output assuming the volume is "
+            "a destination volume.",
+            option.VALUE_USAGE:option.IGNORED,
             option.VALUE_TYPE:option.INTEGER,
             option.USER_LEVEL:option.USER, },
         option.ENABLE_REDIRECTION:{option.HELP_STRING:
             "Enable redirection to SFA",
             option.VALUE_TYPE:option.INTEGER, },
-		option.FILE_FAMILY:{option.HELP_STRING:
-				    "Specify an alternative file family to "
-				    "override the pnfs file family tag.",
-				    option.VALUE_USAGE:option.REQUIRED,
-				    option.VALUE_TYPE:option.STRING,
-				    option.USER_LEVEL:option.USER,},
-		option.FILE_FAMILY_WIDTH:{option.HELP_STRING:
-				    "Specify an alternative file family width to "
-				    "override the pnfs file family width.",
-				    option.VALUE_USAGE:option.REQUIRED,
-				    option.VALUE_TYPE:option.INTEGER,
-				    option.USER_LEVEL:option.USER,},
-		option.FORCE:{option.HELP_STRING:
-			      "Allow migration on already migrated volume.",
-			      option.VALUE_USAGE:option.IGNORED,
-			      option.VALUE_TYPE:option.INTEGER,
-			      option.USER_LEVEL:option.HIDDEN},
-                option.INFILE:{option.HELP_STRING:
-			       "Read target list of bfids, volumes, "
-                               "volume:location_cookie pairs or paths "
-                               "from file.  Types can be intermixed.",
-			      option.VALUE_USAGE:option.REQUIRED,
-			      option.VALUE_TYPE:option.STRING,
-			      option.USER_LEVEL:option.USER},
-		option.LIBRARY:{option.HELP_STRING:
-				"Specify an alternative library to override "
-				"the pnfs library tag.",
-				option.VALUE_USAGE:option.REQUIRED,
-				option.VALUE_TYPE:option.STRING,
-				option.VALUE_NAME:"library",
-				option.USER_LEVEL:option.ADMIN,},
-		option.MIGRATED_FROM:{option.HELP_STRING:
-				      "Report the volumes that were copied"
-				      " to this volume.",
-				       option.VALUE_USAGE:option.IGNORED,
-				       option.VALUE_TYPE:option.INTEGER,
-				       option.USER_LEVEL:option.ADMIN,},
-		option.MIGRATED_TO:{option.HELP_STRING:
-				    "Report the volumes that were copied"
-				    " from this volume.",
-				    option.VALUE_USAGE:option.IGNORED,
-				    option.VALUE_TYPE:option.INTEGER,
-				    option.USER_LEVEL:option.ADMIN,},
-                option.MIGRATION_ONLY:{option.HELP_STRING:
-                                       "Used with --status to only list "
-                                       "output assuming the target is not or"
-                                       "has not a multiple copy.",
-                                       option.VALUE_USAGE:option.IGNORED,
-                                       option.VALUE_TYPE:option.INTEGER,
-                                       option.USER_LEVEL:option.USER,},
-                option.MULTIPLE_COPY_ONLY:{option.HELP_STRING:
-                                           "Used with --status to only list "
-                                           "output assuming the target is or"
-                                           "has a multiple copy.",
-                                           option.VALUE_USAGE:option.IGNORED,
-                                           option.VALUE_TYPE:option.INTEGER,
-                                           option.USER_LEVEL:option.USER,},
-		option.PRIORITY:{option.HELP_STRING:
-				 "Sets the initial job priority."
-				 "  Only knowledgeable users should set this.",
-				 option.VALUE_USAGE:option.REQUIRED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,},
-		option.PROCEED_NUMBER:{option.HELP_STRING:
-			      "The number of files to wait before writing.",
-			      option.VALUE_USAGE:option.REQUIRED,
-			      option.VALUE_TYPE:option.INTEGER,
-			      option.USER_LEVEL:option.HIDDEN},
-		option.READ_TO_END_OF_TAPE:{option.HELP_STRING:
-				 "Read to end of tape before starting "
-				 "to write.",
-				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,},
-		option.RESTORE:{option.HELP_STRING:
-				 "Restores the original file or volume.",
-				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,},
-                option.SCAN:{option.HELP_STRING:
-				 "Scan completed volumes or individual bfids.",
-				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,},
-		option.SCAN_VOLUMES:{option.HELP_STRING:
-				 "Scan completed volumes.",
-				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.HIDDEN,},
-		option.SKIP_BAD:{option.HELP_STRING:
-				 "Skip bad files.",
-				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,},
-		option.SOURCE_ONLY:{option.HELP_STRING:
-				    "Used with --status to only list "
-				    "output assuming the volume is a "
-				    "source volume.",
-				    option.VALUE_USAGE:option.IGNORED,
-				    option.VALUE_TYPE:option.INTEGER,
-				    option.USER_LEVEL:option.USER,},
-		option.SPOOL_DIR:{option.HELP_STRING:
-				  "Specify the directory to use on disk.",
-				  option.VALUE_USAGE:option.REQUIRED,
-				  option.VALUE_TYPE:option.STRING,
-				  option.USER_LEVEL:option.USER,},
-		option.SHOW:{option.HELP_STRING:
-			       "Report on the completion of volumes.",
-				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,
-			     option.EXTRA_VALUES:[
-					 {option.VALUE_NAME:"media_type",
-					  option.VALUE_TYPE:option.STRING,
-					  option.VALUE_USAGE:option.REQUIRED,},
-                                         {option.VALUE_NAME:"library",
-                                          option.VALUE_TYPE:option.STRING,
-                                          option.VALUE_USAGE:option.OPTIONAL,},
-                                         {option.VALUE_NAME:"storage_group",
-                                          option.VALUE_TYPE:option.STRING,
-                                          option.VALUE_USAGE:option.OPTIONAL,},
-                                         {option.VALUE_NAME:"file_family",
-                                          option.VALUE_TYPE:option.STRING,
-                                          option.VALUE_USAGE:option.OPTIONAL,},
-                                         {option.VALUE_NAME:"wrapper",
-                                          option.VALUE_TYPE:option.STRING,
-                                          option.VALUE_USAGE:option.OPTIONAL,},
-						  ]},
-		option.STATUS:{option.HELP_STRING:
-			       "Report on the completion of a volume.\n"
-                               "S = State of duplication:\n"
-                               "    P = Primary/original copy; duplication\n"
-                               "    C = Muliple copy; duplication\n"
-                               "    O = Original/primary copy\n"
-                               "    M = Multiple copy\n"
-                               "D = Deleted state:\n"
-                               "    N = Not deleted\n"
-                               "    Y = Yes deleted\n"
-                               "    U = Unknown; failed write\n"
-                               "B = Bad file\n"
-                               "    B = Bad file\n"
-                               "    E = Empty metadata fields\n",
-				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,},
-		option.USE_DISK_FILES:{option.HELP_STRING:
-				       "Skip reading files on source volume, "
-				       "use files already on disk.",
-				       option.VALUE_USAGE:option.IGNORED,
-				       option.VALUE_TYPE:option.INTEGER,
-				       option.USER_LEVEL:option.ADMIN,},
+        option.FILE_FAMILY:{option.HELP_STRING:
+            "Specify an alternative file family to "
+            "override the pnfs file family tag.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.STRING,
+            option.USER_LEVEL:option.USER,},
+        option.FILE_FAMILY_WIDTH:{option.HELP_STRING:
+            "Specify an alternative file family width to "
+            "override the pnfs file family width.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.FORCE:{option.HELP_STRING:
+            "Allow migration on already migrated volume.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.HIDDEN},
+        option.INFILE:{option.HELP_STRING:
+            "Read target list of bfids, volumes, volume:location_cookie "
+            "pairs or paths from file.  Types can be intermixed.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.STRING,
+            option.USER_LEVEL:option.USER},
+        option.LIBRARY:{option.HELP_STRING:
+            "Specify an alternative library to override the pnfs library tag.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.STRING,
+            option.VALUE_NAME:"library",
+            option.USER_LEVEL:option.ADMIN,},
+        option.MIGRATED_FROM:{option.HELP_STRING:
+            "Report the volumes that were copied to this volume.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.MIGRATED_TO:{option.HELP_STRING:
+            "Report the volumes that were copied from this volume.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.MIGRATION_ONLY:{option.HELP_STRING:
+            "Used with --status to only list output assuming the target is not"
+            " or has a multiple copy.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.MULTIPLE_COPY_ONLY:{option.HELP_STRING:
+            "Used with --status to only list output assuming the target is"
+            " or has a multiple copy.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.PRIORITY:{option.HELP_STRING:
+            "Sets the initial job priority."
+            "  Only knowledgeable users should set this.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.PROCEED_NUMBER:{option.HELP_STRING:
+            "The number of files to wait before writing.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.HIDDEN},
+        option.READ_TO_END_OF_TAPE:{option.HELP_STRING:
+            "Read to end of tape before starting to write.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.RESTORE:{option.HELP_STRING:
+            "Restore the original file or volume.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.SCAN:{option.HELP_STRING:
+            "Scan completed volumes or individual bfids.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.SCAN_VOLUMES:{option.HELP_STRING:
+            "Scan completed volumes.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.HIDDEN,},
+        option.SKIP_BAD:{option.HELP_STRING:
+            "Skip bad files.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.SOURCE_ONLY:{option.HELP_STRING:
+            "Used with --status to only list output assuming the volume is a "
+            "source volume.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.SPOOL_DIR:{option.HELP_STRING:
+            "Specify spool direcory on disk.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.STRING,
+            option.USER_LEVEL:option.USER,},
+        option.SHOW:{option.HELP_STRING:
+            "Report on the completion of volumes.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,
+            option.EXTRA_VALUES:[
+                {   option.VALUE_NAME:"media_type",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,},
+                {   option.VALUE_NAME:"library",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.OPTIONAL,},
+                {   option.VALUE_NAME:"storage_group",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.OPTIONAL,},
+                {   option.VALUE_NAME:"file_family",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.OPTIONAL,},
+                {   option.VALUE_NAME:"wrapper",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.OPTIONAL,},
+            ]},
+        option.STATUS:{option.HELP_STRING:
+            "Report on the completion of a volume.\n"
+            "S = State of duplication:\n"
+            "    P = Primary/original copy; duplication\n"
+            "    C = Muliple copy; duplication\n"
+            "    O = Original/primary copy\n"
+            "    M = Multiple copy\n"
+            "D = Deleted state:\n"
+            "    N = Not deleted\n"
+            "    Y = Yes deleted\n"
+            "    U = Unknown; failed write\n"
+            "B = Bad file\n"
+            "    B = Bad file\n"
+            "    E = Empty metadata fields\n",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.USE_DISK_FILES:{option.HELP_STRING:
+            "Skip reading files on source volume, "
+            "use files already in the spool directory on disk.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
         option.SINGLE_THREADED_ENCP:{option.HELP_STRING:
-                       "Call encp WITHOUT threaded option ",
-                       option.VALUE_USAGE:option.IGNORED,
-                       option.VALUE_TYPE:option.INTEGER,
-                       option.USER_LEVEL:option.ADMIN,},
-       option.PROC_LIMIT:{option.HELP_STRING:
-             "limit number of read and write migration workers to N max each",
-              option.DEFAULT_NAME:'proc_limit_is_set',
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_NAME:'proc_limit',
-              option.VALUE_TYPE:option.INTEGER,
-              option.VALUE_USAGE:option.REQUIRED,
-              option.VALUE_LABEL:"N",
-              option.USER_LEVEL:option.USER,
-              option.FORCE_SET_DEFAULT:option.FORCE,
-        },
-		option.USE_VOLUME_ASSERT:{option.HELP_STRING:
-					  "Use volume assert when scanning "
-					  "destination files.",
-					  option.VALUE_USAGE:option.IGNORED,
-					  option.VALUE_TYPE:option.INTEGER,
-					  option.USER_LEVEL:option.ADMIN,},
-		option.WITH_DELETED:{option.HELP_STRING:
-				     "Include deleted files.",
-				     option.VALUE_USAGE:option.IGNORED,
-				     option.VALUE_TYPE:option.INTEGER,
-				     option.USER_LEVEL:option.USER,},
-		option.WITH_FINAL_SCAN:{option.HELP_STRING:
-					"Do a final scan after all the"
-					" files are recopied to tape.",
-					option.VALUE_USAGE:option.IGNORED,
-					option.VALUE_TYPE:option.INTEGER,
-					option.USER_LEVEL:option.USER,},
-		}
-
+            "Call encp WITHOUT threaded option",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.PROC_LIMIT:{option.HELP_STRING:
+            "limit number of read and write migration workers to N max each",
+            option.DEFAULT_NAME:'proc_limit_is_set',
+            option.DEFAULT_VALUE:1,
+            option.DEFAULT_TYPE:option.INTEGER,
+            option.VALUE_NAME:'proc_limit',
+            option.VALUE_TYPE:option.INTEGER,
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_LABEL:"N",
+            option.USER_LEVEL:option.USER,
+            option.FORCE_SET_DEFAULT:option.FORCE,},
+        option.USE_VOLUME_ASSERT:{option.HELP_STRING:
+            "Scan destination: use volume assert for IO (mover only). "
+            "Metadata checked too with encp --check .",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.ADMIN,},
+        option.WITH_DELETED:{option.HELP_STRING:
+            "Include deleted files.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        option.WITH_FINAL_SCAN:{option.HELP_STRING:
+            "Do a final scan after all the files are copied to tape.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,},
+        }
 
 #Appened to bfid_list or volume_list the files to be migrated/scanned.
 def get_targets(bfid_list_queue, volume_list_queue, isc, intf):

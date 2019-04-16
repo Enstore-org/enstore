@@ -173,6 +173,8 @@ CAPTION_TITLE = "caption-title"              #enstore_make_log_plot
 CAPTURE_TIMEOUT = "capture-timeout"          #entv
 CAT = "cat"                                  #pnfs
 CHECK = "check"                              #volume, encp
+CHECK_DATA = "check-data"                    #migrate
+CHECK_ONLY_META = "check-only-meta"          #migrate
 CLEAN_DRIVE = "clean-drive"                  #mover
 CLEAR = "clear"                              #volume
 CLEAR_SG = "clear-sg"                        #volume
@@ -205,8 +207,6 @@ DESTINATION_ONLY = "destination-only"        #migrate
 DESTROY = "destroy"                          #volume
 DIRECT_IO = "direct-io"                      #encp
 DISABLE = "disable"                          #quota
-#DISABLE_REDIRECTION="disable-redirection"   # encp # per discussion with Gene default is disable-redirection
-# this option is replaced with enable-redirection to use Library Manager Director
 DISMOUNT = "dismount"                        #media
 DISPLAY = "display"                          #entv
 DO_ALARM = "do-alarm"
@@ -228,7 +228,7 @@ CKSM_VALUE = "cksm-value"                    #encp
 CKSM_SEED = "cksm-seed"                      #encp
 EJECT = "eject"                              #media
 ENABLE = "enable"                            #quota
-ENABLE_REDIRECTION="enable-redirection"      # encp # per discussion with Gene tis replaces disable-redirection
+ENABLE_REDIRECTION="enable-redirection"      # encp, migrate
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
@@ -513,7 +513,7 @@ valid_option_list = [
     ADD, AGE_TIME, ALIVE, ALL, ARRAY_SIZE, ASSIGN_SG,
     BACKUP, BFID, BFIDS, BUFFER_SIZE, BUFFERED_TAPE_MARKS,
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
-    CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK,
+    CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK, CHECK_DATA, CHECK_ONLY_META,
     CLEAN_DRIVE, CLEAR, CLEAR_SG, CLIENT_NAME,
     CONDITION, CONFIG_FILE, CONFIG_HOSTS, CONST, COPIES, COPY,
     COUNTERS, COUNTERSN, CP, CRC_CHECK, CREATE, CURSOR,
