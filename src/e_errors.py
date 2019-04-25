@@ -52,6 +52,7 @@ QUOTAEXCEEDED='STORAGE_QUOTA_EXCEEDED'
 CRC_ERROR='CRC MISMATCH'                #CRC error if caught by mover.
 CRC_ENCP_ERROR='CRC ENCP MISMATCH'      #CRC error if caught by encp.
 CRC_ECRC_ERROR='CRC ECRC MISMATCH'      #CRC error if caught by encp --ecrc.
+CRC_ERROR_IN_WRITE_CLIENT='CRC ERROR IN MOVER WRITE_CLIENT'      #CRC error if caught by mover write_client (reading from memory and sending to network).
 NO_CRC_RETURNED = 'mover did not return CRC'  #Encp warning if no crc returned.
 NET_ERROR="NET_ERROR"                   #Blanket error for caught socket.error.
 RETRY="RETRY"                           #Internal encp error.
