@@ -4460,7 +4460,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			if self.do_retry(rc, retuned_by_mtx_mount=False):
 				# retry
 				# rc[0] == -1 - timeout
-				Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%( drive_el, stor_el))
+				Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%( self.drives[dr], stor_el))
 				time.sleep(1)
 				retry_count -= 1
 			else:

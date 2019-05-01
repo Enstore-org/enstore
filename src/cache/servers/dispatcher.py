@@ -455,7 +455,7 @@ class Dispatcher(mw.MigrationWorker,
           f_list.file_list = list_of_files
           self.cache_purge_pool[list_id] = f_list
        except Exception, detail:
-          Trace.log(e_errors.ERROR, "Error moving to migration pool: %s"%(detail,))
+          Trace.log(e_errors.ERROR, "Error moving to purge pool: %s"%(detail,))
        self._lock.release()
 
    def handle_cache_written(self, message):

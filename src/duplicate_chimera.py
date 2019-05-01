@@ -224,10 +224,10 @@ def find_original_duplication(bfid, fcc):
 # 7) The temporary path of the new copy in PNFS/Chimera.
 # By the time duplicate_metadata() is called, all seven of these values
 # will be filled in.
-def _duplicate_metadata(MY_TASK, job, fcc, db):
+def _duplicate_metadata(my_task, job, fcc, db):
 
     return_error, job, p1, p2, f0, is_migrating_multiple_copy = \
-		  migrate_chimera._verify_metadata(MY_TASK, job, fcc, db)
+		  migrate_chimera._verify_metadata(my_task, job, fcc, db)
 
     if return_error:
         #The return_error value is a string with the error message.
@@ -265,7 +265,7 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
 
     # SFA: if duplicated file is a package and not empty, create children for new package
     if src_is_a_package and package_files_count > 0:
-        rc = migrate_chimera.dup_packaged_meta_one(MY_TASK, src_file_record, dst_bfid, fcc)
+        rc = migrate_chimera.dup_packaged_meta_one(my_task, src_file_record, dst_bfid, fcc)
         if rc:
             return "failed to create children bfids for package %s" % (dst_bfid,)
     
@@ -296,7 +296,7 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
     return rtn
 
 def duplicate_metadata(job, fcc, db):
-    MY_TASK = "DUPLICATE_METADATA"
+    my_task = "DUPLICATE_METADATA"
 
     #Get information about the files to copy and swap.
     (src_file_record, src_volume_record, src_path,
@@ -310,20 +310,20 @@ def duplicate_metadata(job, fcc, db):
            migrate_chimera.is_swapped(src_file_record['bfid'], fcc, db) and \
            migrate_chimera.is_duplication(dst_file_record['bfid'], db) and \
            migrate_chimera.is_duplication(src_file_record['bfid'], db):
-        migrate_chimera.ok_log(MY_TASK, "%s %s %s %s have already been duplicated" \
+        migrate_chimera.ok_log(my_task, "%s %s %s %s have already been duplicated" \
                % (src_file_record['bfid'], src_path,
                   dst_file_record['bfid'], mig_path))
         return None
 
-    res = _duplicate_metadata(MY_TASK, job, fcc, db)
+    res = _duplicate_metadata(my_task, job, fcc, db)
 
     if res:
-        migrate_chimera.error_log(MY_TASK,
+        migrate_chimera.error_log(my_task,
                   "%s %s %s %s failed due to %s" \
                   % (src_file_record['bfid'], src_path,
                      dst_file_record['bfid'], mig_path, res))
     else:
-        migrate_chimera.ok_log(MY_TASK,
+        migrate_chimera.ok_log(my_task,
                "%s %s %s %s have been duplicated" \
                % (src_file_record['bfid'], src_path,
                   dst_file_record['bfid'], mig_path))
@@ -335,14 +335,14 @@ def duplicate_metadata(job, fcc, db):
 #  of multiple copies.
 #This shall, also, be called if --make-copies or --make-failed-copies was
 # specified.
-def cleanup_after_scan_duplication(MY_TASK, mig_path, src_bfid, fcc, db):
+def cleanup_after_scan_duplication(my_task, mig_path, src_bfid, fcc, db):
     #src_bfid, fcc and db are migrate_chimera.py specific.
     __pychecker__ = "unusednames=src_bfid,fcc,db"
-    return migrate_chimera.cleanup_after_scan_common(MY_TASK, mig_path)
+    return migrate_chimera.cleanup_after_scan_common(my_task, mig_path)
 
 
 #Note: db used only for migrate_chimera.py version of this function.
-def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
+def is_expected_volume_duplication(my_task, vol, likely_path, fcc, db):
 	__pychecker__ = "unusednames=db"
 
 	#Confirm that the destination volume matches the volume that
@@ -352,7 +352,7 @@ def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
 	pf_volume = getattr(pf, "volume", None)
 	if pf_volume == None:
 		message = "No file info for %s. " % (likely_path,)
-		migrate_chimera.error_log(MY_TASK, message)
+		migrate_chimera.error_log(my_task, message)
 	elif pf_volume != vol:
 		pf_bfid =  getattr(pf, "bfid", None)
 		#Get the original and make sure the original volume
@@ -361,7 +361,7 @@ def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
 		original_file_info = fcc.bfid_info(pf_bfid, 10, 10)
 		if not e_errors.is_ok(original_file_info):
 			message = "No file info for bfid %s." % (pf_bfid,)
-			migrate_chimera.error_log(MY_TASK, message)
+			migrate_chimera.error_log(my_task, message)
                         pf.show()
 			return False
 
@@ -372,7 +372,7 @@ def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
 			message = "wrong volume %s (expecting %s or %s)" % \
 				  (pf.volume, vol,
 				   original_file_info['external_label'])
-			migrate_chimera.error_log(MY_TASK, message)
+			migrate_chimera.error_log(my_task, message)
 			return False
 
 	return True

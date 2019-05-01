@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.1
-Release: 5
+Release: 10
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -242,7 +242,15 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
-* Wed Mar 30 2019  <moibenko@fnal.gov> -
+* Wed May 1 2019  <moibenko@fnal.gov> -
+- v 6.3.1 release 10. Accumulative changes since 6.3.1-5
+* Thu Apr 25 2019  <moibenko@fnal.gov> -
+- v 6.3.1 release 9. Changed mover to send retrialble error to encp for CRC error in write_client
+* Wed Mar 27 2019  <moibenko@fnal.gov> -
+- v 6.3.1 release 7. Migration code changes.
+* Tue Mar 26 2019  <moibenko@fnal.gov> -
+- v 6.3.1 release 6. Migration code changes.
+* Wed Mar 13 2019  <moibenko@fnal.gov> -
 - v 6.3.1 release 5. Accumulative changes.
 * Wed Jan 23 2019  <moibenko@fnal.gov> -
 - v 6.3.1 release 0. Uses new mtx rpm which updates elemets structure every time status is called.

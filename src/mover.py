@@ -4213,12 +4213,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except MoverError, detail:
                     detail = str(detail)
                     if detail == e_errors.CRC_ERROR:
-                        Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                        Trace.alarm(e_errors.WARNING, "CRC error in write client",
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
                                      'location_cookie':self.current_work_ticket['fc']['location_cookie'],
                                      'external_label':self.current_work_ticket['vc']['external_label']})
-                        self.transfer_failed(detail, error_source=TAPE)
+                        self.transfer_failed(e_errors.CRC_ERROR_IN_WRITE_CLIENT, error_source=TAPE)
                     else:
 
                         if detail == e_errors.ENCP_GONE:
@@ -4288,12 +4288,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if crc_1_seeded == self.file_info['complete_crc']:
                         self.buffer.complete_crc = crc_1_seeded
                     else:
-                        Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                        Trace.alarm(e_errors.WARNING, "CRC error in write client",
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
                                      'location_cookie':self.current_work_ticket['fc']['location_cookie'],
                                      'external_label':self.current_work_ticket['vc']['external_label']})
-                        self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                        self.transfer_failed(e_errors.CRC_ERROR_IN_WRITE_CLIENT, error_source=TAPE)
                         return
             self.network_write_active = (self.bytes_written_last != self.bytes_written)
             self.bytes_written_last = self.bytes_written
