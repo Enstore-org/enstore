@@ -169,6 +169,9 @@ debug_p = False  # more debug output
 # this same functionality with processes.
 USE_THREADS = True
 
+# thread local storage
+threadLocal = threading.local()
+
 #Instead of reading all the files with encp when scaning, we have a new
 # mode where volume_assert checks the CRCs for all files on a tape.  Using
 # this volume_assert functionality should significantly reduce the [networking]
@@ -559,6 +562,11 @@ def init(intf):
             pnfs_is_trusted = True
             do_seteuid = False
 
+        # call get_chimera_admfs() to get chim_admin ChimeraFS instance on
+        # admin mount point on local thread storage for main thread early
+        # and report issues if found.
+        get_chimera_admfs()
+
     if debug:
         log("trusted PNFS check okay")
 
@@ -892,13 +900,45 @@ def nullify_pnfs(pname):
         f.write("\n");
         f.close()
 
+#-------------------------------------------------------------------------------
 # replacement for pnfs_find()
+#
+# get_chimera_admfs(): get ChimeraFS admin instance
+#  Used for pnfs name reverse lookups (pnfsid to file name).
+#  Use singleton pattern - create chimera instance once per each thread.
+
+def get_chimera_admfs():
+    chim_admin = getattr(threadLocal, 'chim_admin', None)
+
+    if chim_admin is None:
+#        print "chim_admin is None, initializing"
+        # intialize first time
+        # get list of admin mount points
+        admplist = chimera.get_enstore_admin_mount_point()
+        if len(admplist) < 1:
+            error_log("No pnfs admin mount point found; exiting")
+            return None
+
+        # take first admin mount point
+        admp = admplist[0]
+        if len(admplist) > 1:
+            msg = ("Warning: More than one pnfs admin mount point found, "
+                   "using first mount %s" % (admp,))
+            warning_log(msg)
+        chim_admin = chimera.ChimeraFS(mount_point=admp)
+        threadLocal.chim_admin = chim_admin
+
+    return chim_admin
+
 def chimera_get_path(pnfsid):
-    return chimera.ChimeraFS(pnfsid).get_path()[0]
+    chim_admin = get_chimera_admfs()
+    # return right away if get_chimera_fs() returned Null on error; otherwise get path for pnfsid
+    return chim_admin and chim_admin.get_path(pnfsid)[0]
 
-def chimera_get_file_size(pnfsid):
-    return chimera.ChimeraFS(pnfsid).get_file_size()
+#def chimera_get_file_size(pnfsid):
+#    return chimera.ChimeraFS(pnfsid).get_file_size()
 
+#-------------------------------------------------------------------------------
 def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
               alt_file_record = None, intf = None):
 
@@ -2983,12 +3023,16 @@ def migration_path(path, file_record, deleted = NO):
     # or /pnfs/fs/usr/Migration/sam/dzero/ depending on the migration
     # code version originally used to migrate the file.
     try:
-        use_paths = chimera.ChimeraFS().get_path(file_record['pnfsid'])
-        for use_path in use_paths:
-            alt_non_deleted_path = _migration_path(admin_mount_point,path)
-            # Use the non-deleted path if it still exists.
-            if os.path.exists(alt_non_deleted_path):
-                return alt_non_deleted_path
+        # FIXME: It may need cleanup but rather the whole migration_path()
+        # has to be rewritten to avoid using paths.
+        chim_admin = get_chimera_admfs()
+        if chim_admin:
+            use_paths = chim_admin.get_path(file_record['pnfsid'])
+            for use_path in use_paths:
+                alt_non_deleted_path = _migration_path(admin_mount_point,path)
+                # Use the non-deleted path if it still exists.
+                if os.path.exists(alt_non_deleted_path):
+                    return alt_non_deleted_path
     except (OSError, IOError):
         pass
 
@@ -9141,12 +9185,16 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     f_rec = src_file_record
     v_rec = src_volume_record
 
-    # create chimera File (in memory) sfile by looking for file with src_pnfsid;
-    # do not update in chimera yet
+    # create chimera File sfile (in memory) by looking for file in admin mount
+    # with pnfsid = src_pnfsid;
+    # do not update data in chimera yet
     try:
-        # it also checks pnfsid does exist
-        ch = chimera.ChimeraFS(src_pnfsid)
-        spath = ch.get_path()[0]    # name of the file in chimera
+        # Get chimera file in admin mount path
+        spath = chimera_get_path(src_pnfsid) # name of the file in chimera
+        if not spath:
+            message = "Can not get chimera file for src pnfsid %s" % (src_pnfsid,)
+            error_log(my_task, message)
+            return 1
         sfile = chimera.File(spath) # chimera file
         sbfid = sfile.bfid
     except:
@@ -9158,7 +9206,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         error_log(my_task, "No bfid for src pnfsid %s" % (src_pnfsid,))
         return 1
 
-    # get copy file cfile to be updated
+    # copy chimera File to cfile; this copy is what we are going to write as update.
     cfile = copy.copy(sfile)
     cfile.bfid = src_bfid
 
