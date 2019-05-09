@@ -7605,7 +7605,7 @@ def get_filenames(my_task, job, is_multiple_copy, fcc, db, intf):
             pnfsid = f0['pnfsid']
         else:
             raise ValueError("No original copy found for %s." % (dst_bfid,))
-    else: # if is_multiple_copy:
+    else: # it is not multiple_copy
         bfid1,bfid2 = dst_bfid, None
         fr1,fr2     = dst_file_record, None
         pnfsid = dst_file_record['pnfsid']
@@ -7791,10 +7791,13 @@ def final_scan_file(my_task, job, fcc, encp, intf, db):
     else:
         is_multiple_copy = False
 
-    #log(my_task, "start checking %s %s"%(dst_bfid, src))
+    if debug:
+        log(my_task, "start checking dst src: %s %s  dst_record %s  mig_path %s"
+            % (dst_bfid,src_bfid,dst_file_record,mig_path))
+
     try:
-        (pnfs_path, use_path) = get_filenames(
-            my_task, job, is_multiple_copy, fcc, db, intf)
+        (pnfs_path,use_path) = get_filenames(my_task,
+                                             job,is_multiple_copy,fcc,db,intf)
     except (OSError, IOError), msg:
         if  msg.args[0] == errno.EBADF and \
             msg.args[1].find("conflicting layer") != -1:
@@ -8972,41 +8975,40 @@ is_expected_restore_type = is_migration
 
 #Note: fcc used only for duplicate.py version of this function.
 def is_expected_volume_migration(my_task, vol, likely_path, fcc, db):
-	__pychecker__ = "unusednames=fcc"
+    __pychecker__ = "unusednames=fcc"
 
-	# make sure the volume is the same
-	pf = chimera.File(likely_path)
-	pf_volume = getattr(pf, "volume", None)
-        if pf_volume == None:
-                error_log(my_task,
-			  'wrong volume %s (expecting %s)' \
-			  % (pf_volume, vol))
-		return False  #Match not found.
+    # make sure the volume is the same in layer 4
+    pf = chimera.File(likely_path)
+    pf_volume = getattr(pf, "volume", None)
+    if not pf_volume:
+        error_log(my_task,"expecting volume %s but the volume is empty in layer 4 "
+                  "for pnfs path %s pnfs_bfid '%s'"
+                  % (vol,likely_path,pf.bfid))
+        return False
 
-        elif pf_volume != vol:
-                #We don't have a match between pnfs layer 4 and the volume
-                # given by the user to scan.  Double check if the volume
-                # being requested for a scan is a multiple copy volume.
-                mc_bfids = get_multiple_copy_bfids(pf.bfid, db)
-                for mc_bfid in mc_bfids:
-#                        mc_vol = get_volume_from_bfid(mc_bfid, db)
-                        mc_reply = get_file_info(my_task, mc_bfid, fcc, db)
-                        if mc_reply == None:
-                                error_log(my_task,
-                                          'file info for %s not found' \
-                                          % (mc_bfid,))
-                                return False
-                        if vol == mc_reply['external_label']:
-                                #The tape given by the user is a multiple
-                                # copy tape.  Stop searching.
-                                break
-                else:
-                        error_log(my_task,
-                                  'wrong volume %s (expecting %s)' \
-                                  % (pf_volume, vol))
-                        return False  #Match not found.
+    if pf_volume == vol:
+        return True  # Match found
 
-	return True  #Match found.
+    # Multiple copies.
+    # There is no match between volume in pnfs layer 4 and the volume in args.
+    # Check if the scanned volume is a multiple copy volume containing a copy of the file.
+    mc_bfids = get_multiple_copy_bfids(pf.bfid, db)
+    for mc_bfid in mc_bfids:
+        mc_reply = get_file_info(my_task, mc_bfid, fcc, db)
+        if not mc_reply:
+            error_log(my_task,"file info for multiple copy bfid %s not found "
+                      "for the file path %s"
+                      % (mc_bfid,likely_path,))
+            return False
+        if vol == mc_reply['external_label']:
+            return True # Match found
+
+    # no match found for volume in layer 4 or multiple copies of bfid in layer 4
+    error_log(my_task,"wrong volume '%s': expected volume %s is not in pnfs layer 4 "
+              "for pnfs file %s or is the volume of multiple copy of bfid %s"
+          % (pf_volume,vol,likely_path,pf.bfid))
+
+    return False
 
 #Duplication may override this.
 is_expected_volume = is_expected_volume_migration
