@@ -1,0 +1,265 @@
+commit a7fcfd92419faf463828383a7e9d12bd845920d5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed May 1 16:36:13 2019 -0500
+
+    enstore rpm 6.3.1-10
+
+A	release-notes/ENSTORE_V_6.3.1-5.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit c7b96a0aaf13b411297ed8a927edacc9013e9998
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed May 1 16:19:30 2019 -0500
+
+    mover.py: return unique crc error in write_client
+    
+    Changed error source to TAPE.
+    Library manager in this case will put the mover into suspect volume list, so that the tape will not be re-mounted it this mover.
+    http://srm.fnal.gov/reviews/r/566/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2010
+
+M	src/mover.py
+
+commit 6d677d764001f2f36b0de77c1e4b4f7c6265ac90
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Apr 25 15:58:03 2019 -0500
+
+    mover.py: return unique crc error in write_client
+    
+    return unique retriable by encp crc error in write_client.
+    http://srm.fnal.gov/reviews/r/566/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2010
+
+M	src/e_errors.py
+M	src/mover.py
+
+commit e2af1b9fc97d41292d45d3f781ea060f9ed2a948
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Apr 25 11:04:47 2019 -0500
+
+    dispatcher: fix error log message.
+    
+    http://srm.fnal.gov/reviews/r/565/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2009
+
+M	src/cache/servers/dispatcher.py
+
+commit ae97256701dc8f5e78da1a4a91e447626745b3ba
+Merge: cf29d6a 995b760
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Tue Apr 16 10:55:42 2019 -0500
+
+    [migration] BZ:2005 RB:564 Skip reading data back during migration
+    
+    Implement possibility to do only metadata checks during migration scan.
+    Added command line options
+    --check-only-meta (defualt) and
+    --check-data to be used alternatively with existing option --use-volume-assert.
+    
+    RB: http://uqbar.fnal.gov/reviews/r/564
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2005
+
+commit 995b760944ad9cf2476fe405c110d74567398cad
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Mon Apr 15 16:04:15 2019 -0500
+
+    Fix typo in log() call in init
+
+M	src/migrate_chimera.py
+
+commit cf29d6aa0c48f18e6d905a552b5d4234858a074d
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Mon Apr 15 11:44:49 2019 -0500
+
+    [migration] BZ:2000 RB:561 migration restore error: Neither BFID correlate to PNFSID.
+    
+    Issue description:
+        "migrate --restore" tries to identify pnfs file by path; if the path had changed it can resolve to the other file with different pnfsid.
+        When the file is found in pnfs, restore checks if the bfid of the file found is bfid of the source, destination or original bfid (if the original exists); or one of the multiple copies of the file.
+        If bfid for the file is not one of the possible bfids, the error reported "Neither  BFID correlate to PNFSID."
+    Similarly, the issue exists for the files moved in pnfs  during re-running failed migration when the file was copied and the first swap attempt failed. Since then swap fails during migration rerun.
+    
+        The resolution is to use file pnfsid to identify file in pnfs which makes finding source file more reliable and not depending on "volatile" path in pnfs.
+    
+        Also in the patch:
+        - fix chimera_get_file_size(pnfsid)
+        - File() : remove duplicate code related to euid; refactor with "finally"
+        - factor out common code _migration_path() from migration_path()
+        - factor out chunk of from restore_file() into separate function remove_mig_path() to make restore_file() more observable.
+        - restore_file(): get chimera file (and validate it exists) before getting bfids for source/destination/original/copies.
+          This allows immediately get correct bfid for the file to be restored; and the bfid check goes till the point when match is found, as opposite to query DB for all possible bfids and then match it with bfid in the src path.
+        - drop large chunk of code in restore.
+        - redefine deleted_restore restoring_active to avoid inverse logic.
+        - rename src path to spath
+        - rename p to cfile
+        - updated comments
+        - marked strange things FIXME: in the code to be addressed later.
+        - drop pnfs_find() in write_new_file()
+        - replace leading space "os.geteuid() == 0:"
+    - refactor write_file() to replace all tabs by spaces and fix "if" logic.
+        - write_file() did not report success of the retry encp, moved ok_log out of else: clause
+     - replace MY_TASK by my_task through all file migrate_chimera.py and duplicate_chimera.py
+     - restore_files() / restore_volume() does exit(1) if one of files failed for some errors and "return 1" in others. Replace sys.exit() by "return" in restore_file() so restore volume can continue process tape after single failed file.
+        - add final message "volume VOL is not fully restored due to previous error"
+    
+        RB: http://uqbar.fnal.gov/reviews/r/561
+        BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2000
+
+M	src/duplicate_chimera.py
+M	src/migrate_chimera.py
+
+commit 16391cca523e16b4f00661d31939ce2e540de3d9
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Fri Apr 12 19:13:00 2019 -0500
+
+    check_data and check_only_meta default is None
+
+M	src/migrate_chimera.py
+
+commit 407837af4919b66d75f5104c9c6acd8bb8617296
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Fri Apr 12 19:07:51 2019 -0500
+
+    implemented global do_vol_assert and encp_check_metadata_only flags to control volume asser and "encp --check"
+
+M	src/migrate_chimera.py
+
+commit 78b7bff8a2de0b9a74c2f2e778e19baefb91000d
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Fri Apr 12 18:25:54 2019 -0500
+
+    Set defaults for check_data and check_only_meta
+
+M	src/migrate_chimera.py
+
+commit d88b6e33a6e8471b3e43bdf175201c1f33f7c8b7
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Fri Apr 12 18:22:21 2019 -0500
+
+    added options:  check_data check_only_meta . parsed OK.
+
+M	src/migrate_chimera.py
+M	src/option.py
+
+commit b29956680734c7b2b151a453a22e8a80a0650043
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Apr 12 12:37:42 2019 -0500
+
+    Fix undefined variable in MTXN_MediaLoader mtx_dismount.
+    
+    http://srm.fnal.gov/reviews/r/562/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2002
+
+M	src/media_changer.py
+
+commit ae6761ddbb6b5fa292b3547d163e684adb96412b
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Apr 11 10:33:41 2019 -0500
+
+    implement scan-metadata-only
+    
+    in the middle of changes
+    
+    changed interface (now vars yet) and options file.
+
+M	src/migrate_chimera.py
+M	src/option.py
+
+commit d175f47cfc63d34af52727ffc121151d100ec85b
+Merge: 74c31ca 3e242c7
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Tue Apr 9 15:19:57 2019 -0500
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 3e242c7a84917b07e790d9ce4785193c0124c42e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Apr 5 15:07:15 2019 -0500
+
+    return list of mountpointd for pnfsid
+    
+    	RB : http://uqbar.fnal.gov/reviews/r/556/
+    	BZ : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1999
+
+M	src/chimera.py
+
+commit 74c31ca608287c777e0db3e48dfa6c37e3823d48
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Tue Apr 2 14:51:55 2019 -0500
+
+    [migration] BZ:1997 RB:555 replace sys.exit() by return in restore_file()
+    
+    restore_files() / restore_volume() does exit if one of files failed.
+    This is because restore_file() does exit in some places and return 1 in others.
+    replace sys.exit() by return in restore_file() so restore volume can continue after failed file.
+    
+    RB: http://uqbar.fnal.gov/reviews/r/555
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1997
+
+M	src/migrate_chimera.py
+
+commit 47da01b50d54aac8569abe8c5630c45c3afcdaab
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Mar 28 18:03:40 2019 -0500
+
+    [migration] BZ:1981 RB:554 scanfiles should not report errors for deleted files
+    
+    Change default behavior to ignore deleted=yes bfids during run of scanfiles of the tape (or group of the files).
+    Add flag '--with-deleted' to be able to scan deleted files during tape scan.
+    This flag does not affect scanning individual file by bfid.
+    
+    RB: http://uqbar.fnal.gov/reviews/r/554
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1981
+
+M	src/scanfiles.py
+
+commit 2713448dc9ea902b0559624b22c0a36d6c9c6e7d
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Mon Mar 25 14:31:50 2019 -0500
+
+    [migration] BZ:1990 RB:552 #[migration] process correctly files moved with unix mv in pnfs.
+    
+    Migration process fails migrating file when user did "mv" instead of "enmv" for the file in pnfs space.
+    Migration uses file name in call to encp.
+    copy_file() uses  pnfs_find() to find file name. pnfs_find() does series of lookups on all mounted filesystems.
+    
+    Changes:
+    	Add new functions: chimera_get_path(pnfsid) and chimera_get_file_size(pnfsid) to find file name and size
+    	  directly from chimera (by pnfsid).
+    	Stop using pnfs_find() in copy_file() and get_filenames() called from final_scan_file();
+    	use chimera_get_path() to find file name by pnfsid in chimera.
+    	Always read file by --get-bfid BFID in read_file(), read_files()
+    
+    RB: http://uqbar.fnal.gov/reviews/r/553
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1990
+
+M	src/migrate_chimera.py
+
+commit 886d83311a59f208b4d7d61ea93105e1ea1a6973
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Mar 25 11:33:27 2019 -0500
+
+    Retry insert if media changer returned ('MEDIA_CHANGER_QUEUE_FULL', 1, 'retry later')
+    
+    http://srm.fnal.gov/reviews/r/553/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1995
+
+M	src/media_changer_client.py
+
+commit d884ef57599890f34c524f51ab35b0395222c289
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Mar 20 15:34:57 2019 -0500
+
+    encp test suite excluding dcache calls
+    
+    http://srm.fnal.gov/reviews/r/551/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1994
+
+A	tools/encp_test_script_no_dcache
+
+commit e4b4d4214768eadd9c96789c3060403d999251ff
+Merge: 7ec1bcd 1370f7d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Mar 20 11:06:00 2019 -0500
+
+    Merge branch 'release/6.3.1-5' into develop
