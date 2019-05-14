@@ -1102,6 +1102,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             os.rename(src_path, final_dst_path)
         except:
             Trace.handle_error()
+            Trace.log(e_errors.ERROR, "renaming failed for %s => %s"%
+                      (src_path, final_dst_path))
             return False
 
         Trace.log(e_errors.INFO, "renamed %s to %s"%(src_path, final_dst_path))
