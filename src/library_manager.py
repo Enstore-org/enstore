@@ -3454,11 +3454,20 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         return os.path.join(d, "%s_lock"%(self.name,))
 
 
-    # get lock from a lock file
+    # get lock from a lock file or from keys['lock'] if present.
     def get_lock(self):
+        lock_state = None
+        try:
+            with open(self.lockfile_name(), 'r') as lock_file:
+                lock_state = lock_file.read()
+        except IOError:
+            pass
+        if lock_state and lock_state != e_errors.UNLOCKED:
+            return lock_state
+
         if self.keys.has_key('lock'):
             # get starting state from configuration
-            # it can be: unlocked, locked, ignore, pause
+            # # it can be: unlocked, locked, ignore, pause,  nowrite, noread
             # the meaning of these states:
             # unlocked -- no comments
             # locked -- reject encp requests, give out works in the pending queue to movers
@@ -3471,13 +3480,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
             if self.keys['lock'] in (e_errors.LOCKED, e_errors.UNLOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.NOREAD):
                 return self.keys['lock']
-        try:
-            lock_file = open(self.lockfile_name(), 'r')
-            lock_state = lock_file.read()
-            lock_file.close()
-        except IOError:
-            lock_state = None
-        return lock_state
+        return None
 
     # set lock in a lock file
     def set_lock(self, lock):
