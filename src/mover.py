@@ -2325,8 +2325,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         No work is no work.
 
         """
-        Trace.trace(98, "nowork")
-        x =ticket # to trick pychecker
+        Trace.trace(98, "nowork %s"%(ticket,))
         if self.control_socket:
             try:
                 self.control_socket.close()
@@ -2342,6 +2341,25 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.udp_control_address = None
             self.udp_ext_control_address = None
         self.method = None
+        return {}
+
+    def no_work(self, ticket):
+        """
+        This is to process library manager no_work request.
+
+        """
+        Trace.trace(98, "no_work %s"%(ticket,))
+        if 'processing_requests' in ticket:
+            # Library manager sends 'processing_requests' in reply to 'mover_bound_volume' mover request
+            # when it is busy processing other movers requests.
+            # See library_manager.py mover_bound_volume().
+            # Increase dismount delay to avoid accidental volume dismount.
+            if not hasattr(self ,'increase_dismount_time'):
+                self.increase_dismount_time = True
+                self.dismount_time += self.default_dismount_delay
+        else:
+            if hasattr(self, 'increase_dismount_time'):
+                del(self.increase_dismount_time)
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
@@ -2636,11 +2654,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 Trace.trace(10, "update_lm: got %s" %(x,))
                                 continue
                             work = request_from_lm.get('work')
+                            Trace.trace(20, "update_lm: WORK %s" %(work,))
                             if addr == self.udp_control_address:
                                 set_cm_sent = 0
                             if not work:
                                 continue
                             method = getattr(self, work, None)
+                            Trace.trace(20, "update_lm: METHOD %s" %(method,))
                             if method:
                                 use_state = 0
                                 try:

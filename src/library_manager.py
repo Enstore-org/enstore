@@ -4394,7 +4394,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         t=time.time()
         saved_reply_address = mticket.get('r_a', None)
-        nowork = {'work': 'no_work', 'r_a': saved_reply_address}
+        nowork = {'work': 'no_work', 'processing_requests': True, 'r_a': saved_reply_address}
         Trace.trace(5, "mover_bound_volume %s"%(mticket['mover'],))
         if self.use_threads:
             if not self.in_progress_lock.acquire(False):
