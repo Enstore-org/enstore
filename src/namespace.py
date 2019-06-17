@@ -458,14 +458,6 @@ def get_enstore_admin_mount_point(sfs_id = None):
 class NamespaceInterface(option.Interface):
 
     def __init__(self, args=sys.argv, user_mode=1):
-        # fill in the defaults for the possible options
-        #self.test = 0
-        #self.status = 0
-        #self.info = 0
-        #self.file = ""
-        #self.restore = 0
-        #These my be used, they may not.
-        #self.duplicate_file = None
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
     pnfs_user_options = {
@@ -499,42 +491,6 @@ class NamespaceInterface(option.Interface):
                                           option.VALUE_LABEL:"layer",
                                           }]
                     },
-        #option.DUPLICATE:{option.HELP_STRING:"gets/sets duplicate file values",
-        #             option.DEFAULT_VALUE:option.DEFAULT,
-        #             option.DEFAULT_NAME:"duplicate",
-        #             option.DEFAULT_TYPE:option.INTEGER,
-        #             option.VALUE_USAGE:option.IGNORED,
-	#	     option.USER_LEVEL:option.ADMIN,
-        #             option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
-        #                                   option.DEFAULT_NAME:"file",
-        #                                   option.DEFAULT_TYPE:option.STRING,
-        #                                   option.VALUE_NAME:"file",
-        #                                   option.VALUE_TYPE:option.STRING,
-        #                                   option.VALUE_USAGE:option.OPTIONAL,
-        #                                   option.VALUE_LABEL:"filename",
-        #                                 option.FORCE_SET_DEFAULT:option.FORCE,
-        #                                   },
-        #                                  {option.DEFAULT_VALUE:"",
-        #                                  option.DEFAULT_NAME:"duplicate_file",
-        #                                   option.DEFAULT_TYPE:option.STRING,
-        #                                   option.VALUE_NAME:"duplicat_file",
-        #                                   option.VALUE_TYPE:option.STRING,
-        #                                   option.VALUE_USAGE:option.OPTIONAL,
-        #                               option.VALUE_LABEL:"duplicate_filename",
-        #                                 option.FORCE_SET_DEFAULT:option.FORCE,
-        #                                   },]
-        #             },
-        #option.ENSTORE_STATE:{option.HELP_STRING:"lists whether enstore " \
-        #                                         "is still alive",
-        #                 option.DEFAULT_VALUE:option.DEFAULT,
-        #                 option.DEFAULT_NAME:"enstore_state",
-        #                 option.DEFAULT_TYPE:option.INTEGER,
-        #                 option.VALUE_NAME:"directory",
-        #                 option.VALUE_TYPE:option.STRING,
-        #                 option.VALUE_USAGE:option.REQUIRED,
-        #                 option.USER_LEVEL:option.USER,
-        #                 option.FORCE_SET_DEFAULT:option.FORCE,
-        #             },
         option.FILE_FAMILY:{option.HELP_STRING: \
                             "gets file family tag, default; "
                             "sets file family tag, optional",
@@ -545,15 +501,15 @@ class NamespaceInterface(option.Interface):
                             option.USER_LEVEL:option.USER,
                             option.VALUE_USAGE:option.OPTIONAL,
                    },
-        option.FILE_FAMILY_WIDTH:{option.HELP_STRING: \
-                                  "gets file family width tag, default; "
-                                  "sets file family width tag, optional",
-                                  option.DEFAULT_VALUE:option.DEFAULT,
-                                  option.DEFAULT_NAME:"file_family_width",
-                                  option.DEFAULT_TYPE:option.INTEGER,
-                                  option.VALUE_TYPE:option.STRING,
-                                  option.USER_LEVEL:option.USER,
-                                  option.VALUE_USAGE:option.OPTIONAL,
+        option.FILE_FAMILY_WIDTH: {option.HELP_STRING:
+                                       "gets file family width tag, default; "
+                                       "sets file family width tag, optional",
+                                       option.DEFAULT_VALUE: None,
+                                       option.DEFAULT_NAME: "file_family_width",
+                                       option.DEFAULT_TYPE: option.INTEGER,
+                                       option.VALUE_TYPE: option.INTEGER,
+                                       option.USER_LEVEL: option.USER,
+                                       option.VALUE_USAGE: option.OPTIONAL,
                    },
         option.FILE_FAMILY_WRAPPER:{option.HELP_STRING: \
                                     "gets file family wrapper tag, default; "
@@ -612,17 +568,6 @@ class NamespaceInterface(option.Interface):
                    option.USER_LEVEL:option.USER,
                    option.VALUE_USAGE:option.OPTIONAL,
                    },
-        #option.PNFS_STATE:{option.HELP_STRING:"lists whether pnfs is " \
-        #                                      "still alive",
-        #              option.DEFAULT_VALUE:option.DEFAULT,
-        #              option.DEFAULT_NAME:"pnfs_state",
-        #              option.DEFAULT_TYPE:option.INTEGER,
-        #              option.VALUE_NAME:"directory",
-        #              option.VALUE_TYPE:option.STRING,
-        #              option.VALUE_USAGE:option.REQUIRED,
-        #              option.USER_LEVEL:option.USER,
-        #              option.FORCE_SET_DEFAULT:option.FORCE,
-        #              },
         option.STORAGE_GROUP:{option.HELP_STRING:"gets storage group tag, " \
                               "default; sets storage group tag, optional",
                          option.DEFAULT_VALUE:option.DEFAULT,
@@ -809,17 +754,6 @@ class NamespaceInterface(option.Interface):
                           option.FORCE_SET_DEFAULT:option.FORCE,
                           option.USER_LEVEL:option.ADMIN,
                           },
-        #option.DOWN:{option.HELP_STRING:"creates enstore system-down " \
-        #                                "wormhole to prevent transfers",
-        #        option.DEFAULT_VALUE:option.DEFAULT,
-        #        option.DEFAULT_NAME:"down",
-        #        option.DEFAULT_TYPE:option.INTEGER,
-        #        option.VALUE_NAME:"reason",
-        #        option.VALUE_TYPE:option.STRING,
-        #        option.VALUE_USAGE:option.REQUIRED,
-        #        option.FORCE_SET_DEFAULT:option.FORCE,
-        #        option.USER_LEVEL:option.ADMIN,
-        #        },
         option.DUMP:{option.HELP_STRING:"dumps info",
               option.DEFAULT_VALUE:option.DEFAULT,
               option.DEFAULT_NAME:"dump",
@@ -1017,13 +951,6 @@ class NamespaceInterface(option.Interface):
                       option.FORCE_SET_DEFAULT:option.FORCE,
                       option.USER_LEVEL:option.ADMIN,
                  },
-        #option.UP:{option.HELP_STRING:"removes enstore system-down wormhole",
-        #           option.DEFAULT_VALUE:option.DEFAULT,
-        #           option.DEFAULT_NAME:"up",
-        #           option.DEFAULT_TYPE:option.INTEGER,
-        #           option.VALUE_USAGE:option.IGNORED,
-        #           option.USER_LEVEL:option.ADMIN,
-        #           },
         }
 
     def valid_dictionaries(self):
