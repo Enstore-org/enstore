@@ -5140,7 +5140,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
                     if s:
                         self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT, dismount_allowed=0)
-                        self.unload_volume(self.vol_info, after_function=self.idle)
+                        if self.stop:
+                            Trace.log(e_errors.ERROR, 'Tape will stay in the drive for investigation')
+                            self.set_volume_noaccess(self.current_volume, "Rewind retry failed. See log for details")
+                            self.offline()
+                        else:
+                            self.unload_volume(self.vol_info, after_function=self.idle)
                         return
 
                 except:
