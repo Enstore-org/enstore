@@ -2349,17 +2349,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         """
         Trace.trace(98, "no_work %s"%(ticket,))
-        if 'processing_requests' in ticket:
-            # Library manager sends 'processing_requests' in reply to 'mover_bound_volume' mover request
-            # when it is busy processing other movers requests.
-            # See library_manager.py mover_bound_volume().
-            # Increase dismount delay to avoid accidental volume dismount.
-            if not hasattr(self ,'increase_dismount_time'):
-                self.increase_dismount_time = True
-                self.dismount_time += self.default_dismount_delay
-        else:
-            if hasattr(self, 'increase_dismount_time'):
-                del(self.increase_dismount_time)
+        if self.state == HAVE_BOUND:
+            if 'processing_requests' in ticket:
+                # Library manager sends 'processing_requests' in reply to 'mover_bound_volume' mover request
+                # when it is busy processing other movers requests.
+                # See library_manager.py mover_bound_volume().
+                # Increase dismount delay to avoid accidental volume dismount.
+                if not hasattr(self ,'increase_dismount_time'):
+                    self.increase_dismount_time = True
+                    self.dismount_time += self.default_dismount_delay
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
@@ -4542,6 +4540,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
+            if hasattr(self ,'increase_dismount_time'):
+                del(self.increase_dismount_time)
+                
         self.unlock_state()
 
         ticket['mover']={}
@@ -6788,6 +6789,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.dismount_time = None
         self.just_mounted = 0
+        if hasattr(self, 'increase_dismount_time'):
+            del(self.increase_dismount_time)
         if self.current_volume:
             old_volume = self.current_volume
             if volume_label != self.current_volume:
