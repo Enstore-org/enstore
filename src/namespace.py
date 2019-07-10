@@ -116,6 +116,9 @@ class StorageFS(pnfs.Pnfs, chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient)
                     self.__class__ = pnfs_agent_client.PnfsAgentClient
                     pnfs_agent_client.PnfsAgentClient.__init__(self, csc)
                 else:
+                    self.__class__ = chimera.ChimeraFS
+                    chimera.ChimeraFS.__init__(self, pnfsFilename,
+                                               mount_point, shortcut)
                     self.use_pnfs_agent = 0
             else:
                 # Use chimera by default
