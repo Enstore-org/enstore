@@ -10,11 +10,12 @@ import Trace
 import generic_driver
 import e_errors
 import ftt
+import ftt2 as _ftt
 
 KB=1024
 MB=KB*KB
 GB=MB*KB
-
+DEBUG_LOG = 11
 
 class FTTDriver(generic_driver.Driver):
     mount_delay = 5
@@ -87,7 +88,8 @@ class FTTDriver(generic_driver.Driver):
             return 0 #this is BADSWMOUNT
 
         self._rate = self._burst_rate = self._bytes_transferred = 0L
-
+        Trace.log(e_errors.INFO, 'ftt_open returns. The number of retries: %s'%
+                  (retry,))
         return 1
 
     def _open_dev(self, retry_count):
@@ -563,10 +565,15 @@ class FTTDriver(generic_driver.Driver):
                 return {0:e_errors.READ_VOL1_WRONG, 1:e_errors.WRITE_VOL1_WRONG}[mode], s[0]
 
             return e_errors.OK, None
+        except ftt.FTTError, detail:
+             Trace.log(e_errors.ERROR, "ftt exception reading VOL1 label: %s" % (detail,))
+             ftt_error = _ftt.ftt_get_error()
+             Trace.log(DEBUG_LOG, 'ftt errors %s'%(ftt_error,))
+             return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(detail), ftt_error
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "reading VOL1 label: %s %s" % (exc, msg))
-            return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], "Traceback"
+            return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(detail)
 
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""
