@@ -35,7 +35,7 @@ ftt_open(const char *name, int rdonly) {
     
     ENTERING("ftt_open");
     PCKNULL("base name", name);
-    
+    ftt_eprintf("Ok"); /* clear error buffer */ 
     DEBUG2(stderr, "ftt_open( %s, %d )\n", name, rdonly);
     strcpy(alignname, name);
     os=ftt_get_os();

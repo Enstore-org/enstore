@@ -400,7 +400,7 @@ ftt_scsi_locate( ftt_descriptor d, int blockno) {
         if (res < 0 && blockno == 0 && (ftt_errno == FTT_EBLANK || ftt_errno == FTT_ENOSPC)) {
              res = 0;
              ftt_errno = 0;
-             ftt_eprintf("Ok");
+	     DEBUG3(stderr,"ftt_scsi_locate: Ok\n");
         }
 
     }

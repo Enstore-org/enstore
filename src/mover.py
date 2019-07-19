@@ -121,6 +121,13 @@ so maximal buffer size can not be bigger than this value.
 Practice shows that the safe size should be 2.5 GB.
 """
 
+BLANK_RETURN_PATTERN1 = 'a read system call: doing ftt_read'
+BLANK_RETURN_PATTERN2 = 'returned -1,\n\terrno 5, => result -1, ftt error FTT_EBLANK(12), meaning \n\tthat we encountered blank tape or end of tape.\n'
+"""
+The whole return tuple in the case of really blank tape is like the following
+('READ_VOL1_READ_ERR', 'FTT_EBLANK', ('a read system call: doing ftt_read on /dev/rmt/tps11d0n returned -1,\n\terrno 5, => result -1, ftt error FTT_EBLANK(12), meaning \n\tthat we encountered blank tape or end of tape.\n', 12))
+"""
+
 #Return total system memory or None if unable to determine.
 def total_memory():
     total_mem_in_pages = os.sysconf(os.sysconf_names['SC_PHYS_PAGES'])
@@ -2325,8 +2332,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         No work is no work.
 
         """
-        Trace.trace(98, "nowork")
-        x =ticket # to trick pychecker
+        Trace.trace(98, "nowork %s"%(ticket,))
         if self.control_socket:
             try:
                 self.control_socket.close()
@@ -2342,6 +2348,23 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.udp_control_address = None
             self.udp_ext_control_address = None
         self.method = None
+        return {}
+
+    def no_work(self, ticket):
+        """
+        This is to process library manager no_work request.
+
+        """
+        Trace.trace(98, "no_work %s"%(ticket,))
+        if self.state == HAVE_BOUND:
+            if 'processing_requests' in ticket:
+                # Library manager sends 'processing_requests' in reply to 'mover_bound_volume' mover request
+                # when it is busy processing other movers requests.
+                # See library_manager.py mover_bound_volume().
+                # Increase dismount delay to avoid accidental volume dismount.
+                if not hasattr(self ,'increase_dismount_time'):
+                    self.increase_dismount_time = True
+                    self.dismount_time += self.default_dismount_delay
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
@@ -2636,11 +2659,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 Trace.trace(10, "update_lm: got %s" %(x,))
                                 continue
                             work = request_from_lm.get('work')
+                            Trace.trace(20, "update_lm: WORK %s" %(work,))
                             if addr == self.udp_control_address:
                                 set_cm_sent = 0
                             if not work:
                                 continue
                             method = getattr(self, work, None)
+                            Trace.trace(20, "update_lm: METHOD %s" %(method,))
                             if method:
                                 use_state = 0
                                 try:
@@ -3856,6 +3881,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     elif detail == 'FTT_EBLANK':
                         Trace.log(e_errors.INFO, "perhaps EOT.Current Location %s Previous location %s"%
                                   (self.current_location, prev_loc))
+                        Trace.log(e_errors.INFO, 'ftt errors %s'%(self.ftt._ftt.ftt_get_error(),))
                         self.read_tape_done.set()
                         self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
                         failed = 1
@@ -4522,6 +4548,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
+            if hasattr(self ,'increase_dismount_time'):
+                del(self.increase_dismount_time)
+                
         self.unlock_state()
 
         ticket['mover']={}
@@ -4644,6 +4673,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         for retry_open in range(3):
             Trace.trace(10, "position media")
             have_tape = self.tape_driver.open(self.device, READ, retry_count=30)
+
             if have_tape == 1:
                 err = None
                 self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
@@ -5070,7 +5100,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         for retry_open in range(3):
             Trace.trace(10, "position media")
             try:
+                Trace.log(e_errors.INFO, 'calling  tape_driver.open')
                 have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+                Trace.log(DEBUG_LOG, 'tape_driver.open errors (Ok, means no errors) %s'%(self.ftt._ftt.ftt_get_error(),))
             except self.ftt.FTTError, detail:
                 Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive positioning the tape: %s %s."%(self.ftt.FTTError, detail))
                 self.transfer_failed(e_errors.POSITIONING_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
@@ -5119,7 +5151,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
                     if s:
                         self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT, dismount_allowed=0)
-                        self.unload_volume(self.vol_info, after_function=self.idle)
+                        if self.stop:
+                            Trace.log(e_errors.ERROR, 'Tape will stay in the drive for investigation')
+                            self.set_volume_noaccess(self.current_volume, "Rewind retry failed. See log for details")
+                            self.offline()
+                        else:
+                            self.unload_volume(self.vol_info, after_function=self.idle)
                         return
 
                 except:
@@ -5153,7 +5190,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ## new tape, label it
                 ##  need to safeguard against relabeling here
                 status = self.tape_driver.verify_label(None)
-                Trace.trace(10, "verify label returns %s" % (status,))
+                Trace.log(e_errors.INFO, "verify label returned %s" % (status,))
                 if status[0] == e_errors.OK:  #There is a label present!
                         msg = "volume %s already labeled %s" % (volume_label,status[1])
                         self.set_volume_noaccess(volume_label, "Volume is already labeled")
@@ -5161,7 +5198,32 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                         return 0
-
+                elif status[0] == e_errors.READ_VOL1_READ_ERR:
+                    # this can be the blank tape
+                    if status[1] == 'FTT_EBLANK':
+                        if len(status) > 2:
+                            if not ((BLANK_RETURN_PATTERN1 in status[2][0]
+                                and BLANK_RETURN_PATTERN2 in status[2][0])):
+                                msg = "Unexpected return for blank tape for %s, see log for details" % (volume_label)
+                                self.set_volume_noaccess(volume_label, "Is it a blank tape of failed system call?")
+                                Trace.alarm(e_errors.ERROR, msg)
+                                Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
+                                self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
+                                return 0
+                    elif status[1] is not None:
+                        msg = "Expected tape label %s, read %s" % (volume_label, status[1])
+                        self.set_volume_noaccess(volume_label, msg)
+                        Trace.alarm(e_errors.ERROR, msg)
+                        Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
+                        self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
+                        return 0
+                else:
+                    msg = "expected return code for blank tape is  %s"%(e_errors.READ_VOL1_READ_ERR,)
+                    self.set_volume_noaccess(volume_label, msg)
+                    Trace.alarm(e_errors.ERROR, msg)
+                    Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
+                    self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
+                    return 0
                 try:
                     Trace.trace(10,"rewind")
                     self.tape_driver.rewind()
@@ -5222,10 +5284,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 (self.current_volume, self.vol_info['eod_cookie']))
                     self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
                     return 0
-
+                Trace.log(e_errors.INFO, 'rewinding for paranoid verify_label')
+                self.tape_driver.rewind()
+                if self.driver_type == 'FTTDriver':
+                    time.sleep(3)
+                    verify_label = 1
 
         if verify_label:
             status = self.tape_driver.verify_label(volume_label, self.mode)
+            Trace.log(e_errors.INFO, "verify label returned %s" % (status,))
             if status[0] != e_errors.OK:
                 self.transfer_failed(status[0], status[1], error_source=TAPE)
                 return 0
@@ -5401,6 +5468,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if ((cur_thread_name == 'net_thread') or
             (cur_thread_name == 'media_thread' and exc in (e_errors.DISMOUNTFAILED,
+                                                           e_errors.MOUNTFAILED,
                                                            e_errors.READ_VOL1_READ_ERR,
                                                            e_errors.WRITE_VOL1_READ_ERR)) or
             encp_gone):
@@ -6768,6 +6836,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.dismount_time = None
         self.just_mounted = 0
+        if hasattr(self, 'increase_dismount_time'):
+            del(self.increase_dismount_time)
         if self.current_volume:
             old_volume = self.current_volume
             if volume_label != self.current_volume:
@@ -7018,6 +7088,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed=0
         try:
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
+            Trace.log(DEBUG_LOG, 'seek ftt errors %s'%(self.ftt._ftt.ftt_get_error(),))
         except:
             exc, detail, tb = sys.exc_info()
 

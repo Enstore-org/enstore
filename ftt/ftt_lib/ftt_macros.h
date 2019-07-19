@@ -18,7 +18,6 @@
     char *_name = name;						\
 								\
     DEBUG4(stderr, "Entering %s\n", _name);	 		\
-    ftt_eprintf("Ok\n"); 					\
     ftt_errno = FTT_SUCCESS;					\
 
 #define CKNULL(what,p)						\
@@ -75,5 +74,6 @@
 	ftt_errno = FTT_EROFS;						\
 	return -1;							\
     }									\
-    ftt_eprintf("Ok\n"); 						\
+    DEBUG4(stderr, "CKOK Ok\n"); \
     ftt_errno = FTT_SUCCESS;
+

@@ -3411,15 +3411,15 @@ class PnfsInterface(option.Interface):
                             option.USER_LEVEL:option.USER,
                             option.VALUE_USAGE:option.OPTIONAL,
                    },
-        option.FILE_FAMILY_WIDTH:{option.HELP_STRING: \
-                                  "gets file family width tag, default; "
-                                  "sets file family width tag, optional",
-                                  option.DEFAULT_VALUE:option.DEFAULT,
-                                  option.DEFAULT_NAME:"file_family_width",
-                                  option.DEFAULT_TYPE:option.INTEGER,
-                                  option.VALUE_TYPE:option.STRING,
-                                  option.USER_LEVEL:option.USER,
-                                  option.VALUE_USAGE:option.OPTIONAL,
+        option.FILE_FAMILY_WIDTH: {option.HELP_STRING:
+                                   "gets file family width tag, default; "
+                                   "sets file family width tag, optional",
+                                   option.DEFAULT_VALUE: option.DEFAULT,
+                                   option.DEFAULT_NAME: "file_family_width",
+                                   option.DEFAULT_TYPE: option.INTEGER,
+                                   option.VALUE_TYPE: option.STRING,
+                                   option.USER_LEVEL: option.USER,
+                                   option.VALUE_USAGE: option.OPTIONAL,
                    },
         option.FILE_FAMILY_WRAPPER:{option.HELP_STRING: \
                                     "gets file family wrapper tag, default; "
@@ -4313,19 +4313,24 @@ class Tag:
             sys.stderr.write("%s\n" % (str(detail),))
             return 1
 
-    #Print or edit the file family width.
+    # Print or edit the file family width.
     def pfile_family_width(self, intf):
         try:
-            if intf.file_family_width == 1:
+            if not intf.file_family_width:
                 print self.get_file_family_width()
-            else:
-                if charset.is_in_charset(intf.file_family_width):
+                return 0
+            if isinstance(intf.file_family_width, (int, long)):
+                if intf.file_family_width > 0:
                     self.set_file_family_width(intf.file_family_width)
+                    return 0
                 else:
-                    msg_str = self.INVALID_CHARACTERS % ("file_family_width",)
+                    msg_str = "Pnfs tag, {}, has to be positive integer greater than 0.".format("file_family_width")
                     sys.stderr.write("%s\n" % (msg_str,))
                     return 1
-            return 0
+            else:
+                msg_str = "Pnfs tag, {}, has to be positive integer greater than 0.".format("file_family_width")
+                sys.stderr.write("%s\n" % (msg_str,))
+                return 1
         except (OSError, IOError), detail:
             sys.stderr.write("%s\n" % (str(detail),))
             return 1

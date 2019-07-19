@@ -168,12 +168,12 @@ make_regular_file()
     if [ $rc -ne 0 ]; then
 	return $rc
     fi
-    
+
     touch "$1"
     make_save=$?
 
     make_post_message "$1"
-    
+
     return $make_save
 }
 
@@ -205,7 +205,7 @@ make_pnfs_file()
             make_save=$?
         fi
     fi
-    
+
     make_post_message "$1"
 
     return $make_save
@@ -306,13 +306,13 @@ link_regular_file()
     else
         return 1
     fi
-    
+
     ln "$1" "$2" 2> /dev/null
     link_save=$?
 
     ln_post_message "$@"
     rc=$?
-    
+
     if [ $rc -ne $link_save ]; then
 	echo "Mismatched link status:" ln $link_save test $rc "$1" "$2" > /dev/tty
 	ls -i "$1" "$2" > /dev/tty
@@ -352,7 +352,7 @@ link_pnfs_file()
 
     ln_post_message "$@"
     rc=$?
-    
+
     if [ $rc -ne $ln_save ]; then
 	echo "Mismatched link status:" ln $ln_save test $rc "$1" "$2" > /dev/tty
 	ls -i "$1" "$2" > /dev/tty
@@ -415,14 +415,14 @@ ln_post_message()
     if [ $? -eq 0 ]; then
 	print_lock="LOCK"
     fi
-    
+
     inode_1=$(ls -i $1 2> /dev/null | awk '{print $1}')
     inode_2=$(ls -i $2 2> /dev/null | awk '{print $1}')
     if [ -n "$inode_1" -a -n "$inode_2" -a "$inode_1" = "$inode_2" ]; then
 	write_cleanup "MADE $print_lock LINK $test_name $2 -> $1"
 	return 0  #Success
     fi
-    
+
     #Don't overwhelm with output.
     return 1  #Error
 }
@@ -513,7 +513,7 @@ rm_post_message()
     else
 	test_name=
     fi
-    
+
     if [ -f "$1" ]; then
 	write_cleanup "REMOVED FILE STILL EXISTS $test_name $1" 1>&2
     fi
@@ -644,7 +644,7 @@ setup_log_file()
         #We have the lock file.
 	trap "all_done;" HUP INT QUIT ABRT ALRM TERM
 	trap "all_done;" EXIT
-    
+
 	kill_children()
 	{
 echo "Killing pids" `$(jobs -p)` $saved_pids
@@ -1000,7 +1000,7 @@ setup_local_test_paths()
     LOCAL_INPUT_DIR="$LOCAL_DIR/test_files_for_${username}"
     LOCAL_OUTPUT_DIR="$LOCAL_DIR/encp_test_for_${username}"
     ENSYNC_INPUT_DIR="$LOCAL_INPUT_DIR/ensync_test"
-    
+
     mkdir -p "$LOCAL_INPUT_DIR"
     mkdir -p "$LOCAL_OUTPUT_DIR"
     mkdir -p "$ENSYNC_INPUT_DIR"
@@ -1020,7 +1020,7 @@ setup_storage_test_paths()
     make_pnfs_dir "$PNFS_INPUT_DIR"
     make_pnfs_dir "$PNFS_OUTPUT_DIR"
     make_pnfs_dir "$ENSYNC_OUTPUT_DIR"
-    
+
     verify_permissions "$PNFS_INPUT_DIR" "$PNFS_OUTPUT_DIR" "$ENSYNC_OUTPUT_DIR"
 }
 
@@ -1061,7 +1061,7 @@ cleanup_local_test_paths()
 	rm_regular_file "$line"
     done
 
-    
+
     #Cleanup the local .lock. files still lying around.
     filelist=$(find "$LOCAL_INPUT_DIR" -maxdepth 1 -type f -name '.lock.*' 2> /dev/null)
     echo "$filelist" |
@@ -1100,10 +1100,10 @@ cleanup_storage_test_paths()
 	rm_pnfs_file "$line"  #Use function for pnfs_agent cases.
     done
 
-    
+
     #Cleanup the PNFS/Chimera .lock. files still lying around.
     if [ -n "$REMOTE_ENCP" ]; then
-	
+
 	filelist=$($enstore_cmd pnfs_agent --just-files --list-dir "$PNFS_INPUT_DIR" | grep .lock.)
     else
         filelist=$(find "$PNFS_INPUT_DIR" -maxdepth 1 -type f -name '.lock.*' 2> /dev/null)
@@ -1198,8 +1198,8 @@ get_volume_from_filename()
 {
 #$1 = pnfs filename to get the volume
     filename=$1
-    
-    
+
+
     if [ -n "$REMOTE_ENCP" ]; then
 	#Rip just the volume out of the layer 4.
 	volume=$($enstore_cmd pnfs_agent --layer 4 $filename | sed -n '1p')
@@ -1207,7 +1207,7 @@ get_volume_from_filename()
         #Determine the layer 4 filename.
 	layer4_filename=$(dirname $filename; echo "/.(use)(4)("; basename $filename; echo ")")
 	layer4_filename=$(echo $layer4_filename | tr -d " ")
-	
+
         #Rip just the volume out of the layer 4.
 	volume=$(cat $layer4_filename | sed -n '1p')
     fi
@@ -1299,7 +1299,7 @@ pick_random_files()
 	fi
 
 	make_file "$lock_file_temp" 1>&2
-	
+
 	#Determine if the file exists.
 	#ln "$lock_file_temp" "$lock_file" 2> /dev/null
 	link_file "$lock_file_temp" "$lock_file" 1>&2
@@ -1367,7 +1367,7 @@ __run_enstore()
 	    #These will be going to stderr once run_enstore reswaps
 	    # stderr and stdout.
 	    echo "$@" | tee -a "$ENCP_OUTPUT"
-	    echo "$s2" | tee -a "$ENCP_OUTPUT" 
+	    echo "$s2" | tee -a "$ENCP_OUTPUT"
 	else
 	    #These will be going to stderr once run_enstore reswaps
 	    # stderr and stdout.
@@ -1484,11 +1484,11 @@ transfer()
         #
         cmd_output=$($encp_command $verbose $options $infile $outfile 2>&1)
 	rtn=$?
-    
+
 	echo "$cmd_output" >> $ENCP_OUTPUT 2>&1
 	encp_error_line=$(echo "$cmd_output" | grep STATUS=)
 	encp_error_status=$(echo $encp_error_line | sed 's/STATUS=//')
-	
+
 	attempted_transfers=$((attempted_transfers + 1))
 
 	if [ "$encp_error_status" != "CONFIGDEAD" -a \
@@ -1531,8 +1531,8 @@ test_diff()
 	    #The files are not the same.  This might be correct if we used
 	    # a null mover.
 
-	    o_ls_size=`ls -l "$ofile" | awk '{print $5}'`
-	    i_ls_size=`ls -l "$ifile" | awk '{print $5}'`
+	    o_ls_size=`stat -t -c %s ${ofile}`
+	    i_ls_size=`stat -t -c %s ${ifile}`
 	    if [ $i_ls_size -eq $o_ls_size ]; then
 		non_null_word_count=`cat "$ofile" | tr -d "\000" | wc -c`
 		if [ $non_null_word_count -eq 0 ]; then
@@ -1556,7 +1556,7 @@ test_layer()
 {
     pnfsfiles=`eval echo $1`
     message_out=`eval echo $2`
-    
+
     for file in $pnfsfiles; do
 	if [ -n "$REMOTE_ENCP" ]; then
             result=`$enstore_cmd pnfs_agent --layer 1 $file 2>&1`
@@ -1603,14 +1603,14 @@ permissions_test()
 	ofile=`echo $outfiles | cut -d" " -f$i`
 	i=`expr $i + 1`
 
-	result1=`ls -l $ifile | cut -c1-10`
-	result2=`ls -l $ofile | cut -c1-10`
-	
-	if [ $result1 != $result2 ]; then
+	result1=`stat -t -c %a $ifile`
+	result2=`stat -t -c %a $ofile`
+
+	if [ "${result1}" != "${result2}" ]; then
 	    echo $message_out "TEST FAILED ON PERMISSIONS" | tee -a $ENCP_OUTPUT 2>&1
-	    echo $result1 != $result2 | tee -a $ENCP_OUTPUT 2>&1
-	    rm_file $cleanupfiles
-	    all_sone 1
+	    echo "${result1} != ${result2} $ifile $ofile" | tee -a $ENCP_OUTPUT 2>&1
+	    #rm_file $cleanupfiles
+	    all_done 1
 	fi
     done
 }
@@ -1633,11 +1633,11 @@ size_test()
 	ofile=`echo $outfiles | cut -d" " -f$i`
 	i=`expr $i + 1`
 
-	result1=`ls -l $ifile | sed 's/ \{1,30\}/ /g' | cut -f 5 "-d "`
-	result2=`ls -l $ofile | sed 's/ \{1,30\}/ /g' | cut -f 5 "-d "`
-	if [ $result1 != $result2 ]; then
+	result1=`stat -t -c %s $ifile`
+	result2=`stat -t -c %s $ofile`
+	if [ "${result1}" != "${result2}" ]; then
 	    echo $message_out "TEST FAILED ON SIZE" | tee -a $ENCP_OUTPUT 2>&1
-	    echo $result1 != $result2 | tee -a $ENCP_OUTPUT 2>&1
+	    echo "${result1} != ${result2}" | tee -a $ENCP_OUTPUT 2>&1
 	    rm_file $cleanupfiles || setuid rm_file $cleanupfiles
 	    all_done 1
 	fi
@@ -1843,7 +1843,7 @@ __read_write_test()
 
     test_layer '$pnfsnames' "$section"
     scan_test '$pnfsnames' "$section"
-    
+
     #Add the second direction.
     outnames=$(absfile $LOCAL_OUTPUT_DIR $filenames)
     cleanup="$outnames $cleanup"  #Make sure the lock file is last.
@@ -1881,7 +1881,7 @@ __dcache_read_write_test()
     cleanup="$pnfsname $(get_lock_file_name $filename)"
 
     #Create the output file, set the size and get the pnfs id.
-    size=$(ls -l $filename | sed 's/ \{1,30\}/ /g' | cut -f 5 "-d ")
+    size=$(stat -t -c %s $filename)
     if [ -n "$REMOTE_ENCP" ]; then
 	$enstore_cmd pnfs_agent --touch "${pnfsname}"
 	$enstore_cmd pnfs_agent --size "${pnfsname}" "${size}"
@@ -1913,7 +1913,7 @@ __dcache_read_write_test()
 
     #Do the write transfer and test for correctness.
     transfer $encp_cmd '$put_id' '$filename' '$cleanup' '$options' "$section" WRITE
-    
+
     test_layer '$pnfsname' "$section"
     scan_test '$pnfsname' "$section"
 
@@ -1939,11 +1939,9 @@ __dcache_read_write_test()
         get_bfid="--get-bfid $bfid"
         transfer $encp_cmd '$get_bfid' '$outname' '$cleanup' '$options' "$section" READ
 
-        test_diff '$filename' '$outname' '$cleanup' "$section"
-        permissions_test '$filename' '$outname' '$cleanup' "$section"
         size_test '$filename' '$outname' '$cleanup' "$section"
     fi
-     
+
     cleanup_files '$cleanup'
 }
 
@@ -1959,7 +1957,7 @@ __volume_read_test()
     if [ $? -eq 0 ]; then
         echo "Encp does not have --volume switch.  Skipping test and continuing." 1>&2
         return
-    fi 
+    fi
 
     encp="$1"
 
@@ -2075,7 +2073,7 @@ enstore_conf_read_write_test()
         #Hack up the temporary enstore.conf file.
         if [ -f "$ENSTORE_CONF" ]; then
             #If we already have a valid $ENSTORE_CONF file, use it.
-            cp "$ENSTORE_CONF" "$temp_temp_config_file"	
+            cp "$ENSTORE_CONF" "$temp_temp_config_file"
         elif [ -f "/etc/enstore.conf" ]; then
             cp /etc/enstore.conf "$temp_temp_config_file"
         else
@@ -2105,7 +2103,7 @@ enstore_conf_read_write_test()
     use_encp="env ENSTORE_CONFIG_HOST= ENSTORE_CONFIG_PORT= ENSTORE_CONF=$temp_config_file $encp_cmd"
 
     __read_write_test '$use_encp' '$use_encp' 1 ""
-}	
+}
 
 single_threaded_read_write_test()
 {
@@ -2154,10 +2152,10 @@ single_relative_path_read_write_test()
         done
 
 	transfer $encp_cmd '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
-	
+
 	test_layer '$pnfsname' "$section"
 	scan_test '$pnfsname' "$section"
-	
+
         #Add the second direction.
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
 	cleanup="$outname $cleanup"  #Make sure the lock file is last.
@@ -2167,9 +2165,9 @@ single_relative_path_read_write_test()
 	test_diff '$filename' '$outname' '$cleanup' "$section"
 	permissions_test '$filename' '$outname' '$cleanup' "$section"
 	size_test '$filename' '$outname' '$cleanup' "$section"
-	
+
 	cleanup_files '$cleanup'
-	
+
 	cd_status=1
 	cd_count=1
 	while [ $cd_status -ne 0 -a $cd_count -lt 4 ]; do
@@ -2199,7 +2197,7 @@ single_local_pnfs_path_read_test()
 
 	#If this does not exist, create it.
 	mkdir -p $outdir
-	
+
 	transfer $encp_cmd '$filename' '$outname' '$cleanup' "" "$section" READ
 
 	cleanup_files '$cleanup'
@@ -2282,7 +2280,7 @@ data_access_layer_read_write_test()
     test_layer '$pnfsname' "$section"
     data_access_layer_test '$filename' '$pnfsname' '$cleanup' "$section"
     scan_test '$pnfsname' "$section"
-    
+
     #Add the second direction.
     outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
     cleanup="$outname $cleanup"  #Make sure the lock file is last.
@@ -2320,14 +2318,14 @@ multiple_copies_read_write_test()
 	cleanup="$pnfsname `get_lock_file_name $filename`"
 	library=$($enstore_cmd sfs --tag library "${PNFS_OUTPUT_DIR}")
 	encp="$encp_cmd --copies 1 --library $library,$library"
-	
+
 	#Write the original and one copy to tape.
 	transfer '$encp' '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 	test_layer '$pnfsname' "$section"
 	enstore_check_test '$pnfsname' '$cleanup' "$section"
 
 	#Add the second direction.
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`	
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
 	cleanup="$outname $cleanup"  #Make sure the lock file is last.
 
 	#Do the read transfer and test for correctness of the original.
@@ -2338,7 +2336,7 @@ multiple_copies_read_write_test()
 
 	#Now read back the copy via bfid.
 	bfid=$($enstore_cmd sfs --bfid "$pnfsname")
-	
+
 	get_bfid="--get-bfid `$enstore_cmd file --find-copies $bfid`"
 	transfer $encp_cmd '$get_bfid' '$outname' '$cleanup' "" "$section" READ
 
@@ -2392,7 +2390,7 @@ pnfs_agent_read_write_test()
 	pnfsname=`echo ${PNFS_AGENT_OUTPUT_DIR}/$basename`
 	cleanup="$pnfsname `get_lock_file_name $filename`"
 	encp="$encp_cmd"
-	
+
 	transfer "$encp" '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
 	### These two tests need to be made pnfs_agent aware.
@@ -2405,7 +2403,7 @@ pnfs_agent_read_write_test()
 
 	transfer "$encp" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
     fi
-    
+
     cleanup_files '$cleanup'
     if [ $clear_remote_encp -eq 1 ]; then
         unset REMOTE_ENCP
@@ -2419,7 +2417,7 @@ setuid_read_write_test()
 
     section="SETUID READ AND WRITE"
     print_test_name $section
-    
+
     which setuid > /dev/null 2>&1
     if [ $? -ne 0 ]; then
 	echo "Unable to find setuid.  Skipping test and continuing." 1>&2
@@ -2438,7 +2436,7 @@ setuid_read_write_test()
     basename=`basename $filename`
     pnfsname=`absfile $PNFS_OUTPUT_DIR $filename`
     cleanup="$pnfsname `get_lock_file_name $filename`"
-    
+
     transfer "setuid $encp_cmd" '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
     #Test if an error occured or if an error is what we expect.
@@ -2469,12 +2467,12 @@ setuid_read_write_test()
     permissions_test '$filename' '$outname' '$cleanup' "$section"
     size_test '$filename' '$outname' '$cleanup' "$section"
 
-    setuid cleanup_files '$cleanup' 
+    setuid cleanup_files '$cleanup'
 }
 
 pipe_write_test()
 {
-#The library mananager expects the encp ticket value, size_bytes, to 
+#The library mananager expects the encp ticket value, size_bytes, to
 # contain a number.  This is not possible for pipe writes and thus
 # the test will always fail.  Bugzilla number ???
     return  #This test is disabled.
@@ -2492,7 +2490,7 @@ pipe_write_test()
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	cleanup="$pnfsname `get_lock_file_name $filename`"
 	encp="echo tttt | $encp_cmd"
-	
+
         #First test that encp ingnores the standard in pipe when simulating
         # a cron environment.
         # (Note that $encp is in single quotes to delay the shells expansion
@@ -2519,7 +2517,7 @@ pipe_write_test()
 
 	test_layer '$pnfsname' "$section"
 	enstore_check_test '$pnfsname' '$cleanup' "$section"
-	
+
 	#Add the second direction.
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
 	cleanup="$outname $cleanup"  #Make sure the lock file is last.
@@ -2542,7 +2540,7 @@ source_file_does_not_exist_write_test()
 
     #Test if encp returns an error.
     transfer "$encp_cmd" "$filename" "$pnfsname" "$cleanup" "" "$section" WRITE 1
-    
+
     cleanup_files '$cleanup'
 }
 
@@ -2592,7 +2590,7 @@ skip_sfs_read_test()
 	echo $sfs_mounts 1>&2
 	exit 1
     fi
-    
+
     #Snag a volume_read_test volume.
     tmp_volumes=$($enstore_cmd info --query "select label from volume where file_family = 'volume_read_test' and label not like '%.deleted' ;")
     volumes=$(echo "$tmp_volumes" | sed '1,2d') #Remove the header.
@@ -2602,7 +2600,7 @@ skip_sfs_read_test()
 	#Pick a random volume.
 	volume=$(pick_random_volumes 1 $volumes)
 	#Get the list of active bfids.
-	bfid_list=$($enstore_cmd info --list $volume)	
+	bfid_list=$($enstore_cmd info --list $volume)
 	active_bfids=$(echo "$bfid_list" | grep active | awk '{print $2}')
 	if [ -z "$active_bfids" ]; then
             echo "No suitable bfids found on $volume.  Skipping test and continuing." 1>&2
@@ -2617,11 +2615,11 @@ skip_sfs_read_test()
 	#Do the read transfer and test by BFID.
 	get_bfid="--get-bfid $bfid --skip-pnfs"
 	transfer $encp_cmd '$get_bfid' '$outname' '$cleanup' '$options' "$section" READ
-    
+
     fi
 
     cleanup_files '$cleanup'
-    
+
 }
 
 ##############################################################################
@@ -2680,7 +2678,7 @@ ensync_test()
     input_dir=`pick_random_files 1 "$ENSYNC_INPUT_DIR"`  #lock it from others
     output_dir=$ENSYNC_OUTPUT_DIR
     #Remember to cleanup the lock for the directory, not the files.  It is
-    # important to note that the lock file 
+    # important to note that the lock file
     cleanup=`get_lock_file_name $input_dir`  #Make sure the lock file is last.
 
     if [ ! -d $input_dir ]; then
@@ -2688,7 +2686,7 @@ ensync_test()
     elif [ ! -d $output_dir ]; then
 	echo "Output directory does not exist.  Skipping test and continuing." 1>&2
     else
-	transfer '$ensync_cmd' '$input_dir' '$output_dir' '$cleanup' '' '$section' WRITE 
+	transfer '$ensync_cmd' '$input_dir' '$output_dir' '$cleanup' '' '$section' WRITE
     fi
 
     cleanup_dir '$output_dir'  #Remove the test files before the lock file.
@@ -2719,7 +2717,7 @@ get_put_test()
     fi
 
     #Use get and put for read and write tests.
-    __read_write_test "$get_cmd" "$put_cmd" 3 
+    __read_write_test "$get_cmd" "$put_cmd" 3
 }
 
 get_volume_test()
@@ -2749,7 +2747,7 @@ enmv_test()
         echo "Unable to find enmv.  Skipping test and continuing." 1>&2
 	return
     fi
-    
+
     #Snag a random file.
     filelist=`get_pnfs_file_list "$PNFS_INPUT_DIR"`
     if [ -z "$filelist" ]; then

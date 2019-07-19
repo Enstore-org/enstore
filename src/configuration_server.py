@@ -32,6 +32,7 @@ import e_errors
 import hostaddr
 import callback
 import udp_client
+import host_config
 
 MY_NAME = enstore_constants.CONFIGURATION_SERVER   #"CONFIG_SERVER"
 
@@ -172,6 +173,10 @@ class ConfigurationDict:
         :rtype: :obj:`tuple` (:obj:`str` - error code, :obj:`str` - details)
         """
 
+        # Check if config file is newer, than currently loaded
+        config_file_mod_time = os.path.getmtime(configfile)
+        if self.config_load_timestamp and self.config_load_timestamp >= config_file_mod_time:
+            return (e_errors.ERROR, 'Configuration file is up to date')
         try:
             self.config_lock.acquire()
 
@@ -499,10 +504,28 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             server_address[1])
 	self.new_config_message.encode()
 
-	# start our heartbeat to the event relay process
-	self.erc = event_relay_client.EventRelayClient(self)
+	# Initialize event relay communicatios
+        # and  start our heartbeat to the event relay process
+        try:
+            event_relay = self.get_dict_entry('event_relay')
+            event_relay_host = event_relay.get('host')
+            event_relay_port = event_relay.get('port')
+        except Keyerror:
+            event_relay_host = None
+            event_relay_port = None
+        self.erc = event_relay_client.EventRelayClient(self,
+                                                       function=self.handle_er_msg,
+                                                       event_relay_host=event_relay_host,
+                                                       event_relay_port=event_relay_port)
+        self.erc.start([event_relay_messages.NEWCONFIGFILE],
+                       resubscribe_rate=60)
 	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER,
 				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
+
+    def _reinit(self):
+        Trace.log(e_errors.INFO, "Configuration server reloading configuration")
+        configfile = enstore_functions2.default_file()
+        self.load({'configfile':configfile})
 
     def update_domains(self):
         """
@@ -749,15 +772,15 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         :type ticket: :obj:`dict`
         :arg ticket: request containing "load" work
         """
-
         my_alarm_server = self.configdict['alarm_server']
-        reply_address = ticket['r_a'] # save reply address
+        reply_address = ticket.get('r_a', (((pwd.getpwuid(os.getuid())[0]+'@'+os.uname()[1],),))) # save reply address
 	try:
             configfile = ticket['configfile']
             ticket['status'] = self.load_config(configfile)
         except KeyError:
             ticket['status'] = (e_errors.KEYERROR,
                                 "Configuration Server: no such name")
+            
 	except:
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.UNKNOWN, str(((str(exc), str(msg)))))
