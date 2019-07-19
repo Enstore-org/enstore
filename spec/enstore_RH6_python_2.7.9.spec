@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.1
-Release: 11
+Release: 13
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -242,6 +242,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Jul 19 2019  <moibenko@fnal.gov> -
+- v 6.3.1 release 13. Accumulative changes since 6.3.1-11
 * Fri May 10 2019  <moibenko@fnal.gov> -
 - v 6.3.1 release 10. Accumulative changes since 6.3.1-10
 * Wed May 1 2019  <moibenko@fnal.gov> -
