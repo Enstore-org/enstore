@@ -5427,6 +5427,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if ((cur_thread_name == 'net_thread') or
             (cur_thread_name == 'media_thread' and exc in (e_errors.DISMOUNTFAILED,
+                                                           e_errors.MOUNTFAILED,
                                                            e_errors.READ_VOL1_READ_ERR,
                                                            e_errors.WRITE_VOL1_READ_ERR)) or
             encp_gone):

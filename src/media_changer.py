@@ -3955,6 +3955,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	    cmd = pars[0]
 	    args = pars[1:len(pars)]
 	    pid_to_send_back = args[2]
+	    response = 'pid_%s'%(pid_to_send_back,) 
 	    Trace.log(ACTION_LOG_LEVEL, "MTX server: cmd: %s args %s"%(cmd, args))
 	    #func = getattr(self,cmd)
 	    if cmd in ["Load", "Unload"]:
@@ -3967,6 +3968,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 				if -1 == a:
 				    Trace.log(ACTION_LOG_LEVEL, ' mtx load / unload timeout')
 				    retry_cnt -= 1
+				    if retry_cnt == 0:
+					    Trace.log(ACTION_LOG_LEVEL, ' mtx load / unload timeout. Exiting retry loop')
+					    response = '%s pid_%s'%(e_errors.TIMEDOUT, pid_to_send_back,)
 				else:
 					break
 			    except:
@@ -3977,7 +3981,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
 	    elif cmd == 'status':
 		    mtx.status()
-	    print 'pid_%s'%(pid_to_send_back,) # this is a terminator
+	    print response # this is a terminator
 	    sys.stdout.flush()
 	    sys.stderr.flush()
 
@@ -4090,24 +4094,27 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	except:
 		Trace.handle_error()
 		return (e_errors.ERROR, e_errors.ERROR, [], "", 'receive_reply error')
-
-	if not 'status' in command_string or self.debug: # status command retruns a large array
-		Trace.trace(ACTION_LOG_LEVEL, "send_command: message %s"%(message,))
+	if len(message) < 100: # status command retruns a large array, we do not want to log it
+		Trace.log(ACTION_LOG_LEVEL, "send_command: message %s"%(message,))
 	response = message.split('\012')
 	#response = message
-	if  'status' in command_string and self.debug:
-		ofn = '/var/log/enstore/tmp/enstore/%s_%s.mtx_status.out'%(self.name, end_of_response,)
-		Trace.log(e_errors.INFO, 'the output of the status command is in %s'%(ofn,))
-		of = open(ofn, 'w')
-		for l in response:
-			of.write('%s\n'%(l,))
-		of.close()
-	else:
-		Trace.trace(ACTION_LOG_LEVEL, "send_command: response %s"%(response,))
+	if  'status' in command_string:
+		if self.debug:
+			ofn = '/var/log/enstore/tmp/enstore/%s_%s.mtx_status.out'%(self.name, end_of_response,)
+			Trace.log(e_errors.INFO, 'the output of the status command is in %s'%(ofn,))
+			of = open(ofn, 'w')
+			for l in response:
+				of.write('%s\n'%(l,))
+			of.close()
+		else:
+			if len(response) < 100:
+				Trace.log(ACTION_LOG_LEVEL, "send_command: response %s"%(response,))
 	if 'Load' in command_string or 'Unload' in command_string:
 	    for l in response:
 		if 'Failed' in l:
 		     return (e_errors.ERROR, e_errors.ERROR, '', response)
+		if e_errors.TIMEDOUT in l:
+                    return (e_errors.ERROR, e_errors.TIMEDOUT, '', response)
 	    if '' in message:
 		return (e_errors.OK, e_errors.OK, '', '')
 	    else:
@@ -4611,6 +4618,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         Trace.log(e_errors.INFO, "MTX %s slot %s drive %s"%(load_command, slot, drive))
         if load_command not in ("Load", "Unload"):
             return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
+	#time.sleep(350) ### AM REMOVE!!!!
         if load_command == "Load":
 		mtx.Move(slot, drive)
         else:
