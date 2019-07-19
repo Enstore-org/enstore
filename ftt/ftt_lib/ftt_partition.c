@@ -312,7 +312,7 @@ ftt_locate_part(ftt_descriptor d, int blockno, int part) {
         if (res < 0 && blockno == 0 && part == 0 && (ftt_errno == FTT_EBLANK || ftt_errno == FTT_ENOSPC ))  {
              res = 0;
              ftt_errno = 0;
-             ftt_eprintf("Ok");
+	     DEBUG3(stderr,"ftt_scsi_locate_part: Ok\n");
         }
 
     }
