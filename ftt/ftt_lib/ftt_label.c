@@ -30,16 +30,17 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 
     if (-1 == length && ftt_errno == FTT_EBLANK) {
 	/* read returned EBLANK... */
-	ftt_eprintf("Ok\n");
+	ftt_eprintf("read returned EBLANK...  Ok\n");
 	if (vol) *vol = "";
 	if (vlen) *vlen = 0;
 	ftt_errno = FTT_SUCCESS;
+	ftt_eprintf("Blank header ...Ok\n");
 	return FTT_BLANK_HEADER;
     } else if ( -1 == length ) {
 	return -1;
     } else if ( length < 80 ) {
 	/* no known header is < 80 bytes long */
-	ftt_eprintf("Ok\n");
+	ftt_eprintf("no known header is < 80 bytes long ...Ok\n");
 	if (vol) *vol = "";
 	if (vlen) *vlen = 0;
 	ftt_errno = FTT_SUCCESS;
@@ -48,7 +49,7 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 
     /* okay, now we can clear errors... */
 
-    ftt_eprintf("Ok\n");
+    ftt_eprintf("now we can clear errors...  Ok\n");
     ftt_errno = FTT_SUCCESS;
 
     /* pick the ones we can with the first 4 bytes */

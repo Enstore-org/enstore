@@ -205,19 +205,25 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	ftt_get_stats(d, &sbuf);
 
 	if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY)) && 8 == atoi(p)) {
-	    DEBUG3(stderr, "Saw blank check sense key\n");
+	  ftt_eprintf("Saw blank check sense key\n");
+	  DEBUG3(stderr, "Saw blank check sense key\n");
+	    
 	    res = -1;
 	    guess_errno = FTT_EBLANK;
 	} else {
+	    ftt_eprintf(stderr, "Sense key was %s\n", p);
 	    DEBUG3(stderr, "Sense key was %s\n", p);
 	    if (0 != (p = ftt_extract_stats(&sbuf,FTT_BLOC_LOC))) {
+		ftt_eprintf("Current loc %s, last loc %d\n", p, d->last_pos);
 		DEBUG3(stderr, "Current loc %s, last loc %d\n", p, d->last_pos);
 		if ((d->last_pos > 0 && atoi(p) == d->last_pos) || atoi(p) == 0) {
 		    guess_errno = FTT_EBLANK;
+		    ftt_eprintf("Tape is blank\n");
 		    res = -1;
 		}
 		d->last_pos = atoi(p);
 	    } else if (0 != (p = ftt_extract_stats(&sbuf,FTT_REMAIN_TAPE))) {
+		ftt_eprintf("Current remain %s, last remain %d\n", p, d->last_pos);
 		DEBUG3(stderr, "Current remain %s, last remain %d\n", p, d->last_pos);
 		if (d->last_pos > 0 && atoi(p) == d->last_pos) {
 		    guess_errno = FTT_EBLANK;
@@ -248,8 +254,9 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	     res = -1;
          } else if (statres & (FTT_AEOT|FTT_ABOT)) {
              if (statres & FTT_AEOT) {
-		 guess_errno = FTT_EBLANK;
-		 res = -1;
+	       ftt_eprintf("FTT_AEOT");
+	       guess_errno = FTT_EBLANK;
+	       res = -1;
              }
 	     if ( statres & FTT_ABOT ) {
 		 guess_errno = FTT_ELEADER;
