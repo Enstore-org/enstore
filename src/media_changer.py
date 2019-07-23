@@ -3955,7 +3955,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	    cmd = pars[0]
 	    args = pars[1:len(pars)]
 	    pid_to_send_back = args[2]
-	    response = 'pid_%s'%(pid_to_send_back,) 
+	    response = 'pid_%s'%(pid_to_send_back,)
 	    Trace.log(ACTION_LOG_LEVEL, "MTX server: cmd: %s args %s"%(cmd, args))
 	    #func = getattr(self,cmd)
 	    if cmd in ["Load", "Unload"]:
@@ -4618,11 +4618,14 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         Trace.log(e_errors.INFO, "MTX %s slot %s drive %s"%(load_command, slot, drive))
         if load_command not in ("Load", "Unload"):
             return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
-	#time.sleep(350) ### AM REMOVE!!!!
         if load_command == "Load":
 		mtx.Move(slot, drive)
         else:
 		mtx.Move(drive, slot)
+	## Below is for mount / dismount failure timeouts testing
+	#if not hasattr(self, 'do_to'):
+	#	self.do_to =  0
+	#	time.sleep(self.mount_timeout + 10)
 
     # This method blocks while it returns the status of the media
     # changer at the specified device.
@@ -5309,7 +5312,8 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 		    if ((isinstance(ret_val[3], list) and
 			 (('mtx: Request Sense: Sense Key=Unit Attention' in ret_val[3])
 			  or ('mtx: Request Sense: Sense Key=Aborted Command' in ret_val[3])
-			  or ('mtx: Request Sense: Sense Key=Illegal Request' in ret_val[3])))):
+			  or ('mtx: Request Sense: Sense Key=Illegal Request' in ret_val[3])
+			  or ret_val[1] == e_errors.TIMEDOUT))):
 			    if 'mtx: Request Sense: Sense Key=Illegal Request' in ret_val[3]:
 				    if retuned_by_mtx_mount:
 					    update_db = True
@@ -5317,11 +5321,13 @@ class MTXN_Local_MediaLoader(MediaLoaderMethods, MTXN_MediaLoader):
 					    if  (('mtx: Request Sense: Additional Sense Code = 3B' in ret_val[3])
 						 and ('mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3])): # Medium Destination Element Full
 						    update_db = False
-				    if update_db:
-					    Trace.log(e_errors.INFO, 'will update db')
-					    rt = self.update_db(None, None, None, None) # lost element info: do inventory
-					    Trace.log(e_errors.INFO, 'update db returned %s'%(rt,))
+			    elif ret_val[1] == e_errors.TIMEDOUT:
+				    update_db = True
 			    retry = True
+			    if update_db:
+				    Trace.log(e_errors.INFO, 'will update db')
+				    rt = self.update_db(None, None, None, None) # lost element info: do inventory
+				    Trace.log(e_errors.INFO, 'update db returned %s'%(rt,))
 	    except:
 		    Trace.handle_error()
 		    retry = True

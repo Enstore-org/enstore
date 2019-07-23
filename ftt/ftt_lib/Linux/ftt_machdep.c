@@ -18,9 +18,10 @@ ftt_status(ftt_descriptor d, int time_out) {
 
     ENTERING("ftt_status");
     CKNULL("ftt_descriptor", d);
+    ftt_eprintf("Ok"); /* clear error buffer */
 
     ftt_close_scsi_dev(d);
-    if (0 > (res = ftt_open_dev(d))) { 
+    if (0 > (res = ftt_open_dev(d))) {
 	if( FTT_EBUSY == ftt_errno ){
 	    return FTT_BUSY;
 	} else {
@@ -93,7 +94,7 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
    struct mtop buf;
    static int recursing = 0;
    int res=0;
-   
+
    if ( !recursing ) {
        recursing = 1;
        res = ftt_open_dev(d);
@@ -122,10 +123,10 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     int res;
 
     if (recursing) {
-	/* 
+	/*
 	** we need the device open before we do this, so we call
 	** ftt_open_dev. of course, it is going to call *us* again.
-	** so we have this recursive call bail-out. 
+	** so we have this recursive call bail-out.
 	*/
 	return 0;
     }
@@ -133,7 +134,7 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     recursing = 1;
     res = ftt_open_dev(d);
     recursing = 0;
-    if (0 > res) { 
+    if (0 > res) {
 	return res;
     }
 
@@ -166,16 +167,16 @@ ftt_get_hwdens(ftt_descriptor d, char *devname) {
     int res;
 
     if (recursing) {
-	/* 
+	/*
 	** we need the device open before we do this, so we call
 	** ftt_open_dev. of course, it is going to call *us* again.
-	** so we have this recursive call bail-out. 
+	** so we have this recursive call bail-out.
 	*/
 	return 0;
     }
     recursing = 1;
     res = ftt_open_dev(d);
-    recursing = 0; 	
+    recursing = 0;
     if (res < 0) return res;
 
     res = ioctl(d->file_descriptor, MTIOCGET, &buf);
