@@ -1,4 +1,4 @@
-#!/usr/bin/getenv python
+#!/usr/bin/env python
 
 ###############################################################################
 #
@@ -35,18 +35,18 @@ def submit_ticket(**kwargs):
     urllib2.install_opener(opener)
 
     data = json.dumps({
-        'impact' :  kwargs.get('Impact_Type','3-Moderate/Limited'),
-        'u_virtual_organization' : config_parser.get('create_entry','virtual_organization','Other'),
-        'u_monitored_ci_name' : kwargs.get('CiName').upper(),
-        'short_description' : kwargs.get('Summary',None),
-        'description' : kwargs.get('Notes',None),
-        'u_reported_source value' : kwargs.get('Reported_Source_Type','Event Monitoring'),
-        'u_service value' : kwargs.get('Service_Type','Storage'),
-        'urgency' :  kwargs.get('Urgency_Type','3-Medium'),
-        'u_monitored_categorization' : kwargs.get('Product_Categorization_Tier_1',
-                                                  config_parser.get('create_entry','categorization')),
-        'u_categorization' :  kwargs.get('Product_Categorization_Tier_1',
-                                         config_parser.get('create_entry','categorization')),
+        "impact" :  kwargs.get("Impact_Type","3-Moderate/Limited"),
+        "u_monitored_ci_name" : kwargs.get("CiName").upper(),
+        "short_description" : kwargs.get("Summary", None),
+        "description" : kwargs.get("Notes", None),
+        "u_reported_source value" : kwargs.get("Reported_Source_Type","Event Monitoring"),
+        "u_service value" : kwargs.get("Service_Type","Storage"),
+        "urgency" :  kwargs.get("Urgency_Type","3-Medium"),
+        "u_monitored_categorization" : kwargs.get("Product_Categorization_Tier_1",
+                                                  config_parser.get("create_entry","categorization")),
+        "caller_id" : config_parser.get("create_entry","user_first"),
+        "u_categorization" : "1128451829dd90408638a6dc41528b56",
+        "u_virtual_organization" : "69f4000e6f4c9600c6df5d412e3ee43c",
         })
 
     request = urllib2.Request(url,data)
@@ -57,7 +57,7 @@ def submit_ticket(**kwargs):
         response = urllib2.urlopen(request)
         if response.getcode() == 201:
             data = json.load(response)
-            ticket = data['result']['number']
+            ticket = data["result"]["number"]
             return ticket
         else:
             raise Exception("Failed to create incident ticket HTTP %s"%(response.getcode()))
