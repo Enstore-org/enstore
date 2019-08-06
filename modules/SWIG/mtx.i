@@ -2,6 +2,7 @@
 %{
   char *device;
   int absolute_addressing;
+
 typedef struct {
         int num_args;
         char *name;
@@ -68,3 +69,5 @@ command_table_struct command_table[22];
 void execute_command(struct command_table_struct *command);
 void open_device(void);
 void Move(int src, int dest);
+void set_scsi_timeout(int timeout);
+int get_scsi_timeout();
