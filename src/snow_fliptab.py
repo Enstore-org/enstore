@@ -6,13 +6,12 @@ to be used to create tab flip tickets
 """
 
 import os
+import socket
 import time
 from ConfigParser import ConfigParser
 from optparse import OptionParser
-import socket
 
 import suds.client
-
 
 CONFIG_FILE=os.path.join(os.environ["ENSTORE_DIR"],"etc/servicenow_create_entry.cf")
 
@@ -46,6 +45,7 @@ SERVICE="Infrastructure Event"
 CI_NAME=socket.gethostname().split('.')[0].upper()
 URGENCY="3 - Medium"
 
+
 def submit_ticket(**kwargs):
     config_parser = ConfigParser()
     config_parser.read(CONFIG_FILE)
@@ -72,7 +72,9 @@ def submit_ticket(**kwargs):
                     u_reported_source          = kwargs.get("Reported_Source",REPORTED_SOURCE),
                     u_service                  = kwargs.get("Service",SERVICE),
                     u_monitored_ci_name        = kwargs.get("CiName",CI_NAME).upper(),
-                    urgency                    = kwargs.get("Urgency",URGENCY)
+                    urgency                    = kwargs.get("Urgency",URGENCY),
+                    u_categorization           = "1128451829dd90408638a6dc41528b56",
+                    u_virtual_organization     = "69f4000e6f4c9600c6df5d412e3ee43c",
                     )
     url = DEV_SNOW_GET_URL if kwargs.get("Dev") else PRD_SNOW_GET_URL
     client = suds.client.Client(url,

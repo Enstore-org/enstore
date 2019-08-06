@@ -8644,17 +8644,16 @@ def migrate_volume(vol, intf):
     # is handled differently.
     global INHIBIT_STATE, IN_PROGRESS_STATE
     global set_system_migrating_func, set_system_migrated_func
-
     global pid_list
 
     my_task = "%s_VOLUME" % (IN_PROGRESS_STATE.upper(),)
     log(my_task, "start", IN_PROGRESS_STATE, "volume", vol, "...")
+
     db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
     # get its own vcc
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,
-                                                    config_port))
+    csc = configuration_client.ConfigurationClient((config_host,config_port))
     vcc = volume_clerk_client.VolumeClerkClient(csc)
     fcc = file_clerk_client.FileClient(csc)
 
@@ -8669,25 +8668,24 @@ def migrate_volume(vol, intf):
             db.close()  #Avoid resource leaks.
             return 1
 
+    sinh1 = volume_record['system_inhibit'][1]
+
     #If volume is migrated, report that it is done and stop.
 
     #First, determine if all of the migration history is up-to-date.
     is_history_done = is_migration_history_done(my_task, vol, db)
     if is_history_done == None:
-        #Confirm that the history does not return an error case.  If it did
-        # we get here.
         error_log(my_task, "Unable to continue, migration history error")
         db.close()  #Avoid resource leaks.
         return 1
     #Second, determine if the system inhibit is correct.
-    is_migrated_state = enstore_functions2.is_migrated_state(
-        volume_record['system_inhibit'][1])
+    is_migrated_state = enstore_functions2.is_migrated_state(sinh1)
     #Third, determine if all files are copied and swapped.
     is_migrated_files =  is_migrated_by_src_vol(vol, intf, db,
                                                 checked = 0, closed = 0)
     if is_migrated_state and is_migrated_files and is_history_done and \
            not getattr(intf, "force", None):
-        log(my_task, vol, "is already", volume_record['system_inhibit'][1])
+        log(my_task,vol,"is already",sinh1)
         db.close()  #Avoid resource leaks.
         return 0
 
@@ -8731,29 +8729,31 @@ def migrate_volume(vol, intf):
             if media_type and media_type not in media_types:
                 media_types.append(media_type)
 
-    #If we are certain that this is a cloning job, not a migration, then
-    # we should handle it accordingly.
+    # Is it Cloning job?
     if len(media_types) == 1 and media_types[0] == volume_record['media_type']:
         setup_cloning()
 
-    #Here are some additional checks on the volume.  If necessary, it
-    # will set the system_inhibit_1 value.
-    if volume_record['system_inhibit'][1] not in [IN_PROGRESS_STATE, INHIBIT_STATE] \
-           and \
-           volume_record['system_inhibit'][1] in MIGRATION_STATES + MIGRATED_STATES:
-        #If the system inhibit has already been set to another type
-        # of migration, don't continue.
-        log(my_task, vol, 'has already been set to %s while trying to set it to %s' \
-            % (volume_record['system_inhibit'][1], IN_PROGRESS_STATE))
-        db.close()  #Avoid resource leaks.
-        return 1
-    if volume_record['system_inhibit'][1] == INHIBIT_STATE and \
-           is_migrated_by_src_vol(vol, intf, db) and \
-           not getattr(intf, "force", None):
-        log(my_task, vol, 'has already been %s' % INHIBIT_STATE)
-        db.close()  #Avoid resource leaks.
-        return 0
-    if volume_record['system_inhibit'][1] != IN_PROGRESS_STATE:
+    # Additional checks on the volume.
+    # FIXME: review these conditions. Migration avoids to migrate tapes
+    # "duplicated" long time ago; --force for now.
+    # skip checks if --force flag used
+    if not getattr(intf, "force", None):
+        if (sinh1 in MIGRATION_STATES + MIGRATED_STATES
+            and sinh1 not in [IN_PROGRESS_STATE, INHIBIT_STATE]):
+                # return if the system inhibit has already been set
+                # to another type of migration.
+                log(my_task, vol,
+                    'has already been set to %s while trying to set it to %s'
+                    % (sinh1, IN_PROGRESS_STATE))
+                db.close()  #Avoid resource leaks.
+                return 1
+        if sinh1 == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
+            log(my_task, vol, 'has already been %s' % INHIBIT_STATE)
+            db.close()  #Avoid resource leaks.
+            return 0
+
+    # set the system_inhibit_1 value
+    if sinh1 != IN_PROGRESS_STATE:
         set_system_migrating_func(vcc, vol)
         log(my_task, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
 
@@ -8763,12 +8763,11 @@ def migrate_volume(vol, intf):
         # Migrate files in the list.
         res = migrate(tape_list, intf, volume_record=volume_record)
 
-    #Do one last volume wide check.
-    if res == 0 and is_migrated_by_src_vol(vol, intf, db, checked = 0, closed = 0):
+    # Do one last volume wide check.
+    if res == 0 and is_migrated_by_src_vol(vol,intf,db,checked=0,closed=0):
         set_src_volume_migrated(my_task, vol, vcc, db)
     else:
-        message = "do not set %s to %s due to previous error" % \
-                  (vol, INHIBIT_STATE)
+        message = "do not set %s to %s due to previous error" % (vol,INHIBIT_STATE)
         error_log(my_task, message)
 
     db.close()  #Avoid resource leaks.
