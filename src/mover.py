@@ -6591,6 +6591,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if self.write_in_progress:
                         # Write was interrupted on the client side
                         # position the tape to the last fm
+                        eod = cookie_to_long(self.vol_info['eod_cookie'])
+                        if self.current_location - eod == 1:
+                            # Current location was set based on tape_driver.tell.
+                            # It may be set ahead of eod because of partial write.
+                            # Set it back to eod
+                            Trace.log(e_errors.WARNING, 'tape location %s is ahead of EOD %s. Will set to EOD'%(self.current_location, eod))
+                            self.current_location = eod
                         try:
                             self.tape_driver.seek(self.current_location, 0)
                         except:
