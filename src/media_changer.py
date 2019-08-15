@@ -3881,6 +3881,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         # Read the value for the timeout on mount commands.
 	self.mount_timeout = self.mc_config.get('mount_timeout', 300)
 	self.mount_retries = self.mc_config.get('mount_retries', 2)
+	self.retry_count	= self.mount_retries
 	self.sudo_cmd = self.mc_config.get('sudo_cmd','')
 
 	self.cli_host = self.mc_config.get('remote_cli') # host where CLI can be run on (used for diagnostics)
@@ -4209,12 +4210,24 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 				    if retuned_by_mtx_mount:
 					    update_db = True
 				    else:
-					    if  (('mtx: Request Sense: Additional Sense Code = 3B' in ret_val[3])
-						 and ('mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3])): # Medium Destination Element Full
-						    update_db = False
+					    if  'mtx: Request Sense: Additional Sense Code = 3B' in ret_val[3]:
+						    if 'mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3]: # Medium Destination Element Full
+							    if self.retry_count == 0: # retry one more time
+								    self.retry_count = 1
+							    update_db = False
+						    elif 'mtx: Request Sense: Additional Sense Qualifier = 0E' in ret_val[3]: # Medium Source Element Empty (Looks as the dismount command was successful)
+							    update_db = True
 			    elif 'mtx: Request Sense: Sense Key=Not Ready' in ret_val[3]:
 				    Trace.log(ACTION_LOG_LEVEL, 'Received Request Sense: Sense Key=Not Ready. Will wait a minute and retry')
 				    time.sleep(60)
+			    elif 'mtx: Request Sense: Sense Key=Unit Attention' in ret_val[3]:
+				    sleeptime = 30
+				    if 'mtx: Request Sense: Additional Sense Code = 28' in ret_val[3]:
+					    # According to IBM recommendations,  wait and retry more times
+					    if self.retry_count == 0:
+						    self.retry_count = 1
+						    sleeptime = 40
+				    time.sleep(sleeptime)
 			    elif ret_val[1] == e_errors.TIMEDOUT:
 				    update_db = True
 			    retry = True
@@ -4225,6 +4238,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	    except:
 		    Trace.handle_error()
 		    retry = True
+	    if self.retry_count > 0:
+		    self.retry_count -= 1
+	    else:
+		    retry = False
 	    return retry
 
     def updatedb_on_retry(self):
@@ -4252,8 +4269,8 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		else:
 			return (e_errors.ERROR, 'Nothing to import', None, None)
 
-	retry_count = 4
-	while retry_count > 0:
+	self.retry_count = 4
+	while retry:
 		s_slot, d = self.locate_volume(EMPTY)
 		if s_slot < 0:
 			return (e_errors.ERROR, '%s can not be inserted, no free slots'%(ticket['external_label'],), None, None)
@@ -4280,12 +4297,12 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			if stor_el['volume'] == BUSY:
 				stor_el['volume']  = EMPTY
 				self.slots[s_slot] = stor_el
-			if self.do_retry(rc, retuned_by_mtx_mount=False):
+			retry =self.do_retry(rc, retuned_by_mtx_mount=False)
+			if retry:
 				# retry
 				# rc[0] == -1 - timeout
 				Trace.log(e_errors.INFO, 'retrying insert %s %s'%( imp_el, stor_el))
 				time.sleep(1)
-				retry_count -= 1
 			else:
 				break
 	return rc
@@ -4350,11 +4367,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         __pychecker__ = "unusednames=media_type,view_first"
 
 	rc = (e_errors.OK, e_errors.OK, [],'' , '')
+	self.retry_count = 1
 	if self.mount_retries > 1:
-	       retry_count = self.mount_retries
-	else:
-	       retry_count = self.mount_retries + 1
-	while retry_count > 0:
+		self.retry_count = self.mount_retries
+	retry = True
+	while retry:
 		try:
 		    dr = self.locate_drive(drive) # index in self.drives
 		except:
@@ -4402,10 +4419,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		else:
 			Trace.log(e_errors.INFO, "Load returned: %s"%(rc,))
 			if rc[1] ==  e_errors.TIMEDOUT:
-			       if self.do_retry(rc, retuned_by_mtx_mount=True):
+			       retry = self.do_retry(rc, retuned_by_mtx_mount=True)
+			       if retry:
 				       Trace.log(e_errors.INFO, 'retrying mtx_mount %s %s'%(volume, drive))
 				       time.sleep(1)
-				       retry_count -= 1
 			       else:
 				       break
 	Trace.log(ACTION_LOG_LEVEL, 'mtx_mount returning: %s'%(rc,))
@@ -4430,11 +4447,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         __pychecker__ = "unusednames=media_type,view_first"
 
  	rc = (e_errors.OK, e_errors.OK, [],'' , '')
+	self.retry_count = 1
 	if self.mount_retries > 1:
-		retry_count = self.mount_retries
-	else:
-		retry_count = self.mount_retries + 1
-	while retry_count > 0:
+	       self.retry_count = self.mount_retries
+	retry = True	
+	while retry:
 	       try:
                    dr = self.locate_drive(drive) # index in self.drives
 	       except:
@@ -4502,12 +4519,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			Trace.log(e_errors.INFO, "Unload command returned: %s"%(rc,))
 			if stor_el['volume'] == BUSY:
 				stor_el['volume']  = EMPTY
-			if self.do_retry(rc, retuned_by_mtx_mount=False):
-				# retry
-				# rc[0] == -1 - timeout
+			retry = self.do_retry(rc, retuned_by_mtx_mount=False)
+			if retry:
 				Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%( self.drives[dr], stor_el))
 				time.sleep(1)
-				retry_count -= 1
 			else:
 				break
 	Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: returning %s"%(rc,))
@@ -5347,11 +5362,11 @@ class MTXN_Local_MediaLoader(MTXN_MediaLoader):
        __pychecker__ = "unusednames=media_type,view_first"
        Trace.log(e_errors.INFO, "mtx_mount %s %s"%(volume, drive))
        rc =  (e_errors.OK, e_errors.OK, [], '', '')
+       self.retry_count = 1
        if self.mount_retries > 1:
-	       retry_count = self.mount_retries
-       else:
-	       retry_count = self.mount_retries + 1
-       while retry_count > 0:
+	       self.retry_count = self.mount_retries
+       retry = True
+       while retry:
 	       dt = self.locate_drive(drive)
 	       Trace.trace(ACTION_LOG_LEVEL, "LOCATE DRIVE returned %s"%(dt,))
 	       if not e_errors.is_ok(dt):
@@ -5398,10 +5413,10 @@ class MTXN_Local_MediaLoader(MTXN_MediaLoader):
 		    break
 	       else:
 		       Trace.log(e_errors.INFO, "Load returned: %s"%(rc,))
-		       if self.do_retry(rc, retuned_by_mtx_mount=True):
+		       retry = self.do_retry(rc, retuned_by_mtx_mount=True)
+		       if retry:
 			       Trace.log(e_errors.INFO, 'retrying mtx_mount %s %s'%(volume, drive))
 			       time.sleep(1)
-			       retry_count -= 1
 		       else:
 			       break
        Trace.log(ACTION_LOG_LEVEL, 'mtx_mount returning: %s'%(rc,))
@@ -5412,16 +5427,16 @@ class MTXN_Local_MediaLoader(MTXN_MediaLoader):
        __pychecker__ = "unusednames=media_type,view_first"
        Trace.log(e_errors.INFO, "mtx_dismount %s %s"%(volume, drive))
        rc =  (e_errors.OK, e_errors.OK, [], '', '')
+       self.retry_count = 1
        if self.mount_retries > 1:
-	       retry_count = self.mount_retries
-       else:
-	       retry_count = self.mount_retries + 1
-       while retry_count > 0:
+	       self.retry_count = self.mount_retries
+       retry = True
+       while retry:
 	       dt = self.locate_drive(drive)
 	       if not e_errors.is_ok(dt):
-		    Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
+		    Trace.log(e_errors.ERROR, 'mtx_dismount unrecognized drive: %s'%(drive,))
 		    rc = (e_errors.ERROR, e_errors.ERROR, [],'' ,\
-			    'mtx_mount unrecognized drive: %s'%(drive,))
+			    'mtx_dismount unrecognized drive: %s'%(drive,))
 		    break
 	       Trace.trace(ACTION_LOG_LEVEL, "mtx_dismount: drive query %s"%(dt,))
 	       drive_info = dt['drive_info']
@@ -5431,14 +5446,14 @@ class MTXN_Local_MediaLoader(MTXN_MediaLoader):
 	       else:
 		    if drive_info['volume'] != volume:
 			    rc = (e_errors.ERROR, e_errors.ERROR, [],'' ,\
-					    'mtx unload: %s is not in %d'%(volume, drive))
+					    'mtx_dismount: %s is not in %d'%(volume, drive))
 			    break
 	       vt = self.locate_volume(EMPTY, reserve=True)
 	       Trace.log(e_errors.INFO, "mtx_dismount: volume_query %s"%(vt,))
 	       if not e_errors.is_ok(vt):
-		    Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
+		    Trace.log(e_errors.ERROR, ' mtx_dismount: No free slots')
 		    rc = (e_errors.ERROR, e_errors.ERROR, [],'' ,\
-			    'mtx unload: No free slots')
+			    'mtx_dismount: No free slots')
 		    break
 
 	       Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive,  '...dismounting'))
@@ -5462,10 +5477,10 @@ class MTXN_Local_MediaLoader(MTXN_MediaLoader):
 		    break
 	       else:
 		       Trace.log(e_errors.INFO, "Unload returned: %s"%(rc,))
-		       if self.do_retry(rc, retuned_by_mtx_mount=False):
+		       retry = self.do_retry(rc, retuned_by_mtx_mount=False)
+		       if retry:
 			       Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s'%(volume, drive))
 			       time.sleep(1)
-			       retry_count -= 1
 		       else:
 			       break
        Trace.log(ACTION_LOG_LEVEL, 'mtx_dismount returning: %s'%(rc,))
