@@ -556,7 +556,12 @@ def do_work(intf):
         else:
             print rt['status']
     elif intf.eject:
-        ticket=mcc.ejectvol(intf.args[0])
+        while True:
+            ticket=mcc.ejectvol(intf.args[0])
+            if e_errors.is_ok(ticket):
+                break
+            else:
+                time.sleep(10)
         print ticket
     elif intf.max_work  >= 0:
         ticket=mcc.set_max_work(intf.max_work)
