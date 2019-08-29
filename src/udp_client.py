@@ -322,21 +322,23 @@ class UDPClient:
         :arg unique_id: generate unique id for each message
         :rtype: :obj:`int` - number of bytes sent
         """
+        try:
+            tsd = self.get_tsd()
+            if unique_id:
+                # Create unique id for each message.
+                tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
 
-        tsd = self.get_tsd()
-        if unique_id:
-            # Create unique id for each message.
-            tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
+            message, txn_id = self.protocolize( data )
 
-        message, txn_id = self.protocolize( data )
+            #set up the static route before sending.
+            # outgoing interface_ip is tsg.host and destination is address[0].
+            if not host_config.is_route_in_table(address[0]):
+                host_config.setup_interface(address[0], tsd.host)
 
-        #set up the static route before sending.
-	# outgoing interface_ip is tsg.host and destination is address[0].
-        if not host_config.is_route_in_table(address[0]):
-            host_config.setup_interface(address[0], tsd.host)
-
-        reply = tsd.socket.sendto( message, address )
-
+            reply = tsd.socket.sendto( message, address )
+        except:
+            Trace.handle_error()
+            reply = None
 	return reply
 
 
