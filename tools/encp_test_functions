@@ -110,15 +110,11 @@ correct_config_file()
 #Return true (zero) if the requested directory is a PNFS directory.
 is_pnfs()
 {
-    if [ -n "$REMOTE_ENCP" ]; then
-	$enstore_cmd pnfs_agent --exists "$1"
-    else
 	#It would be simple if frozen versions of the enstore command
 	# had the command
 	#$enstore_cmd sfs --database "$1"
 	# Since they all don't we need to do this the hard way.
 	cat "$1/.(tags)()" > /dev/null 2>&1
-    fi
     return $?
 }
 
@@ -186,24 +182,19 @@ make_pnfs_file()
 	return $rc
     fi
 
-    if [ -n "$REMOTE_ENCP" ]; then
-	$enstore_cmd pnfs_agent --touch "$1"
-        make_save=$?
-    else
-        for lc in 1 2 3; do
+    for lc in 1 2 3; do
 	    #PNFS gives false ENOENT errors.  Retry them for a while.
-            touch "$1" 2> /dev/null
-            make_save=$?
-            if [ $make_save -eq 0 ]; then
-                break
-            fi
-            sleep 1
-        done
-        if [ $make_save -ne 0 ]; then
-	    # One last time to give the user the error.
-            touch "$1"
-            make_save=$?
+        touch "$1" 2> /dev/null
+        make_save=$?
+        if [ $make_save -eq 0 ]; then
+            break
         fi
+        sleep 1
+    done
+    if [ $make_save -ne 0 ]; then
+	    # One last time to give the user the error.
+        touch "$1"
+        make_save=$?
     fi
 
     make_post_message "$1"
@@ -257,18 +248,14 @@ make_post_message()
     fi
 }
 
-#Handle making files in PNFS through mountpoint or pnfs_agent.
+#Handle making files in PNFS through mountpoint
 make_pnfs_dir()
 {
-    if [ -n "$REMOTE_ENCP" ]; then
-	$enstore_cmd pnfs_agent --mkdirs "$1"
-    else
-        mkdir -p "$1"
-    fi
+    mkdir -p "$1"
     return $?
 }
 
-#Handle making symbolic links in PNFS through mountpoint or pnfs_agent.
+#Handle making symbolic links in PNFS through mountpoint.
 #
 link_file()
 {
@@ -340,15 +327,8 @@ link_pnfs_file()
         return 1
     fi
 
-    if [ -n "$REMOTE_ENCP" ]; then
-	#$enstore_cmd pnfs_agent --ln "$1" "$2"
-	#ln_save=$?
-	echo "Using pnfs_agent to make links is not supported." 1>&2
-	exit 1
-    else
-        ln "$1" "$2" 2> /dev/null
-	ln_save=$?
-    fi
+    ln "$1" "$2" 2> /dev/null
+    ln_save=$?
 
     ln_post_message "$@"
     rc=$?
@@ -464,13 +444,8 @@ rm_pnfs_file()
 {
     rm_pre_message "$1"
 
-    if [ -n "$REMOTE_ENCP" ]; then
-	$enstore_cmd pnfs_agent --remove "$1"
-	rm_save=$?
-    else
-        rm -f "$1"
-	rm_save=$?
-    fi
+    rm -f "$1"
+    rm_save=$?
 
     rm_post_message "$1"
 
@@ -567,11 +542,7 @@ cleanup_dir()
 #Return zero if the file exists, and one otherwise.
 does_file_exist()
 {
-    if [ -n "$REMOTE_ENCP" ]; then
-        $enstore_cmd pnfs_agent --exists "$1"
-    else
-        test -f "$1"
-    fi
+    test -f "$1"
     return $?
 }
 
@@ -843,28 +814,10 @@ has_scanfiles_command()
     return 0
 }
 
-has_pnfs_agent_command()
-{
-    help=$($enstore_cmd --help)
-
-    echo "$help" | awk '{print $1}' | grep 'pnfs_agent' > /dev/null
-    #If a match was found it has the command.
-    if [ $? -eq 0 ]; then
-	return 1
-    fi
-
-    #Return zero if the command is not available.
-    return 0
-}
 
 has_mount_point_switch()
 {
-    if [ -n "$REMOTE_ENCP" ]; then
-        #Current "enstore pnfs_agent --mount-point" is not defined.
-	return 0
-    else
-	help=$($enstore_cmd sfs --help)
-    fi
+    help=$($enstore_cmd sfs --help)
 
     echo "$help" | awk '{print $1}' | grep '\-\-mount-point' > /dev/null
     #If a match was found it has the command.
@@ -1014,7 +967,6 @@ setup_storage_test_paths()
     # on the same node at the same time.
     PNFS_INPUT_DIR="$PNFS_DIR/test_files_for_${username}"
     PNFS_OUTPUT_DIR="$PNFS_DIR/encp_test_for_${username}"
-    PNFS_AGENT_OUTPUT_DIR="$PNFS_OUTPUT_DIR"
     ENSYNC_OUTPUT_DIR="$PNFS_OUTPUT_DIR/ensync_test"
 
     make_pnfs_dir "$PNFS_INPUT_DIR"
@@ -1081,45 +1033,36 @@ cleanup_storage_test_paths()
     write_cleanup "Starting cleanup of old storage test files."
 
     #Cleanup failed output files in test PNFS directory.
-    if [ -n "$REMOTE_ENCP" ]; then
-	filelist=$($enstore_cmd pnfs_agent --just-files --list-dir "$PNFS_OUTPUT_DIR")
-    else
-        filelist=$(find "$PNFS_OUTPUT_DIR" -maxdepth 1 -type f 2> /dev/null)
-	if [ -z "$filelist" ]; then
+    filelist=$(find "$PNFS_OUTPUT_DIR" -maxdepth 1 -type f 2> /dev/null)
+    if [ -z "$filelist" ]; then
 	    #32 bit find running against 64 bit Chimera fails with a:
 	    #    Value to large for defined data type
 	    #error.  Try this as a work around.
-            filelist=$(ls -1p $PNFS_OUTPUT_DIR | grep -v "/" | tr -s " " " " | cut -f 9- -d " " | sed "s:^:$PNFS_OUTPUT_DIR/:" | tr -s "/" "/")
-        fi
+        filelist=$(ls -1p $PNFS_OUTPUT_DIR | grep -v "/" | tr -s " " " " | cut -f 9- -d " " | sed "s:^:$PNFS_OUTPUT_DIR/:" | tr -s "/" "/")
     fi
     echo "$filelist" |
     while read line; do
         if [ -z "$line" ]; then
             continue
         fi
-	rm_pnfs_file "$line"  #Use function for pnfs_agent cases.
+	rm_pnfs_file "$line"
     done
 
 
     #Cleanup the PNFS/Chimera .lock. files still lying around.
-    if [ -n "$REMOTE_ENCP" ]; then
-
-	filelist=$($enstore_cmd pnfs_agent --just-files --list-dir "$PNFS_INPUT_DIR" | grep .lock.)
-    else
-        filelist=$(find "$PNFS_INPUT_DIR" -maxdepth 1 -type f -name '.lock.*' 2> /dev/null)
-	if [ -z "$filelist" ]; then
+    filelist=$(find "$PNFS_INPUT_DIR" -maxdepth 1 -type f -name '.lock.*' 2> /dev/null)
+    if [ -z "$filelist" ]; then
             #32 bit find running against 64 bit Chimera fails with a:
 	    #    Value to large for defined data type
 	    #error.  Try this as a work around.
-            filelist=$(ls -1p $PNFS_INPUT_DIR/.lock.* 2> /dev/null)
-        fi
+        filelist=$(ls -1p $PNFS_INPUT_DIR/.lock.* 2> /dev/null)
     fi
     echo "$filelist" |
     while read line; do
         if [ -z "$line" ]; then
             continue
         fi
-	rm_pnfs_file "$line"  #Use function for pnfs_agent cases.
+	rm_pnfs_file "$line"
     done
 
     write_cleanup "Finished cleanup of old storage test files."
@@ -1131,14 +1074,9 @@ copy_test_files()
 {
     #Copy local test files into PNFS/Chimera.
     for fname in $(ls $LOCAL_INPUT_DIR); do
-        #Handle using mounted pnfs filesystem or using pnfs agent.
-	if [ -n "$REMOTE_ENCP" ]; then
-	    $enstore_cmd pnfs_agent --exists $PNFS_INPUT_DIR/$fname
-	    pnfs_test=$?
-	else
-	    test -f $PNFS_INPUT_DIR/$fname
-	    pnfs_test=$?
-	fi
+        #Handle using mounted pnfs filesystem.
+	test -f $PNFS_INPUT_DIR/$fname
+	pnfs_test=$?
 	if [ -f $LOCAL_INPUT_DIR/$fname -a $pnfs_test -ne 0 ]; then
 	    #We set the file family to volume_read_test for the benifit of the
 	    # volume read test.
@@ -1162,8 +1100,6 @@ get_file_list()
         if [ -z "$filenames" ]; then
 	    filenames=$(find $1 -size -104857600c -type f ! -name ".*" 2> /dev/null)
         fi
-    elif [ -n "$REMOTE_ENCP" -a $(is_pnfs "$1") ]; then
-        filenames=$($enstore_cmd pnfs_agent --just-files --list-dir "$1")
     fi
 
     echo "$filenames"
@@ -1176,19 +1112,15 @@ get_pnfs_file_list()
     #Restrict this to files less than 100MB in size and non-hidden files.
     # Only consider files in this directory first; go recurisive if the
     # first list is empty.
-    if [ -n "$REMOTE_ENCP" ]; then
-	filenames=$($enstore_cmd pnfs_agent --just-files --list-dir "$1")
-    else
-        filenames=$(find "$1" -maxdepth 1 -size -104857600c -type f ! -name ".*" 2> /dev/null)
-	if [ -z "$filenames" ]; then
+    filenames=$(find "$1" -maxdepth 1 -size -104857600c -type f ! -name ".*" 2> /dev/null)
+    if [ -z "$filenames" ]; then
             #32 bit find running against 64 bit Chimera fails with a:
 	    #    Value to large for defined data type
 	    #error.  Try this as a work around.
-            filenames=$(ls -1p $1 2> /dev/null | grep -v "/" | tr -s " " " " | cut -f 9- -d " " | sed "s:^:$1/:" | tr -s "/" "/")
-        fi
-	if [ -z "$filenames" ]; then
-	    filenames=$(find $1 -size -104857600c -type f ! -name ".*" 2> /dev/null)
-	fi
+        filenames=$(ls -1p $1 2> /dev/null | grep -v "/" | tr -s " " " " | cut -f 9- -d " " | sed "s:^:$1/:" | tr -s "/" "/")
+    fi
+    if [ -z "$filenames" ]; then
+	filenames=$(find $1 -size -104857600c -type f ! -name ".*" 2> /dev/null)
     fi
 
     echo "$filenames"
@@ -1196,22 +1128,15 @@ get_pnfs_file_list()
 
 get_volume_from_filename()
 {
-#$1 = pnfs filename to get the volume
+
     filename=$1
 
-
-    if [ -n "$REMOTE_ENCP" ]; then
-	#Rip just the volume out of the layer 4.
-	volume=$($enstore_cmd pnfs_agent --layer 4 $filename | sed -n '1p')
-    else
-        #Determine the layer 4 filename.
-	layer4_filename=$(dirname $filename; echo "/.(use)(4)("; basename $filename; echo ")")
-	layer4_filename=$(echo $layer4_filename | tr -d " ")
+    #Determine the layer 4 filename.
+    layer4_filename=$(dirname $filename; echo "/.(use)(4)("; basename $filename; echo ")")
+    layer4_filename=$(echo $layer4_filename | tr -d " ")
 
         #Rip just the volume out of the layer 4.
-	volume=$(cat $layer4_filename | sed -n '1p')
-    fi
-
+    volume=$(cat $layer4_filename | sed -n '1p')
     echo $volume
 }
 
@@ -1507,9 +1432,6 @@ transfer()
 #############################################################################
 
 #Test if the original input and the final output files are the same.
-###
-### This does does not work with pnfs_agent.
-###
 test_diff()
 {
     infiles=`eval echo $1`
@@ -1558,22 +1480,14 @@ test_layer()
     message_out=`eval echo $2`
 
     for file in $pnfsfiles; do
-	if [ -n "$REMOTE_ENCP" ]; then
-            result=`$enstore_cmd pnfs_agent --layer 1 $file 2>&1`
-        else
-	    result=`$enstore_cmd sfs --layer $file 1 2>&1`
-	fi
+	result=`$enstore_cmd sfs --layer $file 1 2>&1`
 	rtn_value=$?
 	if [ $rtn_value -ne 0 ]; then
 	    echo $message_out "TEST FAILED ON LAYER" | tee -a $ENCP_OUTPUT 2>&1
 	    echo No bfid value: $rtn_value: $result: $file | tee -a $ENCP_OUTPUT 2>&1
 	    all_done 1
 	fi
-	if [ -n "$REMOTE_ENCP" ]; then
-	    result=`$enstore_cmd pnfs_agent --layer 4 $file`
-	else
-	    result=`$enstore_cmd sfs --layer $file 4`
-	fi
+	result=`$enstore_cmd sfs --layer $file 4`
 	for line in result; do
 	    if [ $line = "unknown" ]; then
 		echo $message_out "TEST FAILED ON LAYER" | tee -a $ENCP_OUTPUT 2>&1
@@ -1586,9 +1500,6 @@ test_layer()
 }
 
 #Test that the permissions are the same.
-###
-### This does does not work with pnfs_agent.
-###
 permissions_test()
 {
     infiles=`eval echo $1`
@@ -1616,9 +1527,6 @@ permissions_test()
 }
 
 #Test that the sizes are the same.
-###
-### This does does not work with pnfs_agent.
-###
 size_test()
 {
     infiles=`eval echo $1`
@@ -1882,28 +1790,22 @@ __dcache_read_write_test()
 
     #Create the output file, set the size and get the pnfs id.
     size=$(stat -t -c %s $filename)
-    if [ -n "$REMOTE_ENCP" ]; then
-	$enstore_cmd pnfs_agent --touch "${pnfsname}"
-	$enstore_cmd pnfs_agent --size "${pnfsname}" "${size}"
-	pnfsid=$($enstore_cmd pnfs_agent --id "${pnfsname}")
-    else
-	make_file "${pnfsname}"
-	if [ $? -ne 0 ]; then
-	    echo "Failed to make file" 1>&2
-	    echo 	make_file "${pnfsname}"  1>&2
-	    exit 1
-	fi
-	$enstore_cmd sfs --size "${pnfsname}" "${size}"
-	if [ $? -ne 0 ]; then
-	    echo "Failed to set the size" 1>&2
-	    exit 1
-	fi
-	pnfsid=$($enstore_cmd sfs --id "${pnfsname}")
-	if [ $? -ne 0 -o -z "$pnfsid" ]; then
-	    echo "Failed to get the id" 1>&2
-	    echo "ENCP_OUTPUT $ENCP_OUTPUT" 1>&2
-	    exit 1
-	fi
+    make_file "${pnfsname}"
+    if [ $? -ne 0 ]; then
+	echo "Failed to make file" 1>&2
+	echo 	make_file "${pnfsname}"  1>&2
+	exit 1
+    fi
+    $enstore_cmd sfs --size "${pnfsname}" "${size}"
+    if [ $? -ne 0 ]; then
+	echo "Failed to set the size" 1>&2
+	exit 1
+    fi
+    pnfsid=$($enstore_cmd sfs --id "${pnfsname}")
+    if [ $? -ne 0 -o -z "$pnfsid" ]; then
+	echo "Failed to get the id" 1>&2
+	echo "ENCP_OUTPUT $ENCP_OUTPUT" 1>&2
+	exit 1
     fi
 
     #Shorten some things for readability.
@@ -2011,7 +1913,7 @@ dcache_read_write_test()
     has_mount_point_switch
     if [ $? -eq 0 ]; then
 	print_test_name $section
-        echo "The 'enstore [sfs|pnfs_agent] --mount-point' command is not available.  Skipping test and continuing." 1>&2
+        echo "The 'enstore [sfs] --mount-point' command is not available.  Skipping test and continuing." 1>&2
 	return
     fi
 
@@ -2028,7 +1930,7 @@ dcache_shortcut_read_write_test()
     has_mount_point_switch
     if [ $? -eq 0 ]; then
 	print_test_name $section
-        echo "The 'enstore [sfs|pnfs_agent] --mount-point' command is not available.  Skipping test and continuing." 1>&2
+        echo "The 'enstore [sfs] --mount-point' command is not available.  Skipping test and continuing." 1>&2
 	return
     fi
 
@@ -2131,51 +2033,47 @@ single_relative_path_read_write_test()
     section="SINGLE RELATIVE PATH READ AND WRITE"
     print_test_name $section
 
-    if [ -n "$REMOTE_ENCP" ]; then
-	echo "Detected using pnfs_agent.  Skipping test and continuing." 1>&2
-    else
-	cwd=`pwd`
+    cwd=`pwd`
 
-        #Snag a random file.
-	filelist=`get_file_list "$LOCAL_INPUT_DIR"`
-	filename=`pick_random_files 1 $filelist`
-	basename=`basename $filename`
-	pnfsname=`echo $basename`
-	cleanup="$pnfsname `get_lock_file_name $filename`"
+    #Snag a random file.
+    filelist=`get_file_list "$LOCAL_INPUT_DIR"`
+    filename=`pick_random_files 1 $filelist`
+    basename=`basename $filename`
+    pnfsname=`echo $basename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
 
-	cd_status=1
-	cd_count=1
-	while [ $cd_status -ne 0 -a $cd_count -lt 4 ]; do
-	   cd ${PNFS_OUTPUT_DIR}/  #This can spuriously fail with Chimera.
-	   cd_status=$?
-	   cd_count=$((count + 1))
-        done
+    cd_status=1
+    cd_count=1
+    while [ $cd_status -ne 0 -a $cd_count -lt 4 ]; do
+	cd ${PNFS_OUTPUT_DIR}/  #This can spuriously fail with Chimera.
+	cd_status=$?
+	cd_count=$((count + 1))
+    done
 
-	transfer $encp_cmd '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
+    transfer $encp_cmd '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
-	test_layer '$pnfsname' "$section"
-	scan_test '$pnfsname' "$section"
+    test_layer '$pnfsname' "$section"
+    scan_test '$pnfsname' "$section"
 
         #Add the second direction.
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-	cleanup="$outname $cleanup"  #Make sure the lock file is last.
+    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$outname $cleanup"  #Make sure the lock file is last.
 
-	transfer $encp_cmd '$pnfsname' '$outname' '$cleanup' "" "$section" READ
+    transfer $encp_cmd '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-	test_diff '$filename' '$outname' '$cleanup' "$section"
-	permissions_test '$filename' '$outname' '$cleanup' "$section"
-	size_test '$filename' '$outname' '$cleanup' "$section"
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
 
-	cleanup_files '$cleanup'
+    cleanup_files '$cleanup'
 
-	cd_status=1
-	cd_count=1
-	while [ $cd_status -ne 0 -a $cd_count -lt 4 ]; do
-	    cd $cwd
-	    cd_status=$?
-	    cd_count=$((count + 1))
-        done
-    fi
+    cd_status=1
+    cd_count=1
+    while [ $cd_status -ne 0 -a $cd_count -lt 4 ]; do
+	cd $cwd
+	cd_status=$?
+	cd_count=$((count + 1))
+    done
 }
 
 single_local_pnfs_path_read_test()
@@ -2346,67 +2244,6 @@ multiple_copies_read_write_test()
 	transfer "$encp_cmd --copy 1" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
         cleanup_files '$cleanup'
-    fi
-}
-
-pnfs_agent_read_write_test()
-{
-    section="PNFS AGENT READ WRITE"
-    print_test_name $section
-
-    #Test the version of encp.
-    is_admin_encp
-    if [ $? -eq 0 ]; then
-        echo "Encp is user version.  Skipping test and continuing." 1>&2
-	return
-    fi
-
-    #This gets set to true if we temporarily enable $REMOTE_ENCP for encp
-    # to use pnfs_agent.
-    clear_remote_encp=0
-
-    #Note: REMOTE_ENCP is an environmental variable that tells encp to use
-    # pnfs_agent instead of PNFS directly.  We check for the same variable
-    # here to handle running these tests through the pnfs agent too.
-    if [ -z "$REMOTE_ENCP" ]; then
-	$try_enstore_cmd pnfs_agent --alive --timeout 3 --retries 3
-	if [ $? -eq 0 ]; then
-	    #We detected that the pnfs_agent is running, lets use it.
-	    export REMOTE_ENCP=only_pnfs_agent
-	    clear_remote_encp=1
-	else
-	    echo "pnfs_agent is not running.  Skipping test and continuing." 1>&2
-	    return
-	fi
-    fi
-
-    #Snag a random file.
-    filelist=`get_file_list "$LOCAL_INPUT_DIR"`
-    if [ -z "$filelist" ]; then
-	echo "Input directory empty.  Skipping test and continuing." 1>&2
-    else
-	filename=`pick_random_files 1 $filelist`
-	basename=`basename $filename`
-	pnfsname=`echo ${PNFS_AGENT_OUTPUT_DIR}/$basename`
-	cleanup="$pnfsname `get_lock_file_name $filename`"
-	encp="$encp_cmd"
-
-	transfer "$encp" '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
-
-	### These two tests need to be made pnfs_agent aware.
-	test_layer '$pnfsname' "$section"
-	enstore_check_test '$pnfsname' '$cleanup' "$section"
-
-	#Add the second direction.
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-	cleanup="$outname $cleanup"  #Make sure the lock file is last.
-
-	transfer "$encp" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
-    fi
-
-    cleanup_files '$cleanup'
-    if [ $clear_remote_encp -eq 1 ]; then
-        unset REMOTE_ENCP
     fi
 }
 

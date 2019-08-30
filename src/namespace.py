@@ -15,9 +15,7 @@ import errno
 
 # enstore modules
 import enstore_functions2
-import pnfs_agent_client
 import configuration_client
-import pnfs
 import chimera
 import option
 import enstore_constants
@@ -26,240 +24,49 @@ import Trace
 
 UNKNOWN = "unknown"  #Same in pnfs and chimera.
 
-pnfs_agent_client_requested = False
-pnfs_agent_client_allowed = False
-
-############################################################################
-
-def get_pac():
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host, config_port))
-    pac = pnfs_agent_client.PnfsAgentClient(csc)
-    return pac
-
-############################################################################
-
 __pychecker__ = "no-override"
-class StorageFS(pnfs.Pnfs, chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient):
+class StorageFS(chimera.ChimeraFS):
 
-    def __init__(self, pnfsFilename="", mount_point="", shortcut=None,
-                 use_pnfs_agent=False, allow_pnfs_agent=False):
-        global pnfs_agent_client_requested
-        global pnfs_agent_client_allowed
-
+    def __init__(self, pnfsFilename="", mount_point="", shortcut=None):
         try:
-            #We insist on using the pnfs_agent.  Nothing else will do.
-            if use_pnfs_agent or pnfs_agent_client_requested:
-                self.use_pnfs_agent = 1
-                config_host = enstore_functions2.default_host()
-                config_port = enstore_functions2.default_port()
-                csc = configuration_client.ConfigurationClient((config_host,
-                                                                config_port))
-                pnfs_agent_client.PnfsAgentClient.__init__(self, csc)
-                self.__class__ = pnfs_agent_client.PnfsAgentClient
-            elif pnfsFilename:
-                #For the checks of a PNFS/Chimera ID we need to use
-                # pnfsFilename.  For those needing paths, we need to get the
-                # absolute path if it is a relative path.
-                use_pnfsFilename = enstore_functions2.fullpath(pnfsFilename)[1]
-
-                #First, check for FS specific ID strings instead of a
-                # "filename" passed into the constructor.
-                if chimera.is_chimeraid(pnfsFilename):
-                    self.use_pnfs_agent = 0
-                    self.__class__ = chimera.ChimeraFS
-                    chimera.ChimeraFS.__init__(self, pnfsFilename,
-                                               mount_point, shortcut)
-                elif pnfs.is_pnfsid(pnfsFilename):
-                    self.use_pnfs_agent = 0
-                    try :
-                        self.__class__ = pnfs.Pnfs
-                        pnfs.Pnfs.__init__(self, pnfsFilename, mount_point,
-                                           shortcut)
-                    except:
-                        self.__class__ = chimera.ChimeraFS
-                        chimera.ChimeraFS.__init__(self, pnfsFilename,
-                                                   mount_point, shortcut)
-                #elif luster.is_lusterid(pnfsFilename):
-                #    self.use_pnfs_agent = 0
-                #    self.__class__ = lustre.LusterFS
-                #    luster.LustreFS.__init__(self, pnfsFilename,
-                #                             mount_point, shortcut)
-
-
-                #Second, check for FS specific paths.
-                elif chimera.is_chimera_path(use_pnfsFilename, check_name_only = 1):
-                    self.use_pnfs_agent = 0
-                    self.__class__ = chimera.ChimeraFS
-                    chimera.ChimeraFS.__init__(self, pnfsFilename,
-                                               mount_point, shortcut)
-                elif pnfs.is_pnfs_path(use_pnfsFilename, check_name_only = 1):
-                    self.use_pnfs_agent = 0
-                    self.__class__ = pnfs.Pnfs
-                    pnfs.Pnfs.__init__(self, pnfsFilename, mount_point,
-                                       shortcut)
-                #elif luster.is_luster_path(pnfsFilename, check_name_only = 1):
-                #    self.use_pnfs_agent = 0
-                #    self.__class__ = lustre.LusterFS
-                #    luster.LustreFS.__init__(self, pnfsFilename,
-                #                             mount_point, shortcut)
-
-                #Third, optionally try the pnfs_agent.
-                elif (allow_pnfs_agent or pnfs_agent_client_allowed) \
-                         and is_storage_path(use_pnfsFilename):
-                    self.use_pnfs_agent = 1
-                    config_host = enstore_functions2.default_host()
-                    config_port = enstore_functions2.default_port()
-                    csc = configuration_client.ConfigurationClient(
-                        (config_host, config_port))
-                    self.__class__ = pnfs_agent_client.PnfsAgentClient
-                    pnfs_agent_client.PnfsAgentClient.__init__(self, csc)
-                else:
-                    self.__class__ = chimera.ChimeraFS
-                    chimera.ChimeraFS.__init__(self, pnfsFilename,
-                                               mount_point, shortcut)
-                    self.use_pnfs_agent = 0
-            else:
-                # Use chimera by default
-                self.__class__ = chimera.ChimeraFS
-                chimera.ChimeraFS.__init__(self, pnfsFilename,
-                                           mount_point, shortcut)
-                self.use_pnfs_agent = 0
+            self.__class__ = chimera.ChimeraFS
+            chimera.ChimeraFS.__init__(self, pnfsFilename,
+                                       mount_point, shortcut)
         except:
             if Trace.log_func != Trace.default_log_func:
                 #Send the traceback to the log file.
                 Trace.handle_error(severity=99)
-
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-class Tag(pnfs.Tag, chimera.Tag, pnfs_agent_client.PnfsAgentClient):
+class Tag(chimera.Tag):
 
-    def __init__(self, directory=None,
-                 use_pnfs_agent=False, allow_pnfs_agent=False):
-        global pnfs_agent_client_requested
-        global pnfs_agent_client_allowed
-
+    def __init__(self, directory=None):
         try:
-           #We insist on using the pnfs_agent.  Nothing else will do.
-            if use_pnfs_agent or pnfs_agent_client_requested:
-                self.use_pnfs_agent = 1
-                config_host = enstore_functions2.default_host()
-                config_port = enstore_functions2.default_port()
-                csc = configuration_client.ConfigurationClient((config_host,
-                                                                config_port))
-                self.__class__ = pnfs_agent_client.PnfsAgentClient
-                pnfs_agent_client.PnfsAgentClient.__init__(self, csc)
-            elif directory:
-                #For the checks of a PNFS/Chimera ID we need to use
-                # directory.  For those needing paths, we need to get the
-                # absolute path if it is a relative path.
-                use_directory = enstore_functions2.fullpath(directory)[1]
-
-                #First, check for FS specific ID strings instead of a
-                # "filename" # passed into the constructor.
-                if chimera.is_chimeraid(directory):
-                    self.use_pnfs_agent = 0
-                    self.__class__ = chimera.Tag
-                    chimera.Tag.__init__(self, directory)
-                elif pnfs.is_pnfsid(directory):
-                    self.use_pnfs_agent = 0
-                    self.__class__ = pnfs.Tag
-                    pnfs.Tag.__init__(self, directory)
-                #elif luster.is_lusterid(directory):
-                #    self.use_pnfs_agent = 0
-                #    self.__class__ = lustre.Tag
-                #    lustre.Tag.__init__(self, directory)
-                #Second, check for FS specific paths.
-                elif chimera.is_chimera_path(use_directory, check_name_only = 1):
-                    self.use_pnfs_agent = 0
-                    self.__class__ = chimera.Tag
-                    chimera.Tag.__init__(self, directory)
-                elif pnfs.is_pnfs_path(use_directory, check_name_only = 1):
-                    self.use_pnfs_agent = 0
-                    self.__class__ = pnfs.Tag
-                    pnfs.Tag.__init__(self, directory)
-                #elif luster.is_luster_path(use_directory, check_name_only = 1):
-                #    self.use_pnfs_agent = 0
-                #    self.__class__ = lustre.Tag
-                #    lustre.Tag.__init__(self, directory)
-
-                #Third, optionally try the pnfs_agent.
-                elif (allow_pnfs_agent or pnfs_agent_client_allowed) \
-                         and is_storage_path(use_directory):
-                    self.use_pnfs_agent = 1
-                    config_host = enstore_functions2.default_host()
-                    config_port = enstore_functions2.default_port()
-                    csc = configuration_client.ConfigurationClient((config_host,
-                                                                    config_port))
-                    self.__class__ = pnfs_agent_client.PnfsAgentClient
-                    pnfs_agent_client.PnfsAgentClient.__init__(self, csc)
-                else:
-                    self.use_pnfs_agent = 0
-            else:
-                self.use_pnfs_agent = 0
+            self.__class__ = chimera.Tag
+            chimera.Tag.__init__(self, directory)
         except:
             if Trace.log_func != Trace.default_log_func:
                 #Send the traceback to the log file.
                 Trace.handle_error(severity=99)
-
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
 ############################################################################
 
 def is_storage_local_path(filename, check_name_only = None):
-    if pnfs.is_pnfs_path(filename, check_name_only):
-        return True
-    elif chimera.is_chimera_path(filename, check_name_only):
-        return True
-    # We can extend it to check for lust path also
-    #elif is_luster_path(filename, check_name_only):
-    #   return True
-    return False
-
-def is_storage_remote_path(filename, check_name_only = None):
-    global pnfs_agent_client_requested
-    global pnfs_agent_client_allowed
-
-    if pnfs_agent_client_requested or pnfs_agent_client_allowed:
-        pac = get_pac()
-        rtn = pac.is_pnfs_path(filename, check_name_only = check_name_only)
-
-        if check_name_only:
-            #If we get here we only want to determine if the filesystem is
-            # valid pnfs filesystem.  Not whether the target actually exists.
-            return rtn
-
-        return pac.e_access(filename, os.F_OK)
-
-    return False
-
+    return chimera.is_chimera_path(filename, check_name_only)
 
 def is_storage_path(filename, check_name_only = None):
-
     pathname = os.path.abspath(filename)
-
-    rtn = is_storage_local_path(pathname, check_name_only)
-    if not rtn:
-        #If we get here we did not find a matching locally mounted
-        # pnfs filesystem.  Ask the pnfs agent.
-        rtn = is_storage_remote_path(pathname, check_name_only)
-
-    return rtn
+    return is_storage_local_path(pathname, check_name_only)
 
 def is_id(id):
-    if pnfs.is_pnfsid(id):
-        return True
-    elif chimera.is_chimeraid(id):
-        return True
-
-    return False
+    return chimera.is_chimeraid_or_pnfsid(id)
 
 ##############################################################################
 
-#Return the directory name.  If a normal PNFS or Chimera path is given,
+#Return the directory name.  If a  Chimera path is given,
 # the directory is split off and returned.  If the file is a special
-# PNFS or Chimera .(access)() file, then special handling is done to
+# .(access)() file, then special handling is done to
 # determine the .(accces)() name of the directory while trying to use
 # as few resources as possible.
 def get_directory_name(filepath):
@@ -267,7 +74,7 @@ def get_directory_name(filepath):
         return None
 
     #Determine if it is an ".(access)()" name.
-    if chimera.is_access_name(filepath) or pnfs.is_access_name(filepath):
+    if chimera.is_access_name(filepath):
         #Since, we have the .(access)() name we need to split off the id.
         dirname, filename = os.path.split(filepath)
         pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
@@ -277,29 +84,9 @@ def get_directory_name(filepath):
 
         #Read the parent id.  Try and avoid instantiating a StorageFS class
         # for performance.
-        if pnfs_agent_client_requested:
-            pac = get_pac()
-            #get_parent_id() will raise an exception on error.
-            parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5, tries=6)
-        else:
-            try:
-                f = open(parent_id_name)
-                parent_id = f.readlines()[0].strip()
-                f.close()
-            except (OSError, IOError), msg:
-                #We only need to worry about pnfs_agent_client_allowed here,
-                # pnfs_agent_client_requested is addressed a few lines earlier.
-                if msg.args[0] == errno.ENOENT and \
-                       pnfs_agent_client_allowed:
-                    pac = get_pac()
-                    parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5,
-                                                  tries=6)
-                    if not parent_id: #Does this work to catch errors?
-                        raise OSError, msg
-                else:
-                    raise OSError, msg
-
-        #Build the .(access)() filename of the parent directory.
+        f = open(parent_id_name)
+        parent_id = f.readlines()[0].strip()
+        f.close()
         directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
     else:
         directory_name = os.path.dirname(filepath)
@@ -307,11 +94,14 @@ def get_directory_name(filepath):
     return directory_name
 
 # Keys for global cache.
-DB_NUMBER = pnfs.DB_NUMBER
-DB_INFO = pnfs.DB_INFO
-DB_MOUNT_POINTS = pnfs.DB_MOUNT_POINTS
+DB_NUMBER = "db_number"
+DB_INFO = "db_info"
+DB_MOUNT_POINTS = "db_mount_point"
 
-EMPTY_MOUNT_POINT = pnfs.EMPTY_MOUNT_POINT  #Same for Chimera.
+EMPTY_MOUNT_POINT = {DB_INFO : "",
+                     DB_NUMBER : -1,
+                     DB_MOUNT_POINTS : ["",],
+                     }
 
 def parse_mtab():
     #Different systems have different names for this file.
@@ -341,7 +131,7 @@ def parse_mtab():
         fs_type = line_of_mtab_file[2]
 
         #If the filesystem is not an NFS filesystem, skip it.
-        if fs_type == "nfs":
+        if fs_type.startswith("nfs"):
             # To figure out if the NFS mount is really Chimera/PNFS
             # we run a tags command. If exception is raised, then it is not
             # PNFS or Chimera mount
@@ -354,43 +144,25 @@ def parse_mtab():
                 # file system is not available at the moment.
                 continue
 
-            #Need to exclude pnfs mounts now.  Only PNFS has .(get)(database)
-            # files.
-            try:
-                dataname = os.path.join(mp, ".(get)(database)")
-                db_fp = file_utils.open(dataname, "r")
-                db_data = db_fp.readline().strip()
-                db_fp.close()
+            #We have found a Chimera filesystem.
 
-                #We have a pnfs filesystem.
+            #Make up values for Chimera to return that look like PNFS
+            # .(get)(database) values.
+            mount_name = os.path.basename(mp)
+            if mount_name == "fs" or mont_name == "fnal.gov":
+                mount_name = "admin"
+            db_id = 0  #For Chimera this is always zero.  If this value is
+                       # ever allowed to change in the future, then
+                       # Chimera needs to support .(get)(database) files.
+            accessible = "enabled"  #enabled or disabled
 
-                #Extract the db number from the .(get)(database) contents.
-                # Sample value:  admin:0:r:enabled:/diskb/pnfs/db/admin
-                db_datas = db_data.split(":")
-                db_pnfsid = int(db_datas[1])
+            #Put the made up values together.
+            new_db_data = "%s:%s:r:%s:/%s" % (mount_name, db_id,
+                                              accessible,
+                                              str(index))
 
-                #Add this to the cached PNFS mount points.
-                pnfs.add_mtab(db_data, db_pnfsid, mp)
-            except IOError:
-                #We have found a Chimera filesystem.
-
-                #Make up values for Chimera to return that look like PNFS
-                # .(get)(database) values.
-                mount_name = os.path.basename(mp)
-                if mount_name == "fs":
-                    mount_name = "admin"
-                db_id = 0  #For Chimera this is always zero.  If this value is
-                           # ever allowed to change in the future, then
-                           # Chimera needs to support .(get)(database) files.
-                accessible = "enabled"  #enabled or disabled
-
-                #Put the made up values together.
-                new_db_data = "%s:%s:r:%s:/%s" % (mount_name, db_id,
-                                                  accessible,
-                                                  str(index))
-
-                #Add this to the cached Chimera mount points.
-                chimera.add_mtab(new_db_data, None, mp)
+            #Add this to the cached Chimera mount points.
+            chimera.add_mtab(new_db_data, None, mp)
         elif fs_type == "lustre":
             #Reserved.
             pass
@@ -401,60 +173,38 @@ def parse_mtab():
     # .(get)(database) information and the value is a two-tuple of PNFS
     # database number and mount point.  [For Chimera the .(get)(database)
     # values are faked to be unique and the database number is None.]
-    found_mountpoints = pnfs.mount_points_cache.copy()
-    #if not found_mountpoints:
-    #    pnfs.add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
-    #                  EMPTY_MOUNT_POINT[1][1])
     temp_cache = chimera.mount_points_cache.copy()
+    found_mountpoints = {}
     for db_key, db_value in temp_cache.items():
         found_mountpoints[db_key] = db_value
-    #if not temp_cache:
-    #    chimera.add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
-    #                     EMPTY_MOUNT_POINT[1][1])
-
     return found_mountpoints
 
 def process_mtab():
-    if not pnfs.mount_points_cache and not chimera.mount_points_cache:
+    if not chimera.mount_points_cache:
         #If we haven't read the mount points in yet, do so now.
         parse_mtab()
         #Some filesystems need some extra processing.
-        pnfs._process_mtab()
         chimera._process_mtab()
 
     #Get the lists, then put the first items at the beginning.
-    pnfs_list = pnfs.sort_mtab()
     chimera_list = chimera.sort_mtab()
     new_list = []
-    if len(pnfs_list) > 0 and pnfs_list[0]:
-        new_list.append(pnfs_list[0])
     if len(chimera_list) > 0 and chimera_list[0]:
         new_list.append(chimera_list[0])
-    return new_list + pnfs_list[1:] + chimera_list[1:]
+    return new_list + chimera_list[1:]
 
 def get_enstore_mount_point(sfs_id = None):
 
-    #Get the list of PNFS and Chimera mountpoints currently mounted.
-    if not pnfs.mount_points_cache and not chimera.mount_points_cache:
-        #Cache PNFS and Chimera mount points seperately, but at the same time.
+    if not chimera.mount_points_cache:
         process_mtab()
 
-    #Return just the cached PNFS and Chimera mount points requested.
-    rtn_list = pnfs.get_enstore_mount_point(sfs_id)
-    rtn_list = rtn_list + chimera.get_enstore_mount_point(sfs_id)
-    return rtn_list
+    return chimera.get_enstore_mount_point(sfs_id)
 
 def get_enstore_admin_mount_point(sfs_id = None):
 
-    #Get the list of PNFS and Chimera mountpoints currently mounted.
-    if not pnfs.mount_points_cache and not chimera.mount_points_cache:
-        #Cache PNFS and Chimera mount points seperately, but at the same time.
+    if not chimera.mount_points_cache:
         process_mtab()
-
-    #Return just the cached PNFS and Chimera mount points requested.
-    rtn_list = pnfs.get_enstore_admin_mount_point(sfs_id)
-    rtn_list = rtn_list + chimera.get_enstore_admin_mount_point(sfs_id)
-    return rtn_list
+    return chimera.get_enstore_admin_mount_point(sfs_id)
 
 ##############################################################################
 
@@ -707,18 +457,6 @@ class NamespaceInterface(option.Interface):
                          option.FORCE_SET_DEFAULT:option.FORCE,
                          option.USER_LEVEL:option.ADMIN,
                          },
-        option.COUNTERSN:{option.HELP_STRING:"Return information about the"
-                          " underlying database.  Only PNFS returns valid"
-                          " information.  (CWD must be under /pnfs)",
-                          option.DEFAULT_VALUE:option.DEFAULT,
-                          option.DEFAULT_NAME:"countersN",
-                          option.DEFAULT_TYPE:option.INTEGER,
-                          option.VALUE_NAME:"dbnum",
-                          option.VALUE_TYPE:option.STRING,
-                          option.VALUE_USAGE:option.REQUIRED,
-                          option.FORCE_SET_DEFAULT:option.FORCE,
-                          option.USER_LEVEL:option.ADMIN,
-                          },
         option.CURSOR:{option.HELP_STRING:"Return information about the"
                        " underlying database.  Only PNFS returns valid"
                        " information.",
@@ -732,31 +470,6 @@ class NamespaceInterface(option.Interface):
                        option.FORCE_SET_DEFAULT:option.FORCE,
                        option.USER_LEVEL:option.ADMIN,
                        },
-        option.DATABASE:{option.HELP_STRING:"Return information about the"
-                         " underlying database.  Only PNFS returns valid"
-                         " information.",
-                         option.DEFAULT_VALUE:option.DEFAULT,
-                         option.DEFAULT_NAME:"database",
-                         option.DEFAULT_TYPE:option.INTEGER,
-                         option.VALUE_NAME:"file",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"filename",
-                         option.FORCE_SET_DEFAULT:option.FORCE,
-                         option.USER_LEVEL:option.ADMIN,
-                         },
-        option.DATABASEN:{option.HELP_STRING:"Return information about the"
-                         " underlying database.  Only PNFS returns valid"
-                         " information.  (CWD must be under /pnfs)",
-                          option.DEFAULT_VALUE:option.DEFAULT,
-                          option.DEFAULT_NAME:"databaseN",
-                          option.DEFAULT_TYPE:option.INTEGER,
-                          option.VALUE_NAME:"dbnum",
-                          option.VALUE_TYPE:option.STRING,
-                          option.VALUE_USAGE:option.REQUIRED,
-                          option.FORCE_SET_DEFAULT:option.FORCE,
-                          option.USER_LEVEL:option.ADMIN,
-                          },
         option.DUMP:{option.HELP_STRING:"dumps info",
               option.DEFAULT_VALUE:option.DEFAULT,
               option.DEFAULT_NAME:"dump",
@@ -994,10 +707,6 @@ def do_work(intf):
             p=StorageFS(intf.pnfs_id, shortcut=True)
             t=None
             n=None
-        elif hasattr(intf, "dbnum") and intf.dbnum:
-            p=None
-            t=None
-            n=pnfs.N(intf.dbnum)
         else:
             p=None
             if intf.dir:

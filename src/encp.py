@@ -30,10 +30,6 @@
 #                      from /dev/zero, /dev/random or /dev/urandon.
 # $ENSTORE_RANDOM_UB = Upper limit on the randomly choosen size when reading
 #                      from /dev/zero, /dev/random or /dev/urandon.
-# $REMOTE_ENCP = If this evaluates to anything python true, then if a local
-#                pnfs mount is not found, encp will try the pnfs_agent.
-#                If this is set to "only_pnfs_agent", then only the
-#                will be tried.
 # $FAIL_1ST_DATA_SOCKET_LATER = Not useful to users.  When set to boolean
 #                               true, will cause encp to simulate a network
 #                               error connecting the data socket.
@@ -148,7 +144,7 @@ TO DO:
    b) Stop passing local paths around as strings.
    c) Stop passing PNFS/Chimera paths as sometimes strings and sometimes
       as StorageFS objects.
-2) Don't assume StorageFS objects are PNFS, Chimera or pnfs_agent.
+2) Don't assume StorageFS objects are Chimera
    Consider lustre as an example.
 """
 
@@ -208,7 +204,6 @@ import charset
 import volume_family
 import enstore_constants
 import enstore_functions2
-import pnfs_agent_client
 import checksum
 import enstore_functions3
 import find_pnfs_file
@@ -302,7 +297,6 @@ MAX_VERSION_LENGTH = 48  #Length of the version string.
 
 UNIXFILE = "unixfile"
 HSMFILE = "hsmfile"
-RHSMFILE = "rhsmfile"
 
 #Return values to know if encp should stop or keep going.
 CONTINUE_FROM_BEGINNING = 2
@@ -631,7 +625,7 @@ def bin(integer):
 ############################################################################
 ##
 ## The functions in this section assume special functionality involving
-## PNFS or Chimera.
+## Chimera.
 ##
 ## To Do: These dependencies should be removed for future use with Lustre.
 ##
@@ -670,34 +664,17 @@ def get_directory_name(filepath):
         parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
 
         #Read the parent id.
-        if namespace.pnfs_agent_client_requested:
-            pac = get_pac()
-            #get_parent_id() will raise an exception on error.
-            parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5, tries=6)
-            parent_name = pac.get_nameof(parent_id, rcv_timeout=5, tries=6)
-        else:
-            try:
-                f = file_utils.open(parent_id_name, unstable_filesystem=True)
-                parent_id = file_utils.readline(f,
-                                           unstable_filesystem=True).strip()
-                f.close()
-                f = file_utils.open(os.path.join(dirname,".(nameof)(%s)"%parent_id))
-                parent_name = file_utils.readline(f,unstable_filesystem=True).strip()
-                f.close()
-            except (OSError, IOError), msg:
-                #We only need to worry about pnfs_agent_client_allowed here,
-                # pnfs_agent_client_requested is addressed a few lines earlier.
-                if msg.args[0] == errno.ENOENT and \
-                       namespace.pnfs_agent_client_allowed:
-                    pac = get_pac()
-                    parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5,
-                                                  tries=6)
-                    parent_name = pac.get_nameof(parent_id,  rcv_timeout=5, tries=6)
-                    if not parent_id: #Does this work to catch errors?
-                        raise OSError, msg
-                else:
-                    raise sys.exc_info()[0], sys.exc_info()[1], \
-                          sys.exc_info()[2]
+        try:
+            f = file_utils.open(parent_id_name, unstable_filesystem=True)
+            parent_id = file_utils.readline(f,
+                                            unstable_filesystem=True).strip()
+            f.close()
+            f = file_utils.open(os.path.join(dirname,".(nameof)(%s)"%parent_id))
+            parent_name = file_utils.readline(f,unstable_filesystem=True).strip()
+            f.close()
+        except (OSError, IOError), msg:
+            raise sys.exc_info()[0], sys.exc_info()[1], \
+                  sys.exc_info()[2]
         #
         # this avoids "[Errno 40] Too many levels of symbolic links"
         # when resulting directory_name would have looked like
@@ -891,38 +868,11 @@ def get_stat(filename, e=None):
     pathname = os.path.abspath(filename)
 
     try:
-        #This is intentionally left as an os.stat().  For the case of
-        # using the pnfs_agent it doesn't make sense to fail N times
-        # here.  Thus, we fail after one time, fall into the exception
-        # handling were we either retry the stat (because pnfs is not
-        # robust) or we need to ask the pnfs_agent.
-        if pathname.find("pnfs") != -1 and \
-               namespace.pnfs_agent_client_requested:
-            #We need the find() of the substring "pnfs" to quickly (as
-            # compared to stat()s over (P)NFS) determine if the file is
-            # likely a pnfs file.  This test should exclude most local
-            # files.  There is nothing that prevents the user from having
-            # the string "pnfs" in their (local) file and directory names.
-            # These rare cases are handled with the is_local_path() in
-            # test below.
-            raise OSError(errno.ENOENT, "Force use of pnfs_agent.")
-        else:
-            statinfo = file_utils.get_stat(pathname)
-
+        statinfo = file_utils.get_stat(pathname)
         return statinfo
     except (OSError, IOError), msg:
         if getattr(msg, "errno", None) in [errno.ENOENT, errno.EIO]:
-            if namespace.is_storage_remote_path(pathname, check_name_only = 1):
-                #Also, when using the pnfs_agent, we will get ENOENT because
-                # locally the file will not exist.
-                try:
-                    pac = get_pac()
-                    statinfo = pac.get_stat(pathname)
-                except (OSError, IOError), msg:
-                    raise sys.exc_info()[0], sys.exc_info()[1], \
-                          sys.exc_info()[2]
-                return statinfo
-            elif is_layer_access_name(pathname):
+            if is_layer_access_name(pathname):
                 # In case of layer 1 or layer 4 and error
                 # call get stat from chimera/pnfs
                 sfs = namespace.StorageFS(pathname)
@@ -1010,14 +960,6 @@ def access_check(path, mode):
         if rtn:
             return rtn
 
-    #Before giving up that this is a pnfs file, ask the pnfs_agent.
-    # Is there a more performance efficent way?
-    if namespace.pnfs_agent_client_requested or \
-           namespace.pnfs_agent_client_allowed:
-        pac = get_pac()
-        rtn = pac.e_access(path, mode)
-        return rtn
-
     return False
 
 #Take as input the raw output of Pnfs.readlayer().
@@ -1058,27 +1000,18 @@ def isdir(pathname):
     stat_info = get_stat(pathname)
     if stat_info != None:
         return stat.S_ISDIR(stat_info[stat.ST_MODE])
-
-    #If using the pnfs_agent, None gets returned.  This isn't useful for
-    # givin useful error messages.
     return None
 
 def isfile(pathname):
     stat_info = get_stat(pathname)
     if stat_info != None:
         return stat.S_ISREG(stat_info[stat.ST_MODE])
-
-    #If using the pnfs_agent, None gets returned.  This isn't useful for
-    # givin useful error messages.
     return None
 
 def islink(pathname):
     stat_info = get_stat(pathname)
     if stat_info != None:
         return stat.S_ISLNK(stat_info[stat.ST_MODE])
-
-    #If using the pnfs_agent, None gets returned.  This isn't useful for
-    # givin useful error messages.
     return None
 
 #Get the user and group names from the stat member.  Also, get the
@@ -1277,7 +1210,6 @@ def update_last_access_time(input_path, time_now = None):
 
 #Take as parameter the interface class instance or a request ticket.  Determine
 # if the transfer(s) is/are a read or not.
-# Dmitry (litvintsev@fnal.gov) added "rhsmfile" checks
 #
 def is_read(ticket_or_interface):
     #If the type is an interface class...
@@ -1286,11 +1218,7 @@ def is_read(ticket_or_interface):
         outtype = getattr(ticket_or_interface, 'outtype', "")
         if intype == "hsmfile" and outtype == "unixfile"  :
             return 1
-        elif intype == "rhsmfile" and outtype == "unixfile"  :
-            return 1
         elif intype == "unixfile" and outtype == "hsmfile"  :
-            return 0
-        elif intype == "unixfile" and outtype == "rhsmfile"  :
             return 0
         else:
             infile = getattr(ticket_or_interface, 'infile', "")
@@ -2207,42 +2135,6 @@ def get_acc():
                                             server_address = acc_addr)
         return __acc
 
-def get_pac():
-    global __pac
-    global __csc
-
-    #If we don't have the log client or alarm client by now, there is
-    # likely something quite wrong.  So, don't try.  If __logc and __alarmc
-    # are set when passed in these flags have no effect.
-    flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
-
-    if __pac:
-        return __pac
-    elif __csc:
-        __pac = pnfs_agent_client.PnfsAgentClient(__csc, flags = flags,
-                                                  logc = __logc,
-                                                  alarmc = __alarmc)
-        return __pac
-    else:
-        try:
-            csc, config = __get_csc()
-        except EncpError:
-            csc, config = None, None
-
-        pac_addr = None  #Default.
-        if config:
-            #Find the pnfs agent information.
-            pac_info = config.get(enstore_constants.PNFS_AGENT, {})
-            if pac_info:
-                pac_addr = (pac_info.get('hostip', None),
-                            pac_info.get('port', None))
-
-        __pac = pnfs_agent_client.PnfsAgentClient(csc, flags = flags,
-                                                  logc = __logc,
-                                                  alarmc = __alarmc,
-                                                  server_address = pac_addr)
-        return __pac
-
 def get_lmc(library, use_lmc_cache = True):
     global __lmc
 
@@ -2429,32 +2321,9 @@ def clients(intf):
         else:
             alarm_server_address = None
 
-        if namespace.pnfs_agent_client_requested or \
-               namespace.pnfs_agent_client_allowed:
-            pnfs_agent_config = config.get('pnfs_agent', {})
-
-            pnfs_agent_ip = pnfs_agent_config.get('hostip', None)
-            pnfs_agent_port = pnfs_agent_config.get('port', None)
-
-            if pnfs_agent_ip and pnfs_agent_port:
-                pnfs_agent_address = (pnfs_agent_ip, pnfs_agent_port)
-                try:
-                    __pac = pnfs_agent_client.PnfsAgentClient(
-                        csc, 'ENCP', server_address=pnfs_agent_address)
-                except (KeyboardInterrupt, SystemExit):
-                    raise sys.exc_info()[0], sys.exc_info()[1], \
-                          sys.exc_info()[2]
-                except:
-                    pass
-            elif namespace.pnfs_agent_client_requested:
-                return {'status' : (e_errors.PNFS_ERROR,
-                                    "PNFS agent not found in configuration.")}
-            else:
-                pnfs_agent_address = None
     else:
         log_server_address = None
         alarm_server_address = None
-        pnfs_agent_address = None
 
     #Get a logger client, this will set the global log client Trace module
     # variable.  If this is not done here, it would get done while
@@ -4044,12 +3913,6 @@ def create_zero_length_pnfs_files(filenames, e = None):
     if type(filenames) != types.ListType:
         filenames = [filenames]
 
-    if e and is_write(e) and e.outtype == RHSMFILE:
-        remote_create = True
-        pac = get_pac()
-    else:
-        remote_create = False
-
     #now try to atomically create each file
     for f in filenames:
         if type(f) == types.DictType:
@@ -4058,57 +3921,46 @@ def create_zero_length_pnfs_files(filenames, e = None):
             fname = f
 
         delete_at_exit.register(fname)
-        if remote_create: # Use pnfs_agent to access pnfs file.
+        local_errno = -1
+        while local_errno == -1 or local_errno == errno.EAGAIN:
             try:
-                pac.creat(fname, mode=0666)
+                #raises OSError on error.
+                fd = file_utils.open_fd(fname,
+                                        os.O_CREAT|os.O_EXCL|os.O_RDWR,
+                                        mode = 0666,
+                                        unstable_filesystem=True)
 
                 if type(f) == types.DictType:
-                    f['wrapper']['inode'] = pac.get_stat(fname)[stat.ST_INO]
-                    f['fc']['pnfsid'] = pac.get_id(fname)
-            except OSError, msg:
-                raise OSError, msg
-
-        else: # locally mounted filesystem.
-            local_errno = -1
-            while local_errno == -1 or local_errno == errno.EAGAIN:
-                try:
-                    #raises OSError on error.
-                    fd = file_utils.open_fd(fname,
-                                            os.O_CREAT|os.O_EXCL|os.O_RDWR,
-                                            mode = 0666,
-                                            unstable_filesystem=True)
-
-                    if type(f) == types.DictType:
-                        #The inode is used later on to determine if
-                        # another process has deleted or removed the
-                        # remote pnfs file.
-                        f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
-                        #The pnfs id is used to track down the new paths
-                        # to files that were moved before encp completes.
-                        sfs = namespace.StorageFS(fname)
-                        sfs_id = sfs.get_id()
-                        f['fc']['pnfsid'] = sfs_id
-                        #The access name will allow for more efficent
-                        # error handling.  Then do a switcheroo with the
-                        # access name versus the normal name for cleanup.
-                        f['outfile'] = sfs.access_file(os.path.dirname(fname),
-                                                       sfs_id)
-                        delete_at_exit.register(f['outfile'])
-                        delete_at_exit.unregister(fname)
+                    #The inode is used later on to determine if
+                    # another process has deleted or removed the
+                    # remote pnfs file.
+                    f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
+                    #The pnfs id is used to track down the new paths
+                    # to files that were moved before encp completes.
+                    sfs = namespace.StorageFS(fname)
+                    sfs_id = sfs.get_id()
+                    f['fc']['pnfsid'] = sfs_id
+                    #The access name will allow for more efficent
+                    # error handling.  Then do a switcheroo with the
+                    # access name versus the normal name for cleanup.
+                    f['outfile'] = sfs.access_file(os.path.dirname(fname),
+                                                   sfs_id)
+                    delete_at_exit.register(f['outfile'])
+                    delete_at_exit.unregister(fname)
 
                     os.close(fd)
                     local_errno = 0
-                except (OSError, IOError), msg:
-                    #TO DO
-                    Trace.handle_error()
-                    if msg.args[0] == errno.EAGAIN:
-                        #If we got here then we just created a 'ghost' file
-                        # with the temporary lock filename.  Lets wait
-                        # a moment before trying again.
-                        time.sleep(2)
-                        continue
+            except (OSError, IOError), msg:
+                #TO DO
+                Trace.handle_error()
+                if msg.args[0] == errno.EAGAIN:
+                    #If we got here then we just created a 'ghost' file
+                    # with the temporary lock filename.  Lets wait
+                    # a moment before trying again.
+                    time.sleep(2)
+                    continue
 
-                    raise OSError, msg
+                raise OSError, msg
 
 def create_zero_length_local_files(filenames):
     if type(filenames) != types.ListType:
@@ -4332,9 +4184,6 @@ def get_oninfo(inputfile, outputfile, e):
         munge_name = True
     elif (len(e.input) == 1 and e.outtype == UNIXFILE and \
           file_utils.wrapper(os.path.isdir, (ofullname,))):
-        munge_name = True
-    elif (len(e.input) == 1 and e.outtype == RHSMFILE and \
-          get_pac().isdir(ofullname)):
         munge_name = True
 
     if munge_name:
@@ -5663,13 +5512,8 @@ def adjust_resubmit_request(ticket, encp_intf):
         if not encp_intf.output_file_family_width:
             try:
                 dname = get_directory_name(ticket['outfile']) #only for writes.
-                if encp_intf.outtype == RHSMFILE:
-                    t = get_pac()
-                    file_family_width = t.get_file_family_width(
-                        dname, rcv_timeout=5, tries=6)
-                else:
-                    t = namespace.Tag(dname)
-                    file_family_width = t.get_file_family_width(dname)
+                t = namespace.Tag(dname)
+                file_family_width = t.get_file_family_width(dname)
                 ticket['vc']['file_family_width'] = file_family_width
             except (OSError, IOError), msg:
                 if msg.args[0] in [errno.ENOENT]:
@@ -6266,7 +6110,7 @@ def verify_file_size(ticket, encp_intf = None):
 
     #If we used ticket['wrapper']['pnfsFilename'] here we would run into
     # the problem where the file could be moved in the namespace before
-    # the file is on tape.  For PNFS and Chimera, use the .(access)() paths.
+    # the file is on tape.  For Chimera, use the .(access)() paths.
     try:
         if is_read(ticket):
             pnfs_filename = ticket['infile']
@@ -7836,15 +7680,8 @@ def set_sfs_settings(ticket, intf_encp):
         sfsid = ticket['fc'].get('pnfsid', None)
         if sfsid:
             try:
-                if intf_encp.outtype == RHSMFILE \
-                       or intf_encp.intype == RHSMFILE: #intype for "get".
-                    sfs = get_pac()
-                    path = sfs.get_path(sfsid,
-                                        get_directory_name(pnfs_filename),
-                                        shortcut = intf_encp.shortcut)[0]
-                else:   # HSMFILE
-                    sfs = namespace.StorageFS(sfsid)
-                    path = sfs.get_path()[0]  #Find the new path.
+                sfs = namespace.StorageFS(sfsid)
+                path = sfs.get_path()[0]  #Find the new path.
                 ticket['wrapper']['pnfsFilename'] = path  #Remember new path.
                 if is_write(ticket):
                     ticket['outfile'] = path
@@ -8134,15 +7971,10 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         use_mount_point = os.path.dirname(e.override_path)
     else:
         use_mount_point = e.pnfs_mount_point
-    if e.outtype == RHSMFILE:
-        t = sfs = namespace.StorageFS(output_file, use_pnfs_agent = True,
-                                      mount_point = use_mount_point,
-                                      shortcut = e.shortcut)
-    else:
-        sfs = namespace.StorageFS(output_file, use_pnfs_agent = False,
-                                  mount_point = use_mount_point,
+    sfs = namespace.StorageFS(output_file,
+                              mount_point = use_mount_point,
                                   shortcut = e.shortcut)
-        t = namespace.Tag(output_file)
+    t = namespace.Tag(output_file)
 
     # check the input unix file. if files don't exists, we bomb out to the user
     tags = None
@@ -10043,16 +9875,10 @@ def create_read_request(request, file_number,
             ifullname = None
             if pnfs_name0 != None:
                 sfs = namespace.StorageFS(pnfs_name0)
-                if e.intype == RHSMFILE:
-                    #Using pnfs_agent.
-                    found_name = sfs.find_id_path(
-                        sfsid, bfid, file_record = fc_reply,
-                        likely_path = pnfs_name0)
-                else:
-                    #Using local mounted storage file system.
-                    found_name = find_pnfs_file.find_id_path(
-                        sfsid, bfid, file_record = fc_reply,
-                        likely_path = pnfs_name0)
+                #Using local mounted storage file system.
+                found_name = find_pnfs_file.find_id_path(
+                    sfsid, bfid, file_record = fc_reply,
+                    likely_path = pnfs_name0)
 
                 stat_info = sfs.get_stat(found_name)
                 if stat.S_ISREG(stat_info[stat.ST_MODE]):
@@ -11406,15 +11232,6 @@ class EncpInterface(option.Interface):
         #Enable buffered tape marks
         self.buffered_tape_marks = 0
 
-        #If the user wants the pnfs_agent instead of locally mount pnfs,
-        # let them have it.  This needs to be set BEFORE
-        # option.Interface.__init__() since it uses this value.
-        r_encp = os.environ.get('REMOTE_ENCP')
-        if r_encp != None:
-            namespace.pnfs_agent_client_allowed = True
-        if r_encp == "only_pnfs_agent":
-            namespace.pnfs_agent_client_requested = True
-
         #Override the default paramater list for admin mode and user2/dcache
         # mode only.
         if user_mode in [0, 2] and \
@@ -11856,24 +11673,14 @@ class EncpInterface(option.Interface):
 
         self.outtype = UNIXFILE
         if self.volume or self.get_bfid or self.get_bfids or self.get_cache:
-            if namespace.pnfs_agent_client_requested:
-                self.intype = RHSMFILE
-            elif namespace.pnfs_agent_client_allowed:
-                self.intype = HSMFILE #Is this correct?
-            else:
-                self.intype = HSMFILE
+            self.intype = HSMFILE
             return
 
         if self.put_cache:
             self.input = self.argv[-1]
             self.output = None
             self.intype = UNIXFILE
-            if namespace.pnfs_agent_client_requested:
-                self.outtype = RHSMFILE
-            elif namespace.pnfs_agent_client_allowed:
-                self.outtype = HSMFILE #Is this correct?
-            else:
-                self.outtype = HSMFILE
+            self.outtype = HSMFILE
             return #Don't continue.
 
         #If just the output file was specified and standard input is a
@@ -11902,21 +11709,8 @@ class EncpInterface(option.Interface):
         e = []  #e stand for does this exist on local host
         for i in range(0, self.arglen):
             #Get fullpaths to the files.
-            if namespace.pnfs_agent_client_requested:
-                protocol, host, port, fullname, dirname, basename = \
-                          enstore_functions2.fullpath2(self.args[i],
-                                                       no_split = True)
-                #Pnfs Agent.
-                pac = get_pac()
-                result = pac.is_pnfs_path(fullname, check_name_only = 1)
-                if result and pac.isdir(fullname):
-                    dirname = fullname
-                    basename = ""
-                else:
-                    dirname, basename = os.path.split(fullname)
-            else:
-                protocol, host, port, fullname, dirname, basename = \
-                          enstore_functions2.fullpath2(self.args[i])
+            protocol, host, port, fullname, dirname, basename = \
+                      enstore_functions2.fullpath2(self.args[i])
 
             #Store the name into this list.
             self.args[i] = fullname
@@ -11938,28 +11732,6 @@ class EncpInterface(option.Interface):
             # 1) Pnfs is mounted wrong or not at all.
             # 2) The user misspelled the path before the pnfs mount point
             #    in the absolute filename.
-
-            if namespace.pnfs_agent_client_requested:
-                #try:
-                #    #Pnfs Agent.
-                #    pac = get_pac()
-                #    result = pac.is_pnfs_path(fullname,
-                #                              check_name_only = 1)
-                #except EncpError, msg:
-                #    result = 0
-
-                if result:
-                    e.append(0)
-                    p.append(2)
-                    continue
-                else:
-                    e.append(os.path.exists(dirname))
-                    p.append(0) #Assume local file.
-                    #Do not even try checking if pnfs is locally mounted.
-                    # The user has specifically requested that encp
-                    # only access pnfs through the pnfs_agent.  Just go
-                    # on and check the next file.
-                    continue
 
             try:
                 #Original full path.  (Best choice if possible)
@@ -12015,20 +11787,6 @@ class EncpInterface(option.Interface):
                 self.args[i] = grid_path
                 continue
 
-            if namespace.pnfs_agent_client_allowed:
-                try:
-                    #Pnfs Agent.
-                    pac = get_pac()
-                    result = pac.is_pnfs_path(fullname,
-                                              check_name_only = 1)
-                except EncpError:
-                    result = 0
-
-                if result:
-                    e.append(0)
-                    p.append(2)
-                    continue
-
             e.append(os.path.exists(dirname))
             p.append(0) #Assume local file.
 
@@ -12037,19 +11795,13 @@ class EncpInterface(option.Interface):
 
         #The p# variables are used as holders for testing if all input files
         # are unixfiles or hsmfiles (aka pnfs files).
-        #    2 = pnfs agent, 1 = pnfs & 0 = local
+        #    1 = pnfs & 0 = local
         p1 = p[0]
         p2 = p[self.arglen - 1]
         #The m# variables are used to determine if all of the input files
         # are on the same node (enstore system).
         m1 = m[0]
         m2 = m[self.arglen - 1]
-        #
-        # Dmitry's hacking
-        # e1 =
-        #       0 - non-existing path, 1 - existing path
-        ###e1 = e[0]
-        ###e2 = e[self.arglen - 1]
 
         #Also, build two new lists of input and output files.  The output
         # list should always be 1 in length.  A simple, assignment is not
@@ -12119,47 +11871,15 @@ class EncpInterface(option.Interface):
             print_error(e_errors.USERERROR, msg)
             delete_at_exit.quit()
 
-        #Dmitry:
-        #      logic is this, if a file is pnfs file and it does not
-        #      exist locally we asume that it is on remote pnfs server
-        #      we create special type to handle this case "rhsm" aka "remote hsm"
-
-        if namespace.pnfs_agent_client_requested:
-            if p1 == 1 or p1 == 2:
-                self.intype = RHSMFILE
-            else:
-                self.intype = UNIXFILE
-            if p2 == 1 or p2 == 2:
-                self.outtype = RHSMFILE
-            else:
-                self.outtype = UNIXFILE
-
-        elif namespace.pnfs_agent_client_allowed:
-            if p1 == 2:
-                self.intype = RHSMFILE
-            elif p1 == 1:
-                self.intype = HSMFILE
-                namespace.pnfs_agent_client_allowed = False
-            else:
-                self.intype = UNIXFILE
-            if p2 == 2:
-                self.outtype = RHSMFILE
-            elif p1 == 1:
-                self.outtype = HSMFILE
-                namespace.pnfs_agent_client_allowed = False
-            else:
-                self.outtype = UNIXFILE
-
+        #Assign the collection of types to these variables.
+        if p1 == 1:
+            self.intype = HSMFILE
         else:
-            #Assign the collection of types to these variables.
-            if p1 == 1:
-                self.intype = HSMFILE
-            else:
-                self.intype = UNIXFILE
-            if p2 == 1:
-                self.outtype = HSMFILE
-            else:
-                self.outtype = UNIXFILE
+            self.intype = UNIXFILE
+        if p2 == 1:
+            self.outtype = HSMFILE
+        else:
+            self.outtype = UNIXFILE
 
 ##############################################################################
 ##############################################################################
@@ -12193,7 +11913,7 @@ def log_encp_start(tinfo, intf):
     except (OSError, KeyError):
         real_group = os.getgid()
 
-    if intf.outtype == HSMFILE or intf.outtype == RHSMFILE:
+    if intf.outtype == HSMFILE:
         #If verbosity is turned on and the transfer is a write to enstore,
         # output the tag information.
         try:
@@ -12204,10 +11924,7 @@ def log_encp_start(tinfo, intf):
                                              intf.pnfs_mount_point,
                                              shortcut = True)[0]
                 shortcut_dname = get_directory_name(shortcut_name)
-                if intf.outtype == RHSMFILE:
-                    t = sfs
-                else:
-                    t = namespace.Tag(intf.put_cache)
+                t = namespace.Tag(intf.put_cache)
             elif not intf.output:
                 t = None
                 shortcut_dname = None
@@ -12296,7 +12013,7 @@ def log_encp_start(tinfo, intf):
     id_line = "User: %s(%d)  Group: %s(%d)  Euser: %s(%d)  Egroup: %s(%d)" %\
               (real_name, os.getuid(), real_group, os.getgid(),
                user_name, os.geteuid(), user_group, os.getegid())
-    if intf.outtype == HSMFILE or intf.outtype == RHSMFILE:
+    if intf.outtype == HSMFILE:
         tag_line = "Library: %s  Storage Group: %s  File Family: %s  " \
                    "FF Wrapper: %s  FF Width: %s" % \
                    (library, storage_group,
@@ -12309,7 +12026,7 @@ def log_encp_start(tinfo, intf):
     Trace.message(DONE_LEVEL, command_line)
     Trace.message(DONE_LEVEL, version_line)
     Trace.message(DONE_LEVEL, os_line)
-    if intf.outtype == HSMFILE or intf.outtype == RHSMFILE:
+    if intf.outtype == HSMFILE:
         Trace.message(DONE_LEVEL, tag_line)
     Trace.message(DONE_LEVEL, cwd_line)
 
@@ -12479,17 +12196,6 @@ def main(intf):
         #done_ticket, work_list = read_from_hsm(intf, tinfo)
         done_ticket = read_from_hsm(intf, tinfo)
 
-    ## have we been called "encp rshmfile unixfile" ?
-    elif intf.intype == RHSMFILE and intf.outtype == UNIXFILE :
-        #done_ticket, work_list = read_from_hsm(intf, tinfo)
-        done_ticket = read_from_hsm(intf, tinfo)
-
-    ## have we been called "encp unixfile rhsmfile" ?
-    elif intf.intype == UNIXFILE and intf.outtype == RHSMFILE :
-#        emsg = "encp unix to remote hsm  is not implemented."
-#        done_ticket = {'status':("USERERROR", emsg)}
-        #done_ticket, work_list = write_to_hsm(intf, tinfo)
-        done_ticket = write_to_hsm(intf, tinfo)
 
     ## have we been called "encp unixfile unixfile" ?
     elif intf.intype == UNIXFILE and intf.outtype == UNIXFILE :
@@ -12498,8 +12204,7 @@ def main(intf):
         done_ticket = {'status':("USERERROR", emsg)}
 
     ## have we been called "encp hsmfile hsmfile?
-    elif intf.intype == HSMFILE and intf.outtype == HSMFILE \
-         or intf.intype == RHSMFILE and intf.outtype == RHSMFILE:
+    elif intf.intype == HSMFILE and intf.outtype == HSMFILE :
         emsg = "encp tape to tape is not implemented. Copy file to local " \
                "disk and then back to tape."
         done_ticket = {'status':("USERERROR", emsg)}

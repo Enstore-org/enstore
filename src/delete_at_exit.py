@@ -26,12 +26,11 @@ import configuration_client
 import file_clerk_client
 import enstore_functions2
 import e_errors
-import pnfs_agent_client
 import file_utils
 import namespace
 
 #global value with each item for a different thread
-thread_specific_data = threading.local()  
+thread_specific_data = threading.local()
 #global locks for the thread_specific_data
 deletion_list_lock = threading.Lock()
 
@@ -44,7 +43,7 @@ sip_lock = threading.Lock()
 # from functions that have acquired the deletion_list_lock lock.
 def get_deletion_lists():
     global thread_specific_data
-    
+
     if not hasattr(thread_specific_data, "bfids"):
         thread_specific_data.bfids = []
     if not hasattr(thread_specific_data, "files"):
@@ -70,7 +69,7 @@ def register(filename):
     if filename not in _deletion_list:
         _deletion_list.append(filename)
 
-    deletion_list_lock.release()    
+    deletion_list_lock.release()
 
 def register_bfid(bfid):
     deletion_list_lock.acquire()
@@ -86,7 +85,7 @@ def unregister(filename):
         return
 
     deletion_list_lock.acquire()
-    
+
     _deletion_list = get_deletion_lists().files
     if filename in _deletion_list:
         _deletion_list.remove(filename)
@@ -95,11 +94,11 @@ def unregister(filename):
 
 def unregister_bfid(bfid):
     deletion_list_lock.acquire()
-    
+
     _deletion_list_bfids = get_deletion_lists().bfids
     if bfid in _deletion_list_bfids:
         _deletion_list_bfids.remove(bfid)
-    
+
     deletion_list_lock.release()
 
 
@@ -120,7 +119,7 @@ def delete():
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-    
+
     # Delete registered files.
     for f in _deletion_list:
         Trace.log(e_errors.INFO, "Performing file cleanup for file: %s" % (f,))
@@ -140,7 +139,7 @@ def delete():
 
 
 
-            
+
     # Delete registered bfids.
     for b in _deletion_list_bfids:
         Trace.log(e_errors.INFO, "Performing bfid cleanup for: %s" % (b,))
@@ -155,10 +154,10 @@ def delete():
                 sys.stderr.flush()
             except IOError:
                     pass
-            
+
     deletion_list_lock.release()
 
-            
+
 def signal_handler(sig, frame):
     global signal_in_progress
 
@@ -188,7 +187,7 @@ def signal_handler(sig, frame):
             sys.stderr.flush()
         except IOError:
             pass
-    
+
     try:
         sys.stderr.write("Caught signal %s, exiting.\n" % (sig,))
         sys.stderr.flush()
@@ -240,7 +239,7 @@ def setup_signal_handling():
     sig_leave_alone_list.append(signal.SIGCHLD)
     sig_leave_alone_list.append(signal.SIGWINCH)
     sig_leave_alone_list.append(signal.SIGPIPE)  #Use python's default.
-    
+
     #Handle all signals not in the known skip list.
     for sig in range(1, signal.NSIG):
         if sig not in sig_leave_alone_list:
@@ -261,7 +260,7 @@ def setup_signal_handling():
 # in so many places.
 __pychecker__ = "no-shadowbuiltin"
 def quit(exit_code=1):
-    
+
     #Perform cleanup.
     delete()
 
