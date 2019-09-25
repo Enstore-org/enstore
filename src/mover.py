@@ -5379,15 +5379,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
-
                 if self.stop:
+                    Trace.alarm(e_errors.ERROR, "encountered FTT_EBLANK error. Going OFFLINE. Please check the tape drive. The tape will stay in the drive")
+                    self.set_volume_noaccess(volume_label, "encountered FTT_EBLANK error. See log for details")
                     self.offline() # stop here for investigation
+                    self.net_driver.close()
+                    self.network_write_active = False # reset to indicate no network activity
                     return
             elif msg.find("FTT_EUNRECOVERED") != -1:
                 Trace.alarm(e_errors.ERROR, "encountered FTT_EUNRECOVERED error. Going OFFLINE. Please check the tape drive")
                 self.set_volume_noaccess(volume_label, "encountered FTT_EUNRECOVERED error. See log for details")
-
                 self.offline() # stop here for investigation
+                self.net_driver.close()
+                self.network_write_active = False # reset to indicate no network activity
                 return
 
         ### XXX translate this to an e_errors code?
