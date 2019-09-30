@@ -9,7 +9,7 @@
 #
 # Requires $ENSTORE_DIR/tools/encp_test_functions and
 # $ENSTORE_DIR/tools/encp_create_tests to work.
-# 
+#
 # Requires $LOCAL_DIR and $PNFS_DIR to be set.
 
 #To add a new test:
@@ -37,7 +37,6 @@ list_of_encp_tests="single_read_test
                     single_fs_path_read_test
                     data_access_layer_read_write_test
                     multiple_copies_read_write_test
-                    pnfs_agent_read_write_test
                     setuid_read_write_test
                     pipe_write_test
                     source_file_does_not_exist_write_test
@@ -71,9 +70,9 @@ print_help()
     echo "    -q               Set debug level to 0."
     echo "    -l <dir>         The local directory to use; or use \$LOCAL_DIR."
     echo "    -p <dir>         The storage directory to use; or use \$PNFS_DIR."
-    echo 
+    echo
     echo "List of Encp Tests:"
-    echo 
+    echo
     for name in `echo "$list_of_encp_tests"`; do
         echo $name
     done
@@ -107,7 +106,7 @@ run_tests()
 	if [ $(eval echo \$$test_name) = yes ]; then
             #If -t in effect, truncate the log file.  If it does not exist,
 	    # create it.
-	    truncate_encp_output  
+	    truncate_encp_output
 
 	    #
 	    #Execute the test.
@@ -179,7 +178,7 @@ cleanup=${cleanup:-no}
 #Parse any command line arguments.
 #
 # encp_cmd and debug are used in encp_test_functions function transfer().
-# 
+#
 while getopts dhe:atn:s:cql:p: option; do
     case "$option"
     in
@@ -264,7 +263,7 @@ fi
 if [ -z "$LOCAL_DIR" ]; then
     echo "\$LOCAL_DIR not set.  Stopping test." 1>&2
     exit 1
-fi    
+fi
 if [ ! -d "$LOCAL_DIR" ]; then
     echo "$LOCAL_DIR does not exist.  Stopping test." 1>&2
     exit 1
@@ -300,17 +299,6 @@ find_command enmv
 try_enstore_cmd="try_enstore $enstore_cmd"
 enstore_cmd="run_enstore $enstore_cmd"
 
-#Note: REMOTE_ENCP is an environmental variable that tells encp to use
-# pnfs_agent instead of PNFS directly.  We check for the same variable
-# here to handle running these tests through the pnfs agent too.
-if [ -n "$REMOTE_ENCP" ]; then
-    $enstore_cmd pnfs_agent --timeout 10 --retries 3 --alive
-    if [ $? -ne 0 ]; then
-	echo 'pnfs_agent is not running and $REMOTE_ENCP is set.' \
-	    'Stopping test.' 1>&2
-	exit 1
-    fi
-fi
 
 #Create the test area directories.
 setup_local_test_paths
@@ -344,7 +332,7 @@ if [ $number = "unlimited" ]; then
         if [ $debug -eq $DEBUG_SUMMARY ]; then
             echo "Starting test pass $loops."
         fi
-	
+
 	run_test_pass
 	exit_status=$?
 
@@ -352,7 +340,7 @@ if [ $number = "unlimited" ]; then
             echo "Completed test pass $loops.  (RC=$exit_status)"
         fi
 
-	loops=$((loops + 1))	
+	loops=$((loops + 1))
     done
 else
     while [ $loops -le $number -a $exit_status -eq 0 ]; do
@@ -362,7 +350,7 @@ else
         elif [ $debug -ge $DEBUG_EXECUTIVE_SUMMARY -a $number -gt 1 ]; then
             echo $loop_message
         fi
-   
+
 	run_test_pass
 	exit_status=$?
 

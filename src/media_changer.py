@@ -4270,6 +4270,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			return (e_errors.ERROR, 'Nothing to import', None, None)
 
 	self.retry_count = 4
+	retry = True
 	while retry:
 		s_slot, d = self.locate_volume(EMPTY)
 		if s_slot < 0:

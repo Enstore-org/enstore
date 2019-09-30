@@ -58,10 +58,14 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                    user  = acc.get('dbuser_reader', 'enstore_reader'))
 
         res = db.query(SELECT_MIN_MAX).getresult()
+        if not res[0][0] or not res[0][1]:
+            return
         min = res[0][0]/MB
         max = res[0][1]/MB
         min = int(min)
         max = int(max)
+        if min == max:
+            min = 0
         db.close()
 
         for mover_name in mover_list:

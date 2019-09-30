@@ -1347,11 +1347,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             chimeraid = os.path.basename(filename)[10:-1]
             filename = self.get_path(chimeraid)[0]
 
-        self.writelayer(1,"", filename)
-        self.writelayer(2,"", filename)
-        self.writelayer(3,"", filename)
-        self.writelayer(4,"", filename)
-
         # It would be better to move the file to some trash space.
         # I don't know how right now.
         file_utils.remove(filename)

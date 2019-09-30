@@ -12,7 +12,6 @@ and performs encp of these files.
 """
 
 from optparse import OptionParser
-import os
 import random
 import string
 import sys
@@ -28,7 +27,11 @@ import library_manager_client
 import mover_client
 import Trace
 
-QUERY="""
+"""
+SQL query that produces a list of bfid,location_cookie,volume from a randomly
+selected volume. Query is postgresql specific
+"""
+QUERY_RANDOM_VOLUME = """
 SELECT f.bfid,
        f.location_cookie,
        f.volume,
@@ -55,29 +58,48 @@ WHERE f.volume=v.id
    AND f.size>0
 ORDER BY f.location_cookie ASC
 """
-"""SQL query that produces a list of bfid,location_cookie,volume from a randomly
-selected volume. Query is postgresql specific"""
 
-INSERT_QUERY_WITH_ERROR="""
+"""
+SQL query that produces a list of bfid,location_cookie,volume from a specified volume
+"""
+QUERY_VOLUME = """
+SELECT f.bfid,
+       f.location_cookie,
+       f.volume,
+       v.label
+FROM file f,
+     volume v
+WHERE f.volume=v.id
+   AND v.label = %s
+   ORDER BY f.location_cookie ASC
+"""
+
+"""
+SQL query that insert a record containing and error string into volume_audit table
+"""
+INSERT_QUERY_WITH_ERROR = """
 INSERT INTO volume_audit (volume, start,finish, bfid,result,error)
 VALUES ({},'{}',{},'{}',{},'{}')
 """
-"""SQL query that insert a record containing and error string into volume_audit table"""
 
+"""
+SQL query that insert a record into volume_audit table w/o error string
+"""
 INSERT_QUERY_WO_ERROR="""
 INSERT INTO volume_audit (volume, start,finish, bfid,result)
 VALUES ({},'{}',{},'{}',{})
 """
-"""SQL query that insert a record into volume_audit table w/o error string"""
 
-ENCP_ARGS=["encp"] + ["--skip-pnfs",
-                      "--verbose", "10",
-                      "--priority", "10",
-                      "--bypass-filesystem-max-filesize-check",
-                      "--max-resubmit", "7",
-                      "--delayed-dismount", "1",
-                      "--get-bfid"]
-"""encp options"""
+"""
+encp options
+"""
+ENCP_ARGS = ["encp"] + ["--skip-pnfs",
+                       "--verbose", "10",
+                       "--priority", "10",
+                       "--bypass-filesystem-max-filesize-check",
+                       "--max-resubmit", "7",
+                       "--delayed-dismount", "1",
+                       "--get-bfid"]
 
 Trace.init("VOLUME_AUDIT")
 
@@ -87,109 +109,131 @@ def help():
 
 
 class VolumeAudit:
-    """Performs volume audit by randomly choosing a tape and running
+    """Performs volume audit by randomly choosing a tape or
+    on the volume passed as argument and running
     encp of first, last and random file in between from that tape. Records
     encp result in enstoredb"""
-    def __init__(self,csc,duration=360):
+    def __init__(self, csc, duration=360, volume=None):
         """constructor.
 
         :type csc: :class:`configuration_client.ConfigurationClient`
         :arg csc: configuration client.
         :type duration: integer
         :arg duration: how often to audit a tape (e.g. once in 360 days)
+        :type volume: basestring
+        :arg volume: volume to be audited
         """
         self.csc = csc
-        self.duration=duration
-        dbInfo   = csc.get("database")
-        self.db  = dbaccess.DatabaseAccess(maxconnections=1,
-                                           host     = dbInfo.get('db_host', "localhost"),
-                                           database = dbInfo.get('dbname', "enstoredb"),
-                                           port     = dbInfo.get('db_port', 5432),
-                                           user     = dbInfo.get('dbuser', "enstore"))
+        self.volume = volume
+        self.duration = duration
+        dbInfo = csc.get("database")
+        self.db = dbaccess.DatabaseAccess(maxconnections=1,
+                                          host=dbInfo.get('db_host', "localhost"),
+                                          database=dbInfo.get('dbname', "enstoredb"),
+                                          port=dbInfo.get('db_port', 5432),
+                                          user=dbInfo.get('dbuser', "enstore"))
 
     def do_work(self):
         """Performs volume audit by randomly choosing a tape and running
         encp of first, last and random file in between from that tape. Records
         encp result in enstoredb"""
-        #
-        # get list of library managers and build list of libraries
-        # that have sufficient number of movers
-        #
-        lms = self.csc.get_library_managers2()
-        libs = []
-        """
-        exclude test tape libraries
-        """
-        test_libraries = self.csc.get('crons',{}).get('test_library_list', [])
-        lms = [lm for lm in lms if lm['library_manager'] not in test_libraries]
-        for l in lms:
-            lmc = library_manager_client.LibraryManagerClient(self.csc, l["name"])
-            active_volumes = lmc.get_active_volumes()
-            movers = self.csc.get_movers2(l["name"])
-            movers = [ x.get('name') for x in movers
-                       if x.get('status') == (e_errors.OK, None) and x.get('name') ]
-            hasIdle=False
-            for m in movers:
-                mvc=mover_client.MoverClient((enstore_functions2.default_host(),
-                                              enstore_functions2.default_port()), m)
-                m_status = mvc.status()
-                if m_status.get('state') in ('IDLE',):
-                    hasIdle=True
-                    break
-            if hasIdle:
-                libs.append(l["name"].split(".")[0])
-        if len(libs) == 0 :
-            Trace.log(e_errors.INFO, "All libraries are too busy")
-            return
-        #
-        # inject libraries and duration into the SQL.
-        # There is no guarantee that the movers belonging to
-        # a volume library will not be all busy by the
-        # time the query finishes. Not sure what we can
-        # do about it.
-        #
-        q=QUERY.format(string.join(libs,"','"),self.duration)
-        res=self.db.query(q)
-        l = len(res)
-        if l <= 0 :
-            Trace.alarm(e_errors.INFO, "Could not find a random volume. Decrease -d option value. Current value is %d"%(self.duration))
-            return
+        l = 0
+        res = None
+        if self.volume:
+            res = self.db.query(QUERY_VOLUME, (self.volume,))
+            l = len(res)
+            if l <= 0:
+                Trace.alarm(e_errors.INFO, "Could not find volume {}".format(self.volume))
+                return
+        else:
+            #
+            # get list of library managers and build list of libraries
+            # that have sufficient number of movers
+            #
+            lms = self.csc.get_library_managers2()
+            libs = []
+            """
+            exclude test tape libraries
+            """
+            active_volumes = []
+            test_libraries = self.csc.get('crons', {}).get('test_library_list', [])
+            lms = [lm for lm in lms if lm['library_manager'] not in test_libraries]
+            for l in lms:
+                lmc = library_manager_client.LibraryManagerClient(self.csc, l["name"])
+                active_volumes.extend(lmc.get_active_volumes())
+                movers = self.csc.get_movers2(l["name"])
+                movers = [x.get('name') for x in movers
+                         if x.get('status') == (e_errors.OK, None) and x.get('name')]
+                hasIdle = False
+                for m in movers:
+                    mvc = mover_client.MoverClient((enstore_functions2.default_host(),
+                                                    enstore_functions2.default_port()), m)
+                    m_status = mvc.status()
+                    if m_status.get('state') in ('IDLE',):
+                        hasIdle = True
+                        break
+                if hasIdle:
+                    libs.append(l["name"].split(".")[0])
+            if len(libs) == 0:
+                Trace.log(e_errors.INFO, "All libraries are too busy")
+                return
+            #
+            # inject libraries and duration into the SQL.
+            # There is no guarantee that the movers belonging to
+            # a volume library will not be all busy by the
+            # time the query finishes. Not sure what we can
+            # do about it.
+            #
+            q = QUERY_RANDOM_VOLUME.format(string.join(libs, "','"), self.duration)
+            res = self.db.query(q)
+            l = len(res)
+            if l <= 0:
+                Trace.alarm(e_errors.INFO,
+                "Could not find a random volume. Decrease -d option value. Current value is {}".
+                format(self.duration))
+                return
         # pick random file from interval that excludes 1st and last
-        index = random.randint(1,l-2) if l>2 else 0
-        volume=res[0][2]
-        label =res[0][3]
+        index = random.randint(1, l-2) if l > 2 else 0
+        volume = res[0][2]
+        label = res[0][3]
         random_file = res[index][0]
-        first_file  = res[0][0]
-        last_file   = res[l-1][0]
-        bfid_set    = set([first_file,random_file,last_file])
-        error_msg=None
-        start=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-        bfid=None
-        rc=0
-        for bfid in bfid_set:
-            argv=ENCP_ARGS+[bfid,"/dev/null"]
-            encp=encp_wrapper.Encp()
-            rc        = encp.encp(argv)
+        first_file = res[0][0]
+        last_file = res[l-1][0]
+        bfid_list = [first_file, random_file, last_file]
+        error_msg = None
+        start = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+        bfid = None
+        rc = 0
+        while bfid_list:
+            bfid = bfid_list.pop(0)
+            while bfid in bfid_list:         # this is to avoid doing duplicate work if tape has only 1 (or 2) files
+                bfid_list.remove(bfid)
+            argv = ENCP_ARGS+[bfid,"/dev/null"]
+            encp = encp_wrapper.Encp()
+            rc = encp.encp(argv)
             error_msg = encp.err_msg
             #
             # first breaks, quit
             #
-            if rc :
+            if rc:
                 break
         if error_msg:
             #
             # need to escape single ' with '' for SQL to work
             #
-            q=INSERT_QUERY_WITH_ERROR.format(volume,start,'now()',bfid,rc,error_msg.replace("'", "''"),)
+            q = INSERT_QUERY_WITH_ERROR.format(volume, start, 'now()', bfid, rc, error_msg.replace("'", "''"),)
             if rc:
-                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with error %s, return code %d"%(label,bfid,error_msg,rc))
+                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with error %s, return code %d"%(label, bfid, error_msg, rc))
         else:
-            q=INSERT_QUERY_WO_ERROR.format(volume,start,'now()',bfid,rc)
+            q = INSERT_QUERY_WO_ERROR.format(volume,start,'now()',bfid,rc)
             if rc:
-                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with return code %d"%(label,bfid,rc,))
-        self.db.insert(q)
+                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with return code %d"%(label, bfid, rc,))
+        """
+        Only insert in DB if volume was selected automatically for audit.
+        """
+        if not self.volume:
+            self.db.insert(q)
         return rc
-
 
     def __del__(self):
         """destructor"""
@@ -199,13 +243,16 @@ class VolumeAudit:
 if __name__ == "__main__":
     parser = OptionParser(usage=help())
     parser.add_option("-d", "--days",
-                      metavar="DAYS",type=int,default=360,dest="days",
+                      metavar="DAYS", type=int, default=360, dest="days",
                       help="select volumes that were audited no sooner than DAYS days ago (or never) [default: %default]")
+    parser.add_option("-v", "--volume",
+                      metavar="VOLUME", type=str, default=None, dest="volume",
+                      help="audit selected volume[default: %default]")
     (options, args) = parser.parse_args()
 
     csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
                                                     enstore_functions2.default_port()))
-    audit = VolumeAudit(csc,options.days)
+    audit = VolumeAudit(csc, options.days, options.volume)
     rc = audit.do_work()
     sys.exit(rc)
 

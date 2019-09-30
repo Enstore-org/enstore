@@ -42,13 +42,11 @@ import enstore_up_down
 import enstore_saag
 import enstore_saag_network
 import ratekeeper_client
-import pnfs
 import namespace
 import enstore_start
 import enstore_stop
 import enstore_restart
 import backup
-import pnfs_agent_client
 import udp_proxy_client
 import lm_director_client
 import dispatcher_client
@@ -102,8 +100,6 @@ server_functions = {
                      event_relay_client.do_work, option.ADMIN],
     "file" : [file_clerk_client.FileClerkClientInterface,
               file_clerk_client.do_work, option.USER],
-    "pnfs_agent" : [pnfs_agent_client.PnfsAgentClientInterface,
-		    pnfs_agent_client.do_work, option.ADMIN],
     "lmdirector" : [lm_director_client.LMDClientInterface,
 		    lm_director_client.do_work, option.ADMIN],
     "dispatcher" : [dispatcher_client.DispatcherClientInterface,

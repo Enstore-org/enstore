@@ -1,0 +1,90 @@
+commit 9064a764f24ac18d4515570854005852e2090a5b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 6 14:12:51 2019 -0500
+
+    Enstore rpm 6.3.1-14
+
+A	release-notes/ENSTORE_V_6.3.1-13.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit cca4d1c4e6fcf477fbe6849440c13cd25a529048
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 6 13:57:27 2019 -0500
+
+    Set mtx timeout from media changer.
+    
+    MTX scsi Linux timeout was hardcoded to be 5 min.
+    This is not enough due to statement from IBM developers and should be 16 min.
+    Implemented variable mtx timeout in mtx code (not in this review).
+    In this patch.
+    1. Implemented setting of mtx scsi linux timeout from mtx media changer.
+    2. Implemented error processing for mtx: Request Sense: Sense Key=Not Ready.
+    3. Implemented update_db for the MTXN_MediaLoader in do_retry.
+    4. Changed retry loop in mtx_mount, mtx_dismount of MTXN_MediaLoader class.
+    
+    http://srm.fnal.gov/reviews/r/589/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2056
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2055
+
+M	modules/SWIG/mtx.i
+M	src/media_changer.py
+
+commit 5a223014cd7f65afb052a11b65aa0667afed1d03
+Merge: 9fdf7e8 4b7e02e
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Tue Jul 30 15:27:51 2019 -0500
+
+    Merge branch 'migration' into develop
+
+commit 4b7e02ef0fbe82a97b8a9bf5b142724b23541d63
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Tue Jul 30 15:25:27 2019 -0500
+
+    [migration] BZ:2051 RB:586 force migrating duplicated volume
+    
+    migration blocks migrating files in migrated or duplicated state.
+    This may have sense if someone tries to migrate tape recently migrated.
+    In BZ 2051 migration does not migrate tape duplicated five years ago.
+    
+    Add --force option to bypass this check.
+    This is few liner change; the rest of the changes are reformatting.
+    
+    RB: http://uqbar.fnal.gov/reviews/r/586
+    BZ: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2051
+
+M	src/migrate_chimera.py
+
+commit 9fdf7e82b26c5dd3af79afdfb329c2027cdb2634
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jul 25 12:56:58 2019 -0500
+
+    SNOW interface: use correct keys for VO and Categorization
+    
+    	RB: http://srm/reviews/r/585/
+    	BZ: https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2054
+
+M	src/snow_fliptab.py
+M	src/snow_interface.py
+
+commit d9ee739e7fd28f6d84fb6f3ea614d409d7dc00b1
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Jul 23 15:57:12 2019 -0500
+
+    Improve mtx command timeout processing.
+    
+    It was observed that even the mount / dismount command timeouts it actually get executed.
+    Request database inventory to check if the tape operation was done and retry if it was not.
+    The database inventory adds about 40s, but it is more reliable to just check if tape was mounted / dismounted rather, than repeat command.
+    Repetition of the completed command may confise TS4500 firmware as recently observed.
+    http://srm.fnal.gov/reviews/r/584/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2052
+
+M	ftt/ftt_lib/Linux/ftt_machdep.c
+M	src/media_changer.py
+
+commit 2612c66ae6408a8b1a85f95a7cb6e6fbbd1fdd6a
+Merge: b1fdeb2 a1068bf
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jul 19 12:59:14 2019 -0500
+
+    Merge branch 'release/6.3.1-13' into develop
