@@ -536,7 +536,7 @@ static PyObject* __arp(struct in_addr *ip, PyObject *arp_list)
 	* Set these items as values in the new dictionary.
 	*/
        /* hardware address */
-       dummy_ptr = &arp_msg.arp_ha.sa_data[0];
+       dummy_ptr = (unsigned char *)&arp_msg.arp_ha.sa_data[0];
        snprintf(dummy, sizeof(dummy), "%x:%x:%x:%x:%x:%x",
 		*(dummy_ptr + 0),
 		*(dummy_ptr + 1),
@@ -551,7 +551,7 @@ static PyObject* __arp(struct in_addr *ip, PyObject *arp_list)
 	* be needed.  However, the (gcc) complier just refused to cast
 	* refused to case arp_msg.arp_pa to "struct sockaddr_in. */
        memcpy(&addr_dummy, &arp_msg.arp_pa, sizeof(struct sockaddr));
-       if(inet_ntop(arp_msg.arp_pa.sa_family, &(((struct sockaddr_in)addr_dummy).sin_addr),
+       if(inet_ntop(arp_msg.arp_pa.sa_family, &addr_dummy.sin_addr,
 		    dummy, sizeof(dummy)) > 0)
        {
 	  PyDict_SetItemString(arp_dict, "addr",
@@ -584,11 +584,9 @@ PyObject* arpGet(char *dest)
    struct hostent *host;
    char **h_ptr;
 
-   PyObject *arp_dict;
    PyObject *arp_list;
-
+   
    arp_list = PyList_New(0);
-   arp_dict = PyDict_New();
 
    /*
     * At some point we need to remove gethostbyname() and instead use
