@@ -149,7 +149,7 @@ def parse_mtab():
             #Make up values for Chimera to return that look like PNFS
             # .(get)(database) values.
             mount_name = os.path.basename(mp)
-            if mount_name == "fs" or mont_name == "fnal.gov":
+            if mount_name == "fs" or mount_name == "fnal.gov":
                 mount_name = "admin"
             db_id = 0  #For Chimera this is always zero.  If this value is
                        # ever allowed to change in the future, then
