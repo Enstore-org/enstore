@@ -458,7 +458,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11h CVS"
+    version_string = "v3_11i CVS"
     encp_file = globals().get('__file__', "")
     if encp_file:
         version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)

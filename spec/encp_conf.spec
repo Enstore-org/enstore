@@ -54,6 +54,12 @@ ENCP config files (FNAL specific)
 
 %install
 
+mkdir -p  %{buildroot}/etc/profile.d
+mkdir -p  %{buildroot}/%{chooseConfig_path}
+
+cp -p $ENSTORE_DIR/ups/encp.*  %{buildroot}/etc/profile.d
+cp -p $ENSTORE_DIR/ups/chooseConfig %{buildroot}/%{chooseConfig_path}
+
 %files
 %attr(0755,root,root) /etc/profile.d/%{product}.*
 %attr(0755,root,root) %{chooseConfig_path}/chooseConfig
