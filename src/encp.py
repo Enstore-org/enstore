@@ -6934,8 +6934,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             Trace.alarm(e_errors.EMAIL, status[0], alarm_dict)
         elif e_errors.is_alarmable(status[0]):
             Trace.alarm(e_errors.ERROR, status[0], alarm_dict)
-        else:
-            Trace.log(e_errors.ERROR, status[0], alarm_dict)
 
         #try:
         #    #Try to delete the request.  In the event that the connection

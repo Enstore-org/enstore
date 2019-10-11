@@ -108,7 +108,7 @@ BAD_FILE_SIZE = "BAD_FILE_SIZE" # file size is bad. For instance < 0
 MEMORY_ERROR = "MEMORY_ERROR" # python exception MemoryError
 NOT_SUPPORTED = "NOT SUPPORTED"
 INVALID_WRAPPER = "INVALID WRAPPER" #The tape wrapper type is not known.
-INVALID_ACTION = "INVALID ACTION"
+INVALID_ACTION = "INVALID ACTION" 
 
 # VX: caching
 # Library Manager Director Errors :
@@ -238,6 +238,7 @@ raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.
 email_alarm_errors = ( CRC_ENCP_ERROR,   #Set by encp
                        CRC_ECRC_ERROR,   #Set by encp
                        CRC_DCACHE_ERROR, #Set by encp
+                       DEVICE_ERROR, #EXfer read/write call stuck in kernel
                       )
 
 # CLIENT PORTION OF 'MESS_TYPE' MESSAGE
@@ -478,7 +479,7 @@ def _get_error(obj):
 #Return true if the status is the same as e_errors.OK, false otherwise.
 def is_ok(e):
     error = _get_error(e)
-
+        
     if error == OK:
         return 1
     return 0
@@ -486,7 +487,7 @@ def is_ok(e):
 #Return true if the status is the same as e_errors.OK, false otherwise.
 def is_timedout(e):
     error = _get_error(e)
-
+    
     if error == TIMEDOUT:
         return 1
 
@@ -496,7 +497,7 @@ def is_timedout(e):
 # status.  Return false otherwise.
 def is_retriable(e):
     error = _get_error(e)
-
+    
     if is_ok(error):
         return 0
     elif error in non_retriable_errors:
@@ -510,7 +511,7 @@ def is_retriable(e):
 #If the value is in non_retriable or raise alarm return 1.  False otherwise.
 def is_non_retriable(e):
     error = _get_error(e)
-
+    
     if error in non_retriable_errors:
         return 1
     elif error in raise_alarm_errors:
@@ -522,7 +523,7 @@ def is_non_retriable(e):
 #If the value is alarmable, return 1 otherwise false.
 def is_alarmable(e):
     error = _get_error(e)
-
+    
     if error in raise_alarm_errors:
         return 1
     elif error in email_alarm_errors:
@@ -532,7 +533,7 @@ def is_alarmable(e):
 #If the value is emailable, return 1 otherwise false.
 def is_emailable(e):
     error = _get_error(e)
-
+    
     if error in email_alarm_errors:
         return 1
     return 0
@@ -540,7 +541,7 @@ def is_emailable(e):
 #If the value is RETRY or RESUBMITTING return 1 otherwise 0.
 def is_resendable(e):
     error = _get_error(e)
-
+    
     if error == RETRY:
         return 1
     elif error == RESUBMITTING:
