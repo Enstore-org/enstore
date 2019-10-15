@@ -559,10 +559,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             t = time.time()
             t_int = long(t)
             fraction = int((t-t_int)*1000) # this gradation allows 1000 distinct file names
-            src_fn = "package-%s-%s.%sZ"%(self.queue_in_name,
-                                           time.strftime("%Y-%m-%dT%H:%M:%S",
-                                                         time.localtime(t_int)),
-                                           fraction)
+            thread = threading.current_thread()
+            th_name = thread.getName()
+            src_fn = "package-%s-%s-%s.%sZ"%(self.queue_in_name,
+                                             th_name,
+                                             time.strftime("%Y-%m-%dT%H:%M:%S",
+                                                           time.localtime(t_int)),
+                                             fraction)
 
             # Create archive directory
             archive_dir = os.path.join(self.archive_area.remote_path, src_fn)
