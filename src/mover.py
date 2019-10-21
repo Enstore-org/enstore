@@ -1079,6 +1079,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         """
 
+        if  fc_ticket.get('original_library') and fc_ticket['original_library'] ==  vc_ticket['library']: # no redirection was needed
+            fc_ticket['original_library'] = None # request will not be put into files_in_transition table
         request = {'work':"new_bit_file",
                    'fc'  : fc_ticket,
                    'vc'  : vc_ticket,
