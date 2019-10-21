@@ -89,24 +89,25 @@ def file_checkum(f):
     blocks = fsize / bs
     rest = fsize % bs
     crc = 0L # will calculate 0 seeded crc
-    fd = os.open(f, 0)
-    i = 0
-    while i < blocks:
-        i = i + 1
-        r = strbuffer.buf_read(fd, buf, 0, bs)
-        if r > 0:
-            crc = checksum.adler32_o(crc, buf, 0, r)
-        elif r < 0:
-            Trace.log(e_errors.ERROR, "file_checksum error %s reading %s"%(r, f))
-    if rest:
-        r = strbuffer.buf_read(fd, buf, 0, rest)
-        if r > 0:
-            crc = checksum.adler32_o(crc, buf, 0, r)
-        elif r < 0:
-            Trace.log(e_errors.ERROR, "file_checksum error %s reading %s"%(r, f))
-    # 1 seeded crc:
-    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(crc, fsize)
-
+    crc_1_seeded = 0L
+    with open(f, 0) as f_obj:
+        fd = f_obj.fileno()
+        i = 0
+        while i < blocks:
+            i = i + 1
+            r = strbuffer.buf_read(fd, buf, 0, bs)
+            if r > 0:
+                crc = checksum.adler32_o(crc, buf, 0, r)
+            elif r < 0:
+                Trace.log(e_errors.ERROR, "file_checksum error %s reading %s"%(r, f))
+        if rest:
+            r = strbuffer.buf_read(fd, buf, 0, rest)
+            if r > 0:
+                crc = checksum.adler32_o(crc, buf, 0, r)
+            elif r < 0:
+                Trace.log(e_errors.ERROR, "file_checksum error %s reading %s"%(r, f))
+        # 1 seeded crc:
+        crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(crc, fsize)
     return crc, crc_1_seeded
 
 
@@ -137,7 +138,7 @@ def _check_packaged_files(archive_area, package, tar_blocking_factor=20):
         cmd = "tar -b %s --force-local -xf "%(tar_blocking_factor,)
     rtn = enstore_functions2.shell_command2("%s %s"%(cmd, package,))
     if rtn[0] != 0: # archiver return code
-        Trace.log(e_errors.ERROR, "Error unwinding tar file %s %s"(rtn[2], package)) #stderr
+        Trace.log(e_errors.ERROR, "Error unwinding tar file %s" %s(rtn[2], package)) #stderr
         sys.exit(1)
 
     # create list of files to check
