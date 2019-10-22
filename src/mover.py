@@ -2437,9 +2437,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state in (IDLE, HAVE_BOUND):
             t_in_state = int(time.time()) - int(self.state_change_time)
             if n_thread and n_thread.isAlive():
-                if t_in_state <= 1:
+                if t_in_state <= 1 or self.draining:
                     ## skip sending lm _update
                     ## to allow network thread to complete
+                    ## or if the mover is draining
                     return
                 if not hasattr(self,'restarting'):
                     Trace.alarm(e_errors.ALARM,
