@@ -7297,6 +7297,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'max_dismount_delay': self.max_dismount_delay,
                  'client': self.client_ip,
                  'buffer':'%s'%(buf,),
+                 'media_changer_device': self.mc_device,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
