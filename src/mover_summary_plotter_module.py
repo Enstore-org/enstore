@@ -58,14 +58,18 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                    user  = acc.get('dbuser_reader', 'enstore_reader'))
 
         res = db.query(SELECT_MIN_MAX).getresult()
-        if not res[0][0] or not res[0][1]:
+        if res[0][0] is None or res[0][1] is None:
+            # no entries
             return
-        min = res[0][0]/MB
-        max = res[0][1]/MB
-        min = int(min)
-        max = int(max)
-        if min == max:
+        min = int(res[0][0]/MB)
+        max = int(res[0][1]/MB)
+        if min == max :
+            # single encp happened in the specified period
             min = 0
+            if max == 0:
+                max = 500
+            else:
+                max *= 2
         db.close()
 
         for mover_name in mover_list:
@@ -98,7 +102,6 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             self.drive_error_ntuples[mover_name['mover']]=histogram.Ntuple(name+"_error_vs_date",
                                                                            name)
-
 
     def fill(self, frame):
         acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER)
