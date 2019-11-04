@@ -5359,7 +5359,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             cur_thread_name = None
 
         Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s thread %s" % (
-            exc, msg, error_source,self.current_volume, self.current_location, cur_thread_name))
+                exc, msg, error_source,self.current_volume, self.current_location, cur_thread_name))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         self._error = exc
         self._error_source = error_source
@@ -5585,7 +5585,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                    e_errors.READ_VOL1_READ_ERR,
                    e_errors.WRITE_VOL1_READ_ERR,
                    e_errors.MOVER_STUCK))):
-            self.set_volume_noaccess(volume_label, "Error: %s"%(exc,))
+            self.set_volume_noaccess(volume_label, "Error: %s %s"%(exc, msg))
         if ftt_eio and self.mode != WRITE:
             # if it was WRITE then the tape was set to readonly, which is enough
             # action for tape
