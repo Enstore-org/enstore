@@ -4687,22 +4687,21 @@ class MTXN_MediaLoader(MediaLoaderMethods):
     # If mtx hangs, this method will never return.
     def status_local(self):
 	Trace.log(ACTION_LOG_LEVEL, 'status_local')
+	busy_slots = []
 	rc = self.get_mtx_status()
 	if not e_errors.is_ok(rc[0]):
 		Trace.log(e_errors.ERROR, 'get_mtx_status returned: %s'%(rc[0],))
 		return (e_errors.ERROR, 'get_mtx_status returned: %s'%(rc[0],))
 	if hasattr(self, 'slots'): # clear lists
-		while self.slots:
-			try:
-				a = self.slots.pop()
-			except IndexError:
-				break
-
-		while self.drives:
-			try:
-				a = self.drives.pop()
-			except IndexError:
-				break
+		# save indexes of busy slots
+		for i, slot_d in enumerate(self.slots):
+			vol = slot_d.get('volume')
+			if vol and vol == BUSY:
+				Trace.log(ACTION_LOG_LEVEL, 'busy slot: %s %s'%(i, slot_d,))
+				busy_slots.append(i)
+		Trace.log(ACTION_LOG_LEVEL, 'busy slots: %s'%(busy_slots,))
+		del self.slots[:]
+		del self.drives[:]
 	else:
 		self.slots = self.manager.list()
 		self.drives = self.manager.list()
@@ -4750,6 +4749,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 				d['address'] =  int(lel[2])
 				d['location'] =  lel[5]
 				d['volume'] = EMPTY
+				if (len(self.slots) - 1) in busy_slots: # this slot was reserved, leave it BUSY
+					d['volume'] = BUSY
+					Trace.log(ACTION_LOG_LEVEL, 'from status: %s'%(line,))
 				if string.find(line, 'Empty') != -1:
 					pass # just to leave status as empty
 				elif string.find(line, 'VolumeTag') != -1:

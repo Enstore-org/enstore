@@ -11,32 +11,35 @@
 """
 
 # system imports
-import sys
-import os
-import pwd
-import string
+import Queue
 import base64
 import cPickle
-import threading
-import socket
-import fcntl
 import errno
+import fcntl
+import os
+import pwd
 import select
-import cPickle
+import socket
+import string
+import sys
+import threading
 import time
-import Queue
-import multiprocessing
-#import cStringIO		# to make freeze happy
-#import copy_reg			# to make freeze happy
 
 # enstore imports
-import generic_client
-import enstore_constants
 import Trace
-import e_errors
-import option
 import callback
+import e_errors
+import enstore_constants
 import enstore_functions
+import generic_client
+import option
+
+# Required for freezing encp:
+has_multiprocessing = True
+try:
+    import multiprocessing
+except ImportError:
+    has_multiprocessing = False
 
 MY_NAME = enstore_constants.LOG_CLIENT   #"LOG_CLIENT"
 MY_SERVER = enstore_constants.LOG_SERVER #"log_server"
@@ -407,7 +410,10 @@ class TCPLoggerClient(LoggerClient):
                  rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES)
 
 	Trace.set_log_func( self.log_func )
-        self.message_buffer =  multiprocessing.Queue(MAX_QUEUE_SIZE) # intermediate message storage
+        if has_multiprocessing:
+            self.message_buffer = multiprocessing.Queue(MAX_QUEUE_SIZE) # intermediate message storage
+        else:
+            self.message_buffer = Queue.Queue(MAX_QUEUE_SIZE)
         self.rcv_timeout = rcv_timeout
         self.connected = False
         self.reconnect_timeout = reconnect_timeout

@@ -35,7 +35,7 @@ FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt $(LIBDS)
 FTTTEST_LIBS=$(FTT_LIBS) -lftt_test
 CFLAGS=$(BITS_FLAG) $(MACOS_FLAGS)
 
-Makefile.modules: Setup 
+Makefile.modules: Setup
 	@echo "MAKING MODULE Makefile  ================================"
 	if [ ! -d mksetup ] ; then  mkdir mksetup; fi
 	cd mksetup/ ; \
@@ -52,25 +52,16 @@ Makefile.modules: Setup
 		grep -v FTT_DIR Setup > x; \
 		mv x Setup; \
 	fi ; \
-	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" -o "`basename $(PYTHON_DIR)`" = "python" ]; then \
-		cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
-		make -f Makefile.pre.in boot                    ; \
-	else \
-		cp $(PYTHON_DIR)/Python-*/Makefile.pre . ; \
-		cp $(PYTHONLIB)/config/makesetup . ;\
-		./makesetup -c - ; \
-	fi; \
+	cp $(PYTHON_DIR)/Python-*/Makefile.pre . ; \
+	cp $(PYTHONLIB)/config/makesetup . ;\
+	./makesetup -c - ; \
 	cp Makefile ../Makefile.modules
 
 Modules:
 	@echo "MAKING MODULES ================================"
-	cd SWIG && make 
+	cd SWIG && make
 	@echo "in $$PWD"
-	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" -o "`basename $(PYTHON_DIR)`" = "python" ]; then \
-		make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules ; \
-	else \
-		make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules oldsharedmods; \
-	fi
+	make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules oldsharedmods
 
 #Modules made using swig need to have two names; one for swig 1.1 and the
 # other for swig 1.3.  Those with the letter c in the middle are for

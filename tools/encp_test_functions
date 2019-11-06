@@ -1864,8 +1864,7 @@ __volume_read_test()
     encp="$1"
 
     #Snag a volume_read_test volume.
-    tmp_volumes=$($enstore_cmd info --query "select label from volume where file_family = 'volume_read_test' and label not like '%.deleted' ;")
-    volumes=$(echo "$tmp_volumes" | sed '1,2d') #Remove the header.
+    volumes=$($enstore_cmd info --vols  2>/dev/null | sed -e '1,1d'  | grep -v ".deleted" | egrep  "[^\s]\.volume\_read\_test\.[^\s]" | awk '{ print $1}')
     if [ -z "$volumes" ]; then
 	echo "No suitable volumes found.  Skipping test and continuing." 1>&2
     else

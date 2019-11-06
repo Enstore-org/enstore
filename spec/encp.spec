@@ -55,13 +55,16 @@ License: GPL
 %if %{product} == encp
 Buildroot: %(echo $ENSTORE_DIR/src/ENCPBIN)
    %define chooseConfig_path /opt/%{product}
+   %define builddir %(echo $ENSTORE_DIR/src/ENCPBIN)
 %else
    %if %{product} == entv
 Buildroot: %(echo $ENSTORE_DIR/src/ENTV_BIN)
       %define chooseConfig_path /opt/%{product}
+      %define builddir %(echo $ENSTORE_DIR/src/ENTV_BIN)
    %else
 Buildroot: %(echo $ENSTORE_DIR/src/ENSTORE_BIN)
       %define chooseConfig_path /opt/%{product}/ups
+      %define builddir %(echo $ENSTORE_DIR/src/ENSTORE_BIN)
    %endif
 %endif
 Packager: Enstore Admin <enstore-admin@fnal.gov>
@@ -75,6 +78,7 @@ ENCP utility
 %build
 
 %install
+cp -r  %{builddir}/*  %{buildroot}
 
 %files
 #%attr(0755,root,root) /etc/profile.d/%{product}.*

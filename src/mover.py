@@ -1079,6 +1079,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         """
 
+        if  fc_ticket.get('original_library') and fc_ticket['original_library'] ==  vc_ticket['library']: # no redirection was needed
+            fc_ticket['original_library'] = None # request will not be put into files_in_transition table
         request = {'work':"new_bit_file",
                    'fc'  : fc_ticket,
                    'vc'  : vc_ticket,
@@ -2435,9 +2437,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state in (IDLE, HAVE_BOUND):
             t_in_state = int(time.time()) - int(self.state_change_time)
             if n_thread and n_thread.isAlive():
-                if t_in_state <= 1:
+                if t_in_state <= 1 or self.draining:
                     ## skip sending lm _update
                     ## to allow network thread to complete
+                    ## or if the mover is draining
                     return
                 if not hasattr(self,'restarting'):
                     Trace.alarm(e_errors.ALARM,
@@ -5152,7 +5155,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if s:
                         self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT, dismount_allowed=0)
                         if self.stop:
-                            Trace.log(e_errors.ERROR, 'Tape will stay in the drive for investigation')
+                            Trace.alarm(e_errors.INFO, 'Tape %s will stay in the drive for investigation'%(self.current_volume,))
                             self.set_volume_noaccess(self.current_volume, "Rewind retry failed. See log for details")
                             self.offline()
                         else:
@@ -5356,7 +5359,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             cur_thread_name = None
 
         Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s thread %s" % (
-            exc, msg, error_source,self.current_volume, self.current_location, cur_thread_name))
+                exc, msg, error_source,self.current_volume, self.current_location, cur_thread_name))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         self._error = exc
         self._error_source = error_source
@@ -5380,7 +5383,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # log all running proceses
                     self.log_processes(logit=1)
                 if self.stop:
-                    Trace.alarm(e_errors.ERROR, "encountered FTT_EBLANK error. Going OFFLINE. Please check the tape drive. The tape will stay in the drive")
+                    Trace.alarm(e_errors.ERROR, "encountered FTT_EBLANK error. Going OFFLINE. Please check the tape drive. The tape %s will stay in the drive"%(self.current_volume,))
                     self.set_volume_noaccess(volume_label, "encountered FTT_EBLANK error. See log for details")
                     self.offline() # stop here for investigation
                     self.net_driver.close()
@@ -5582,7 +5585,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                    e_errors.READ_VOL1_READ_ERR,
                    e_errors.WRITE_VOL1_READ_ERR,
                    e_errors.MOVER_STUCK))):
-            self.set_volume_noaccess(volume_label, "Error: %s"%(exc,))
+            self.set_volume_noaccess(volume_label, "Error: %s %s"%(exc, msg))
         if ftt_eio and self.mode != WRITE:
             # if it was WRITE then the tape was set to readonly, which is enough
             # action for tape
@@ -6652,6 +6655,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.nowork({})
             return
 
+        if self.stop and self.last_error[0] in (e_errors.WRITE_VOL1_READ_ERR, e_errors.READ_VOL1_READ_ERR):
+            Trace.alarm(e_errors.INFO, 'Tape %s will stay in the drive for investigation'%(self.current_volume))
+            self.offline()
+            return
 
         self.state = DISMOUNT_WAIT
         Trace.log(e_errors.INFO, "Ejecting tape")
@@ -7294,6 +7301,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'max_dismount_delay': self.max_dismount_delay,
                  'client': self.client_ip,
                  'buffer':'%s'%(buf,),
+                 'media_changer_device': self.mc_device,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
