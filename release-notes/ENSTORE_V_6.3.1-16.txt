@@ -1,0 +1,147 @@
+commit 55df8ef73a21f077b93b217c883bce77b96c58dc
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Sep 30 14:12:41 2019 -0500
+
+    enstore rpm 6.3.1-16
+
+A	release-notes/ENSTORE_V_6.3.1-15.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit ba46f29944e89a7f4d891aa475833d79918310cc
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 25 16:41:01 2019 -0500
+
+    Fix: mover silently goes offline on FTT_EBLANK during read.
+
+    The mover was silently going offline during read if FTT_EBLANK occured with "stop" option enabled.
+
+    http://srm.fnal.gov/reviews/r/600/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2066
+
+M	src/mover.py
+
+commit 1fed83e6f2ecf7a29945f8f18acfa2d9822d5746
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 25 10:25:46 2019 -0500
+
+    Fix bugs in mover_summary_plotter_module.py
+
+    There were 2 problems detected in mover_summary_plotter_module.py
+    when query does not return expected values and min and max rates
+    are the same, causing ZeroDivisionError
+
+    http://srm.fnal.gov/reviews/r/599/
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2065
+
+M	src/mover_summary_plotter_module.py
+
+commit 2d6d054fc1ae85a6d6a4e24464bc3aa6d8c04a69
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Sep 3 16:04:14 2019 -0500
+
+    Remove empty packages.
+
+    Find non deleted packages with 0 active files.
+    Make sure that all package members are deleted.
+    Remove packages with 0 active files.
+    http://srm.fnal.gov/reviews/r/598/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2062
+
+A	sbin/remove_empty_packages.py
+
+commit b06e5389b907cfd95e0143477006a1022198449b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Aug 30 10:36:12 2019 -0500
+
+    namespace: drop pnfs and pnfs_agent.
+
+    	RB: http://srm.fnal.gov/reviews/r/596/
+
+M	src/delete_at_exit.py
+M	src/encp.py
+M	src/enstore.py
+M	src/file_clerk_client.py
+M	src/namespace.py
+M	tools/encp_test_functions
+M	tools/encp_test_script
+
+commit faa770eb485cf2a4afb8411654f86d6c5d4603a6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Aug 29 14:24:26 2019 -0500
+
+    mitigate DNS communication problems
+
+    This patch is based on investigation of mover behaviuor when it can not contact DNS server. The trace back is:
+     Exception in thread tape_thread:
+    Traceback (most recent call last):
+      File "/opt/enstore/Python/lib/python2.7/threading.py", line 810, in __bootstrap_inner
+        self.run()
+      File "/opt/enstore/Python/lib/python2.7/threading.py", line 763, in run
+        self.__target(*self.__args, **self.__kwargs)
+      File "/opt/enstore/sbin/mover", line 3723, in write_tape
+        self.transfer_failed(e_errors.EPROTO)
+      File "/opt/enstore/sbin/mover", line 5569, in transfer_failed
+        self.send_error_msg(error_info = (exc, msg),error_source=error_source)
+      File "/opt/enstore/sbin/mover", line 2751, in send_error_msg
+        self.udpc.send_no_wait(ticket, self.lm_address)
+      File "/opt/enstore/src/udp_client.py", line 326, in send_no_wait
+        tsd = self.get_tsd()
+      File "/opt/enstore/src/udp_client.py", line 101, in get_tsd
+        self.reinit()
+      File "/opt/enstore/src/udp_client.py", line 70, in reinit
+        host, port, socket = udp_common.get_default_callback()
+      File "/opt/enstore/src/udp_common.py", line 89, in get_default_callback
+        return __get_callback(host, use_port)
+      File "/opt/enstore/src/udp_common.py", line 47, in __get_callback
+        address_family = socket.getaddrinfo(host, None)[0][0]
+    gaierror: [Errno -2] Name or service not known
+
+    http://srm.fnal.gov/reviews/r/597/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2061
+
+M	src/udp_client.py
+
+commit e0d0b686a7fbbea877a44c3476f2781659d648a0
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Aug 29 11:22:31 2019 -0500
+
+    set mode 07555 on volume_audit.py
+
+M	sbin/volume_audit.py
+
+commit 15ba475b458f6dc425fbfe040f45053a7fea0b46
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Aug 26 15:04:02 2019 -0500
+
+    volume_audit: add ability to audit a specified volume
+
+    	RB : http://srm.fnal.gov/reviews/r/594/
+            BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2059
+
+M	sbin/volume_audit.py
+
+commit cc8e88a83902cfa3057e6a2bfc0044565c7ae54b
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Aug 23 13:47:04 2019 -0500
+
+    encp: do not write into layer files on file removal
+    (on PNFS the layers are removed automatically, on local
+    file system the layer files get left behind on encp interrupt or
+    other failures)
+
+        BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=1218
+        RB : http://srm.fnal.gov/reviews/r/593
+
+M	src/chimera.py
+M	src/pnfs.py
+
+commit ab04d8e2bcdc3bf0b25e562f42cfcd538de933b0
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Aug 21 16:52:44 2019 -0500
+
+    Fixed missed variable.
+
+    http://srm.fnal.gov/reviews/r/592/
+
+M	src/media_changer.py
+
