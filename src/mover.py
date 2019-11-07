@@ -4553,7 +4553,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dismount_time = None
             if hasattr(self ,'increase_dismount_time'):
                 del(self.increase_dismount_time)
-                
+
         self.unlock_state()
 
         ticket['mover']={}
@@ -6655,7 +6655,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.nowork({})
             return
 
-        if self.stop and self.last_error[0] in (e_errors.WRITE_VOL1_READ_ERR, e_errors.READ_VOL1_READ_ERR):
+        if self.stop and self.last_error[0] in (e_errors.WRITE_VOL1_READ_ERR,
+                                                e_errors.READ_VOL1_READ_ERR,
+                                                e_errors.READ_VOL1_WRONG,
+                                                e_errors.WRITE_VOL1_WRONG):
             Trace.alarm(e_errors.INFO, 'Tape %s will stay in the drive for investigation'%(self.current_volume))
             self.offline()
             return
