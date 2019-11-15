@@ -3889,6 +3889,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	self.manager = multiprocessing.Manager()
 	self.q = multiprocessing.Queue()
 	self.mtx_server_started = self.manager.Value('i',0)
+	self.last_updated_db = self.manager.Value("i", 0)
 
         Trace.log(e_errors.INFO,
                   '%s initialized with device: %s status time limit: %s mount time limit: %s '%
@@ -3986,6 +3987,8 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
 	    elif cmd == 'status':
 		    mtx.status()
+	    elif cmd == 'TestUnitReady':
+		    mtx.Test_UnitReady()
 	    print response # this is a terminator
 	    sys.stdout.flush()
 	    sys.stderr.flush()
@@ -4126,12 +4129,20 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	    else:
 		return (e_errors.ERROR, e_errors.ERROR, [], "", '')
 	elif 'status' in command_string:
-            # expected firs line in reply:
+            # expected first line in reply:
            # Storage Changer /dev/changer:56 Drives, 10295 Slots ( 255 Import/Export )
            if all(s in response[0] for s in ['Storage Changer', 'Drives', 'Slots']):
 		return (e_errors.OK, e_errors.OK, '', response)
 	   else:
 		   return (e_errors.ERROR, e_errors.ERROR, [], "", 'Wrong reply format')
+	elif 'TestUnitReady' in command_string:
+            # expected reply:
+           # "Ready:yes" or Ready:no
+	    for l in response:
+		if 'Ready' in l:
+			return (e_errors.OK, e_errors.OK, '', response)
+	    else:
+		return (e_errors.ERROR, e_errors.ERROR, '', response)
 	else:
 	    return (e_errors.ERROR, e_errors.ERROR, [], "", '')
 
@@ -4226,6 +4237,8 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 					    # According to IBM recommendations,  wait and retry more times
 					    if self.retry_count == 0:
 						    self.retry_count = 1
+						    if 'mtx: Request Sense: Additional Sense Qualifier = 00' in ret_val[3]:
+							    update_db = True
 						    sleeptime = 40
 				    time.sleep(sleeptime)
 			    elif ret_val[1] == e_errors.TIMEDOUT:
@@ -4405,6 +4418,8 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			return(e_errors.ERROR, e_errors.MC_DRVNOTEMPTY, [],'' ,
 			       'mtx cant mount tape. Drive %s is not empty: %s'%(drive,self.drives[dr]['volume']))
 		Trace.log(e_errors.INFO, 'found %s in slot %s ...mounting'%(volume, self.slots[s]['address']))
+		if not self.test_unit_ready():
+			Trace.log(e_errors.ERROR, 'mount: Unit is not ready. Will try anyway')
 		rc = self.send_command('Load,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'],  os.getpid()), self.mount_timeout*self.mount_retries+10)
 		Trace.trace(ACTION_LOG_LEVEL, "Send Command returned %s"%(rc,))
 		if rc[1] == e_errors.OK:
@@ -4502,7 +4517,8 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	       stor_el = self.slots[s]
 	       stor_el['volume'] = BUSY
 	       self.slots[s] = stor_el
-
+	       if not self.test_unit_ready():
+		       Trace.log(e_errors.ERROR, 'dismount: Unit is not ready. Will try anyway')
 	       rc = self.send_command('Unload,%s,%s,%s'%(self.slots[s]['address'],self.drives[dr]['address'], os.getpid()), self.mount_timeout*self.mount_retries+10)
 	       Trace.trace(ACTION_LOG_LEVEL, "Send Command returned %s"%(rc,))
 
@@ -4681,12 +4697,33 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 	##	self.do_to =  0
 	##	time.sleep(self.mount_timeout + 10)
 
+    # Test if drive is ready
+    def test_unit_ready(self):
+	for cnt in range(10):
+	    rc = self.send_command('TestUnitReady,%s,%s,%s'%('', '',  os.getpid()), self.status_timeout)
+	    Trace.log(ACTION_LOG_LEVEL, 'TestUnitReady returned: %s'%(rc,))
+	    # rc pattern is (error_code, additional_error_code, message, response)
+	    # it is inherited from implementation of STK class.
+	    # error_code is one e_errors codes
+	    # additional_error_code is implemetation specific, but for this class it is usually the same as error_code
+	    # message is arbitrary message
+	    # response - response received from mtx server
+	    if e_errors.is_ok(rc[0]):
+		    if 'Ready:yes' in rc[3][0]: 
+			    return True
+	    time.sleep(10)
+	return False
+
     # This method blocks while it returns the status of the media
     # changer at the specified device.
     # A return value are any messages that mtx printed to stderr.
     # If mtx hangs, this method will never return.
     def status_local(self):
 	Trace.log(ACTION_LOG_LEVEL, 'status_local')
+	if not self.test_unit_ready():
+		msg = 'status: Unit is not ready. Will not update database'
+		Trace.log(e_errors.ERROR, '%s'%(msg,))
+		return  (e_errors.ERROR,  'msg', '')
 	busy_slots = []
 	rc = self.get_mtx_status()
 	if not e_errors.is_ok(rc[0]):
@@ -4769,6 +4806,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 		    except:
 			    Trace.handle_error(severity=ACTION_LOG_LEVEL)
 		self.status_valid = 1
+		self.last_updated_db.value = int( time.time())
 	else:
             Trace.log(e_errors.ERROR, 'mtx status returned no result %s'%(result,))
 	if errorString:
@@ -4876,19 +4914,37 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 			    return (e_errors.ERROR, 0, None)
 	    ticket['drive_list'] = drive_list
 	    return (e_errors.OK, 0, None)
-
+    
+    def dumpdb(self):
+	    """
+	    dump the content of the drive-volume lists into a file
+	    """
+	    t = time.strftime('%Y-%m-%d-%H:%M', time.localtime())
+	    with open('/var/log/enstore/tmp/enstore/%s_%s.mtx_dbdump.out'%(self.name, t,), 'w') as of:
+		    try:
+			    of.write(self._listVolumes())
+		    except:
+			    pass
+	    
     def updatedb(self, ticket):
         Trace.trace(ACTION_LOG_LEVEL, 'updatedb: ticket %s'%(ticket,))
 	rc = [e_errors.OK, 0, '', '']
 	if not ticket['drive']['address']:
-		# request to re-load staus information
-		Trace.log(e_errors.INFO, 'Starting robot inventory')
-		a, b = return_by(self.status_local, (), self.status_timeout)
-		Trace.log(e_errors.INFO, 'Robot inventory finished')
-		if -1 == a:
-			Trace.log(e_errors.ERROR, ' mtx status request timeout')
-			rc[0] = e_errors.ERROR
-		rc[3] = 'Robot inventory finished'
+		dt = int(time.time()) - self.last_updated_db.value
+		if dt > 40:
+			# request to re-load status information
+			Trace.log(e_errors.INFO, 'Starting robot inventory')
+			a, b = return_by(self.status_local, (), self.status_timeout)
+			Trace.log(e_errors.INFO, 'Robot inventory finished')
+			if -1 == a:
+				Trace.log(e_errors.ERROR, ' mtx status request timeout')
+				rc[0] = e_errors.ERROR
+			rc[3] = 'Robot inventory finished'
+			if self.debug:
+				self.dumpdb()
+		else:
+			# do not update so frequently
+			rc[3] = 'Last updated %s seconds ago'%(dt,)
 		return rc
 
 	drive = self.locate_drive(ticket['drive']['address'])
@@ -4958,7 +5014,10 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
 	# Check if CLI hos has java and TS4500CLI.jar installed
 	if not hasattr(self, 'cli_jar_file'):
-		res = enstore_functions2.shell_command('enrsh -n %s %s'%(self.cli_host, 'locate TS4500CLI.jar'))
+		cmd='enrsh -n %s %s'%(self.cli_host, 'locate TS4500CLI.jar')
+		print("CMD", cmd)
+		#res = enstore_functions2.shell_command('enrsh -n %s %s'%(self.cli_host, 'locate TS4500CLI.jar'))
+		res = enstore_functions2.shell_command(cmd)
 		if res[0]:
 			self.cli_jar_file = res[0][:-1]
 		else:
@@ -5042,15 +5101,29 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
 	    return (e_errors.NET_ERROR, 0, str(sys.exc_info()[1]), "", "")
 	return (e_errors.OK, 0, None, "", "")
+    
+    # return formatted text containing volume information
+    def _listVolumes(self):
+        msg = '     volume          state             location\n'
+	for d in self.drives:
+		if d['volume'] != EMPTY:
+			msg += '%12s %12s %12s (%s,%s)\n'%\
+			    (d['volume'],
+			     'in drive',
+			     d['address'],
+			     d['location'],
+			     d['zone']
+			     )
+	for s in self.slots:
+		msg += '%12s %12s %12s (%s)\n'%\
+		    (s['volume'],
+		     'home',
+		     s['address'],
+		     s['location']
+		     )
+	return msg
 
     def listVolumes(self, ticket):
-        # this command uses IBM CLI to list tapes.
-	rc = self.setup_cli_command()
-	ticket['status'] = rc
-	if not e_errors.is_ok(ticket):
-		self.reply_to_caller(ticket)
-		return
-
         #Send reply and Establish the connection first.
 	ticket['status'] = (e_errors.OK, 0, None, "", "")
 	reply = copy.copy(ticket)
@@ -5067,16 +5140,8 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
         ticket['no_reply'] = 1 #Tell WorkDone() not to send the ticket again.
         reply = ticket.copy() #Make a copy to keep things clean.  But why?
-
-	cmd = '%s -jar %s -ip %s -u %s -p %s --viewDataCartridges'%( self.java_exec, self.cli_jar_file, self.ibm_cli_host, self.ibm_cli_u, self.ibm_cli_pw)
-	res = enstore_functions2.shell_command('enrsh -n %s %s '%(self.cli_host, cmd,))
-	if not res:
-		ticket['status'] = (e_errors.ERROR, 0, None, 'IBM CLI returned %s'%(res[1],), '')
-		Trace.log(e_errors.ERROR, 'QUERY_CLEAN: IBM CLI returned %s'%(res[1],))
-		return	(e_errors.ERROR, 0, None, 'IBM CLI returned %s'%(res[1],), '')
-	reply['volume_list'] = res[0]
+	reply['volume_list']  = self._listVolumes()
 	reply['MC_class'] = self.__class__.__name__
-
 	try:
             r = callback.write_tcp_obj(sock, reply)
             sock.close()
@@ -5404,6 +5469,8 @@ class MTXN_Local_MediaLoader(MTXN_MediaLoader):
 		       break
 	       Trace.log(e_errors.INFO, 'mtx_mount %s from %s(%s) into %s(%s) SN %s'%
 			 (volume, vt['location'], vt['phys_location'],drive, drive_info['phys_location'], drive_info['SN']))
+	       if not self.test_unit_ready():
+		       Trace.log(e_errors.ERROR, 'mount: Unit is not ready. Will try anyway')
 	       rc = self.send_command('Load,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout*self.mount_retries+10)
 	       Trace.trace(ACTION_LOG_LEVEL, "SCOMM RETURNED %s"%(rc,))
 	       if rc[1] == e_errors.OK:
@@ -5469,6 +5536,8 @@ class MTXN_Local_MediaLoader(MTXN_MediaLoader):
 		       break
 	       Trace.log(e_errors.INFO, 'mtx_dismount %s location %s(%s) from drive %s(%s) SN %s'%
 			 (volume, vt['location'], vt['phys_location'],drive, drive_info['phys_location'], drive_info['SN']))
+	       if not self.test_unit_ready():
+		       Trace.log(e_errors.ERROR, 'dismount: Unit is not ready. Will try anyway')
 	       rc = self.send_command('Unload,%s,%s,%s'%(vt['location'], drive, os.getpid()), self.mount_timeout*self.mount_retries+10)
 	       if rc[1] == e_errors.OK:
 		    rt = self.update_db(vt['location'], volume, drive, EMPTY)
