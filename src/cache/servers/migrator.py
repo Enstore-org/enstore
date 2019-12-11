@@ -90,7 +90,7 @@ def file_checkum(f):
     rest = fsize % bs
     crc = 0L # will calculate 0 seeded crc
     crc_1_seeded = 0L
-    with open(f, 0) as f_obj:
+    with open(f, 'r') as f_obj:
         fd = f_obj.fileno()
         i = 0
         while i < blocks:
