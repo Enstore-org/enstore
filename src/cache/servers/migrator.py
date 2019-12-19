@@ -682,9 +682,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.trace(10, "using canonical name for %s"%(f_name,))
             f_name=f_name.replace("/pnfs", self.namespace_top_dir,1)
         f_dir = os.path.dirname(f_name)
-        Trace.trace(10, "get_library_tag: src dirs %s f_dir %s"%(self.src_dirs, f_dir))
+        Trace.trace(10, "get_library_tag: known_tags %s"%(self.output_library_tag,))
 
-        if f_dir not in self.src_dirs:
+        if len(self.output_library_tag) == 0:
             Trace.trace(10, "get_library_tag: getting library tag for %s"%(f_name),)
             try:
                 tag = namespace.Tag(f_dir)
@@ -703,20 +703,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.trace(10, "get_library_tag: fs_path %s"%(fs_path),)
                 f_name = fs_path[0]
                 f_dir = os.path.dirname(f_name)
-                if f_dir not in self.src_dirs:
-                    # get the library tag
-                    Trace.trace(10, "get_library_tag: getting library tag for %s"%(f_name),)
-                    tag = namespace.Tag(f_dir)
-                    try:
-                        lib_tag =tag.readtag("library", f_dir)
-                    except:
-                        Trace.handle_error()
-                        Trace.log(e_errors.ERROR, "error reading library tag")
-                        return e_errors.ERROR, None
-                    self.src_dirs.append(f_dir) # cache src dir to not repeat tag operations on already processed directory
-                else:
-                    return e_errors.OK, None
-            self.src_dirs.append(f_dir) # cache src dir to not repeat tag operations on already processed directory
+                # get the library tag
+                Trace.trace(10, "get_library_tag: getting library tag for %s"%(f_name),)
+                tag = namespace.Tag(f_dir)
+                try:
+                    lib_tag =tag.readtag("library", f_dir)
+                except:
+                    Trace.handle_error()
+                    Trace.log(e_errors.ERROR, "error reading library tag")
+                    return e_errors.ERROR, None
         else:
             return e_errors.OK, None
         Trace.trace(10, "get_library_tag: original library tag: %s"%(lib_tag,))
@@ -728,13 +723,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # combine output library tag
     def update_library_tag(self, library_tag):
         if not library_tag in self.output_library_tag:
-            for lib in self.output_library_tag:
-                # the following code shold resolve cases when
-                # the library_tag[0] is already a part of the comma separated tag in output_library_tag
-                if library_tag[0] in lib.split(","):
-                    break
-            else:
-                self.output_library_tag.append(library_tag)
+            self.output_library_tag.append(library_tag)
 
     # write aggregated file to tape
     def write_to_tape(self, request, mq):
