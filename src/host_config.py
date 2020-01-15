@@ -38,7 +38,7 @@ def find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
     if config_host:
         filename = '/etc/'+config_host+'.enstore.conf'
-    	if not os.path.exists(filename):
+        if not os.path.exists(filename):
             filename = '/etc/enstore.conf'
     else:
         filename = '/etc/enstore.conf'
@@ -75,8 +75,8 @@ def read_config_file(filename):
         ntokens = len(tokens)
         first = 1
         for token in tokens:
-            eq = string.find(token,'=')
-            if eq<=0:
+            eq = string.find(token, '=')
+            if eq <= 0:
                 try:
                     sys.stderr.write("%s: syntax error, %s"%(filename, token))
                     sys.stderr.flush()
@@ -86,7 +86,7 @@ def read_config_file(filename):
                 return None
             key, value = token[:eq], token[eq+1:]
             try:
-                value=int(value)
+                value = int(value)
             except ValueError:
                 try:
                     value = float(value)
@@ -97,11 +97,11 @@ def read_config_file(filename):
                 if ntokens == 1:
                     config[key] = value
                 else:
-                    config[key] = config.get(key,{})
+                    config[key] = config.get(key, {})
                     subdict = {key:value}
-                    config[key][value]=subdict
+                    config[key][value] = subdict
             else:
-                subdict[key]=value
+                subdict[key] = value
     f.close()
     return config
 
@@ -125,7 +125,7 @@ def update_cached_config():
 
 #Return the hostip, as a string, that appears on the 'hostip=' line in
 # the enstore.conf file.
-def get_default_interface_ip():
+def get_default_interface_ip(preferred_ip=None):
     __pychecker__ = "unusednames=i"
 
     hostip = ""
@@ -136,8 +136,16 @@ def get_default_interface_ip():
     # The minute loop is necessary when the DNS server is rebooted.
     for i in range(0, 60):
         try:
-            # default=socket.getaddrinfo(socket.getfqdn(),  socket.AF_INET)[0][4][0]
-	    default=socket.getaddrinfo(socket.getfqdn(),  None)[0][4][0]
+            index = 0
+            ips = socket.getaddrinfo(socket.getfqdn(), None)
+            if preferred_ip:
+                address_family = socket.getaddrinfo(preferred_ip, None)[0][0]
+                for e in ips:
+                    if e[0] == address_family:
+                        index = ips.index(e)
+                        break
+
+            default = ips[index][4][0]
             break
         except socket.error, msg:
             if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
@@ -173,12 +181,12 @@ def get_default_interface_ip():
             #Look for matching name lookups.
             try:
                 if socket.gethostbyaddr(intf['ip'])[0] == socket.gethostname():
-		    default = hostaddr.name_to_address(socket.gethostname())
+                    default = hostaddr.name_to_address(socket.gethostname())
                     #default = socket.gethostbyname(intf['ip'])
                     break
             except socket.error:
                 pass
-            
+
         else:
             #If we get here, we still haven't made a match, just go with
             # the first ip found by looking at the interface list.
@@ -190,7 +198,7 @@ def get_default_interface_ip():
                 break
 
     #If an error occured for the entire minute print to screen if specified.
-    if msg and not hostip:    
+    if msg and not hostip:
         Trace.trace(10, str(msg))
 
     #Determine if the user specified the default in the /etc/enstore.conf file
@@ -286,12 +294,12 @@ def get_netstat_r():
     if not data:
         return None
 
-    #regular expresion to 
-    simplify = re.compile( ' +')
+    #regular expresion to
+    simplify = re.compile(' +')
 
     #Determine the number of columns in the output.
     for line in data:
-        titles = simplify.sub( ' ', line.strip()).split(" ")
+        titles = simplify.sub(' ', line.strip()).split(" ")
         #On all of the observed platforms there is a title line that contains
         # as the first non-whitespace characters "Destination".
         if titles[0] == "Destination":
@@ -305,14 +313,14 @@ def get_netstat_r():
     flags = re.compile("[UHGRDMACS]")
     #Strip out the valid lines of the table.
     for line in data:
-        info = simplify.sub( ' ', line.strip()).split(" ")
+        info = simplify.sub(' ', line.strip()).split(" ")
         #If the line begins with xxx.xxx.xxx.xxx format, use it.
         #Look for lines that have the same number of columns as the title line.
         #If the destination is default
         #Skip the title line however.
-        if ( len(info) == columns or \
+        if (len(info) == columns or \
              dotted_decimal.match(info[0]) or \
-             info[0] == "default" ) \
+             info[0] == "default") \
              and info != titles and info[0][:5] != "Route":
             #Pad the possiblity of empty columns before the "Flags" column.
             flags_index = titles.index("Flags")
@@ -347,15 +355,14 @@ def clear_cached_routes():
 # otherwise.
 def is_route_in_table(dest):
     __pychecker__ = "unusednames=i"
-    
+
     #if no routing is required, return true.
     if not get_config():
-	return 1
+        return 1
 
     for i in range(0, 60):
         try:
-            #ip = socket.gethostbyname(dest)
-	    ip = hostaddr.name_to_address(dest)
+            ip = hostaddr.name_to_address(dest)
             break
         except (socket.error,), msg:
             if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
@@ -367,7 +374,7 @@ def is_route_in_table(dest):
                 continue
             else:
                 raise sys.exc_info()[0], msg, sys.exc_info()[2]
-        
+
     route_table = get_routes()
     for route in route_table:
         #Since netstat -rn gives the numerical address, coversions are not
@@ -388,7 +395,7 @@ def is_route_in_table(dest):
             sn = ip
         else:
             sn = ip[:sn_index]
-                
+
         #Test to see if the subnet route already exists.
         if rt == sn:
             return 1
@@ -407,7 +414,7 @@ def connections():
     config = get_config()
 
     interface_dict = config.get('interface')
-    
+
     interfaces = interface_dict.keys()
 
     ret = {}
@@ -421,13 +428,13 @@ def connections():
 	try:
 	    if socket.gethostbyaddr(item['Destination'])[0].find("mvr") < 0:
 		continue
-	    
+
 	    print socket.gethostbyaddr(item['Destination'])[0]
         except KeyboardInterrupt, msg:
 	    raise msg
 	except:
 	    continue
-	
+
         if item2[search_string] in interfaces:
             #Add one to the number of connection to one interface.
             ret[item2[search_string]] = ret.get(item2[search_string], 0) + 1
@@ -449,7 +456,7 @@ def runon_cpu(interface):
     if cpu is not None:
         err = runon.runon(cpu)
         if err:
-            sys.stdout.write("runon(%s): failed, err=%s" % (cpu,err))
+            sys.stdout.write("runon(%s): failed, err=%s" % (cpu, err))
             #Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu,err))
 
 ##############################################################################
@@ -463,18 +470,18 @@ def set_route(dest, interface_ip):
     interfaces = get_interfaces()
     if not interfaces:
         return
-    
+
     for interface in interfaces: #get_interfaces():
-    	if interface_ip == config['interface'][interface]['ip']:
-    	    gateway = config['interface'][interface]['gw']
+        if interface_ip == config['interface'][interface]['ip']:
+            gateway = config['interface'][interface]['gw']
             if_name = interface
-	    break
+            break
     else:
-	return
+        return
 
     #Attempt to set the new route.
     try:
-        err=enroute.routeAdd(dest, gateway, if_name)
+        err = enroute.routeAdd(dest, gateway, if_name)
     except TypeError:
         #If we get here, then it is likely that the changes in enroute
         # and enroute2 have not been compiled recently.  This is likely
@@ -489,7 +496,7 @@ def set_route(dest, interface_ip):
         return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
-	raise OSError(errno.EPERM, "Routing:" + enroute.errstr(err))
+        raise OSError(errno.EPERM, "Routing:" + enroute.errstr(err))
     elif err == 2: #Not supported.
         raise OSError(errno.ENOPROTOOPT, "Routing:" + enroute.errstr(err))
     elif err == 3: #Not permitted.
@@ -499,14 +506,14 @@ def set_route(dest, interface_ip):
     elif err == 5: #Return code if route selection is not supported.
         pass
     elif err == 6: #Route change failed.
-	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
+        raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
     elif err == 7:  #Feature not supported by enroute2. (ignore)
         try:
             sys.stderr.write("enroute2 does not support route addition\n")
             sys.stderr.flush()
         except IOError:
             pass
-    
+
 def update_route(dest, interface_ip):
     config = get_config()
     if not config:
@@ -514,18 +521,18 @@ def update_route(dest, interface_ip):
     interfaces = get_interfaces()
     if not interfaces:
         return
-    
+
     for interface in interfaces: #get_interfaces():
-    	if interface_ip == config['interface'][interface]['ip']:
-    	    gateway = config['interface'][interface]['gw']
+        if interface_ip == config['interface'][interface]['ip']:
+            gateway = config['interface'][interface]['gw']
             if_name = interface
-	    break
+            break
     else:
-	return
+        return
 
     #Attempt to reset an existing route.
     try:
-        err=enroute.routeChange(dest, gateway, if_name)
+        err = enroute.routeChange(dest, gateway, if_name)
     except TypeError:
         #If we get here, then it is likely that the changes in enroute
         # and enroute2 have not been compiled recently.  This is likely
@@ -540,7 +547,7 @@ def update_route(dest, interface_ip):
         return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
-	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
+        raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
     elif err == 2: #Not supported.
         raise OSError(errno.ENOPROTOOPT, "Routing: " + enroute.errstr(err))
     elif err == 3: #Not permitted.
@@ -550,14 +557,14 @@ def update_route(dest, interface_ip):
     elif err == 5: #Return code if route selection is not supported.
         pass
     elif err == 6: #Route change failed.
-	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
+        raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
     elif err == 7:  #Feature not supported by enroute2. (ignore)
         try:
             sys.stderr.write("enroute2 does not support route modification\n")
             sys.stderr.flush()
         except IOError:
             pass
-    
+
 def unset_route(dest):
     config = get_config()
     if not config:
@@ -568,7 +575,7 @@ def unset_route(dest):
 
     #Attempt to remove the route.
     try:
-        err=enroute.routeDel(dest)
+        err = enroute.routeDel(dest)
     except TypeError:
         #If we get here, then it is likely that the changes in enroute
         # and enroute2 have not been compiled recently.  This is likely
@@ -583,7 +590,7 @@ def unset_route(dest):
         return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
-	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
+        raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
     elif err == 2: #Not supported.
         raise OSError(errno.ENOPROTOOPT, "Routing: " + enroute.errstr(err))
     elif err == 3: #Not permitted.
@@ -593,7 +600,7 @@ def unset_route(dest):
     elif err == 5: #Return code if route selection is not supported.
         pass
     elif err == 6: #Route change failed.
-	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
+        raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
     elif err == 7:  #Feature not supported by enroute2. (ignore)
         try:
             sys.stderr.write("enroute2 does not support route deletion\n")
@@ -605,14 +612,14 @@ def unset_route(dest):
 # The following three functions select an interface based on various criteria.
 ##############################################################################
 
-def get_default_interface():
-    return get_interface_info_by_ip(get_default_interface_ip())
+def get_default_interface(receiver_ip=None):
+    return get_interface_info_by_ip(get_default_interface_ip(receiver_ip))
 
 def choose_interface():
     interfaces = get_interfaces()
     if not interfaces:
         return get_default_interface()
-    
+
     choose = []
     for interface in interfaces:
         weight = get_interface_info(interface).get('weight', 1.0)
@@ -621,7 +628,7 @@ def choose_interface():
     unused, unused, interface = choose[0]
     return get_interface_info(interface)
 
-def check_load_balance(mode = None):
+def check_load_balance(mode=None):
     #mode should be 0 or 1 for "read" or "write"
     config = get_config()
     if not config:
@@ -635,7 +642,7 @@ def check_load_balance(mode = None):
 
     rate_dict = multiple_interface.rates(interfaces)
     #connections_dict = connections()
-    
+
     choose = []
     for interface in interfaces:
 
@@ -643,7 +650,7 @@ def check_load_balance(mode = None):
         weight = interface_dict[interface].get('weight', 1.0)
 
         #Get the rates of the current interface.
-        try: 
+        try:
             recv_rate, send_rate = rate_dict[interface]
             total_rate = (recv_rate + send_rate)
         except KeyError:
@@ -652,7 +659,7 @@ def check_load_balance(mode = None):
         #MWZ 12-5-2003:  Why would we do this?  What does this gain us?
         recv_rate = recv_rate/weight
         send_rate = send_rate/weight
-	total_rate = (recv_rate + send_rate)/weight
+        total_rate = (recv_rate + send_rate)/weight
 
         #Get the number of connections (static routes) for the interface.
         #try:
@@ -661,19 +668,13 @@ def check_load_balance(mode = None):
         #    continue
 
         #Assemble the load balancing criteria.
-        if mode==1: #writing
+        if mode == 1: #writing
             #If rates are equal on different interfaces, randomize!
-            #choose.append((conn_in_progress, send_rate, -weight,
-            #               random.random(), interface))
-	    choose.append((send_rate, -weight, random.random(), interface))
-	elif mode==0: #reading
-	    #choose.append((conn_in_progress, recv_rate, -weight,
-            #               random.random(), interface))
+            choose.append((send_rate, -weight, random.random(), interface))
+        elif mode == 0: #reading
 	    choose.append((recv_rate, -weight, random.random(), interface))
         else:
-            #choose.append((conn_in_progress, total_rate, -weight,
-            #               random.random(), interface))
-	    choose.append((total_rate, -weight, random.random(), interface))
+            choose.append((total_rate, -weight, random.random(), interface))
 
     #By the magic of python, the first item in the list will be the
     # best choice for load balancing.
@@ -687,7 +688,7 @@ def check_load_balance(mode = None):
 
 def setup_interface(dest, interface_ip):
     __pychecker__ = "unusednames=i"
-    
+
     config = get_config()
     if not config:
         return
@@ -736,7 +737,7 @@ def setup_interface(dest, interface_ip):
     else:
         #raise socket.error(errno.ENETUNREACH, os.strerror(errno.ENETUNREACH))
         return
-    
+
     #If we are already on the machine, we don't need to do set routes.
     if this_host_addr == the_other_addr:
         return
