@@ -77,6 +77,8 @@ host    enstoredb enstore_reader 131.225.13.92/32 trust
 
 # ensrv1
 host    enstoredb enstore_reader 131.225.13.16/32 trust
+# ssasrv8
+host    enstoredb enstore_reader 131.225.13.8/32 trust
 # Read only other systems
 host enstoredb enstore_reader 131.225.214.64/32       trust
 host enstoredb enstore_reader 131.225.214.65/32       trust
