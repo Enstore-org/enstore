@@ -107,6 +107,8 @@ host enstoredb enstore        131.225.13.80/32                 trust
 host enstoredb enstore        131.225.13.81/32                 trust
 host enstoredb enstore        131.225.13.87/32                 trust
 
+# ssasrv8 added by request for Rafael
+host enstoredb enstore_reader 131.225.13.8/32			trust
 #request by Chih-Hao for cms migration
 host enstoredb enstore        131.225.206.255/32               trust
 host enstoredb enstore        131.225.207.8/32                 trust
