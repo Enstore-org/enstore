@@ -50,6 +50,9 @@ local   all         all                               trust
 host    all         all         127.0.0.1/32          trust
 # IPv6 local connections:
 host    all         all         ::1/128               trust
+# Allow replication connections from localhost, by a user with the
+# replication privilege.
+local   replication all                               trust  # For pg_basebackup
 # stkensrv0n
 host    enstoredb enstore 131.225.13.59/32 trust
 host    enstoredb enstore_reader 131.225.13.59/32 trust
@@ -68,57 +71,61 @@ host    enstoredb enstore_reader 131.225.13.4/32 trust
 # stkensrv5n
 host    enstoredb enstore 131.225.13.3/32 trust
 host    enstoredb enstore_reader 131.225.13.3/32 trust
-# stkenscan1 (tablePlotter)
-host    enstoredb enstore_reader 131.225.13.10/32 trust
+# stkensrv6n
+host    enstoredb enstore 131.225.13.92/32 trust
+host    enstoredb enstore_reader 131.225.13.92/32 trust
+
 # ensrv1
 host    enstoredb enstore_reader 131.225.13.16/32 trust
 # Read only other systems
-host enstoredb enstore_reader 131.225.215.52/32       trust
-host enstoredb enstore_reader 131.225.215.11/32       trust
-host enstoredb enstore_reader 131.225.215.12/32       trust
-host enstoredb enstore_reader 131.225.215.14/32       trust
-host enstoredb enstore_reader 131.225.215.15/32       trust
-host enstoredb enstore_reader 131.225.215.54/32       trust
-host enstoredb enstore_reader 131.225.164.10/32       trust
-host enstoredb enstore_reader 131.225.164.13/32       trust
-host enstoredb enstore_reader 131.225.164.15/32       trust
-host enstoredb enstore_reader 131.225.164.17/32       trust
-host enstoredb enstore_reader 131.225.164.18/32       trust
-host enstoredb enstore_reader 131.225.164.29/32       trust
+host enstoredb enstore_reader 131.225.214.64/32       trust
+host enstoredb enstore_reader 131.225.214.65/32       trust
+host enstoredb enstore_reader 131.225.214.66/32       trust
+host enstoredb enstore_reader 131.225.214.67/32       trust
+host enstoredb enstore_reader 131.225.214.68/32       trust
+host enstoredb enstore_reader 131.225.214.16/32       trust
+host enstoredb enstore_reader 131.225.214.17/32       trust
+host enstoredb enstore_reader 131.225.214.18/32       trust
+host enstoredb enstore_reader 131.225.214.19/32       trust
+host enstoredb enstore_reader 131.225.214.20/32       trust
 #include Dmitry's desktop
 host enstoredb enstore_reader 131.225.84.42/32 trust
 #include two cms hosts, needed for migration
 host enstoredb enstore        131.225.207.112/32               trust
 host enstoredb enstore        131.225.207.13/32                trust
 host enstoredb enstore_reader 131.225.206.33/32                trust
-host enstoredb enstore_reader 131.225.204.164/32               trust
+host enstoredb enstore_reader 131.225.205.240/32               trust
 host enstoredb enstore        131.225.188.255/32               trust
 host enstoredb enstore        131.225.189.255/32               trust
 #migration nodes
-host enstoredb enstore        131.225.13.14/32                 trust
-host enstoredb enstore        131.225.13.18/32                 trust
-host enstoredb enstore        131.225.13.19/32                 trust
-host enstoredb enstore        131.225.13.22/32                 trust
-host enstoredb enstore        131.225.13.23/32                 trust
 host enstoredb enstore        131.225.13.29/32                 trust
 host enstoredb enstore        131.225.13.40/32                 trust
-host enstoredb enstore        131.225.13.74/32                 trust
 host enstoredb enstore        131.225.13.80/32                 trust
 host enstoredb enstore        131.225.13.81/32                 trust
 host enstoredb enstore        131.225.13.87/32                 trust
+host enstoredb enstore        131.225.13.48/32                 trust
+host enstoredb enstore        131.225.13.49/32                 trust
+host enstoredb enstore        131.225.214.50/32                trust
+host enstoredb enstore        131.225.214.57/32                trust
+host enstoredb enstore        131.225.214.58/32                trust
+host enstoredb enstore        131.225.214.59/32                trust
+host enstoredb enstore        131.225.214.60/32                trust
+host enstoredb enstore        131.225.214.61/32                trust
+host enstoredb enstore        131.225.214.62/32                trust
+host enstoredb enstore        131.225.214.63/32                trust
 
-# ssasrv8 added by request for Rafael
-host enstoredb enstore_reader 131.225.13.8/32			trust
 #request by Chih-Hao for cms migration
 host enstoredb enstore        131.225.206.255/32               trust
 host enstoredb enstore        131.225.207.8/32                 trust
-# added pmig01, 02
-host enstoredb enstore        131.225.13.70/32                 trust
-host enstoredb enstore        131.225.13.71/32                 trust
 # added gccensrv1, 02
 host enstoredb enstore        131.225.13.129/32                 trust
 host enstoredb enstore        131.225.13.132/32                 trust
-# added pmig03, 04
-host enstoredb enstore        131.225.13.98/32                 trust
-host enstoredb enstore        131.225.13.102/32                trust
-host enstoredb enstore_reader 131.225.13.97/32                 trust
+# added pmig07
+host enstoredb enstore        131.225.13.121/32                trust
+# Added stkensrv9n
+host enstoredb enstore_reader 131.225.214.37/32                trust
+# fndca2a (to generates bytes on tape / month by sg)
+host enstoredb enstore_reader 131.225.69.150/32                trust
+# Added pagg04, 05
+host enstoredb enstore        131.225.13.93/32                trust
+host enstoredb enstore        131.225.13.34/32                trust
