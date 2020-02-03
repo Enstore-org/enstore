@@ -21,6 +21,7 @@ import e_errors
 import option
 import udp_client
 import enstore_constants
+import enstore_functions2
 import callback
 import hostaddr
 
@@ -146,9 +147,8 @@ class GenericClient:
 		    self.csc = csc
 	    else:
 		# it is None or 0 (the default value from i.e. log_client)
-		def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
-			    int(os.environ['ENSTORE_CONFIG_PORT']))
-		self.csc = configuration_client.ConfigurationClient( def_addr )
+		self.csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
+                                                                    enstore_functions2.default_port()))
 
         #Try to find the logname for this object in the config dict.  use
         # the lowercase version of the name as the server key.  if this
@@ -218,10 +218,9 @@ class GenericClient:
         # or the monitor server, do something different.
         if my_server == enstore_constants.CONFIGURATION_SERVER or \
            self._is_csc():
-            host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
-            #hostip = socket.gethostbyname(host)
+            host = enstore_functions2.default_host()
 	    hostip = hostaddr.name_to_address(host)
-            port = int(os.environ.get("ENSTORE_CONFIG_PORT",'localhost'))
+            port = enstore_functions2.default_port()
             ticket = {'host':host, 'hostip':hostip, 'port':port,
                       'status':(e_errors.OK, None)}
         elif my_server == enstore_constants.MONITOR_SERVER:
@@ -261,7 +260,7 @@ class GenericClient:
             try:
                 sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
                                  ( my_server, detail,
-                                   os.environ.get('ENSTORE_CONFIG_HOST','')))
+                                   enstore_functions2.default_host()))
                 sys.stderr.flush()
             except IOError:
                 pass
