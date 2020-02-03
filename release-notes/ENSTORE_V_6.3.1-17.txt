@@ -1,0 +1,256 @@
+commit 3a39d11d853a3c720c32327cf8837a198c880116
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Nov 6 10:29:25 2019 -0600
+
+    enstore rpm 6.3.1-17
+
+A	release-notes/ENSTORE_V_6.3.1-16.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+
+commit 77a6debec898d282d4db74035bd63fad790478f3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 4 10:39:22 2019 -0600
+
+    Add volume label to alarm.
+
+    Add internal volume label to alarm per "[Bug 2083] New: VOL1 error alarms need to include  internal VOL1 read".
+
+    http://srm.fnal.gov/reviews/r/617/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2083
+
+M	src/mover.py
+
+commit 25694c37391d9c84393944b5e64886635322e1da
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Nov 1 09:11:55 2019 -0500
+
+    Mover: do not dismount tape on some erros for investigation.
+
+    Do not dismount tape on e_errors.WRITE_VOL1_READ_ERR,
+    e_errors.READ_VOL1_READ_ERR for further investigation
+    if mover_stop is set in configuration.
+
+    http://srm.fnal.gov/reviews/r/616/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2082
+
+M	src/mover.py
+
+commit 72a09aab62452bd57c7a412b1092253dc87ebfe4
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Oct 31 15:00:19 2019 -0500
+
+    mover: include media changer device into status command return.
+
+    Include the media change device name into the status retuned by mover.
+    This will simplify finding the media changer device for a given mover.
+    While for SL8500 media change device is a must in the mover configuration,
+    for TS4500 it is defined, based on 'device' entry in the mover configuration.
+
+    http://srm.fnal.gov/reviews/r/615/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2081
+
+M	src/mover.py
+
+commit 15d1a747ace347427c3777ee413562abb20a63e1
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Oct 31 10:48:00 2019 -0500
+
+    Fix bugs in mover_summary_plotter_module.py.
+
+    The previous change was reviewed and new modifications done.
+
+    http://srm.fnal.gov/reviews/r/599/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2065
+
+M	src/mover_summary_plotter_module.py
+
+commit 93e096e84047887f5628fa4b2623751751028dfe
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 22 13:23:47 2019 -0500
+
+    Mover: fix main and dismount threads collision.
+
+    There was a case when the mover attempted to process HAVE_BOUND request
+     being drained.
+    The cause was: mover main thread sent HAVE_BOUND request and received
+    reply from library manager to do work while it was dismounting tape
+    due to offline request.
+    This patch fixes the problem.
+
+    http://srm.fnal.gov/reviews/r/614/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2078
+
+M	src/mover.py
+
+commit b3e4940b9edf7c2b3333aed4ebd5f9f6eb46c671
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Oct 21 16:45:26 2019 -0500
+
+    Avoid registering file in transition table.
+
+    Set original_library to None if it is the same as library to avoid registering such file in transition table.
+
+    http://srm.fnal.gov/reviews/r/613/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2079
+
+M	src/mover.py
+
+commit 86dd1166e440e16fd4e37493c318b951902d6850
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Oct 21 09:41:05 2019 -0500
+
+    migrator: close open files.
+
+    Migrator sometimes has errors:
+    Traceback (most recent call last):
+      File "/opt/enstore/Python/lib/python2.7/multiprocessing/process.py", line 258, in _bootstrap
+      File "/opt/enstore/Python/lib/python2.7/multiprocessing/process.py", line 114, in run
+      File "/opt/enstore/src/cache/servers/migrator.py", line 162, in _check_packaged_files
+      File "/opt/enstore/src/cache/servers/migrator.py", line 92, in file_checkum
+    OSError: [Errno 24] Too many open files: 'volumes/aggwrite/cache/ba4/f50/00001912B2E6B58A4E98B12F58D668F50DCC'.
+    Close open in file_checkum files.
+
+    http://srm.fnal.gov/reviews/r/612/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2077
+
+M	src/cache/servers/migrator.py
+
+commit 3346dff0d51dd1faaacc8073d0f6f778de97db0e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 15 15:18:05 2019 -0500
+
+    Change SFA package name.
+
+    It was found one case when two SFA packages had the same name even though the combined name contained time with gradation of .001s, but on 06/18/2019 there were 2 identical names created, resulting in the loss of 39 files:
+    09:29:53 pagg04.fnal.gov 021616 root I MPAGG04WMG  Finished tar to /volumes/aggpack/cache/package-MPAGG04W-2019-06-18T09:27:53.853Z/package-MPAGG04W-
+    2019-06-18T09:27:53.853Z.tar size 4076.863488 MB rate 34.0247083734 MB/s Thread Thread-7169
+    09:29:53 pagg04.fnal.gov 039438 root I MPAGG04WMG  Finished tar to /volumes/aggpack/cache/package-MPAGG04W-2019-06-18T09:27:53.853Z/package-MPAGG04W-
+    2019-06-18T09:27:53.853Z.tar size 4076.863488 MB rate 34.0249940114 MB/s Thread Thread-7168
+    This patch changes the file name to include thread name, which will make the file name unique.
+
+    http://srm.fnal.gov/reviews/r/611/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2073
+
+M	src/cache/servers/migrator.py
+
+commit 52c52ef758f052ef9d83174a615f843faea7b272
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Oct 11 15:01:21 2019 -0500
+
+    encp: do not alarm on DEVICE_ERROR
+
+     	RB : http://srm.fnal.gov/reviews/r/610/
+
+M	src/e_errors.py
+
+commit 65024289e06623d01fbb044ec0dc673827a37cc5
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Oct 10 19:06:13 2019 -0500
+
+    Revert "encp: do not alarm on DEVICE_ERROR"
+
+    This reverts commit 4bd92297b068e33eb23336889c5110decf2ed6e1.
+
+M	src/e_errors.py
+M	src/encp.py
+
+commit 4bd92297b068e33eb23336889c5110decf2ed6e1
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Oct 10 18:46:19 2019 -0500
+
+    encp: do not alarm on DEVICE_ERROR
+
+M	src/e_errors.py
+M	src/encp.py
+
+commit e324b3bbf32832db1aa2c1181780ac0817833019
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Oct 10 15:40:51 2019 -0500
+
+    encp regression test: rely on commmands supported by the executable being tested
+
+        RB : http://uqbar.fnal.gov/reviews/r/608/
+
+M	tools/encp_test_functions
+
+commit d7c5dd49b69ac934277aa21969a6363a75873521
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 9 15:30:44 2019 -0500
+
+    Keep transition state in mtx media changer.
+
+    updatedb was rewriting all data not taking into account states when tape
+    is being moved (dismounted) from tape drive to slot.
+    This was causing temporary failures to insert tapes.
+
+    http://srm.fnal.gov/reviews/r/606/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2070
+
+M	src/media_changer.py
+
+commit bd2ee8ae297e38e37ddb67c0b1e451fd2bb14bdd
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Oct 9 10:23:09 2019 -0500
+
+    encp: changes necessary to build encp RPM
+
+    	RB : http://srm.fnal.gov/reviews/r/605/
+    	BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2071
+
+M	modules/Makefile
+M	spec/encp.spec
+M	spec/encp_conf.spec
+M	src/Makefile
+M	src/encp.py
+A	ups/encp.csh
+A	ups/encp.sh
+
+commit 651d398ea3aac3058ab8abefab2757ab58bb6e54
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Oct 8 11:22:17 2019 -0500
+
+    log_client: conditional import of multiprocessing module
+
+          RB : http://srm/reviews/r/604/
+          BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2069
+
+M	src/log_client.py
+
+commit 82269cfb279f2e526d2b8e8e9e7e57bfec309362
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Oct 3 15:42:43 2019 -0500
+
+    info_server: make find all copies immune to CRC seed
+
+       RB : http://srm.fnal.gov/reviews/r/603/
+       BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2068
+
+M	src/info_server.py
+
+commit 37fea4beee83c455f8ad5f3029286eae4e483467
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Oct 1 16:11:39 2019 -0500
+
+    namespace: fix typo
+
+        http://srm.fnal.gov/reviews/r/602/
+
+M	src/namespace.py
+
+commit dc58b1bc2e5b00caea85d688cc9d33167652376a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 1 13:28:35 2019 -0500
+
+    Interfaces.c does not get compiled on SL7 platform.
+
+    n SL7 Compiler errors out with ././Interfaces.c:554:47: error: lvalue required as unary '&' operand
+            if(inet_ntop(arp_msg.arp_pa.sa_family, &(((struct sockaddr_in)addr_dummy).sin_addr),
+
+    On SLF6 it compiles well.
+
+    Also removed unused variable.
+
+    http://srm.fnal.gov/reviews/r/601/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2067
+
+M	modules/Interfaces.c
