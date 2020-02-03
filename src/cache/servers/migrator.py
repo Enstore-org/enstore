@@ -138,7 +138,7 @@ def _check_packaged_files(archive_area, package, tar_blocking_factor=20):
         cmd = "tar -b %s --force-local -xf "%(tar_blocking_factor,)
     rtn = enstore_functions2.shell_command2("%s %s"%(cmd, package,))
     if rtn[0] != 0: # archiver return code
-        Trace.log(e_errors.ERROR, "Error unwinding tar file %s" %s(rtn[2], package)) #stderr
+        Trace.log(e_errors.ERROR, "Error unwinding tar file %s"%(rtn[2], package)) #stderr
         sys.exit(1)
 
     # create list of files to check
