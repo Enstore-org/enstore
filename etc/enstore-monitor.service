@@ -1,0 +1,15 @@
+#  This is enstore monitor service for SLF7
+[Unit]
+Description=Enstore Boot Service
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/opt/enstore/bin/monitor_server-boot start
+ExecStop=/opt/enstore/bin/monitor_server-boot stop
+
+[Install]
+WantedBy=multi-user.target
+
+

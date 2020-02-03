@@ -1,0 +1,15 @@
+#  This is enstore service for SLF7
+[Unit]
+Description=Enstore Boot Service
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/opt/enstore/bin/enstore-boot start
+ExecStop=/opt/enstore/bin/enstore-boot stop
+
+[Install]
+WantedBy=multi-user.target
+
+
