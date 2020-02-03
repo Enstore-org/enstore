@@ -34,6 +34,7 @@ import hostaddr
 import volume_clerk
 
 MY_NAME = enstore_constants.INFO_SERVER  # "info_server"
+SEQUENTIAL_QUEUE_SIZE = enstore_constants.SEQUENTIAL_QUEUE_SIZE
 PARALLEL_QUEUE_SIZE = enstore_constants.PARALLEL_QUEUE_SIZE
 MAX_CONNECTION_FAILURE = enstore_constants.MAX_CONNECTION_FAILURE
 MAX_THREADS = enstore_constants.MAX_THREADS
@@ -84,6 +85,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
         file_clerk.MY_NAME = MY_NAME
         volume_clerk.MY_NAME = MY_NAME
 
+        self.sequentialQueueSize = self.keys.get('sequential_queue_size', SEQUENTIAL_QUEUE_SIZE)
         self.parallelQueueSize = self.keys.get('parallel_queue_size', PARALLEL_QUEUE_SIZE)
         self.numberOfParallelWorkers = self.keys.get('max_threads', MAX_THREADS)
         self.max_connections = self.numberOfParallelWorkers + 1
@@ -107,6 +109,10 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
         self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
         self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
+        self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
+        self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue, self)
+        self.sequentialWorker.start()
+
         self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
         self.parallelThreads = []
         for i in range(self.numberOfParallelWorkers):
@@ -123,6 +129,10 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
     def invoke_function(self, function, args=()):
         if function.__name__ == "quit":
             apply(function, args)
+        elif function.__name__ in ("find_same_file", "find_same_file2"):
+            Trace.trace(5, "Putting on sequential thread queue %d %s" % (
+                self.sequentialThreadQueue.qsize(), function.__name__))
+            self.sequentialThreadQueue.put([function.__name__, args])
         else:
             Trace.trace(5, "Putting on parallel thread queue %d %s" % (
             self.parallelThreadQueue.qsize(), function.__name__))
@@ -179,8 +189,10 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 
     # These need confirmation
     def quit(self, ticket):
+        self.sequentialThreadQueue.put(None)
         for t in self.parallelThreads:
             self.parallelThreadQueue.put(None)
+        self.sequentialWorker.join(10.)
         for t in self.parallelThreads:
             t.join(10.)
         dispatching_worker.DispatchingWorker.quit(self, ticket)
@@ -427,11 +439,20 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
             return  # extract_bfid_from_ticket handles its own errors.
         try:
             q = ("select bfid, crc, sanity_crc from file "
-                 "where size = %s and sanity_size = %s "
+                 "where size = %s and sanity_size = %s and crc = %s"
                  "order by bfid asc ")
 
             res = self.filedb_dict.query_dictresult(q, (record["size"],
-                                                        record["sanity_cookie"][0],))
+                                                        record["sanity_cookie"][0],
+                                                        record['complete_crc'],))
+
+            if len(res) <= 1:
+                q = ("select bfid, crc, sanity_crc from file "
+                     "where size = %s and sanity_size = %s "
+                     "order by bfid asc ")
+
+                res = self.filedb_dict.query_dictresult(q, (record["size"],
+                                                            record["sanity_cookie"][0],))
 
             ticket["files"] = []
             for i in res:
@@ -458,7 +479,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
                     record_sanity_crc_adler32 = checksum.convert_0_adler32_to_1_adler32(
                         record["sanity_cookie"][1], record["sanity_cookie"][0])
 
-                    if ((crc == record_crc_adler32 or 
+                    if ((crc == record_crc_adler32 or
                          crc_adler32 == record["complete_crc"] or
                          crc_adler32 == record_crc_adler32)
                         and
