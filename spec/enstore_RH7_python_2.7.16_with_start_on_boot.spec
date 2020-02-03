@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 0
+Release: 0.el7
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -25,9 +25,9 @@ For the postinstallation and configuration instructions please see enstore/READM
 
 %prep
 # check if all supporting rpms are installed
-rpm -q Python-enstore2.7-9*
+rpm -q Python-enstore2.7-16*
 if [ $? -ne 0 ]; then
-	echo "Python-enstore2.7-9 is not installed"
+	echo "Python-enstore2.7-16 is not installed"
 	exit 1
 fi
 
@@ -44,7 +44,7 @@ rm -rf enstore-setup
 %setup -q -c -n %{prefix}
 # copy all supporting products
 cp -rp * $RPM_BUILD_ROOT/%{prefix}
-pydir=`rpm -ql Python-enstore2.7-9* | head -1`
+pydir=`rpm -ql Python-enstore2.7-16* | head -1`
 PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
 mkdir -p $PYTHON_DIR
 mkdir -p Python
@@ -52,21 +52,13 @@ cp -rp $pydir/* $PYTHON_DIR
 cp -rp $pydir/* Python
 rm -rf $PYTHON_DIR/*.tgz
 rm -rf Python/*.tgz
-#fttdir=`rpm -ql ftt | head -1`
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
-#mv $RPM_BUILD_ROOT/%{prefix}/ftt $FTT_DIR
-#mkdir -p $FTT_DIR
-#mkdir -p FTT
-#cp -rp $fttdir/* $FTT_DIR
-#cp -rp $fttdir/* FTT
-#rm -rf $FTT_DIR/*.tgz
 swigdir=`rpm -ql swig-enstore | head -1`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
 mkdir -p $SWIG_DIR
 mkdir -p SWIG
 cp -rp $swigdir/* $SWIG_DIR
 cp -rp $swigdir/* SWIG
-#tar xzf /tmp/enstore_qpid_python2.7.tgz
 
 # create a tepmorary setup file
 #+++++++++++
@@ -84,7 +76,7 @@ echo SWIG_DIR=$SWIG_DIR >> /tmp/enstore-setup
 echo export SWIG_DIR >> /tmp/enstore-setup
 echo SWIG_LIB=$SWIG_DIR/swig_lib >> /tmp/enstore-setup
 echo export SWIG_LIB >> /tmp/enstore-setup
-echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-9.3/bin:"$"PATH >> /tmp/enstore-setup
+echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-11/bin:"$"PATH >> /tmp/enstore-setup
 
 %build
 . /tmp/enstore-setup
@@ -122,27 +114,16 @@ PATH=/usr/sbin:$PATH
 # check if user "enstore" and group "enstore "exist"
 
 echo 'Checking if group "enstore" exists'
-grep enstore /etc/group
-if [ $? -ne 0 ]; then
-    echo 'Creating group "enstore"'
-    groupadd -g 6209 enstore
-fi
+getent group enstore >/dev/null || groupadd -g 6209 enstore
 echo 'Checking if user "enstore" exists'
-id enstore
-if [ $? -ne 0 ]; then
-	echo 'Creating user "enstore"'
-	useradd -u 5744 -g enstore enstore
-	chmod 775 ~enstore
-fi
+getent passwd enstore >/dev/null || useradd -u 5744 -g enstore enstore;chmod 775 ~enstore
+
 # save existing enstore distribution
 d=`date "+%%F-%T"`
 if [ -d $RPM_BUILD_ROOT/%{prefix} ]; then
    echo "moving $RPM_BUILD_ROOT/%{prefix} to /tmp/enstore_backup.$d"
    mv $RPM_BUILD_ROOT/%{prefix} /tmp/enstore_backup.$d
 fi
-#$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
-#%post
-#$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
 
 %post
 echo "POSTINSTALL"
@@ -165,13 +146,10 @@ echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 rm -rf $FTT_DIR
 ln -s $ENSTORE_DIR/ftt $FTT_DIR
 
-#chown -R enstore.enstore /home/enstore
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
 # copy qpid extras
 cp -p /opt/enstore/etc/extra_python.pth $PYTHONLIB/site-packages
-cp -rp /usr/lib/python2.6/site-packages/qpid $PYTHONLIB/site-packages
-cp -rp /usr/lib/python2.6/site-packages/mllib $PYTHONLIB/site-packages
 
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
@@ -184,8 +162,8 @@ chmod 740 /etc/sudoers.e
 # Need to add env_keep because in RH5 the sudoers was modified to
 #reset all environment
 echo 'Defaults env_keep +=	"PATH PYTHON_DIR PYTHONPATH PYTHONINC PYTHONLIB \' >> /etc/sudoers.e
-echo '                        	ENSTORE_CONFIG_HOST ENSTORE_CONFIG_PORT ENSTORE_DIR ENSTORE_MAIL \' >> /etc/sudoers.e
-echo '                        	FTT_DIR KRBTKFILE ENSTORE_OUT"' >> /etc/sudoers.e
+echo '                          ENSTORE_CONFIG_HOST ENSTORE_CONFIG_PORT ENSTORE_DIR ENSTORE_MAIL \' >> /etc/sudoers.e
+echo '                          FTT_DIR KRBTKFILE ENSTORE_OUT"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
 echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
@@ -195,18 +173,23 @@ rm -f /etc/sudoers
 cp /etc/sudoers.e /etc/sudoers
 chmod 440 /etc/sudoers
 
-echo "Copying $ENSTORE_DIR/bin/enstore-boot to /etc/rc.d/init.d"
-cp -f $ENSTORE_DIR/bin/enstore-boot /etc/rc.d/init.d
+echo "Copying $ENSTORE_DIR/bin/enstore-boot.service.SLF7 to /usr/lib/systemd/system/enstore.service"
+cp -f $ENSTORE_DIR/etc/enstore.service /usr/lib/systemd/system/enstore.service
 echo "Configuring the system to start enstore on boot"
+systemctl is-enabled enstore.service
+if [ $? -ne 0 ]; then
+    systemctl enable enstore.service
+fi
 /etc/rc.d/init.d/enstore-boot install
-echo "Copying $ENSTORE_DIR/bin/monitor_server-boot to /etc/rc.d/init.d"
-cp -f $ENSTORE_DIR/bin/monitor_server-boot /etc/rc.d/init.d
+echo "Copying $ENSTORE_DIR/bin/monitor-boot.service.SLF7 to /usr/lib/systemd/system/enstore-monitor.service"
+cp -f $ENSTORE_DIR/etc/enstore-monitor.service /usr/lib/systemd/system/enstore-monitor.service
 echo "Configuring the system to start monitor server on boot"
-/etc/rc.d/init.d/monitor_server-boot install
-echo "Saving /etc/rc.d/rc.local to /etc/rc.d/rc.local.enstore_save"
-cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
-echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
+systemctl is-enabled enstore-monitor.service
+if [ $? -ne 0 ]; then
+    systemctl enable enstore-monitor.service
+fi
 cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
+chmod +x /etc/rc.d/rc.local
 echo "Updating symbolic links"
 $ENSTORE_DIR/external_distr/update_sym_links.sh
 if [ ! -d ~enstore/config ]; then
@@ -225,10 +208,6 @@ $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh $1
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 
-# %postun
-#export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
-#rm -rf $ENSTORE_DIR
-
 %files
 %defattr(-,enstore,enstore,-)
 %doc
@@ -237,25 +216,26 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /%{prefix}/etc/sam.conf
 %config /%{prefix}/etc/stk.conf
 %config /usr/local/etc/setups.sh
-#/etc/rc.d/init.d/enstore-boot
-#/etc/sudoers
-#/home/enstore/debugfiles.list
-#/home/enstore/debugsources.list
+
 %changelog
-* Mon Feb 03 2020  <moibenko@fnal.gov> -
-- v 6.3.4 release 0. Accumulative changes since 6.3.1-17
-* Wed Nov 06 2019  <moibenko@fnal.gov> -
+* Mon Feb 02 2020  <moibenko@fnal.gov> -
+- v 6.3.4 release 0. Accumulative changes since 6.3.3-2
+* Tue Dec 17 2019  <moibenko@fnal.gov> -
+- v 6.3.3 release 2. Unofficial release with fixes for communincation of dual stak IPs with IPv4 only
+* Wed Dec 04 2019  <moibenko@fnal.gov> -
+- v 6.3.3 release 0. Same as 6.3.2.2, but with new python
+* Wed Nov 13 2019  <moibenko@fnal.gov> -
+- v 6.3.2 release 1. Modified media changer to use mtx unit_test calls
+* Fri Nov 08 2019  <moibenko@fnal.gov> -
+- v 6.3.2 release 0. Same as  v 6.3.1 release 17 but with new mtx
+* Wed Nov 6 2019  <moibenko@fnal.gov> -
 - v 6.3.1 release 17. Accumulative changes since 6.3.1-16
 * Mon Sep 30 2019  <moibenko@fnal.gov> -
-- v 6.3.1 release 16. Accumulative changes since 6.3.1-15
-* Fri Aug 16 2019  <moibenko@fnal.gov> -
-- v 6.3.1 release 15. Accumulative changes since 6.3.1-14
-* Tue Aug 06 2019  <moibenko@fnal.gov> -
-- v 6.3.1 release 14. Accumulative changes since 6.3.1-13
-* Fri Jul 19 2019  <moibenko@fnal.gov> -
-- v 6.3.1 release 13. Accumulative changes since 6.3.1-11
+- v 6.3.1 release 16. Accumulative changes since 6.3.1-12
+* Fri May 24 2019  <moibenko@fnal.gov> -
+- v 6.3.1 release 12. Increase dismout delay
 * Fri May 10 2019  <moibenko@fnal.gov> -
-- v 6.3.1 release 10. Accumulative changes since 6.3.1-10
+- v 6.3.1 release 11. Accumulative changes since 6.3.1-10
 * Wed May 1 2019  <moibenko@fnal.gov> -
 - v 6.3.1 release 10. Accumulative changes since 6.3.1-5
 * Thu Apr 25 2019  <moibenko@fnal.gov> -
@@ -300,13 +280,13 @@ rm -rf $RPM_BUILD_ROOT/*
 - v 6.2.0 release 0. - last release, which does not include new code for TS4500
 * Mon Apr 16 2018  <moibenko@fnal.gov> -
 - v 6.1.0 release 6.
-* Tue Oct 03 2017  <moibenko@fnal.gov> -
+* Tue Oct 3 2017  <moibenko@fnal.gov> -
 - v 6.1.0 release 5.
 * Tue Aug 29 2017  <moibenko@fnal.gov> -
 - v 6.1.0 release 4.
-* Fri Jul 04 2017  <moibenko@fnal.gov> -
+* Fri Jul 4 2017  <moibenko@fnal.gov> -
 - v 6.1.0 release 3.
-* Thu May 04 2017  <moibenko@fnal.gov> -
+* Thu May 4 2017  <moibenko@fnal.gov> -
 - v 6.1.0 release 2.
 * Tue Mar 28 2017  <moibenko@fnal.gov> -
 - v 6.1.0 release 1.

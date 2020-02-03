@@ -17,7 +17,7 @@ then
 fi
 
 setup() {
-        last=${!#}
+        last=$1
         if [ $last = "enstore" -o $last = "python" -o $last = "ftt" -o $last = "pnfs" ]
         then
 	    return 0
@@ -32,7 +32,12 @@ setup() {
 
 # fakes ups function for products enstore, python and ftt for anything else uses ups
 ups() {
-	last=${!#}
+	last=""
+    while [ $# -ne 0 ]
+    do
+        last=$1
+        shift
+    done
 	if [ $last == "enstore" ];
 		then
 		echo $ENSTORE_DIR
@@ -45,7 +50,7 @@ ups() {
 		then
 		    $UPS_DIR/bin/ups "$@"
 		fi
-	fi 
+	fi
 }
 if [ "${ENSTORE_DIR:-x}" = "x" ];
 then

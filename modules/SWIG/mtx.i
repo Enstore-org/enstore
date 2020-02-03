@@ -71,3 +71,4 @@ void open_device(void);
 void Move(int src, int dest);
 void set_scsi_timeout(int timeout);
 int get_scsi_timeout();
+void Test_UnitReady(void);

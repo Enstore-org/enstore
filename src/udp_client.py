@@ -13,9 +13,9 @@ import sys
 try:
     import threading
     import thread
-    thread_support=1
+    thread_support = 1
 except ImportError:
-    thread_support=0
+    thread_support = 0
 import types
 
 # enstore imports
@@ -28,21 +28,21 @@ import host_config
 import enstore_constants
 import inspect
 
-MAX_EXPONENT=6 # do not increase receive TO in send beyond this
-TRANSFER_MAX=enstore_constants.MAX_UDP_PACKET_SIZE #Max size of UDP datagram.
+MAX_EXPONENT = 6 # do not increase receive TO in send beyond this
+TRANSFER_MAX = enstore_constants.MAX_UDP_PACKET_SIZE #Max size of UDP datagram.
 
 
-def wait_rsp( sock, address, rcv_timeout ):
+def wait_rsp(sock, address, rcv_timeout):
 
-    reply,server=None,None
+    reply, server = None, None
 
-    r, w, x, rcv_timeout = cleanUDP.Select( [sock], [], [sock], rcv_timeout )
+    r, w, x, rcv_timeout = cleanUDP.Select([sock], [], [sock], rcv_timeout)
     if r:
-        reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout )
-    elif x or w :
+        reply, server = sock.recvfrom(TRANSFER_MAX, rcv_timeout)
+    elif x or w:
         exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO,
-              "UDPClient.send: exception on select after send to %s %s: %s %s"%
+                  "UDPClient.send: exception on select after send to %s %s: %s %s"%
                   (address, x, exc, msg))
         raise e_errors.EnstoreError(None,
                                     "impossible to get these set w/out [r]",
@@ -61,13 +61,13 @@ class UDPClient:
 
         self.reinit()
 
-    def reinit(self):
+    def reinit(self, receiver_ip=None):
         """
         Create new set of TSD parameters
         """
         #Obtain necessary values.
         pid = os.getpid()
-        host, port, socket = udp_common.get_default_callback()
+        host, port, socket = udp_common.get_default_callback(receiver_ip=receiver_ip)
         if thread_support:
             tid = thread.get_ident() #Obtain unique identifier.
         else:
@@ -88,7 +88,7 @@ class UDPClient:
 
         return tsd
 
-    def get_tsd(self):
+    def get_tsd(self, receiver_ip=None):
         """
         Return this thread's local data.  If it hasn't been initialized yet,
         call reinit() to do so.
@@ -96,10 +96,13 @@ class UDPClient:
         :rtype: :obj:`threading.local()`
         """
 
-
         if not hasattr(self.thread_specific_data, 'pid'):
-            self.reinit()
-
+            self.reinit(receiver_ip=receiver_ip)
+        elif receiver_ip:
+            my_address_family = socket.getaddrinfo(socket.getfqdn(), None)[0][0]
+            receiver_address_family = socket.getaddrinfo(receiver_ip, None)[0][0]
+            if my_address_family != receiver_address_family:
+                self.reinit(receiver_ip=receiver_ip)
         return self.thread_specific_data
 
     def get_address(self):
@@ -134,7 +137,7 @@ class UDPClient:
     def fileno(self):
         return self.get_tsd().socket.fileno()
 
-    def protocolize( self, data ):
+    def protocolize(self, data):
         """
         Protocolize the message.
 
@@ -144,20 +147,18 @@ class UDPClient:
         """
         tsd = self.get_tsd()
         tsd.txn_counter = tsd.txn_counter + 1
-        """
-        add message creation timestamp
-        """
+
+        #add message creation timestamp
         if type(data) == types.DictType:
             data["send_ts"] = time.time()
         body = udp_common.r_repr((tsd.ident, tsd.txn_counter, data))
         crc = checksum.adler32(0L, body, len(body))
-        """
-        stringify message and check if it is too long
-        """
+
+        #stringify message and check if it is too long
         message = udp_common.r_repr((body, crc))
 
         if len(message) > TRANSFER_MAX:
-            errmsg="send:message too big, size=%d, max=%d" %(len(message),TRANSFER_MAX)
+            errmsg = "send:message too big, size=%d, max=%d" %(len(message), TRANSFER_MAX)
             Trace.log(e_errors.ERROR, errmsg)
             raise e_errors.EnstoreError(errno.EMSGSIZE, errmsg,
                                         e_errors.NET_ERROR)
@@ -186,10 +187,10 @@ class UDPClient:
         :rtype: :obj:`str` - reply
         """
 
-        tsd = self.get_tsd()
+        tsd = self.get_tsd(receiver_ip=dst[0])
 
         if rcv_timeout:
-            if max_send==0:
+            if max_send == 0:
                 max_send = 1 # protect from nonsense inputs XXX should we do this?
             # if rcv_timeout is specified
             # do not grow tiemout exponentially
@@ -212,7 +213,6 @@ class UDPClient:
         if tsd.host == "127.0.0.1":
             return {'status':(e_errors.NET_ERROR,
                               "Default ip address is localhost.")}
-
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is dst[0].
         if not host_config.is_route_in_table(dst[0]):
@@ -220,26 +220,25 @@ class UDPClient:
 
         n_sent = 0
         exp = 0
-        timeout=rcv_timeout
-        while max_send==0 or n_sent<max_send:
+        timeout = rcv_timeout
+        while max_send == 0 or n_sent < max_send:
             #print "SENDING", time.time(), msg, dst
             Trace.trace(5, "sending %s %s"%(msg, dst))
-            tsd.socket.sendto( msg, dst )
-            timeout = timeout*(pow(2,exp))
+            tsd.socket.sendto(msg, dst)
+            timeout = timeout*(pow(2, exp))
             if exp < max_exponent:
                 exp = exp + 1
-            n_sent=n_sent+1
-            rcvd_txn_id=None
+            n_sent = n_sent+1
+            rcvd_txn_id = None
 
             while rcvd_txn_id != txn_id: #look for reply while rejecting "stale" responses
                 reply, server_addr, timeout_1 = \
-                       wait_rsp( tsd.socket, dst, timeout)
+                       wait_rsp(tsd.socket, dst, timeout)
 
                 if not reply: # receive timed out
                     #print "TIMEOUT", time.time(), msg
                     Trace.trace(5, "TIMEOUT sending %s"%(msg,))
                     break #resend
-                #print "GOT REPLY",reply
                 Trace.trace(5, "GOT REPLY %s"%(reply,))
                 try:
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
@@ -250,7 +249,7 @@ class UDPClient:
                         return out
                     if 'r_a' in out:
                         client_id = out['r_a'][2]
-                        del(out['r_a'])
+                        del out['r_a']
                         Trace.trace(5, "client_id %s"%(client_id,))
 
                         if client_id != tsd.ident:
@@ -259,7 +258,7 @@ class UDPClient:
                             out['status'] = (e_errors.MALFORMED, errmsg)
                             return out
                     else:
-                        Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'): %s"%
+                        Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'):%s"%
                                   (server_addr, out))
                         #Trace.log(e_errors.WARNING, "CALL 1: %s"%(inspect.stack(),))
 
@@ -282,13 +281,9 @@ class UDPClient:
                     del tb  #Avoid resource leak.
 
                     #Set this to something.
-                    rcvd_txn_id=None
+                    rcvd_txn_id = None
             else: # we got a good reply
                 ##Trace.log(e_errors.INFO,"done cleanup %s"%(dst,))
-                '''
-                if send_done:
-                    self.send_no_wait({"work":"done_cleanup"}, dst)
-                '''
                 try:
                     del tsd.send_done[dst]
                 except KeyError:
@@ -310,7 +305,7 @@ class UDPClient:
         #raise errno.errorcode[errno.ETIMEDOUT]
         raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
 
-    def send_no_wait(self, data, address, unique_id=False) :
+    def send_no_wait(self, data, address, unique_id=False):
         """
         Send message to address and do not wait for response.
 
@@ -323,23 +318,23 @@ class UDPClient:
         :rtype: :obj:`int` - number of bytes sent
         """
         try:
-            tsd = self.get_tsd()
+            tsd = self.get_tsd(receiver_ip=address[0])
             if unique_id:
                 # Create unique id for each message.
                 tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
 
-            message, txn_id = self.protocolize( data )
+            message, txn_id = self.protocolize(data)
 
             #set up the static route before sending.
             # outgoing interface_ip is tsg.host and destination is address[0].
             if not host_config.is_route_in_table(address[0]):
                 host_config.setup_interface(address[0], tsd.host)
 
-            reply = tsd.socket.sendto( message, address )
+            reply = tsd.socket.sendto(message, address)
         except:
             Trace.handle_error()
             reply = None
-	return reply
+        return reply
 
 
     def send_deferred(self, data, address):
@@ -351,7 +346,7 @@ class UDPClient:
         | recv_deferred_with_repeat_send()
         | drop_deferred()
 
-        The \*_deferred() functions allow for asymmetric processing of
+        The *_deferred() functions allow for asymmetric processing of
         messages.
 
         | There are two recv_deferred() functions.  recv_deferred() does
@@ -371,17 +366,16 @@ class UDPClient:
         :arg address: (destination host, destination port)
         :rtype: :obj:`long` transaction id
         """
-
-        tsd = self.get_tsd()
+        tsd = self.get_tsd(receiver_ip=address[0])
         tsd.send_done[address] = 1
-        message, txn_id = self.protocolize( data )
+        message, txn_id = self.protocolize(data)
 
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is address[0].
         if not host_config.is_route_in_table(address[0]):
             host_config.setup_interface(address[0], tsd.host)
 
-        bytes_sent = tsd.socket.sendto( message, address )
+        bytes_sent = tsd.socket.sendto(message, address)
 
         if bytes_sent < 0:
             return -1
@@ -420,7 +414,7 @@ class UDPClient:
                 del tsd.send_queue[txn_id]
                 continue
 
-            tsd.socket.sendto( message, address )
+            tsd.socket.sendto(message, address)
 
     # Receive a reply, timeout has the same meaning as in select
     def __recv_deferred(self, txn_ids, timeout):
@@ -442,10 +436,10 @@ class UDPClient:
                     pass
                 return reply, txn_id
         else:
-            rcvd_txn_id=None
+            rcvd_txn_id = None
             while rcvd_txn_id not in txn_ids: #look for reply
                 reply = None
-                r, w, x, timeout = cleanUDP.Select( [tsd.socket], [], [], timeout)
+                r, w, x, timeout = cleanUDP.Select([tsd.socket], [], [], timeout)
                 if r:
                     reply, server_addr = \
                            tsd.socket.recvfrom(TRANSFER_MAX, timeout)
@@ -459,7 +453,7 @@ class UDPClient:
                         return out, rcvd_txn_id
                     if 'r_a' in out:
                         client_id = out['r_a'][2]
-                        del(out['r_a'])
+                        del out['r_a']
                         Trace.trace(5, "client_id %s"%(client_id,))
 
                         if client_id != tsd.ident:
@@ -468,7 +462,7 @@ class UDPClient:
                             out['status'] = (e_errors.MALFORMED, errmsg)
                             return out, rcvd_txn_id
                     else:
-                        Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'): %s"%
+                        Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'):%s"%
                                   (server_addr, out))
                         #Trace.log(e_errors.WARNING, "CALL 2: %s"%(sys._getframe(1).f_code.co_name,))
 
@@ -491,7 +485,7 @@ class UDPClient:
                     #Set this to none.  Since it is invalid, don't add it
                     # to the queue and instead skip the following if and
                     # go right back to the top of the loop.
-                    rcvd_txn_id=None
+                    rcvd_txn_id = None
                     continue
 
                 if rcvd_txn_id not in txn_ids:
@@ -572,7 +566,7 @@ class UDPClient:
                 #Limit the timeout to what is left of the entire resubmit
                 # timeout.
                 upper_limit = max(0,
-                           loop_start_time + entire_timeout - time.time())
+                                  loop_start_time + entire_timeout - time.time())
                 timeout = min(timeout, upper_limit)
 
                 try:
@@ -611,7 +605,7 @@ class UDPClient:
                 pass
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     status = 0
     def send_test(msg, address, udp_c):
@@ -635,7 +629,7 @@ if __name__ == "__main__" :
                 print "Sent message."
 
             else:
-                back = u.send(msg, address, rcv_timeout = 10, max_send=3)
+                back = u.send(msg, address, rcv_timeout=10, max_send=3)
                 print "Received message %s." % (back)
 
         except:
@@ -676,11 +670,11 @@ if __name__ == "__main__" :
     ## and > 16KB
     # message = {'message':data}
     address = ("localhost", 7700)
-    Trace.do_print([5,6,10])
+    Trace.do_print([5, 6, 10])
 
-    test_thread = threading.Thread(target = send_test,
-                                   args = (message, address, u),
-                                   name = "test_thread")
+    test_thread = threading.Thread(target=send_test,
+                                   args=(message, address, u),
+                                   name="test_thread")
     test_thread.start()
     test_thread.join()
 

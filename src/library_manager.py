@@ -2797,8 +2797,14 @@ class LibraryManagerMethods:
             Trace.log(e_errors.ERROR, "No volume info %s. Do not know how to proceed"%
                       (self.current_volume_info,))
             return  None, (e_errors.NOWORK, None)
-        if self.current_volume_info['system_inhibit'][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-            Trace.log(e_errors.ERROR, "Volume %s is unavailable: %s"%(external_label, self.current_volume_info['system_inhibit']))
+        try:
+            if self.current_volume_info['system_inhibit'][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+                Trace.log(e_errors.ERROR, "Volume %s is unavailable: %s"%(external_label, self.current_volume_info['system_inhibit']))
+                return  None, (e_errors.NOWORK, None)
+        except KeyError:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "Unexpected KeyError processing %s"%(self.current_volume_info,))
+            Trace.handle_error(exc, msg, tb)
             return  None, (e_errors.NOWORK, None)
 
         self.init_request_selection()
@@ -4505,12 +4511,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mticket['unique_id'] and mticket['unique_id'] != w['unique_id']:
                 if mticket.has_key("current_time"):
                     mover = mticket['mover']
-                    if self.volumes_at_movers.at_movers[mover]['time_started'] ==  mticket['current_time']:
-                        Trace.log(e_errors.INFO, "Duplicate MOVER_BOUND request will be ignored for %s"%(mover,))
-                        blank_reply = {'work': None, 'r_a': saved_reply_address}
-                        self.reply_to_caller(blank_reply)
+                    try:
+                        if self.volumes_at_movers.at_movers[mover]['time_started'] ==  mticket['current_time']:
+                            Trace.log(e_errors.INFO, "Duplicate MOVER_BOUND request will be ignored for %s"%(mover,))
+                            blank_reply = {'work': None, 'r_a': saved_reply_address}
+                            self.reply_to_caller(blank_reply)
+                            return
+                    except KeyError:
+                        exc, msg, tb = sys.exc_info()
+                        Trace.log(e_errors.ERROR, "Unexpected KeyError processing %s"%(self.volumes_at_movers.at_movers,))
+                        Trace.handle_error(exc, msg, tb)
+                        self.reply_to_caller(nowork)
                         return
-                        #
+
                 Trace.trace(self.my_trace_level+1,"_mover_bound_volume: found backed up mover %s " % (mticket['mover'], ))
                 Trace.trace(self.my_trace_level+1,"_mover_bound_volume %s %s"%(mticket['unique_id'],  w['unique_id']))
                 self.reply_to_caller(nowork)  #AM !!!!!!!

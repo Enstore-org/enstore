@@ -2783,9 +2783,19 @@ def get_callback_addresses(encp_intf):
     get_callback_addresses_start_time = time.time()
 
     done_ticket = {'status': (e_errors.OK, None)}
+    # for clients running on dual stack hosts choose protocol version based on configuration server IP
+    my_ips = socket.getaddrinfo(socket.getfqdn(), None)
+    cs_addrinfo = socket.getaddrinfo(__csc.get_server_address(__csc.server_address)[0], None)
+    cs_address_family = cs_addrinfo[0][0]
+    for a_info in my_ips:
+        if a_info[0] == cs_address_family:
+            ip = a_info[4][0]
+            break
+    else:
+        ip = None
 
     # get a port to talk on and listen for connections
-    callback_addr, listen_socket = get_callback_addr()
+    callback_addr, listen_socket = get_callback_addr(ip)
     #If the socket does not exist, do not continue.
     if listen_socket == None:
         done_ticket = {'status':(e_errors.NET_ERROR,
@@ -2863,7 +2873,6 @@ def get_udp_callback_addr(encp_intf, udps=None):
     Trace.message(CONFIG_LEVEL,
                   "Listening for mover(s) to send route back on (%s, %s)." %
                   udp_callback_addr)
-
     return udp_callback_addr, udps
 
 ##############################################################################
@@ -11224,7 +11233,6 @@ class EncpInterface(option.Interface):
         #Values for specifying which enstore system to contact.
         self.enstore_config_host = enstore_functions2.default_host()
         self.enstore_config_port = enstore_functions2.default_port()
-
         #Sometimes the kernel lies about the max size of files supported
         # by the filesystem; skip the test if that is needed.
         self.bypass_filesystem_max_filesize_check = 0

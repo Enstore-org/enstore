@@ -3465,7 +3465,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(133,"bytes_to_write %s bytes_written %s"%(nbytes,bytes_written))
             except:
                 exc, detail, tb = sys.exc_info()
-                #Trace.handle_error(exc, detail, tb)
+                Trace.handle_error(exc, detail, tb)
                 # bail out gracefuly
                 if str(detail) == 'FTT_ENOSPC':
                     # no space left on tape
@@ -4553,7 +4553,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dismount_time = None
             if hasattr(self ,'increase_dismount_time'):
                 del(self.increase_dismount_time)
-                
+
         self.unlock_state()
 
         ticket['mover']={}
@@ -5096,7 +5096,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         :type verify_label: :obj:`int`
         :arg verify_label: verify tape label if 1
         """
-
+        
         label_tape = 0
         have_tape = 0
         err = None
@@ -5105,7 +5105,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 Trace.log(e_errors.INFO, 'calling  tape_driver.open')
                 have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
-                Trace.log(DEBUG_LOG, 'tape_driver.open errors (Ok, means no errors) %s'%(self.ftt._ftt.ftt_get_error(),))
+                if self.driver_type == 'FTTDriver':
+                    Trace.log(DEBUG_LOG, 'tape_driver.open errors (Ok, means no errors) %s'%(self.ftt._ftt.ftt_get_error(),))
             except self.ftt.FTTError, detail:
                 Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive positioning the tape: %s %s."%(self.ftt.FTTError, detail))
                 self.transfer_failed(e_errors.POSITIONING_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
@@ -6655,7 +6656,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.nowork({})
             return
 
-        if self.stop and self.last_error[0] in (e_errors.WRITE_VOL1_READ_ERR, e_errors.READ_VOL1_READ_ERR):
+        if self.stop and self.last_error[0] in (e_errors.WRITE_VOL1_READ_ERR,
+                                                e_errors.READ_VOL1_READ_ERR,
+                                                e_errors.READ_VOL1_WRONG,
+                                                e_errors.WRITE_VOL1_WRONG):
             Trace.alarm(e_errors.INFO, 'Tape %s will stay in the drive for investigation'%(self.current_volume))
             self.offline()
             return
@@ -7014,7 +7018,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.just_mounted = 1
             self.write_counter = 0 # this flag is used in write_tape to verify tape position
             if after_function:
-                Trace.trace(10, "mount: calling after function")
+                Trace.trace(10, "mount: calling after function %s"%(after_function,))
                 after_function()
         else: #Mount failure, do not attempt to recover
             Trace.log(e_errors.ERROR, "mount %s: %s" % (volume_label, status))
@@ -7106,7 +7110,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed=0
         try:
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
-            Trace.log(DEBUG_LOG, 'seek ftt errors %s'%(self.ftt._ftt.ftt_get_error(),))
+            if self.driver_type == 'FTTDriver':
+                Trace.log(DEBUG_LOG, 'seek ftt errors %s'%(self.ftt._ftt.ftt_get_error(),))
         except:
             exc, detail, tb = sys.exc_info()
 
