@@ -5096,7 +5096,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         :type verify_label: :obj:`int`
         :arg verify_label: verify tape label if 1
         """
-        
+
         label_tape = 0
         have_tape = 0
         err = None
@@ -8541,11 +8541,6 @@ class DiskMover(Mover):
                 self.offline()
                 return
 
-        Trace.trace(10, "transfer complete mode %s"%(self.mode,))
-        self.state = HAVE_BOUND
-        Trace.log(e_errors.INFO, "transfer complete state %s"%(state_name(self.state),))
-        Trace.trace(10, "transfer complete state %s"%(state_name(self.state),))
-
         now = time.time()
         self.dismount_time = now + self.delay
         self.current_work_ticket['fc']['external_label'] = self.current_work_ticket['vc']['external_label']
@@ -8553,6 +8548,10 @@ class DiskMover(Mover):
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
+        Trace.trace(10, "transfer complete mode %s"%(self.mode,))
+        self.state = HAVE_BOUND
+        Trace.log(e_errors.INFO, "transfer complete state %s"%(state_name(self.state),))
+        Trace.trace(10, "transfer complete state %s"%(state_name(self.state),))
         if self.draining:
             self.offline()
         self.need_lm_update = (1, None, 1, None)
