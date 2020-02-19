@@ -95,7 +95,7 @@ save_low() {
         return 1
     fi
     psql -U enstore template1 -c "checkpoint; select pg_start_backup('${dest}.tar.Z')" > /dev/null
-    (cd ${fullpath}/..; nice -n 20 tar cfz ${dest}.tar.Z --exclude ./`basename ${fullpath}`/pg_xlog .)
+    (cd ${fullpath}/..; GZIP=-1 nice -n 20 tar cfz ${dest}.tar.Z --exclude ./`basename ${fullpath}`/pg_xlog .)
     if [ "$?" != "0" ] ; then
 	echo " Tar cfz ${dest}.tar.Z returned error code. Some files might be modified during backup. Ignored. "
     fi
