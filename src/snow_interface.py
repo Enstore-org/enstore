@@ -28,7 +28,7 @@ class SnowInterface(object):
         """
         :param config_file: string, path to config file
         """
-        self.config_file = config_file if config_file is None else CONFIG_FILE
+        self.config_file = config_file if config_file is not None else CONFIG_FILE
         self.config_parser = ConfigParser.ConfigParser()
         self.config_parser.read(self.config_file)
 
