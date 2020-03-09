@@ -138,6 +138,7 @@ from scanfiles import ThreadWithResult
 import info_client
 import file_cache_status
 import checksum
+import set_cache_status
 
 debug = False    # debugging mode
 debug_p = False  # more debug output
@@ -929,7 +930,6 @@ def get_chimera_admfs():
         if len(admplist) < 1:
             error_log("No pnfs admin mount point found; exiting")
             return None
-
         # take first admin mount point
         admp = admplist[0]
         if len(admplist) > 1:
@@ -945,6 +945,27 @@ def chimera_get_path(pnfsid):
     chim_admin = get_chimera_admfs()
     # return right away if get_chimera_fs() returned Null on error; otherwise get path for pnfsid
     return chim_admin and chim_admin.get_path(pnfsid)[0]
+
+def chimera_get_path2(pnfsid):
+    """
+    this function does not use cached instance of ChimeraFS.
+    and works correctly on moved pnfs file.
+    """
+    admplist = chimera.get_enstore_admin_mount_point()
+    if len(admplist) < 1:
+        error_log("No pnfs admin mount point found; exiting")
+        return None
+    # take first admin mount point
+    admp = admplist[0]
+    if len(admplist) > 1:
+        msg = ("Warning: More than one pnfs admin mount point found, "
+               "using first mount %s" % (admp,))
+        warning_log(msg)
+    sfs = chimera.ChimeraFS(mount_point=admp)
+    p1 = os.path.dirname(admp)
+    p2 = sfs.get_path2(pnfsid)[0][1:]
+    path = os.path.join(p1, p2)
+    return path
 
 #def chimera_get_file_size(pnfsid):
 #    return chimera.ChimeraFS(pnfsid).get_file_size()
@@ -1468,6 +1489,14 @@ def ok_log(*args):
 def log(*args):
     log_components = args + ("\n",)
     open_log(log_components)
+
+def debug_log(*args):
+    """
+    log debug messages
+    """
+    if debug:
+        log_components = ('DEBUGLOG: ',) + args + ("\n",)
+        open_log(log_components)
 
 # close_log(*args) -- close open line of log ouput with final newline
 def close_log(*args):
@@ -2358,7 +2387,7 @@ def get_migration_type(src_vol, dst_vol, vcc, db):
         ## It subtracts the duplicated count from the migrated count, because
         ## some tapes were started with one, but finished with the other.
         ## This will allow migration_result to be set, so that the
-        ## if logic at the end of this function will report the inconsistant
+        ## if logic at the end of this function will report the inconsistent
         ## message.
         elif len(ml_reply['migrated_files']) - len(dl_reply['duplicated_files']) > 0:
             migration_result = "MIGRATION"
@@ -2874,7 +2903,8 @@ def mark_deleted(my_task, bfid, fcc, db):
     q = "select deleted from file where bfid = '%s';" % (bfid)
     res = db.query(q).getresult()
     if len(res):
-        if res[0][0] != YES:
+        debug_log(my_task, 'mark_deleted query returned %s'%(res,))
+        if res[0][0] != 'y':
             if not fcc:
                 # get its own file clerk client
                 config_host = enstore_functions2.default_host()
@@ -6166,9 +6196,9 @@ def use_libraries(bfid, filepath, file_record, db, intf):
         except (OSError, IOError):
             pass
     else:
-        if getattr(intf, "library", ""):
+        if len(user_libraries) != 0 :
             #Need to trust the user here.
-            pnfs_libraries = intf.library
+            pnfs_libraries = user_libraries
         else:
             error_log("Unable to determine correct library for deleted file.")
             log("HINT: use --library on the command line")
@@ -6231,6 +6261,7 @@ def p_show(p,tag=None):
 def compare_metadata(p, f, pnfsid = None, tag=None):
     if debug:
         log(tag+"::compare_metadata():", `f`)
+        debug_log("compare_metadata() pnfsid %s"%(pnfsid,))
 #        sys.stdout.flush()
         p.show()
 #        p_show(p,tag)
@@ -6282,6 +6313,10 @@ find_original = find_original_migration
 def _verify_metadata(my_task, job, fcc, db):
     (src_file_record, src_volume_record, src_path,
      dst_file_record, dst_volume_record, tmp_path, mig_path) = job
+    debug_log('_verify_metadata src file %s volume %s dst file %s volume %s'%(src_file_record,
+                                                                        src_volume_record,
+                                                                        dst_file_record,
+                                                                        dst_volume_record))
 
     #shortcuts
     src_bfid = src_file_record['bfid']
@@ -6291,7 +6326,7 @@ def _verify_metadata(my_task, job, fcc, db):
     # with --force), then we need to do not modify layers 1 and 4.
     is_migrating_multiple_copy = None
 
-    log(my_task, "swapping %s %s %s %s" % \
+    log(my_task, "verifying %s %s %s %s" % \
         (src_bfid, src_path, dst_bfid, mig_path))
 
     #It is possible to migrate a duplicate.  Need to handle finding
@@ -6363,20 +6398,20 @@ def _verify_metadata(my_task, job, fcc, db):
     # check if the metadata are consistent
     res = compare_metadata(p1, src_file_record, tag="VM1.s [p1==src_file_record]")
     if debug_p:
-        print "DEBUG: compare_metadata VM1.s res=%s src_file_record=%s" % (res,src_file_record,)
+        debug_log('compare_metadata VM1.s res=%s src_file_record=%s' % (res,src_file_record,))
         p_show(p1,"VM1.s")
 
     # deal with already swapped metadata
     if res == "bfid":
         res = compare_metadata(p1, dst_file_record, tag="VM1.d [p1==dst_file_record]")
         if debug_p:
-            print "DEBUG: compare_metadata VM1.d res=%s dst_file_record=%s" % (res,dst_file_record,)
+            debug_log('compare_metadata VM1.d res=%s dst_file_record=%s' % (res,dst_file_record,))
             p_show(p1,"VM1.d")
         if res == "bfid" and f0:
             #Compare original, if applicable.
             res = compare_metadata(p1, f0, tag="VM1 [p1==f0]")
             if debug_p:
-                print "DEBUG: compare_metadata VM1.f0 res=%s f0=%s" % (res,f0,)
+                debug_log('compare_metadata VM1.f0 res=%s f0=%s' % (res,f0,))
                 p_show(p1,"VM1.f0")
             if not res:
                 #Note: Don't update layers 1 and 4!
@@ -6384,17 +6419,15 @@ def _verify_metadata(my_task, job, fcc, db):
         else:
             if not res:
                 #The metadata has already been swapped.
-                if debug_p:
-                    print "DEBUG: compare_metadata is About to return OK res=%s job=%s p1=%s p2=%s " \
-                        % (res,job,p1,p2,)
+                debug_log('compare_metadata is About to return OK res=%s job=%s p1=%s p2=%s ' \
+                        % (res,job,p1,p2,))
                 return None, job, p1, p2, f0, is_migrating_multiple_copy
     if res:
         return_error = "[1] metadata %s %s are inconsistent on %s" \
                        % (src_bfid, src_path, res)
         return return_error, job, p1, p2, f0, is_migrating_multiple_copy
 
-    if debug_p:
-        print "DEBUG: compare_metadata - checking p2"
+    debug_log('compare_metadata - checking p2')
 
     if not p2.bfid and not p2.volume:
         #The migration path has already been deleted.  There is
@@ -6481,6 +6514,7 @@ def _verify_metadata(my_task, job, fcc, db):
 
 PKG_PREFIX='package-'
 PKG_SUFFIX='.tar'
+
 def _move_package_file(src,volume,src_chimera_file):
         """
         move (rename) package file src=/pnfs_path/<old_volume>/<package> to /pnfs_path/<volume>/<package>
@@ -6554,7 +6588,38 @@ def _move_package_file(src,volume,src_chimera_file):
 
         return (None,dest)
 
-def _swap_metadata(my_task, job, fcc, db, src_is_a_package=False):
+def _new_package_name(src,volume,src_chimera_file):
+        """
+        return package file name src=/pnfs_path/<old_volume>/<package> to /pnfs_path/<volume>/<package>
+
+        @type  src: str
+        @param src: source package full path
+        @type  volume: str
+        @param volume: destination volume name
+        @type  chimera_file: chimera.File
+        @param chimera_file: chimera file class instance for the source file
+        @rtype: (str,None) or (None,str)
+        @return: new_name
+        """
+        #split package path to package file name, volume name and everything else
+
+        n=src.rsplit('/',2)
+        if len(n) != 3:
+            return (("Can not split package file path %s into /pnfs_path/<VOLUME>/<package>" % (src,)), None)
+        fname=n[2]
+        if not (fname.startswith(PKG_PREFIX) and fname.endswith(PKG_SUFFIX)):
+            return (("Package file name %s does not look like '%s*%s', not moving package to <volume> dir in pnfs" \
+                % (fname,PKG_PREFIX,PKG_SUFFIX)), None)
+
+        # change volume to new volume and move package file in pnfs
+        # we do not check old path contains old volume to fix situation when package file was in the wrong place
+        n[1] = volume
+        dest = '%s/%s/%s' % (n[0],n[1],n[2],)
+        new_dir = '%s/%s' % (n[0],n[1],)
+
+        return dest
+
+def _swap_metadata(my_task, job, fcc, db, src_is_a_package=False, move_package=True):
     """
     swap_metadata() helper function -- swap metadata for src and dst
 
@@ -6569,6 +6634,16 @@ def _swap_metadata(my_task, job, fcc, db, src_is_a_package=False):
     [5] p[src][pnfsid] = pnfsid
     """
 
+    #Get information about the files to copy and swap.
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
+    debug_log('_swap_metadata job %s'%(job,))
+    src_bfid = src_file_record['bfid']
+    dst_bfid = dst_file_record['bfid']
+    log(my_task, "swapping %s %s %s %s" % \
+        (src_bfid, src_path, dst_bfid, mig_path))
+
+    debug_log('_swap_metadata is_package %s'%(src_is_a_package,))
     return_error, job, p1, p2, f0, is_migrating_multiple_copy = \
                   _verify_metadata(my_task, job, fcc, db)
 
@@ -6605,18 +6680,51 @@ def _swap_metadata(my_task, job, fcc, db, src_is_a_package=False):
     #     to canonical pnfs name /pnfs/fs/usr/...
     #src_pnfs_name = src_path
 
-    if src_is_a_package :
+    if src_is_a_package:
+        move_package = False
         # move package file in pnfs to directory with new volume name
         volume = dst_file_record['external_label']
-        err_msg, new_name = _move_package_file(src_pnfs_name,volume,p1)
-        if err_msg is not None:
-            return err_msg
+        reply_ticket = fcc.find_all_copies(dst_bfid)
+        if e_errors.is_ok(reply_ticket):
+            dst_res = reply_ticket['copies']
+        else:
+            return "failed to find all SFA copies for %s : %s" % (dst_bfid,reply_ticket['status'])
+
+        debug_log('ALL_BFIDS %s for %s'%(dst_res, dst_bfid))
+        original = fcc.find_the_original(dst_bfid)
+        debug_log('find_the_original returned %s'%(original,))
+        if not e_errors.is_ok(original):
+            return "failed to find original for %s : s%" % (dst_bfid, original['status'])
+        has_copy = (len(dst_res) > 1) or (dst_bfid != original['original'])
+        debug_log('has_copy %s'%(has_copy,))
+        if has_copy:
+            new_name = _new_package_name(src_pnfs_name,volume,p1)
+            if dst_bfid != original['original']:
+                orig_bfid_info = fcc.bfid_info(original['original'])
+                if not e_errors.is_ok(orig_bfid_info):
+                    return "failed to get original info for %s : s%"%(original['original'],orig_bfid_info['status'])
+                move_package = True
+                vol_label = orig_bfid_info['external_label']
+                new_name = _new_package_name(src_pnfs_name, vol_label, p1)
+                #err_msg, new_name = _move_package_file(src_pnfs_name,orig_bfid_info['external_label'],p1)
+                #if err_msg is not None:
+                #    return err_msg
+                #err_msg, new_name = _copy_package_file(src_pnfs_name,volume,p1)
+            else:
+                pass
+                #err_msg, new_name = _move_package_file(src_pnfs_name,volume,p1)
+                #if err_msg is not None:
+                #    return err_msg
+        else:
+            err_msg, new_name = _move_package_file(src_pnfs_name,volume,p1)
+            if err_msg is not None:
+                return err_msg
         # use new pnfs location and use canonical pnfs file name
-        src_pnfs_name = new_name
-        src_path = new_name
+            src_pnfs_name = new_name
+            src_path = new_name
 
     if debug_p:
-        dst_before = fcc.bfid_info(dst_bfid)
+        dst_before = dst_file_record
         px = src_file_record['pnfsid']
         print "DEBUG: Before MODIFY pnfsid=%s dst_before=%s" % (px, dst_before,)
 
@@ -6624,6 +6732,24 @@ def _swap_metadata(my_task, job, fcc, db, src_is_a_package=False):
     mod_record = {'bfid': dst_bfid,
           'pnfsid':src_file_record['pnfsid'],
           'pnfs_name0':src_pnfs_name}
+    if src_is_a_package and has_copy:
+        orig_vol = volume
+        if move_package:
+            # this is a copy
+            orig_vol = orig_bfid_info['external_label']
+            for key in ('active_package_files_count',
+                        'archive_mod_time',
+                        'archive_status',
+                        'cache_location',
+                        'cache_mod_time',
+                        'cache_status',
+                        'original_library',
+                        'package_files_count',
+                        ):
+                mod_record[key] = orig_bfid_info[key]
+        mod_record['package_id'] = dst_bfid
+        mod_record['pnfs_name0'] = _new_package_name(src_pnfs_name,orig_vol,p1)
+        debug_log('mod_record %s'%(mod_record,))
     if src_file_record['deleted'] == YES:
         if f0:
             #We need to use f0 when fixing files migrated to multiple
@@ -6742,6 +6868,11 @@ def _swap_metadata(my_task, job, fcc, db, src_is_a_package=False):
             if debug_p:
                 print "DEBUG: compare_metadata #2.f0 res=%s file_record_check=%s" % (res,f0,)
                 p_show(p_check,"MC #2.f0 ")
+            if res is None and src_is_a_package and move_package:
+                err_msg, new_name = _move_package_file(src_pnfs_name,vol_label,p1)
+                if err_msg is not None:
+                    return err_msg
+
 
         if res:
             return "%s %s has inconsistent metadata on %s after swapping" \
@@ -6760,11 +6891,52 @@ def _swap_metadata(my_task, job, fcc, db, src_is_a_package=False):
 
     return None
 
-def _switch_package(src_bfid, dst_bfid, fcc):
+def create_package_copy_children(src_bfid, dst_file_record, fcc):
+    """
+    SFA: create children for a pakacge copy
+
+    @type  src_bfid: str
+    @param src_bfid: original package bfid
+    @type  dst_bfid: str
+    @param dst_bfid: copy package bfid
+    @type  fcc: file_clerk_client.FileClient
+    @param fcc:  file clerk client instance to use for operation
+
+    @rtype: str or None
+    @return: None if package switched OK, otherwise error string
+    """
+    my_task = "COPY_PACKAGE_RECORDS"
+    dst_bfid = dst_file_record['bfid']
+    debug_log(my_task, "bfid=%s new_bfid=%s" % (src_bfid,dst_bfid))
+    rc = fcc.get_children(src_bfid, timeout=20*60, retry=1)
+    if not e_errors.is_ok(rc['status']):
+        return "get children failed %s"%(rc['status'],)
+    records = rc['children']
+    for rec in records:
+       # for duplcate files we need a complete file info.
+       debug_log("create_package_copy_children: creating duplicates %s"%(rec,))
+       rec['original_bfid'] = rec['bfid']
+       rec['package_id'] = dst_bfid
+       rec['tape_label'] = dst_file_record['external_label']
+       del(rec['bfid'])
+       debug_log("create_package_copy_children: sending new_bit_file %s"%(rec,))
+       rc = fcc.new_bit_file({'fc':rec})
+       debug_log("create_package_copy_children:  new_bit_file returned %s"%(rc,))
+       if rc['status'][0] != e_errors.OK:
+           return "create_package_copy_children: new_bit_file returned %s"%(rc,)
+       rec['bfid'] = rc['fc']['bfid']
+
+    rc = set_cache_status.modify_records(fcc, records)
+    if rc['status'][0] != e_errors.OK:
+        return "create_package_copy_children:  set_cache_status returned %s"%(rc,)
+
+    return None
+
+def _switch_package(src_file_record, dst_file_record, fcc, db=None):
     """
     SFA: switch reference to package for all small files in the package (FCC method call)
 
-    swap_metadata(...) helper function
+    switch_package(...) helper function
     @type  src_bfid: str
     @param src_bfid: source package bfid
     @type  dst_bfid: str
@@ -6777,14 +6949,27 @@ def _switch_package(src_bfid, dst_bfid, fcc):
     """
 
     my_task = "SWITCH_PACKAGE"
-
-    if debug:
-        log(my_task, "bfid=%s new_bfid=%s" % (src_bfid,dst_bfid))
-
-    reply_ticket = fcc.swap_package({'bfid' : src_bfid , 'new_bfid' : dst_bfid})
-    if not e_errors.is_ok(reply_ticket):
-        error_log(my_task, str(reply_ticket['status']))
-        return "failed to switch package for bfid %s new_bfid %s" % (src_bfid,dst_bfid,)
+    src_bfid = src_file_record['bfid']
+    dst_bfid = dst_file_record['bfid']
+    debug_log(my_task, "src=%s dst=%s" % (src_file_record, dst_file_record))
+    res = is_duplicated(dst_bfid, fcc, db, find_src=1, find_dst=0,include_multiple_copies=True)
+    debug_log('switch_package: is_duplicate returned %s'%(res,))
+    if res and dst_bfid != res[0]['bfid']:
+       rc = create_package_copy_children(res[0]['bfid'], dst_file_record, fcc)
+       if rc:
+           return rc
+       # update dst file record as it was modified
+       dst_file_record = fcc.bfid_info(dst_bfid)
+       debug_log('switch_package: bfid_info returned %s'%(dst_file_record,))
+       if not e_errors.is_ok(dst_file_record):
+           return "failed to get oinfo for %s : s%"%(dst_bfid, dst_file_record['status'])
+    if dst_file_record['package_files_count'] in (None, 0):
+        reply_ticket = fcc.swap_package({'bfid' : src_bfid , 'new_bfid' : dst_bfid})
+        if not e_errors.is_ok(reply_ticket):
+            error_log(my_task, str(reply_ticket['status']))
+            return "failed to switch package for bfid %s new_bfid %s" % (src_bfid,dst_bfid,)
+    else:
+        debug_log(my_task, "package_files_count is %s for new_bfid %s. Will not swap package" % (dst_file_record['package_files_count'],dst_bfid))
     return None
 
 def swap_metadata(job, fcc, db):
@@ -6813,6 +6998,27 @@ def swap_metadata(job, fcc, db):
     package_files_count = src_file_record.get("package_files_count", 0)
 
     src_is_a_package = (package_id is not None) and (src_bfid == package_id)
+    move_pack = False
+    if src_is_a_package:
+        reply_ticket = fcc.find_all_copies(dst_bfid)
+        if e_errors.is_ok(reply_ticket):
+            dst_res = reply_ticket['copies']
+        else:
+            return "failed to find all SFA copies for %s : %s" % (dst_bfid,reply_ticket['status'])
+        debug_log('ALL_BFIDS %s for %s'%(dst_res, dst_bfid))
+        original = fcc.find_the_original(dst_bfid)
+        debug_log('find_the_original returned %s'%(original,))
+        if not e_errors.is_ok(original):
+            return "failed to find original for %s : s%" % (dst_bfid, original['status'])
+        has_copy = (len(dst_res) > 1) or (dst_bfid != original['original'])
+        debug_log('has_copy %s'%(has_copy,))
+        if has_copy:
+            if dst_bfid != original['original']:
+                orig_bfid_info = fcc.bfid_info(original['original'])
+                if not e_errors.is_ok(orig_bfid_info):
+                    return "failed to get original info for %s : s%"%(original['original'],orig_bfid_info['status'])
+                move_pack = True
+
 
     # was_swapped: file was swapped in previous runs before this run
     # note: is_swapped() returns string with timestamp, make it boolean
@@ -6835,7 +7041,7 @@ def swap_metadata(job, fcc, db):
                % (src_bfid, src_path,
                   dst_bfid, mig_path))
     else:
-        err_swap_metadata = _swap_metadata(my_task, job, fcc, db, src_is_a_package)
+        err_swap_metadata = _swap_metadata(my_task, job, fcc, db, src_is_a_package, move_package=move_pack)
         if err_swap_metadata:
             error_log(my_task, "%s %s %s %s failed due to %s" % (src_bfid, src_path, dst_bfid, mig_path, err_swap_metadata))
             return err_swap_metadata
@@ -6845,20 +7051,19 @@ def swap_metadata(job, fcc, db):
     #  to process the case when package file has been swapped but packaged files have not been switched yet
     if src_is_a_package and package_files_count > 0:
         # switch parents for all small files in the source file (package) to destination file (package)
-        err_switch_package = _switch_package(src_bfid, dst_bfid, fcc)
+        err_switch_package = _switch_package(src_file_record, dst_file_record, fcc, db)
 
         if debug_p:
             print "DEBUG: SWAP_METADATA src_bfid=%s package_id=%s dst_bfid=%s err_switch_package=%s" \
                 % (src_bfid,package_id,dst_bfid,err_switch_package,)
 
-        if debug:
-            log(my_task, "src_bfid=%s package_id=%s err_switch_package=%s" % (src_bfid,package_id,err_switch_package))
+        debug_log(my_task, "src_bfid=%s package_id=%s err_switch_package=%s" % (src_bfid,package_id,err_switch_package))
         if err_switch_package:
             # per conversation with Sasha, we do not roll back swapped metadata for original files
             # when switching parent for the packaged file has failed
             error_log(my_task, "%s %s %s %s failed when switching package for packaged files, error %s"
                       % (src_bfid, src_path, dst_bfid, mig_path, err_switch_package))
-            return err_switch_package
+        return err_switch_package
 
     # todo: verify I report all cases and only once
     if not was_swapped:
@@ -7640,10 +7845,11 @@ def get_filenames(my_task, job, is_multiple_copy, fcc, db, intf):
     (src_file_record, src_volume_record, src_path,
      dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
+    debug_log(my_task, 'get_filenames: src_file_record %s \n src_volume_record %s \n src_path %s \n dst_file_record %s \n dst_volume_record %s \n tmp_path %s \n mig_path %s'%(src_file_record, src_volume_record, src_path, dst_file_record, dst_volume_record, tmp_path, mig_path))
     src_bfid = src_file_record['bfid']  #shortcuts
     dst_bfid = dst_file_record['bfid']
     likely_path = dst_file_record['pnfs_name0']
-
+    debug_log(my_task, 'get_filenames: likely_path %s'%(likely_path,))
     is_already_migrated = False  # The destination is also the source in other migration
 
     # deleted tapes or files
@@ -7658,6 +7864,7 @@ def get_filenames(my_task, job, is_multiple_copy, fcc, db, intf):
 
     # Active files
     if is_multiple_copy:
+        debug_log(my_task, 'get_filenames: is_multiple %s'%(is_multiple_copy,))
         original_reply = fcc.find_the_original(dst_bfid)
         if e_errors.is_ok(original_reply) \
         and original_reply['original'] != None \
@@ -7679,7 +7886,8 @@ def get_filenames(my_task, job, is_multiple_copy, fcc, db, intf):
     # get the file path in pnfs
     # FIXME: review exeption processing. We may not need it all.
     try:
-        pnfs_path = chimera_get_path(pnfsid)
+        pnfs_path = chimera_get_path2(pnfsid)
+        debug_log(my_task, 'get_filenames: pnfs_path %s for pnfsid %s'%(pnfs_path, pnfsid))
         #pnfs_path = pnfs_find(bfid1, bfid2, pnfsid, fr1, fr2, intf)
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -9124,6 +9332,8 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     ###########################################################
     # Verify the metadata.
     ###########################################################
+    debug_log('restore_file: src_file_record %s'%(src_file_record,))
+    debug_log('restore_file: src_volumerecord %s'%(src_volume_record,))
 
     src_bfid   = src_file_record['bfid']
     src_pnfsid = src_file_record['pnfsid']
@@ -9144,6 +9354,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         is_it_copied = is_it_copied_list[0]
     else:
         is_it_copied = None
+    debug_log('is_it_copied_list %s'%(is_it_copied_list,))
 
     dst_bfid = is_it_copied #side effect of is_copied()
     if dst_bfid == None:
@@ -9172,6 +9383,8 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         dst_volume_record = None
 
     is_it_swapped = is_swapped(src_bfid, fcc, db)
+    debug_log('restore_file: dst_file_record %s'%(dst_file_record,))
+    debug_log('restore_file: dst_volume_record %s'%(dst_volume_record,))
 
     # Restore of the bfid is only allowed for migrated or cloned files.
     # Fail for duplicated files.
@@ -9213,9 +9426,14 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     # create chimera File sfile (in memory) by looking for file in admin mount
     # with pnfsid = src_pnfsid;
     # do not update data in chimera yet
+    if src_file_record['package_id'] is None:
+        get_path_func = chimera_get_path
+    else:
+        get_path_func = chimera_get_path2
     try:
         # Get chimera file in admin mount path
-        spath = chimera_get_path(src_pnfsid) # name of the file in chimera
+        spath = get_path_func(src_pnfsid) # name of the file in chimera
+        debug_log('restore_file: spath %s'%(spath,))
         if not spath:
             message = "Can not get chimera file for src pnfsid %s" % (src_pnfsid,)
             error_log(my_task, message)
@@ -9261,9 +9479,19 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     cfile.complete_crc =    f_rec['complete_crc']
     cfile.file_family =     volume_family.extract_file_family(v_rec['volume_family'])
     cfile.size =            f_rec['size']
-
+    if src_file_record['package_id'] is not None:
+        cfile.path =        f_rec['pnfs_name0']
+        cfile.p_path =        f_rec['pnfs_name0']
+        try:
+            os.rename(sfile.path, cfile.path)
+        except:
+            exc = sys.exc_info()
+            error_log(my_task, "Can not move package file in pnfs from %s to %s: %s %s" % (sfile.origname, cfile.origname, exc[0], exc[1][0]))
+            return 1
     if debug:
+        debug_log('Source:')
         sfile.show() # current source chimera file referenced by pnfsid
+        debug_log('Destination:')
         cfile.show() # file will be updated to these values
 
     # Check bfid of the chimera file is reasonable:
@@ -9436,8 +9664,16 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
             return 1
         # check if the restored file is a package, and switch package parent for all files in it
         # "spath" is not valid anymore as it points to the location of the package before it has been moved.
-        rc_rp = restore_package(dst_file_record, dst_bfid, mig_path,
-                                src_file_record, src_bfid, spath, cfile, fcc)
+        dst_bf = cfile.bfid
+        src_bf = sfile.bfid
+        dst_file_rec = fcc.bfid_info(dst_bf)
+        src_file_rec = fcc.bfid_info(src_bf)
+
+        #rc_rp = restore_package(dst_file_record, dst_bfid, mig_path,
+        #                        src_file_record, src_bfid, spath, cfile, fcc, db)
+        rc_rp = restore_package(dst_file_rec, dst_bf, mig_path,
+                                src_file_rec, src_bf, spath, cfile, fcc, db)
+        debug_log(my_task, 'restore_package returned %s'%(rc_rp,))
 
     # Remove the temporary migration path mig_path in PNFS if it still exists.
     if os.path.exists(mig_path) and remove_mig_path(my_task,mig_path):
@@ -9457,8 +9693,8 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         # mark the migration copy (and any multiple copies) as deleted
         rtn_code = mark_deleted(my_task, cur_dst_bfid, fcc, db)
         if rtn_code:
-            error_log(my_task,"failed to mark deleted migration file %s %s" \
-                      % (dst_bfid, mig_path,))
+            error_log(my_task,"failed to mark deleted migration file %s %s %s" \
+                      % (dst_bfid, mig_path, rtn_code))
             return 1
 
         # Modify migration table:
@@ -9472,7 +9708,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     return 0
 
 def restore_package(dst_file_record, dst_bfid, dst_path,
-                    src_file_record, src_bfid, src_path, cf, fcc):
+                    src_file_record, src_bfid, src_path, cf, fcc, db):
     """
     restore packaged files metadata in FC file table
 
@@ -9487,20 +9723,23 @@ def restore_package(dst_file_record, dst_bfid, dst_path,
 
     my_task = "RESTORE_PKGD_FILES"
 
+    debug_log(my_task, 'dst_file_record %s \n dst_bfid %s \n dst_path %s \n src_file_record %s \n src_bfid %s \n  src_path %s'% \
+                  (dst_file_record, dst_bfid, dst_path,
+                    src_file_record, src_bfid, src_path))
     # check if file to restore is a package
-    dst_package_id = dst_file_record.get("package_id", None)
-    dst_package_files_count = dst_file_record.get("package_files_count", 0)
+    dst_package_id = dst_file_record.get("package_id")
+    src_package_files_count = src_file_record.get("package_files_count", 0)
     dst_is_a_package = (dst_package_id is not None) and (dst_bfid == dst_package_id)
     # SFA:
     #  we check the number of files in package and switch the packaged files dst_package_id if needed
     #  to process the case when package file has been restored but packaged files have not been switched yet
     # Do nothing if it is not package or empty package
-    if not (dst_is_a_package and dst_package_files_count > 0):
+    if not (dst_is_a_package and src_package_files_count > 0):
         return None
 
     # switch parents for all small files in the migration destination file (package)
     # to migration-source file (package)
-    err_switch_package = _switch_package(dst_bfid, src_bfid, fcc)
+    err_switch_package = _switch_package(src_file_record, dst_file_record, fcc, db)
     if debug:
         log(my_task, "from dst_bfid=%s dst_package_id=%s to src_bfid=%s err_switch_package=%s"
             % (dst_bfid,dst_package_id,src_bfid,err_switch_package))
@@ -9510,15 +9749,21 @@ def restore_package(dst_file_record, dst_bfid, dst_path,
         error_log(my_task, "%s %s %s %s failed when switching package for packaged files during package restore, error %s"
                   % (dst_bfid, dst_path, src_bfid, src_path, err_switch_package))
         return err_switch_package
+    rtn_code = mark_deleted(my_task, src_bfid, fcc, db)
+    if rtn_code:
+        err_msg = "failed to mark deleted migration file %s %s" \
+                      % (dst_bfid, mig_path,)
+        error_log(my_task, msg)
+        return err_msg
 
     ok_log(my_task, "files in the package %s %s have been swapped to package %s %s"
            % (dst_bfid, dst_path, src_bfid, src_path))
 
     # move package file in pnfs in directory having correct Volume name
-    volume = src_file_record['external_label']
-    err_msg, new_name = _move_package_file(dst_path,volume,cf)
+    #volume = src_file_record['external_label']
+    #err_msg, new_name = _move_package_file(dst_path,volume,cf)
 
-    return err_msg
+    return None
 
 # restore_files(bfids) -- restore pnfs entries using file records
 def restore_files(bfids, intf, src_volume_record=None):
@@ -9601,6 +9846,7 @@ def restore_volume(vol, intf):
             bfids.append(i[0])
 
     #Restore the files.
+    debug_log(my_task, 'restore these %s'%(bfids,))
     restore_files(bfids, intf, src_volume_record)
 
     #Clear the system inhibit and comment for this volume.
