@@ -1387,9 +1387,23 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.bot = self.stats[self.ftt.BOT]
             self.read_errors = long(self.stats[self.ftt.READ_ERRORS])
             self.write_errors = long(self.stats[self.ftt.WRITE_ERRORS])
+            if isinstance(self.stats[self.ftt.MEDIA_END_LIFE], types.NoneType):
+                media_end_life = 0
+            else:
+                media_end_life = int(self.stats[self.ftt.MEDIA_END_LIFE])
+            if isinstance(self.stats[self.ftt.NEARING_MEDIA_END_LIFE], types.NoneType):
+                nearing_media_end_life = 0
+            else:
+                nearing_media_end_life = int(self.stats[self.ftt.NEARING_MEDIA_END_LIFE])
         except (self.ftt.FTTError, TypeError), detail:
             Trace.log(e_errors.ERROR, "error getting stats %s %s"%(self.ftt.FTTError, detail))
             self.tr_failed = True
+            return
+        Trace.trace(DEBUG_LOG, 'Media Life Flag %s Nearing Media Life Flag %s'%
+                    (media_end_life, nearing_media_end_life))
+        if media_end_life + nearing_media_end_life != 0:
+            Trace.alarm(e_errors.WARNING, 'Media Life Flag %s Nearing Media Life Flag %s Volume %s'%
+                        (media_end_life, nearing_media_end_life, self.current_volume))
 
     def update_stat(self):
         """
