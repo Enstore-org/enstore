@@ -872,6 +872,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.connect_to = 15  # timeout for control socket connection
         self.connect_retry = 4 # number of retries for control socket connection
         self._state_lock = threading.Lock()
+        self.delay_alarm_for_tape_thread = True # used to bypass GIL problem detected in disk movers after kernel 2.6.32-754.25.1.el6.x86_64
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
         self.draining = 0  # draining flag. Draining is not 0
@@ -985,31 +986,37 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
+        if attr != 'state':
+            self.__dict__[attr] = val
+            return
         try:
-            if attr == 'state':
-                if val != getattr(self, 'state', None):
-                    self.time_in_state = 0.0
-                    self.in_state_to_cnt = 0
-                    self.__dict__['state_change_time'] = time.time()
-                    Trace.notify("state %s %s" % (self.shortname, state_name(val)))
-                if val != SETUP:
-                    self.tmp_vol = None
-                    self.tmp_vf = None
-                if self.starting == 0:
-                    if val == IDLE:
-                        # in idle update interval for update_lm is as set
-                        interval = self.update_interval
-                    elif val == HAVE_BOUND:
-                        # in have_bound update interval for update_lm is different
-                        interval = self.update_interval_in_bound
-                    else:
-                        # in all other states it is 3 times +1 more
-                        interval = self.update_interval*3+1
-                    self.reset_interval(self.update_lm, interval)
-
+            if val != getattr(self, 'state', None):
+                self.__dict__['time_in_state'] = 0.0
+                self.__dict__['in_state_to_cnt'] = 0
+                self.__dict__['state_change_time'] = time.time()
+                Trace.notify("state %s %s" % (self.shortname, state_name(val)))
+            if val != SETUP:
+                self.__dict__['tmp_vol'] = None
+                self.__dict__['tmp_vf'] = None
+            if self.starting == 0:
+                if val == IDLE:
+                    # in idle update interval for update_lm is as set
+                    interval = self.update_interval
+                elif val == HAVE_BOUND:
+                    # in have_bound update interval for update_lm is different
+                    interval = self.update_interval_in_bound
+                else:
+                    # in all other states it is 3 times +1 more
+                    interval = self.update_interval*3+1
+                self.reset_interval(self.update_lm, interval)
         except:
+            exc, msg, tb = sys.exc_info()
+            Trace.trace(10,"Exception setting attr %s: %s %s"%(attr, exc, msg))
+            del(tb)
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
+        Trace.trace(10, "set state %s %s"%(state_name(val), self.__dict__['state_change_time'] ))
+
 
     def dump(self, ticket):
         """
@@ -1380,9 +1387,23 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.bot = self.stats[self.ftt.BOT]
             self.read_errors = long(self.stats[self.ftt.READ_ERRORS])
             self.write_errors = long(self.stats[self.ftt.WRITE_ERRORS])
+            if isinstance(self.stats[self.ftt.MEDIA_END_LIFE], types.NoneType):
+                media_end_life = 0
+            else:
+                media_end_life = int(self.stats[self.ftt.MEDIA_END_LIFE])
+            if isinstance(self.stats[self.ftt.NEARING_MEDIA_END_LIFE], types.NoneType):
+                nearing_media_end_life = 0
+            else:
+                nearing_media_end_life = int(self.stats[self.ftt.NEARING_MEDIA_END_LIFE])
         except (self.ftt.FTTError, TypeError), detail:
             Trace.log(e_errors.ERROR, "error getting stats %s %s"%(self.ftt.FTTError, detail))
             self.tr_failed = True
+            return
+        Trace.trace(DEBUG_LOG, 'Media Life Flag %s Nearing Media Life Flag %s'%
+                    (media_end_life, nearing_media_end_life))
+        if media_end_life + nearing_media_end_life != 0:
+            Trace.alarm(e_errors.WARNING, 'Media Life Flag %s Nearing Media Life Flag %s Volume %s'%
+                        (media_end_life, nearing_media_end_life, self.current_volume))
 
     def update_stat(self):
         """
@@ -2461,14 +2482,25 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ## to allow tape thread to complete
                     return
                 if self.config['product_id'].find("DLT") == -1:
-                    Trace.alarm(e_errors.ALARM,
-                                "Tape thread is running in the state %s. Will offline the mover"%
-                                (state_name(self.state),))
-                    self.watch_syslog()
-                    self.log_state(logit=1)
-                    Trace.log(e_errors.INFO, "Trying to dismount volume %s"%(self.current_volume,))
-                    self.dismount_volume(after_function=self.offline)
-                    return
+                    # observed cases for disk movers where tape thread had exited
+                    # but yet was found here as running
+                    # apparently due to GIL
+                    # try to delay the alarm
+                    if self.delay_alarm_for_tape_thread:
+                        Trace.log(DEBUG_LOG, 'delaying alarm for tape thread running in %s for %s s'%(state_name(self.state),t_in_state))
+                        Trace.trace(10, 'delaying alarm for tape thread running in %s for %s s'%(state_name(self.state),t_in_state)) # repeat for stdio
+                        time.sleep(1)
+                        self.delay_alarm_for_tape_thread = False
+                    else:
+                        Trace.alarm(e_errors.ALARM,
+                                    "Tape thread is running in the state %s. Will offline the mover"%
+                                    (state_name(self.state),))
+                        Trace.trace(10, 'tape thread is running in %s for %s s'%(state_name(self.state),t_in_state))
+                        self.watch_syslog()
+                        self.log_state(logit=1)
+                        Trace.log(e_errors.INFO, "Trying to dismount volume %s"%(self.current_volume,))
+                        self.dismount_volume(after_function=self.offline)
+                        return
                 else:
                     Trace.alarm(e_errors.WARNING,"Tape thread is running in the state %s."%
                                 (state_name(self.state),))
@@ -2816,6 +2848,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.buffer.reset(sanity_cookie, client_crc_on)
         self.bytes_read = 0L
         self.bytes_written = 0L
+        self.delay_alarm_for_tape_thread = True
 
     def return_work_to_lm(self,ticket):
         """
@@ -4473,7 +4506,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.return_work_to_lm(ticket)
             self.unlock_state()
             return
-
+        Trace.trace(10, "setup transfer11 %s"%(ticket,))
         if (self.save_state == HAVE_BOUND and self.single_filemark and self.mode == WRITE and self.setup_mode == READ
             and self.write_counter > 0): # there was at least one successful write since tape mount
             # switching from write to read write additional fm
@@ -5096,7 +5129,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         :type verify_label: :obj:`int`
         :arg verify_label: verify tape label if 1
         """
-        
+
         label_tape = 0
         have_tape = 0
         err = None
@@ -8541,22 +8574,24 @@ class DiskMover(Mover):
                 self.offline()
                 return
 
-        Trace.trace(10, "transfer complete mode %s"%(self.mode,))
-        self.state = HAVE_BOUND
-        Trace.log(e_errors.INFO, "transfer complete state %s"%(state_name(self.state),))
-        Trace.trace(10, "transfer complete state %s"%(state_name(self.state),))
-
+        Trace.trace(10, "transfer complete state0 %s"%(state_name(self.state),))
         now = time.time()
         self.dismount_time = now + self.delay
         self.current_work_ticket['fc']['external_label'] = self.current_work_ticket['vc']['external_label']
+        self.need_lm_update = (0, None, 0, None)
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
+        Trace.trace(10, "transfer complete mode %s"%(self.mode,))
+        self.state = HAVE_BOUND
+        Trace.log(e_errors.INFO, "transfer complete state %s"%(state_name(self.state),))
+        Trace.trace(10, "transfer complete 11 state %s"%(state_name(self.state),))
         if self.draining:
             self.offline()
-        self.need_lm_update = (1, None, 1, None)
         self.log_state()
+        Trace.trace(10, "transfer complete  22 state %s"%(state_name(self.state),))
+        self.need_lm_update = (1, None, 1, None)
 
 
     def update_after_writing(self):
@@ -8911,7 +8946,7 @@ if __name__ == '__main__':
 
     import __main__
 
-    #Trace.do_print([10, 100])
+    #Trace.do_print([5, 200])
 
     constructor=getattr(__main__, mc_type)
     logclient = None

@@ -826,6 +826,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		case 0x02:
 		case 0x03:
 		case 0x0c:
+		case 0x12:
 		case 0x2e:
 		case 0x30:
 	    case 0x31:
@@ -902,6 +903,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
                             }
 			    break;
 
+			case 0x12:
+			    /* From Tape Alert page */
+			    set_stat(b,FTT_MEDIA_END_LIFE, ftt_itoa(bit(1,buf[8])),0); /* flag 0x7 */
+			    set_stat(b,FTT_NEARING_MEDIA_END_LIFE,ftt_itoa(bit(5,buf[10])),0); /* flag 0x13 */
+			    break;
 			case 0x2e:
 			    /* stk Tape Alert page */
 			    if (0 == strncmp(d->prod_id,"9840",4) ||

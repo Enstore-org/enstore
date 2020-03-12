@@ -173,7 +173,7 @@ do
 	  # remove all files older than starting WAL file
           find ${xd}.xlogs -follow -type f ! -newer $startwal ! -name $startwalname -exec rm -f {} \;
 	  # tar the WAL files
-          tar -czf ${xd}/xlogs-${tarfile}.tar.Z --files-from  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
+          GZIP=-1 tar -czf ${xd}/xlogs-${tarfile}.tar.Z --files-from  /tmp/pnfs_xlogs_list_${rnd}_$$.txt
 	  rc=$?
 	  rm -f /tmp/pnfs_xlogs_list_${rnd}_$$.txt
           find ${xd}  -maxdepth 1  -name "*${tarfile}*Z"  >> $PNFS_FILES

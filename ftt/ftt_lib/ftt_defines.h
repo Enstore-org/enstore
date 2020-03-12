@@ -5,7 +5,7 @@
 ** are visible to the end user and within the library.
 */
 
-/* statistics 
+/* statistics
 **
 ** If you add or change statistics, you MUST also update:
 ** -- ftt_numeric_tab[] in ftt_stats.c
@@ -25,7 +25,7 @@ extern int ftt_numeric_tab[];	/* table for ftt_{add,sub}_stats */
 #define FTT_WRITE_COUNT		6
 #define FTT_READ_ERRORS		7
 #define FTT_WRITE_ERRORS	8
-#define FTT_READ_COMP		9 
+#define FTT_READ_COMP		9
 #define FTT_FILE_NUMBER		10
 #define FTT_BLOCK_NUMBER	11
 #define FTT_BOT			12
@@ -63,7 +63,7 @@ extern int ftt_numeric_tab[];	/* table for ftt_{add,sub}_stats */
 #define FTT_SENSE_KEY		44
 #define FTT_TRANS_SENSE_KEY	45
 #define FTT_RETRIES		46
-#define FTT_FAIL_RETRIES	47 
+#define FTT_FAIL_RETRIES	47
 #define FTT_RESETS		48
 #define FTT_HARD_ERRORS		49
 #define FTT_UNC_WRITE		50
@@ -73,7 +73,9 @@ extern int ftt_numeric_tab[];	/* table for ftt_{add,sub}_stats */
 #define FTT_ERROR_CODE		54
 #define FTT_CUR_PART		55
 #define FTT_MOUNT_PART		56
-#define FTT_MAX_STAT		57
+#define FTT_MEDIA_END_LIFE		57
+#define FTT_NEARING_MEDIA_END_LIFE	58
+#define FTT_MAX_STAT		59
 #define FTT_MAX_NUMDB		50
 #define FTT_MAX_STATDB		26
 
@@ -91,7 +93,7 @@ extern int ftt_debug;
 #define FTT_DEBUG_MED   2
 #define FTT_DEBUG_HI	3
 
-/* rewind/retension/etc. flags 
+/* rewind/retension/etc. flags
 **
 ** If you add/change these, you need to update
 ** -- ftt_ascii_rewindflags[] in ftt_higher.c
@@ -105,7 +107,7 @@ extern char *ftt_ascii_rewindflags[];
 #define FTT_RDNW 0x00000008	/* we can read this density, but not write it */
 
 
-/* error returns 
+/* error returns
 **
 ** If you add or change error numbers, you MUST also update
 ** -- ftt_ascii_error[] in ftt_error.c
@@ -127,7 +129,7 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 #define FTT_EBLKSIZE		10
 #define FTT_ENOEXEC		11
 #define FTT_EBLANK		12
-#define FTT_EBUSY		13		
+#define FTT_EBUSY		13
 #define FTT_ENODEV		14
 #define FTT_ENXIO		15
 #define FTT_ENFILE		16
@@ -147,16 +149,16 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 #define FTT_EPARTIALWRITE	30
 
 
-/* ftt_status return bitflags 
+/* ftt_status return bitflags
 */
 #define FTT_ABOT	0x01
 #define FTT_AEOT	0x04
-#define FTT_AEW 	0x08
+#define FTT_AEW     0x08
 #define FTT_PROT	0x10
 #define FTT_ONLINE	0x20
 #define FTT_BUSY	0x40
 
-/* header types 
+/* header types
 ** if you add/change these, you need to update
 ** -- ftt_label_type_names[] in ftt_higher.c
 ** so that it can print reasonable error messages.
@@ -166,19 +168,19 @@ extern char *ftt_label_type_names[];
 #define FTT_FMB_HEADER  	1
 #define FTT_TAR_HEADER  	2
 #define FTT_CPIO_HEADER 	3
-#define FTT_UNKNOWN_HEADER 	4
+#define FTT_UNKNOWN_HEADER  4
 #define FTT_BLANK_HEADER	5
 #define FTT_DONTCHECK_HEADER	6
 #define FTT_MAX_HEADER		7
 
-/* readonly Values 
+/* readonly Values
 */
 
 #define FTT_RDWR   0
 #define FTT_RDONLY 1
 
 
-/* compression Values 
+/* compression Values
 */
 #define FTT_UNCOMPRESSED 0
 #define FTT_COMPRESSED   1

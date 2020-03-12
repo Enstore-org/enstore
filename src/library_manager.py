@@ -1421,9 +1421,10 @@ class LibraryManagerMethods:
             ret = e_errors.NOSPACE
         return ret
 
-    def is_vol_available(self, work, label, family=None, size=0, vol_server_address = None):
+    def is_vol_available(self, work, label, family=None, size=0, vol_server_address=None, mover=None):
         """
         Copy of volume clerk method adapted for working with records.
+        Also checks if volume is available for a given mover, used for admind priority preempting request
 
         :type work: :obj:`str`
         :arg work:  ``write_to_hsm`` or ``read_from_hsm``
@@ -1434,11 +1435,22 @@ class LibraryManagerMethods:
         :type size: :obj:`int`
         :arg size: size for write requests
         :type vol_server_address: :obj:`tuple`
+        :type mover: :obj:`str`
+        :type mover: mover for which the volume is considered
         :arg vol_server_address: (:obj:`str`- IP address, :obj:`int` - port)
         :rtype: :obj:`dict` {'status': :obj:`tuple` (:obj:`str` - status, :obj:`None`)}
         """
 
         Trace.trace(self.trace_level+2, 'is_vol_available %s'%(self.known_volumes,))
+        # is this mover, volume in suspect mover list?
+        if mover is not None:
+            suspect_v,suspect_mv = self.is_mover_suspect(mover, label)
+            if suspect_mv:
+                msg = "mover %s is suspect for %s. Cannot assign a %s work" % \
+                    (mover, label, work)
+                Trace.log(e_errors.INFO,"%s"%(msg,))
+                return {'status': (e_errors.ERROR, msg)}
+
         # get the current entry for the volume
         if self.known_volumes.has_key(label):
             record = self.known_volumes[label]
@@ -2169,12 +2181,6 @@ class LibraryManagerMethods:
         if self.process_for_bound_vol and (rq.ticket["fc"]["external_label"] == self.process_for_bound_vol):
             # do not continue scan if we have a bound volume.
             self.continue_scan = 0
-        # is this mover, volume in suspect mover list?
-        suspect_v,suspect_mv = self.is_mover_suspect(requestor['mover'], rq.ticket["vc"]["external_label"])
-        if suspect_mv:
-            Trace.log(e_errors.INFO,"mover %s is suspect for %s cannot assign a read work"%
-                      (requestor['mover'], rq.ticket["fc"]["external_label"]))
-            rq = None
 
         Trace.trace(self.trace_level+4, "process_read_request: returning %s %s"%(rq, key_to_check))
         return rq, key_to_check
@@ -2226,10 +2232,11 @@ class LibraryManagerMethods:
                 if self.process_for_bound_vol in vol_veto_list:
                     # check if request can go to this volume
                     ret = self.is_vol_available(rq.work,
-                                            self.process_for_bound_vol,
-                                             rq.ticket['vc']['volume_family'],
-                                             rq.ticket['wrapper'].get('size_bytes', 0L),
-                                             rq.ticket['vc']['address'])
+                                                self.process_for_bound_vol,
+                                                rq.ticket['vc']['volume_family'],
+                                                rq.ticket['wrapper'].get('size_bytes', 0L),
+                                                rq.ticket['vc']['address'],
+                                                mover = requestor.get('mover'))
                     if ret['status'][0] == e_errors.OK:
                         # permit one more write request to avoid
                         # tape dismount
@@ -2306,7 +2313,8 @@ class LibraryManagerMethods:
                             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
                             ret = self.is_vol_available(rq.work,  mover['external_label'],
                                                         rq.ticket['vc']['volume_family'],
-                                                        fsize, rq.ticket['vc']['address'])
+                                                        fsize, rq.ticket['vc']['address'],
+                                                        mover = requestor.get('mover'))
                             Trace.trace(self.trace_level+40, "process_write_request: check_write_volume returned %s"%(ret,))
                             if (rq.work == "write_to_hsm" and
                                 (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
@@ -2388,12 +2396,6 @@ class LibraryManagerMethods:
                 self.continue_scan = 1
                 return rq, key_to_check
             else:
-                suspect_v,suspect_mv = self.is_mover_suspect(requestor['mover'], v['external_label'])
-                if suspect_mv:
-                    Trace.log(e_errors.INFO,"mover %s is suspect for %s cannot assign a write work"%
-                              (requestor['mover'], v["external_label"]))
-                    self.continue_scan = 1
-                    return rq, key_to_check
                 rq.ticket["status"] = v["status"]
                 external_label = v["external_label"]
         else:
@@ -2569,7 +2571,8 @@ class LibraryManagerMethods:
                                                     w['fc']['external_label'],
                                                     w["vc"]["volume_family"],
                                                     fsize,
-                                                    w['vc']['address'])
+                                                    w['vc']['address'],
+                                                    mover = requestor.get('mover'))
                         Trace.trace(100, "next_work_any_volume: vcc.is_vol_available, time in state %s"%(time.time()-start_t, ))
 
                     except KeyError, msg:
@@ -2687,7 +2690,8 @@ class LibraryManagerMethods:
             ret = self.is_vol_available(rq.work,  external_label,
                                         rq.ticket['vc']['volume_family'],
                                         fsize,
-                                        rq.ticket['vc']['address'])
+                                        rq.ticket['vc']['address'],
+                                        mover = requestor.get('mover'))
             Trace.trace(100, "check_write_request: vcc.is_vol_avail, time in state %s"%(time.time()-start_t, ))
         # this work can be done on this volume
         if ret['status'][0] == e_errors.OK:
@@ -2734,7 +2738,8 @@ class LibraryManagerMethods:
 
             ret = self.is_vol_available(rq.work,  external_label,
                                         rq.ticket['vc']['volume_family'],
-                                        fsize, rq.ticket['vc']['address'])
+                                        fsize, rq.ticket['vc']['address'],
+                                        mover = requestor.get('mover'))
             Trace.trace(100, "vcc.is_vol_avail, time in state %s"%(time.time()-start_t, ))
         Trace.trace(self.trace_level+12,"check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
@@ -2892,7 +2897,8 @@ class LibraryManagerMethods:
                                             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
                                             ret = self.vcc.is_vol_available(rq.work,  mover['external_label'],
                                                                             rq.ticket['vc']['volume_family'],
-                                                                            fsize)
+                                                                            fsize,
+                                                                            mover = requestor.get('mover'))
 
                                             if ret["status"][0] == e_errors.OK:
                                                 found_mover = 1
@@ -2979,7 +2985,7 @@ class LibraryManagerMethods:
                 else:
                     # This is a case when rq == self.tmp_rq
                     # Need to check this request
-                    rq, status = self.check_read_request(external_label, rq, requestor)
+                    rq, status = self.check_read_request(rq.ticket['volume'], rq, requestor)
                 if rq and status[0] == e_errors.OK:
                     return rq, status
             elif rq.work == 'write_to_hsm':
@@ -2990,7 +2996,7 @@ class LibraryManagerMethods:
                 else:
                     # This is a case when rq == self.tmp_rq
                     # Need to check this request
-                    rq, status = self.check_write_request(external_label, rq, requestor)
+                    rq, status = self.check_write_request(rq.ticket['volume'], rq, requestor)
                 if rq and status[0] == e_errors.OK:
                     return rq, status
 

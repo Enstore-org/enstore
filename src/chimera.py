@@ -1573,6 +1573,46 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         return parent
 
     # get the total path of the id
+    def get_path2(self, id=None, directory="", shortcut=None):
+       if directory:
+          use_dir = fullpath(directory)[1]
+       else:
+          use_dir = self.dir
+
+       try:
+          search_paths, targets = self._get_mount_point2(id, use_dir,
+                                                         ".(nameof)(%s)",
+                                                         return_all = True)
+       except OSError, msg:
+          if msg.args[0] in [errno.ENODEV]:
+             if msg.filename:
+                search_paths = msg.filename
+             elif len(msg.args) >= 3 and msg.args[2]:
+                search_paths = msg.args[2]
+             else:
+                search_paths = []
+             targets = msg.args[3]
+          else:
+             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+       rtn_filepaths = []
+       for i in range(len(search_paths)):
+          pathof = os.path.join(search_paths[i],".(pathof)(%s)"%(id,))
+          f = file_utils.open(pathof,'r')
+          try:
+             rtn_filepaths.append(file_utils.readline(f).replace("\n", ""))
+          finally:
+             f.close()
+
+       if len(rtn_filepaths) == 1:
+          return rtn_filepaths
+       else:
+          raise OSError(errno.ENODEV,
+                        "%s: %s" % (os.strerror(errno.ENODEV),
+                                    "Too many matching mount points",),
+                        rtn_filepaths)
+
+
     def get_path(self, id=None, directory="", shortcut=None):
         if directory:
             use_dir = fullpath(directory)[1]

@@ -270,7 +270,9 @@ PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const by
 #define FTT_ERROR_CODE		54
 #define FTT_CUR_PART		55
 #define FTT_MOUNT_PART		56
-#define FTT_MAX_STAT		57
+#define FTT_MEDIA_END_LIFE		57
+#define FTT_NEARING_MEDIA_END_LIFE	58
+#define FTT_MAX_STAT		59
 
 extern int ftt_errno;
 extern int ftt_debug;
