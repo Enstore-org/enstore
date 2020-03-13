@@ -2996,7 +2996,7 @@ class LibraryManagerMethods:
                 else:
                     # This is a case when rq == self.tmp_rq
                     # Need to check this request
-                    rq, status = self.check_write_request(rq.ticket['volume'], rq, requestor)
+                    rq, status = self.check_write_request(rq.ticket['fc']['external_label'], rq, requestor)
                 if rq and status[0] == e_errors.OK:
                     return rq, status
 
