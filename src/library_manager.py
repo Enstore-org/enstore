@@ -2895,9 +2895,10 @@ class LibraryManagerMethods:
                                             # check if the volume mounted on this mover
                                             # fits to request
                                             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
-                                            ret = self.vcc.is_vol_available(rq.work,  mover['external_label'],
-                                                                            rq.ticket['vc']['volume_family'],
-                                                                            fsize,
+                                            ret = self.is_vol_available(rq.work,  mover['external_label'],
+                                                                        rq.ticket['vc']['volume_family'],
+                                                                        fsize,
+                                                                        rq.ticket['vc']['address'],
                                                                             mover = requestor.get('mover'))
 
                                             if ret["status"][0] == e_errors.OK:
