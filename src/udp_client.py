@@ -158,8 +158,9 @@ class UDPClient:
         message = udp_common.r_repr((body, crc))
 
         if len(message) > TRANSFER_MAX:
-            errmsg = "send:message too big, size=%d, max=%d" %(len(message), TRANSFER_MAX)
+            errmsg = "send:message too big, size=%d, max=%d. Check the output" %(len(message), TRANSFER_MAX)
             Trace.log(e_errors.ERROR, errmsg)
+            print('Message too big: %s'%(message,))
             raise e_errors.EnstoreError(errno.EMSGSIZE, errmsg,
                                         e_errors.NET_ERROR)
 
