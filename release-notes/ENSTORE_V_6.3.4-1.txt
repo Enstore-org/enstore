@@ -1,0 +1,113 @@
+commit 5fa097b30c3b3fdf6047fc1ec56202b800d412b3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Mar 12 11:41:26 2020 -0500
+
+    enstore rpm 6.3.4-1
+
+A	release-notes/ENSTORE_V_6.3.4-0.txt
+M	spec/enstore_RH6_python_2.7.9.spec
+M	spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
+
+commit 8241118afc00e93186602c9f0aedf207c28618e5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Mar 11 15:26:50 2020 -0500
+
+    Report end of life flags.
+
+    Implement reporting Near End of Life and End of Life flags from Tape Alert page.
+
+    http://srm.fnal.gov/reviews/r/644/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2118
+
+M	ftt/ftt_lib/ftt_defines.h
+M	ftt/ftt_lib/ftt_stats.c
+M	modules/SWIG/ftt2.i
+M	src/mover.py
+
+commit 1782dbe2a5c4703a950105629af7a23127f2e8d5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Mar 9 09:45:03 2020 -0500
+
+    Mitigate thread switching effect.
+
+    It looks as this problem is related to python GIL, which started exposing after kernel upgrade to 2.6.32-754.25.1.el6.x86_64. Tape thread sets state HAVE_BOUND and exits. The main thread detects that tape thread is still running 5 seconds later and generates alarm: "Tape thread is running in the state HAVE_BOUND. Will offline the mover". This was observed only with disk mover and actually mover does not get offlined.
+    The code was modified to record the occurrence of such condition and wait 1 second.
+
+    http://srm.fnal.gov/reviews/r/641/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2117
+
+M	src/mover.py
+
+commit a8bd5fdc38462ef0020d239bb3c44f39c56e6405
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Mar 9 09:42:12 2020 -0500
+
+    Fix migration and scan of SFA packages.
+
+    This patch contains changes, fixing migration and scan of SFA packages.
+    http://srm.fnal.gov/reviews/r/642/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2114
+
+M	src/migrate_chimera.py
+
+commit 44622ffe9afeb2f469f23c4b66b0815fd798842d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Mar 4 15:54:25 2020 -0600
+
+    Suspected mover granted work in preemptive mover request.
+
+    It was noticed that work was sent to mover from suspected mover-volumes list for preemptive mover request in HAVE_BOUND state.
+
+    http://srm.fnal.gov/reviews/r/643/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2115
+
+M	src/library_manager.py
+
+commit e4b2d13a094f08e95709b21c89f38022d3cdf222
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Feb 19 16:17:54 2020 -0600
+
+    For disk mover change state after final dialog with client.
+
+    Changing state to HAVE_BOUND before final dialog with client causes race conditions when client machine is slow ACKing the message. This may cause false alarm:
+    Tape thread is running in the state HAVE_BOUND. Will offline the mover.
+
+    http://srm.fnal.gov/reviews/r/640/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2113
+
+M	src/mover.py
+
+commit bc2f48c7ef3307dbbf459e8372e385b16d5c4616
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Feb 19 16:15:34 2020 -0600
+
+    snow_interface: fix faulty "if" logic
+
+    	RB: http://srm.fnal.gov/reviews/r/639/
+
+M	src/snow_interface.py
+
+commit 0e8a49afb5a147c132bdd5fc2579779dead6f785
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Feb 19 10:20:05 2020 -0600
+
+    use GZIP=-1 option , fastest gzip algorithm when running database backup
+    and backup2Tape
+
+     	RB : http://srm.fnal.gov/reviews/r/636
+    	BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2111
+
+M	sbin/backup2Tape
+M	tools/psqlBackupV8
+
+commit c4a35a2c6eb7cbc00eeeb28165b41e5ff0630d56
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Feb 11 17:19:46 2020 -0600
+
+    chimera: add function get_path2 that uses ".(pathof)"
+
+    	RB : http://srm/reviews/r/633/
+            BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2110
+
+M	src/chimera.py
+
