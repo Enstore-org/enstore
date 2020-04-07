@@ -962,10 +962,7 @@ def chimera_get_path2(pnfsid):
                "using first mount %s" % (admp,))
         warning_log(msg)
     sfs = chimera.ChimeraFS(mount_point=admp)
-    p1 = os.path.dirname(admp)
-    p2 = sfs.get_path2(pnfsid)[0][1:]
-    path = os.path.join(p1, p2)
-    return path
+    return sfs.get_path2(pnfsid)[0]
 
 #def chimera_get_file_size(pnfsid):
 #    return chimera.ChimeraFS(pnfsid).get_file_size()

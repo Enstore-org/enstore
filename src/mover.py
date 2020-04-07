@@ -873,6 +873,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.connect_retry = 4 # number of retries for control socket connection
         self._state_lock = threading.Lock()
         self.delay_alarm_for_tape_thread = True # used to bypass GIL problem detected in disk movers after kernel 2.6.32-754.25.1.el6.x86_64
+        self.media_life_alarmed = False
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
         self.draining = 0  # draining flag. Draining is not 0
@@ -1402,8 +1403,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(DEBUG_LOG, 'Media Life Flag %s Nearing Media Life Flag %s'%
                     (media_end_life, nearing_media_end_life))
         if media_end_life + nearing_media_end_life != 0:
-            Trace.alarm(e_errors.WARNING, 'Media Life Flag %s Nearing Media Life Flag %s Volume %s'%
-                        (media_end_life, nearing_media_end_life, self.current_volume))
+            if not self.media_life_alarmed: # alarm only once per mount
+                Trace.alarm(e_errors.WARNING, 'Media Life Flag %s Nearing Media Life Flag %s Volume %s'%
+                            (media_end_life, nearing_media_end_life, self.current_volume))
+                self.media_life_alarmed = True
 
     def update_stat(self):
         """
@@ -7044,6 +7047,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
             Trace.log(e_errors.INFO, "mounted %s %s %s"%(volume_label,self.config['product_id'], time_msg),
                   msg_type=Trace.MSG_MC_LOAD_DONE)
+            self.media_life_alarmed = False
 
             if self.mount_delay:
                 Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
