@@ -25,6 +25,7 @@ def readlayer(fullname,layer):
 def get_l4(filename):
     l4_raw = readlayer(filename, 4)
     l4 = {}
+    print 'L4 raw', l4_raw
     try:
         l4['external_label'] = l4_raw[0][:-1]  # volume
         l4['location_cookie'] = l4_raw[1][:-1]  # location cookie
@@ -51,6 +52,7 @@ def write_layer(fullname, layer, value):
     
 def change_file_name(file):
     # replace pnfs with pnfs/fs/usr
+    return file
     orig = string.split(file, "/")
     if 'sam' in orig:
         sam_ind = orig.index('sam')
@@ -67,6 +69,7 @@ def change_file_name(file):
     for i in range(2,len(orig)):
         new.append(orig[i])
     new_fn=string.join(new,'/')
+    print('New fn',new_fn) 
     return new_fn
     
 def compare(bfinfo, l4):
@@ -79,8 +82,9 @@ def compare(bfinfo, l4):
     return 0
 
 def compare_all(bfinfo, file_family, l4):
+    return 0
     keys = l4.keys()
-    #keys=['external_label','location_cookie','size'] 
+    keys=['external_label','location_cookie','size'] 
     for key in keys:
         if key != 'file_family':
             if bfinfo[key] != l4[key]: break
@@ -94,6 +98,7 @@ def fix_pnfs_layers(file, bfid):
     # replace pnfs with pnfs/fs/usr
     file = change_file_name(file)
     l4 = get_l4(file)
+    print "L4", l4
     value = (10*"%s\n")%(l4['external_label'],
                          l4['location_cookie'],
                          l4['size'],
@@ -103,7 +108,8 @@ def fix_pnfs_layers(file, bfid):
                          l4['pnfsid'],
                          l4['pnfsvid'],
                          bfid,
-                         l4['drive'])
+                         l4['drive'],
+                         l4['crc'])
     print "NEW REC",value
     #return
     print "fixing L1"
@@ -128,9 +134,13 @@ def touch(fname):
 def readtag(fullname, tag):
     (dir,fname)=os.path.split(fullname)
     fname = "%s/.(tag)(%s)"%(dir,tag)
-    f = open(fname,'r')
-    t = f.readlines()[0]
-    f.close()
+    try:
+        f = open(fname,'r')
+        t = f.readlines()[0]
+        f.close()
+    except IOError, detail:
+        print ('error reading tag %s: %s'%(fname, detail))
+        return None
     return t
 
 def usage():
@@ -207,7 +217,7 @@ if __name__ == "__main__":
             fix_it = 'y'
         if fix_it == 'y':
             try:
-                value = (10*"%s\n")%(bfinfo['external_label'],
+                value = (11*"%s\n")%(bfinfo['external_label'],
                                      bfinfo['location_cookie'],
                                      bfinfo['size'],
                                      ff,
@@ -216,7 +226,8 @@ if __name__ == "__main__":
                                      bfinfo['pnfsid'],
                                      bfinfo.get('pnfsvid','unknown'),
                                      bfinfo['bfid'],
-                                     bfinfo.get('drive','unknown'))
+                                     bfinfo.get('drive','unknown'),
+                                     bfinfo.get('complete_crc','unknown'))
                 print "NEW REC",value
                 write_layer(file, 4,value)
                 print "Layer 4 fixed"
