@@ -34,6 +34,7 @@ import Trace
 import e_errors
 import media_changer_client
 import volume_family
+import mover_client
 
 
 MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
@@ -264,6 +265,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         #Get the list of media changers from the config server.
         mcs = self.csc.get_media_changers2(timeout = 3, retry = 10)
         for mc in mcs:
+            if 'null' in mc['name']:
+                continue # dirty way to skip null media changer
             mcc = media_changer_client.MediaChangerClient(
                 self.csc, name = mc['name'],
                 rcv_timeout = 3, rcv_tries = 3
@@ -313,7 +316,9 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         drives_dict = mcc.list_drives(10, 6)
         if e_errors.is_ok(drives_dict):
             drives_list = drives_dict['drive_list']
-
+            for d in drives_list:
+                if 'address' in d:
+                    d['name'] = d['address'] # this is for data for IBM tape library
         #Gather the list of movers listed in the configuration.
         valid_drives = []
         config_dict = self.csc.dump_and_save()
@@ -322,17 +327,23 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 #Disk movers don't have 'media_changer'.
                 conf_mc = config_dict[conf_key].get('media_changer', None)
                 if conf_mc == mcc.server_name:
-                    if config_dict[conf_key].has_key("mc_device"):
+                    if 'mc_device' in config_dict[conf_key]:
+                        # SL tape library
                         valid_drives.append(config_dict[conf_key]['mc_device'])
-
+                    elif 'use_local_mc' in config_dict[conf_key]:
+                        # IBM tape library:
+                        # query mover to get info.
+                        movc = mover_client.MoverClient(self.csc, conf_key)
+                        m_status = movc.status()
+                        if e_errors.is_ok(m_status):
+                            valid_drives.append(m_status['media_changer_device'])
 
         for drive in drives_list:
-            if drive['name'] not in valid_drives:
-                #If the drive isn't attached to a configured mover,
+            if not drive['name'] in valid_drives:
+                #If the drive isn't attached to a configured mover
                 # skip its count.  It probably belongs to another instance
                 # of Enstore.
                 continue
-
             try:
                 total_count[drive['type']] = \
                                            total_count[drive['type']] + 1
@@ -358,7 +369,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 try:
                     busy_count[(drive['type'], sg)]  =   busy_count[(drive['type'], sg)] + 1
                 except:
-                     busy_count[(drive['type'], sg)]  =   1
+                    busy_count[(drive['type'], sg)]  =   1
 
         try:
             acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
@@ -381,7 +392,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                          total_count[drive_type],
                          busy_count[k],
                          )
-#                        print "Executing ",q
+                        #print "Executing ",q
                         acc_db.query(q)
             acc_db.close()
         except (pg.ProgrammingError, pg.InternalError):
