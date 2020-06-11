@@ -7933,8 +7933,10 @@ def cleanup_after_scan_common(my_task, mig_path):
 
         if not is_migration_path(mig_path):
             msg0 = "it is not in Migration path as it failed is_migration_path() test"
-            error_log(my_task, fmt % (mig_path,msg0))
-            return 1
+            # This is not an error, but result of different pnfs monut points for write, migration, and scan.
+            # In the worst case migration temporary entries will not get removed from pnfs.
+            warning_log(my_task, fmt % (mig_path,msg0)) 
+            return 0
 
         # remove migration path. It is regular file in Migration path.
         try:
@@ -8050,7 +8052,9 @@ def final_scan_file(my_task, job, fcc, encp, intf, db):
         likely_path = dst_file_record['pnfs_name0']
         mig_path = migration_path(likely_path, src_file_record)
         # cleanup_after_scan() reports its own errors.
-        return cleanup_after_scan(my_task, mig_path, src_bfid, fcc, db)
+        rc = cleanup_after_scan(my_task, mig_path, src_bfid, fcc, db)
+        debug_log(my_task, 'cleanup_after_scan returned %s'%(rc,))
+        return rc
 
     #
     # File was not checked before, check the file
