@@ -84,25 +84,53 @@ def getdomainname():
 
     return None
 
-#Return the domain address of the current network.
-def getdomainaddr():
-    host_info = socket.getaddrinfo(socket.gethostname(), None)
-    if host_info:
-        ip = host_info[0][4][0]
+def _getdomainaddr(host_info):
+    """
+    Return the domain address of the current network.
+    For dual IP configuration the list of addresses may be returned by socket.gethostname(), like:
+    [(10, 1, 6, '', ('2620:6a:0:8421::96', 0, 0, 0)),
+    (10, 2, 17, '', ('2620:6a:0:8421::96', 0, 0, 0)),
+    (10, 3, 0, '', ('2620:6a:0:8421::96', 0, 0, 0)),
+    (2, 1, 6, '', ('131.225.191.96', 0)),
+    (2, 2, 17, '', ('131.225.191.96', 0)),
+    (2, 3, 0, '', ('131.225.191.96', 0))]
+    This is to return domanin name for a single entry.
+    """
+
+    address_family = host_info[0]
+    rc = None
+    ip = host_info[4][0]
+    if address_family == socket.AF_INET6:
+        rc = ':'.join(ip.split(':')[:3])
+    else:
         words = ip.split(".")
         if len(words) == 4:
             first_byte = int(words[0])
             if first_byte >= 0 and first_byte < 128:
                 #Class A network.  (8 bits network, 24 bits host)
-                return string.join(words[0:1], ".")
+                rc = '.'.join(words[:1])
             elif first_byte >= 128 and first_byte < 192:
                 #Class B network.  (16 bits network, 16 bits host)
-                return string.join(words[0:2], ".")
+                rc = '.'.join(words[:2])
             elif first_byte >= 192 and first_byte < 224:
-                #Class C network.  (24 bits network, 8 bits host)
-                return string.join(words[0:3], ".")
+            #Class C network.  (24 bits network, 8 bits host)
+                rc = '.'.join(words[:3])
+    return rc
 
-    return None
+#Return the domain address of the current network.
+def getdomainaddr():
+    host_info = socket.getaddrinfo(socket.gethostname(), None)
+    rc = None
+    if host_info:
+        if isinstance(host_info, list):
+            rc = []
+            for el in host_info:
+                da = _getdomainaddr(el)
+                if da and not da in rc:
+                    rc.append(da)
+        else:
+            rc = _getdomainaddr(host_info)
+    return rc
 
 def __my_gethostbyaddr(addr):
     try_count = 0
@@ -190,10 +218,13 @@ def name_to_address(name):
     known_names[name] = addr
     return addr
 
-
+domains = getdomainaddr()
+if isinstance(domains, list):
+    domains.append('127.0.0')
+else:
+    domains = [domains, '127.0.0']
 known_domains = {'invalid_domains' : {},
-                 'valid_domains' : {'default' : [getdomainaddr(),
-                                                 "127.0.0"]}}
+                 'valid_domains' : {'default' : domains}}
 #This needs to be called by all servers (done in generic_server.py).  Also,
 # all long lived clients that need to care about multiple systems do to.
 # Short lived clients (that only care about the default Enstore system)
@@ -257,7 +288,7 @@ def _allow(addr):
         except AttributeError:
             tok = ""
         if len(tok) == 0:
-            Trace.trace(19, "allow: not allowing %s" % (addr,))
+            Trace.trace(19, "allow: not allowing 1 %s" % (addr,))
             return 0
     else:  # IPV4
         try:
@@ -265,7 +296,7 @@ def _allow(addr):
         except AttributeError:
             tok = ""
         if len(tok) != 4:
-            Trace.trace(19, "allow: not allowing %s" % (addr,))
+            Trace.trace(19, "allow: not allowing 2 %s" % (addr,))
             return 0
     #Return false if the ip is in a domain we are not allowed to reply to.
     Trace.trace(19, 'Invalid domains: %s'%(invalid_domains_dict,))
@@ -298,7 +329,7 @@ def _allow(addr):
                 Trace.trace(19, "allow: allowing %s" % (addr,))
                 return 1
 
-    Trace.trace(19, "allow: not allowing %s" % (addr,))
+    Trace.trace(19, "allow: not allowing 3 %s" % (addr,))
     return None
 
 def allow(addr):
@@ -330,7 +361,7 @@ def allow(addr):
 
     #If we do not have anything to test return false.
     if not addr:
-        Trace.trace(19, "allow: not allowing %s" % (addr,))
+        Trace.trace(19, "allow: not allowing 4 %s" % (addr,))
         return 0
 
     #If the address is not in dotted-decimal form, convert it.
@@ -338,7 +369,7 @@ def allow(addr):
         if not is_ip(addr):
             addr = name_to_address(addr)
     except IndexError:
-        Trace.trace(19, "allow: not allowing %s" % (addr,))
+        Trace.trace(19, "allow: not allowing 5 %s" % (addr,))
         return 0
     #Call the helper _allow() function that test the address against what is
     # in known_domains.
