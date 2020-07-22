@@ -41,7 +41,17 @@ OUT="${OUT_DIR}/$(date +%F_%H-%M-%S).tar.xz"
 
 # Write local backup
 mkdir -m 0755 -p "${OUT_DIR}"
-pg_basebackup --pgdata=- --format=tar --xlog --checkpoint=fast --port="$(db_cfg dbport)" --username="$(db_cfg dbuser)" | xz -2 >"${OUT}"
+# Check if pg_basebackup supports "xlog" option
+set +e
+pg_basebackup --help | grep "\-\-xlog" > /dev/null 2>&1
+rc=$?
+set -e
+if [ ${rc} -ne 0 ]; then
+    pg_basebackup --pgdata=- --format=tar --wal-method=fetch --checkpoint=fast --port="$(db_cfg dbport)" --username="$(db_cfg dbuser)" | xz -1 >"${OUT}"
+else
+    pg_basebackup --pgdata=- --format=tar --xlog --checkpoint=fast --port="$(db_cfg dbport)" --username="$(db_cfg dbuser)" | xz -1 >"${OUT}"
+fi
+
 tmpwatch -f -q -m 4d "${OUT_DIR}"
 
 # Get remote destination
