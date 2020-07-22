@@ -5257,6 +5257,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                         return 0
+                elif status[0] == e_errors.READ_VOL1_MISSING and status[1] == None:
+                    pass
                 else:
                     msg = "expected return code for blank tape is  %s"%(e_errors.READ_VOL1_READ_ERR,)
                     self.set_volume_noaccess(volume_label, msg)
