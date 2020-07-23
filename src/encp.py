@@ -5240,15 +5240,18 @@ def submit_one_request_send(ticket, encp_intf):
 
             t = lmd.get_library_manager(copy.deepcopy(ticket))
 
-            ticket.update(dict(filter(lambda i : i[0] not in ("work"),t.iteritems())))
+            if not e_errors.is_ok(t):
+                ticket['status'] = (e_errors.USERERROR,
+                                    "Unable to access library manager director: %s" % \
+                                    (t['status'],))
+                return ticket, None, None
+
+            if orig_library != t["vc"]["library"]:
+                ticket.update(dict(filter(lambda i : i[0] not in ("work"),t.iteritems())))
+
 
             Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET\n%s:"%(pprint.pformat(ticket),))
 
-            if not e_errors.is_ok(ticket):
-                ticket['status'] = (e_errors.USERERROR,
-                                    "Unable to access library manager director: %s" % \
-                                    (ticket['status'],))
-                return ticket, None, None
 
     if orig_library !=  ticket['vc']['library']:
         encp_intf.redirected = True
