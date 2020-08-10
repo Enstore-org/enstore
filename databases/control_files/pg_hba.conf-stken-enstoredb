@@ -117,7 +117,7 @@ host enstoredb enstore        131.225.214.62/32                trust
 host enstoredb enstore        131.225.214.63/32                trust
 
 #request by Chih-Hao for cms migration
-host enstoredb enstore        131.225.206.255/32               trust
+host enstoredb enstore        131.225.206.50/32               trust
 host enstoredb enstore        131.225.207.8/32                 trust
 # added gccensrv1, 02
 host enstoredb enstore        131.225.13.129/32                 trust
