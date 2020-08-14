@@ -9067,19 +9067,12 @@ def handle_process_exception(queue, write_value):
 
 # migrated_from(vol, db) -- list all volumes that have migrated to vol
 def migrated_from(vol, db):
-    q = "select distinct va.label as the_label \
+    q = "select distinct va.label \
                 from volume va, volume vb, file fa, file fb, migration \
                  where fa.volume = va.id and fb.volume = vb.id \
                         and fa.bfid = migration.src_bfid \
                         and fb.bfid = migration.dst_bfid \
-                        and vb.label = '%s' UNION \
-         select distinct va.label as the_label \
-                from volume va, volume vb, file fa, file fb, file fp, migration \
-                 where fa.volume = va.id and fp.volume = vb.id \
-                        and fa.bfid = migration.src_bfid \
-                        and fb.bfid = migration.dst_bfid \
-                        and fb.package_id = fp.bfid \
-                        and vb.label = '%s' order by the_label;"%(vol, vol)
+                        and vb.label = '%s' order by va.label;"%(vol,)
 
     debug_log('migrated_from', 'query %s'%(q,))
 
@@ -9097,7 +9090,29 @@ def migrated_from(vol, db):
             from_del_list.append(i[0])
         else:
             from_list.append(i[0])
-	return from_list + from_del_list
+
+    # This query is to identify packages created by migration with packaging
+    q = "select distinct va.label \
+                from volume va, volume vb, file fa, file fb, file fp, migration \
+                 where fa.volume = va.id and fp.volume = vb.id \
+                        and fa.bfid = migration.src_bfid \
+                        and fb.bfid = migration.dst_bfid \
+                        and fb.package_id = fp.bfid \
+                        and vb.label = '%s' order by va.label;"%(vol,)
+
+    debug_log('migrated_from', 'additional query %s'%(q,))
+
+    res = db.query(q).getresult()
+    debug_log('migrated_from', 'additional query returned %s'%(res,))
+    for i in res:
+        if i[0].endswith(".deleted"):
+            if not i[0] in from_del_list:
+                from_del_list.append(i[0])
+        else:
+            if not i[0] in from_list:
+                from_list.append(i[0])
+
+    return from_list + from_del_list
 
 # migrated_to(vol, db) -- list all volumes that vol has migrated to
 def migrated_to(vol, db):
