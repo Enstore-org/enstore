@@ -314,6 +314,12 @@ class DbTable:
         else:
             return 0
 
+    def __contains__(self, key):
+        rc = False
+        if self.__getitem__(key):
+            rc = True
+        return rc
+
     def __len__(self):
         return int(self.dbaccess.query_getresult('select count(*) from %s;'%(self.table))[0][0])
 

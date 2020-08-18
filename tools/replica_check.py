@@ -12,9 +12,17 @@ import alarm_client
 import configuration_client
 
 
-Q="""
+Q9="""
 SELECT CASE
          WHEN pg_last_xlog_receive_location() = pg_last_xlog_replay_location() THEN 0
+         ELSE EXTRACT (EPOCH
+                       FROM age(now(),pg_last_xact_replay_timestamp()))
+       END AS log_delay
+"""
+
+Q10="""
+SELECT CASE
+         WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() THEN 0
          ELSE EXTRACT (EPOCH
                        FROM age(now(),pg_last_xact_replay_timestamp()))
        END AS log_delay
@@ -40,7 +48,14 @@ if __name__ == "__main__":
                                            database='chimera')
         db = connectionPool.connection()
         cursor = db.cursor()
-        cursor.execute(Q)
+
+        try:
+            # try Postgresql10 supported query first
+            cursor.execute(Q10)
+        except Exception as e:
+            # try Postgresql9 supported query
+            cursor.execute(Q9)
+
         res=cursor.fetchall()
         delay = 0
         if res[0][0]:

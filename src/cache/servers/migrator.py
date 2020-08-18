@@ -955,6 +955,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             rc = -1
 
         Trace.trace(10, "write_to_tape: encp returned %s %s"%(rc, encp.exit_status))
+        res = self.infoc.find_file_by_pnfsid(self.ns.get_id(dst_file_path))
+        Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
+        if res['status'][0] in (e_errors.OK, e_errors.TOO_MANY_FILES):
+            dst_bfids = []
+            if "file_list" in res:
+                dst_bfids = [ x['bfid'] for x in res['file_list'] if x['deleted'] == 'no']
+            else:
+                if res['deleted'] == 'no':
+                    dst_bfids.append(res['bfid'])
 
         # encp finished
         if rc != 0:
@@ -962,26 +971,26 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # check if this was a multiple cpy request
             if len(output_library_tag_str.split(",")) > 1:
                 # check if the original was written to a tape successfully
-                res = self.infoc.find_file_by_path(dst_file_path)
-                Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
-                if e_errors.is_ok(res['status']) and res['deleted'] == "no":
+                if dst_bfids:
                     # File exists.
                     # Check if it is in the active_file_copying
-                    q_res = self.infoc.query_db("select bfid,remaining from active_file_copying where bfid='%s'"%(res['bfid'],))
-                    Trace.trace(10, "write_to_tape: db query returned %s %s"%(rc, q_res))
+                    for bfid in dst_bfids:
+                        q_res = self.infoc.query_db("select bfid,remaining from active_file_copying where bfid='%s'"%(bfid,))
+                        Trace.trace(10, "write_to_tape: db query returned %s %s"%(rc, q_res))
 
-                    # Example of query return
-                    #  {'ntuples': 1,
-                    #   'fields': ('bfid', 'remaining''),
-                    #   'status': ('ok', None),
-                    # 'result': [('GCMS134403394000000', 1]}
-                    #
-                    if e_errors.is_ok(q_res['status']) and q_res['ntuples'] != 0:
-                        # the original is active_file_copying
-                        # which means it is on tape but the copy failed
-                        Trace.alarm(e_errors.WARNING, "Original %s is on tape," \
-                                    "but the copy failed. Check later if this file has a copy"%(res['bfid'],))
-                        really_failed = False # the original is on tape
+                        # Example of query return
+                        #  {'ntuples': 1,
+                        #   'fields': ('bfid', 'remaining''),
+                        #   'status': ('ok', None),
+                        # 'result': [('GCMS134403394000000', 1]}
+                        #
+                        if e_errors.is_ok(q_res['status']) and q_res['ntuples'] != 0:
+                            # the original is active_file_copying
+                            # which means it is on tape but the copy failed
+                            Trace.alarm(e_errors.WARNING, "Original %s is on tape," \
+                                        "but the copy failed. Check later if this file has a copy"%(bfid,))
+                            really_failed = False # the original is on tape
+                            break
             if really_failed:
                 Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
                 set_cache_params = []
@@ -1007,18 +1016,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         # register archive file in file db
         self.state = REGISTERING_ARCHIVE
-        res = self.infoc.find_file_by_path(dst_file_path)
-        Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
 
-        if e_errors.is_ok(res['status']):
-            dst_bfids = [] # to deal with possible multiple copies
-            if res.has_key('file_list'):
-                for rec in res['file_list']:
-                   dst_bfids.append(rec['bfid'])
-
-            else:
-                dst_bfids.append(res['bfid'])
-
+        if res['status'][0] in (e_errors.OK, e_errors.TOO_MANY_FILES):
             # move destination file to its final destination
             # create final destination directory
             # <packages_dir>/<volume_family>/<external_label>

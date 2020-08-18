@@ -633,7 +633,7 @@ def parse_mtab():
         fs_type = data[2]
 
         #If the filesystem is not an NFS filesystem, skip it.
-        if fs_type != "nfs":
+        if not fs_type.startswith("nfs"):
             continue
 
         # To figure out if the nfs mount is really a chimera/pnfs

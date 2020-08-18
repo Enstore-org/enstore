@@ -962,7 +962,14 @@ def chimera_get_path2(pnfsid):
                "using first mount %s" % (admp,))
         warning_log(msg)
     sfs = chimera.ChimeraFS(mount_point=admp)
-    return sfs.get_path2(pnfsid)[0]
+    likely_path = sfs.get_path2(pnfsid)[0]
+    debug_log('chimera_get_path2', 'likely_path %s'%(likely_path,))
+    if likely_path.startswith('/usr'): # hack to address the unusual path returned on test system
+        s=''
+        path = s.join(('/pnfs/fs', likely_path))
+    else:
+        path = likely_path
+    return path
 
 #def chimera_get_file_size(pnfsid):
 #    return chimera.ChimeraFS(pnfsid).get_file_size()
@@ -2107,17 +2114,20 @@ def is_migration_history_done(my_task, src_vol, db):
         error_log(my_task, "Clerk implementation does not exist yet.")
         return None  #Error
     else:
+        debug_log(my_task, 'is_migration_history_done %s'%(src_vol,))
         # Obtain the unique volume id for the source volume.
         src_vol_id = get_volume_id(my_task, src_vol, db)
+        debug_log(my_task, 'is_migration_history_done src_vol_id %s'%(src_vol_id,))
         if src_vol_id == None:
             #An error occured.  get_volume_id() reports it own errors.
             return None
 
         #Currently migrated_to() only supports direct DB access.
         to_volume_list = migrated_to(src_vol, db)
-
+        debug_log(my_task, 'is_migration_history_done: to list %s'%(to_volume_list,))
         for dst_volume in to_volume_list:
             # Obtain the unique volume id for the destination volume.
+            debug_log(my_task, 'is_migration_history_done: src_vol %s dst_vol %s'%(src_vol, dst_volume))
             dst_vol_id = get_volume_id(my_task, dst_volume, db)
             if dst_vol_id == None:
                 #An error occured.  get_volume_id() reports it own errors.
@@ -2126,9 +2136,10 @@ def is_migration_history_done(my_task, src_vol, db):
             q = "select * from migration_history " \
                 "where src_vol_id = '%s' and dst_vol_id = '%s';" \
                 % (src_vol_id, dst_vol_id)
-
+            debug_log(my_task, 'is_migration_history_done: query %s'%(q,))
             try:
                 res = db.query(q).dictresult()
+                debug_log(my_task, 'is_migration_history_done: query returned %s'%(res,))
             except:
                 exc_type, exc_value = sys.exc_info()[:2]
                 error_log(my_task, str(exc_type), str(exc_value), q)
@@ -3522,6 +3533,8 @@ class MigrateQueue:
 def show_migrated_from(volume_list, vcc, db):
     for vol in volume_list:
         from_list = migrated_from(vol, db)
+        if not from_list:
+            continue
         #We need to determine if migration or
         # duplication was used.
         try:
@@ -3542,6 +3555,8 @@ def show_migrated_from(volume_list, vcc, db):
 def show_migrated_to(volume_list, vcc, db):
     for vol in volume_list:
         to_list = migrated_to(vol, db)
+        if not to_list:
+            continue
         #We need to know determine if migration or
         # duplication was used.
         try:
@@ -7073,7 +7088,7 @@ def swap_metadata(job, fcc, db):
 def write_file(my_task,
                src_bfid, src_path, tmp_path, mig_path,
                libraries, sg, ff, wrapper,
-               deleted, encp, intf):
+               deleted, encp, intf, is_package):
     __pychecker__ = "unusednames=deleted" #Used to use; need in future?
 
     # check destination path
@@ -7175,7 +7190,8 @@ def write_file(my_task,
 
     # add --enable_redirection argument it present in migration args
     if intf.enable_redirection:
-        argv += ["--enable-redirection"]
+        if not is_package: # we do not package packages
+            argv += ["--enable-redirection"]
 
     # add buffered tapemark argument it present in migration args
     if intf.buffered_tape_marks:
@@ -7292,6 +7308,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
     if debug:
             log(my_task, `job`)
 
+    is_package = (src_bfid == src_file_record['package_id'])
     # check if it has already been copied
     if dst_file_record == None:
         is_it_copied = is_copied(src_bfid, fcc, db)
@@ -7453,7 +7470,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
 
         rtn_code = write_file(my_task, src_bfid, src_path, tmp_path, mig_path,
                               libraries, storage_group, ff, wrapper, src_deleted,
-                              encp, intf)
+                              encp, intf, is_package)
         if rtn_code:
             return
 
@@ -7884,6 +7901,8 @@ def get_filenames(my_task, job, is_multiple_copy, fcc, db, intf):
     # FIXME: review exeption processing. We may not need it all.
     try:
         pnfs_path = chimera_get_path2(pnfsid)
+        if pnfs_path.startswith('/usr') and likely_path.startswith('/pnfs/fs'): # hack to address the unusual path returned on test system
+            pnfs_path = likely_path
         debug_log(my_task, 'get_filenames: pnfs_path %s for pnfsid %s'%(pnfs_path, pnfsid))
         #pnfs_path = pnfs_find(bfid1, bfid2, pnfsid, fr1, fr2, intf)
     except (KeyboardInterrupt, SystemExit):
@@ -7933,8 +7952,10 @@ def cleanup_after_scan_common(my_task, mig_path):
 
         if not is_migration_path(mig_path):
             msg0 = "it is not in Migration path as it failed is_migration_path() test"
-            error_log(my_task, fmt % (mig_path,msg0))
-            return 1
+            # This is not an error, but result of different pnfs monut points for write, migration, and scan.
+            # In the worst case migration temporary entries will not get removed from pnfs.
+            warning_log(my_task, fmt % (mig_path,msg0))
+            return 0
 
         # remove migration path. It is regular file in Migration path.
         try:
@@ -8050,7 +8071,9 @@ def final_scan_file(my_task, job, fcc, encp, intf, db):
         likely_path = dst_file_record['pnfs_name0']
         mig_path = migration_path(likely_path, src_file_record)
         # cleanup_after_scan() reports its own errors.
-        return cleanup_after_scan(my_task, mig_path, src_bfid, fcc, db)
+        rc = cleanup_after_scan(my_task, mig_path, src_bfid, fcc, db)
+        debug_log(my_task, 'cleanup_after_scan returned %s'%(rc,))
+        return rc
 
     #
     # File was not checked before, check the file
@@ -8094,6 +8117,7 @@ def final_scan_file(my_task, job, fcc, encp, intf, db):
     except:
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+    debug_log(my_task, 'pnfs_path %s use_path %s'%(pnfs_path, use_path))
     #Make sure the destination volume is found as the volume mentioned
     # in layer 4.  (Obviously the file must be active.)
     if dst_file_record['deleted'] == NO:
@@ -8353,11 +8377,17 @@ def final_scan_volume(vol, intf):
             error_log(my_task, "migration history is not closed for volume %s,"
                       " stop processing the volume" % (vol,))
             return 1
-
-        if not migrated_from(vol, db):
+        m_from = migrated_from(vol, db)
+        if not m_from:
             error_log(my_task, "volume %s is not a %s destination volume"
                       % (vol, MIGRATION_NAME.lower()))
             return 1
+        for src_vol in m_from:
+            log_history(src_vol, vol, vcc, db)
+            set_src_volume_migrated(my_task, src_vol, vcc, db)
+        rc = is_migration_history_done(my_task, vol, db)
+        debug_log(my_task, 'is_migration_history_done returned: %s'%(rc,))
+        debug_log(my_task, 'dst volume %s src_volume %s'%(vol, m_from))
 
         # If the scanning is recorded as completed in the migration_history
         # table, do system_inhibit and file_family tests.
@@ -8992,6 +9022,7 @@ def set_src_volume_migrated(my_task, vol, vcc, db):
 			  % (vol, ticket['status'], INHIBIT_STATE))
 	# set comment
 	to_list = migrated_to(vol, db)
+        debug_log('set_src_volume_migrated vol %s to_list %s'%(vol, to_list))
 	if to_list == []:
 		to_list = ['none']
 	vol_list = ""
@@ -9036,42 +9067,77 @@ def handle_process_exception(queue, write_value):
 
 # migrated_from(vol, db) -- list all volumes that have migrated to vol
 def migrated_from(vol, db):
-	q = "select distinct va.label \
-		from volume va, volume vb, file fa, file fb, migration \
-		 where fa.volume = va.id and fb.volume = vb.id \
-			and fa.bfid = migration.src_bfid \
-			and fb.bfid = migration.dst_bfid \
-			and vb.label = '%s' order by va.label;"%(vol)
-	res = db.query(q).getresult()
-	from_list = []
-        from_del_list = []
-	for i in res:
-                #Sort the recycle (.deleted) volumes to the end of the
-                # returned list.  This is necessary when the list is used
-                # for setting the migration_history table closed column.
-                # The .deleted may not always succeed, but this way
-                # non-deleted tapes can be finished.
-                if i[0][-8:] == ".deleted":
-                        from_del_list.append(i[0])
-                else:
-		        from_list.append(i[0])
+    q = "select distinct va.label \
+                from volume va, volume vb, file fa, file fb, migration \
+                 where fa.volume = va.id and fb.volume = vb.id \
+                        and fa.bfid = migration.src_bfid \
+                        and fb.bfid = migration.dst_bfid \
+                        and vb.label = '%s' order by va.label;"%(vol,)
 
-	return from_list + from_del_list
+    debug_log('migrated_from', 'query %s'%(q,))
+
+    res = db.query(q).getresult()
+    debug_log('migrated_from', 'query returned %s'%(res,))
+    from_list = []
+    from_del_list = []
+    for i in res:
+        #Sort the recycle (.deleted) volumes to the end of the
+        # returned list.  This is necessary when the list is used
+        # for setting the migration_history table closed column.
+        # The .deleted may not always succeed, but this way
+        # non-deleted tapes can be finished.
+        if i[0].endswith(".deleted"):
+            from_del_list.append(i[0])
+        else:
+            from_list.append(i[0])
+
+    # This query is to identify packages created by migration with packaging
+    q = "select distinct va.label \
+                from volume va, volume vb, file fa, file fb, file fp, migration \
+                 where fa.volume = va.id and fp.volume = vb.id \
+                        and fa.bfid = migration.src_bfid \
+                        and fb.bfid = migration.dst_bfid \
+                        and fb.package_id = fp.bfid \
+                        and vb.label = '%s' order by va.label;"%(vol,)
+
+    debug_log('migrated_from', 'additional query %s'%(q,))
+
+    res = db.query(q).getresult()
+    debug_log('migrated_from', 'additional query returned %s'%(res,))
+    for i in res:
+        if i[0].endswith(".deleted"):
+            if not i[0] in from_del_list:
+                from_del_list.append(i[0])
+        else:
+            if not i[0] in from_list:
+                from_list.append(i[0])
+
+    return from_list + from_del_list
 
 # migrated_to(vol, db) -- list all volumes that vol has migrated to
 def migrated_to(vol, db):
-	q = "select distinct vb.label \
+    q = "select distinct vb.label  as the_label \
 		from volume va, volume vb, file fa, file fb, migration \
 		 where fa.volume = va.id and fb.volume = vb.id \
 			and fa.bfid = migration.src_bfid \
-			and fb.bfid = migration.dst_bfid \
-			and va.label = '%s' order by vb.label;"%(vol)
-	res = db.query(q).getresult()
-	to_list = []
-	for i in res:
-		to_list.append(i[0])
+			    and fb.bfid = migration.dst_bfid \
+			and va.label = '%s' UNION \
+         select distinct vb.label as the_label \
+                 from volume va, volume vb, file fa, file fb, file fp, migration \
+                   where fa.volume = va.id and fp.volume = vb.id \
+                         and fa.bfid = migration.src_bfid \
+                         and fb.bfid = migration.dst_bfid \
+                         and fb.package_id = fp.bfid \
+                         and va.label = '%s' order by the_label;"%(vol, vol)
 
-	return to_list
+    debug_log('migrated_to', 'query %s'%(q,))
+    res = db.query(q).getresult()
+    debug_log('migrated_to', 'query returned %s'%(res,))
+    to_list = []
+    for i in res:
+        if not i[0] in to_list:
+            to_list.append(i[0])
+    return to_list
 
 #for copied, swapped, checked and closed, if they are true, that part of
 # the migration table is checked.
@@ -9693,6 +9759,31 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
             error_log(my_task,"failed to mark deleted migration file %s %s %s" \
                       % (dst_bfid, mig_path, rtn_code))
             return 1
+        # For SFA package member and migration with packaging
+        debug_log(my_task, 'Checking for SFA bfid %s(%s) package_id %s'%
+                  (cur_dst_bfid, dst_file_record['bfid'], dst_file_record['package_id']))
+        if dst_file_record['package_id'] is not None and dst_file_record['package_id'] != cur_dst_bfid:
+            # get package name:
+            package_file_record = get_file_info(my_task, dst_file_record['package_id'], fcc, db)
+            if not e_errors.is_ok(package_file_record):
+                error_log(my_task, 'Can not get package info %s'%(package_file_record['status']),)
+                return 1
+            debug_log(my_task, 'package_id %s active_files_count %s'%
+                      (dst_file_record['package_id'], package_file_record['active_package_files_count']))
+
+            if package_file_record['active_package_files_count'] == 0:
+                try:
+                    if package_file_record['active_package_files_count'] == 0:
+                        os.remove(package_file_record['pnfs_name0'])
+                        rtn_code = mark_deleted(my_task, dst_file_record['package_id'], fcc, db)
+                        if rtn_code:
+                            error_log(my_task,"failed to mark deleted package file %s %s %s" \
+                                          % (src_file_record['package_id'], package_file_record['pnfs_name0'], rtn_code))
+                            return 1
+
+                except (OSError, IOError), msg:
+                    if msg.args[0] == errno.ENOENT:
+                        pass
 
         # Modify migration table:
         # On error an exception should be raised preventing

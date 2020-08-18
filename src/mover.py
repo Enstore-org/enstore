@@ -5257,6 +5257,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                         return 0
+                elif status[0] == e_errors.READ_VOL1_MISSING and status[1] == None:
+                    pass
                 else:
                     msg = "expected return code for blank tape is  %s"%(e_errors.READ_VOL1_READ_ERR,)
                     self.set_volume_noaccess(volume_label, msg)
@@ -5996,6 +5998,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.control_socket == None:
             return
         ticket['status'] = (status, error_info)
+        if 'return_file_list' in ticket and len(ticket['return_file_list']) >= enstore_constants.MAX_UDP_PACKET_SIZE:
+            print('Volume assert returned %s'%(ticket['return_file_list'],))
+            sys.stdout.flush()
+            flist_len = len(ticket['return_file_list'])
+            del ticket['return_file_list']
+            ticket['return_file_list_lengh'] = flist_len # send just the size of the list
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket))
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket['status'],))
         if ticket['status'][0] != e_errors.ENCP_GONE:
