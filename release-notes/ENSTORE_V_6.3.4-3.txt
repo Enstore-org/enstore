@@ -1,0 +1,223 @@
+commit 5573ef313a37c830b1a40079384025c01460f3b7
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Wed Aug 19 15:48:11 2020 -0500
+
+    Modify enrcp, enrsync,enrsh to work on SL7.
+
+    The krb5 utilities were moved to /usr/bin in SL7. This fix makes enrcp, enrsync,enrsh working on both
+    SLF6 and SL7 OS releases.
+    http://srm.fnal.gov/reviews/r/664/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2233
+
+M       sbin/enrcp
+M       sbin/enrsh
+M       sbin/enrsync
+
+commit c190ac79b2aefd6f93780f0e2441b095b712d274
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Fri Aug 14 16:36:10 2020 -0500
+
+    Migration with packaging.
+
+    migrate_from produced incorrect result.
+    Old code:
+    [enstore@stkensrv2n ~]$ /opt/enstore/src/migrate_chimera.py --migrated-from FL1664L8
+    FL1664L8 <= VPL402 VPL405 VPL412 VPL506 VPL507 VPL510 VPL620 VPL624 VPL630 VPL634 VPL638
+    Last modified code:
+    [enstore@fdm1806 src]$ /opt/enstore/src/migrate_chimera.py --migrated-from FL1664L8
+    FL1664L8 <= VPL402
+
+    New code in this diff:
+    [enstore@fdm1806 src]$ /opt/enstore/src/migrate_chimera.py --migrated-from FL1664L8
+    FL1664L8 <= VPL402 VPL405 VPL412 VPL506 VPL507 VPL510 VPL620 VPL624 VPL630 VPL634 VPL638
+
+    http://srm.fnal.gov/reviews/r/654/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2177
+
+M	src/migrate_chimera.py
+
+commit f63f86ff3221cebd65b9da7dace68c5f08450cf0
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Fri Aug 14 16:03:41 2020 -0500
+
+    "in" operator did not work in edb
+
+    Override __contains__() method  so that "in" operator works in edb.
+
+    http://srm.fnal.gov/reviews/r/662/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2218
+
+M	src/edb.py
+
+commit 8f5c020e0b2c38d19817cbac4cbab409b29aa0b5
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Aug 14 15:42:21 2020 -0500
+
+    fix handling of mtab file in SL7
+
+    RB : http://srm.fnal.gov/reviews/r/663/
+    BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2219
+
+M	src/chimera.py
+
+commit 888b1c06d4916c446db52fea00e046ea757a395c
+Author: rrochavi <rrochavi@fnal.gov>
+Date:   Mon Aug 10 17:39:40 2020 -0500
+
+    Revert "Enabling cmssrv303 (131.225.206.50) instead of cmssrv147(131.225.206.255)"
+
+    Apparently this is not the correct repository to do this change.
+
+    This reverts commit 044a17d74a84ec9aece138f10e191f090e0803f7.
+
+M	databases/control_files/pg_hba.conf-stken-enstoredb
+
+commit 044a17d74a84ec9aece138f10e191f090e0803f7
+Author: rrochavi <rrochavi@fnal.gov>
+Date:   Mon Aug 10 17:05:26 2020 -0500
+
+    Enabling cmssrv303 (131.225.206.50) instead of cmssrv147(131.225.206.255)
+
+    Signed-off-by: rrochavi <rrochavi@fnal.gov>
+
+M	databases/control_files/pg_hba.conf-stken-enstoredb
+
+commit d2716348d8a83b9e56a770fac0c33422a15c3963
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jul 23 17:39:35 2020 -0500
+
+    encp: set version to 3.11k
+
+    RB : http://srm.fnal.gov/reviews/r/661/
+
+M	src/encp.py
+
+commit 5223adaad77137cee3853d550b4e74d94ffc60c1
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Jul 23 14:52:33 2020 -0500
+
+    encp: do not set original library if it is the same
+
+        BZ:  https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2191
+        RB: http://srm.fnal.gov/reviews/r/660/
+
+M	src/encp.py
+
+commit a4a3c56bf779e38dc0654de7576887091eafbc96
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 22 17:57:19 2020 -0500
+
+    Squashed commit of the following:
+
+    commit 08dc0ba49a5ce3482829fb89511c03ffd62de770
+    Author: Dmitry Litvintsev <litvinse@fnal.gov>
+    Date:   Mon Jul 20 12:11:09 2020 -0500
+
+        fix replica_check and backup scipt following postgreslq upgrade to 11
+
+M	tools/pg_base_backup.sh
+M	tools/replica_check.py
+
+commit c1d0e931d15426fe1d12fd522b7199c0fdef0cf5
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Wed Jul 22 12:36:34 2020 -0500
+
+    check_empty_packages: get db information from configuration server.
+
+    before it was hardcoded.
+    http://srm.fnal.gov/reviews/r/656/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2188
+
+M	sbin/check_empty_packages
+
+commit d3d29248ea6d7cec246db3e59aa17f8723b12972
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Wed Jul 22 12:31:24 2020 -0500
+
+    Accept READ_VOL1_MISSING as proof that the tape was clobbered.
+
+    If tape is clobbered by writing 0 - s from the beginning go tape. Accept READ_VOL1_MISSING return
+    code as a proof that the tape was clobbered.
+    Looks as paranoid label verification change did not take this scenario into account. Reported by Esther.
+
+    http://srm.fnal.gov/reviews/r/655/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2187
+
+M	src/mover.py
+
+commit ca14b3c25194992c9fbabcf4b7c22a9b384a6113
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Tue Jul 21 11:06:12 2020 -0500
+
+    Migration with packaging.
+
+    Allow SFA packaging during migration.
+    http://srm.fnal.gov/reviews/r/654/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2177
+
+M	src/migrate_chimera.py
+
+commit 1a740835e575cf5367ddf16a38d4763b829a7c2a
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Tue Jul 7 15:37:34 2020 -0500
+
+    encp did not work in dual stack configuration with configuration server IP alias.
+    This is now fixed.
+
+    http://srm.fnal.gov/reviews/r/627/#comment2145
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2098
+
+M	src/hostaddr.py
+
+commit 429b0593b01cdddec34f40daa0915174b75dca3a
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Thu Jun 11 14:03:00 2020 -0500
+
+    Tapes fail scanning after migration.
+
+    Tapes fail with multiple "was not deleted: it is not in Migration path as it failed is_migration_path() test ... ERROR" errors.
+    The scan of the corresponding file has been already completed, but cleanup generates an error if file was written, then migrated and then scanned using different pnfs mount points. Actually temporary files get removed earlier with no problem (at least I didn't to see any). Cleanup is like safeguard, but I am hesitant to remove it completely at this time.
+
+    http://srm.fnal.gov/reviews/r/652/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2146
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2147
+
+M	src/migrate_chimera.py
+
+commit ef202b46c20c7cbc56115dbe13c8df03d48b8d13
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Mon Jun 8 16:22:13 2020 -0500
+
+    Add LTO-8 movers to accounting drive utilization.
+
+    Modified ratekeeper to record data about LTO-8 drives activity.
+
+    http://srm.fnal.gov/reviews/r/650/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2136
+
+M	src/ratekeeper.py
+
+commit 515d6dc062c48006b3001d311fd45a2e013cfe11
+Author: Alexander Moibenko <moibenko@mac-130226.local>
+Date:   Fri May 15 15:49:41 2020 -0500
+
+    Do not send detailed list of files for volume assert.
+
+    Do not send in reply to caller the detailed list of files in volume assert, but dump it, if it is too big.
+
+    http://srm.fnal.gov/reviews/r/649/
+    http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2130
+
+M	src/mover.py
+
+commit 65612254d59a9b8860f6c2f08a482fc669a38574
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Apr 16 15:15:12 2020 -0500
+
+    migrator : replace find_file_by_path with find_file_by_pnfsid
+
+      BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2126
+      RB : http://srm.fnal.gov/reviews/r/648/
+
+M	src/cache/servers/migrator.py
+
