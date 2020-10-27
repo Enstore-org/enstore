@@ -23,36 +23,32 @@ done
 
 export PYTHONPATH
 
-chmod +x web_server.py 
-chmod +x make_enstore_system.py 
+chmod +x web_server.py
+chmod +x make_enstore_system.py
 
 ./web_server.py --install
-
-cp -f /etc/init.d/httpd /etc/init.d/httpd.orig 
-
-sed -i "/\/etc\/rc.d\/init.d\/functions/a if \[ -f \/usr\/local\/etc\/setups.sh \]; then \n # this check is required by current rpm build process, do not remove!!!! \n . /usr/local/etc/setups.sh \n setup enstore\nfi" /etc/init.d/httpd
 
 if [ $? != 0 ];
 then
 	exit 1 
 fi
 
-
-
 ./make_enstore_system.py 
 
 rc=$?
 
 if [ ${rc} == 2 ]; then
-    /sbin/chkconfig httpd off
+    systemctl is-enabled httpd.service
+    if [ $? -ne 0 ]; then
+	systemctl disable httpd.service
+    fi
     exit 0
 elif  [ ${rc} == 0 ]; then
-    /sbin/chkconfig httpd on
-    /sbin/service httpd start 
+    systemctl enable httpd.service
+    systemctl start httpd.service
     exit 0
 else 
     exit 1
 fi
-
 
 exit 0 

@@ -80,12 +80,12 @@ class WebServer:
                 sys.exit(1)
         self.server_dict['ServerTokens']='Prod'
         self.server_dict['Timeout']=300
-        self.server_dict['KeepAlive']='True'
-        self.server_dict['AllowOverride']='All'
+        self.server_dict['KeepAlive']='On'
+        #self.server_dict['AllowOverride']='All'
         self.inq_d = self.config_dict.get(enstore_constants.INQUISITOR, {})
         self.Root = self.server_dict.get(SERVER_ROOT,'/etc/httpd')
         self.config_file = "%s/conf/httpd.conf"%(self.Root)
-        print "CONF",self.config_file
+        self.custom_config_file = "%s/conf.d/enstore.conf"%(self.Root)
 
     def get_ok(self):
         return self.is_ok
@@ -127,11 +127,21 @@ class WebServer:
         if not self.is_ok :
             return 1
         f=open(self.config_file,"w")
+        conf_d_f = open(self.custom_config_file, 'w')
+
+        txt = '<Directory /> \n'
+        txt = txt + 'Options FollowSymLinks \n'
+        txt = txt + 'AllowOverride none \n'
+        txt = txt + 'Require all granted\n'
+        txt = txt + '</Directory>\n'
+        conf_d_f.write(txt)
+
         try:
             for line in self.lines:
+                custom_txt = ''
                 txt = line
                 if line.lstrip().find('#') != 0:
-                    for key in self.server_dict.keys():
+                    for key in self.server_dict:
                         if key == "status" :
                             continue
                         indx=line.lstrip().find(key)
@@ -143,7 +153,7 @@ class WebServer:
                                 for k in self.server_dict[key].keys():
                                     index=line.strip().find(k)
                                     if index!=-1:
-                                        txt = key + " " + str(self.server_dict[key][k])+" "+k+"\n"
+                                        custom_txt = key + " " + str(self.server_dict[key][k])+" "+k+"\n"
                                         break
                             elif key == "ScriptAlias":
                                 for k in self.server_dict[key].keys():
@@ -165,12 +175,14 @@ class WebServer:
                                         txt = txt + "SetEnv "+e+" "+os.getenv(e)+"\n"
                                     txt = txt + "</Directory>\n"
                                     break
-                            elif key == "ServerHost" :
-                                txt = key + " " + self.this_host_name +"\n";
+                            elif key == "ServerHost":
+                                custom_txt = key + " " + self.this_host_name +"\n";
                             else:
-                                txt = key + " " + str(self.server_dict[key]) +"\n"
+                                custom_txt = key + " " + str(self.server_dict[key]) +"\n"
                                 break
                 f.write(txt)
+                if custom_txt:
+                    conf_d_f.write(custom_txt)
         except Exception, msg:
             print str(msg)
             rc=1
