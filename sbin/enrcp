@@ -35,6 +35,12 @@ krbdir="/usr/krb5/bin"
 defaultDomain=".fnal.gov"
 enstorekt_path="/fnal/ups/kt/enstorekt"
 
+# set correct krb5dir
+kinit_command=`which kinit 2>/dev/null`
+if [ $? -eq 0 ]; then
+    krbdir=`dirname $kinit_command`
+fi
+
 # if we are a kerberized system, we need to do some pre rcp stuff
 # for the root user. if not, just do a normal rcp
 

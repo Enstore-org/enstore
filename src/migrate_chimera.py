@@ -2011,7 +2011,7 @@ def log_history(src_vol, dst_vol, vcc, db):
             log(my_task, "source volume %s (%s) and destination volume "
                 "%s (%s) are already recorded as migrated at %s" \
                 % (src_vol, src_vol_id, dst_vol, dst_vol_id, res[0][2]))
-            return 0  #Success
+            return 1  # return here, do not make new entry into history
 
         # Insert this volume combintation into the migration_history table.
         q = "insert into migration_history (src, src_vol_id, dst, dst_vol_id) values \
@@ -8617,6 +8617,12 @@ def set_dst_volume_migrated(my_task, vol, sg, ff, wp, vcc, db):
         else:
             error_log(my_task,'failed to %s' % msg)
             return 1
+        res = vcc.set_comment(vol, 'successfully scanned on %s'%(socket.gethostname(),))
+        if res['status'][0] == e_errors.OK:
+            ok_log(my_task, msg)
+        else:
+            error_log(my_task,'failed to %s' % msg)
+            return 1
 
     return 0
 
@@ -9014,6 +9020,10 @@ def set_src_volume_migrated(my_task, vol, vcc, db):
 	## Note: Don't use modify() here.  Doing so would prevent the
 	## plotting and summary scripts from working correctly.  They look
 	## for a state change to system_inhibit_1; not a modify.
+        vol_info = get_volume_info(my_task, vol, vcc, db, use_cache=False)
+        if vol_info['system_inhibit'][1] == 'migrated':
+            debug_log('set_src_volume_migrated vol %s is already set to migrated'%(vol,))
+            return 0
 	ticket = set_system_migrated_func(vcc, vol)
 	if ticket['status'][0] == e_errors.OK:
 		log(my_task, "set %s to %s"%(vol, INHIBIT_STATE))
