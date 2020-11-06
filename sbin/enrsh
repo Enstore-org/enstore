@@ -44,7 +44,7 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
       if [ "${ENSSH:-x}" != "x" ];then
-	$ENSSH "$@" 
+	$ENSSH "$@"
       else
 	${krbdir}/rsh -F "$@"
       fi
@@ -53,13 +53,17 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
 
-   elif [ "$user" = "enstore" ]; then
-      # the user is enstore
+   elif [ "$user" = "enstore" ] || [ "$user" = "postgres" ]; then
+      # the user is enstore or postgres
+      # postgresql needs to be able to scp WAL files to backup servers
+      if [ "$user" = "postgres" ]; then
+          enstorekt_path="/fnal/ups/kt/postgreskt"
+      fi
       OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t $enstorekt_path enstore/cd/${thisHost}
       if [ "${ENSSH:-x}" != "x" ];then
-	$ENSSH "$@" 
+	$ENSSH "$@"
       else
 	${krbdir}/rsh -F "$@"
       fi
