@@ -458,7 +458,7 @@ class Buffer:
         t0 = time.time()
         space = self._getspace()
         t1 = time.time()
-        #Trace.trace(222,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
+        #Trace.trace(222,"block_read: bytes_to_read: %s block size %s"%(nbytes, self.blocksize)) # COMMENT THIS
         #bytes_read = driver.read(space, 0, nbytes)
         bytes_read = driver.read(space, 0, self.blocksize)
         t2 = time.time()
@@ -4278,11 +4278,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except MoverError, detail:
                     detail = str(detail)
                     if detail == e_errors.CRC_ERROR:
-                        Trace.alarm(e_errors.WARNING, "CRC error in write client",
-                                    {'outfile':self.current_work_ticket['outfile'],
-                                     'infile':self.current_work_ticket['infile'],
-                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                     'external_label':self.current_work_ticket['vc']['external_label']})
+                        if self.mode != ASSERT:
+                            Trace.alarm(e_errors.WARNING, "CRC error in write client",
+                                        {'outfile':self.current_work_ticket['outfile'],
+                                         'infile':self.current_work_ticket['infile'],
+                                         'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                         'external_label':self.current_work_ticket['vc']['external_label']})
+                        else:
+                            Trace.log(e_errors.WARNING, "CRC error in write client",
+                                      {'outfile':self.current_work_ticket['outfile'],
+                                       'infile':self.current_work_ticket['infile'],
+                                       'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                       'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.CRC_ERROR_IN_WRITE_CLIENT, error_source=TAPE)
                     else:
 
@@ -4353,11 +4360,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if crc_1_seeded == self.file_info['complete_crc']:
                         self.buffer.complete_crc = crc_1_seeded
                     else:
-                        Trace.alarm(e_errors.WARNING, "CRC error in write client",
-                                    {'outfile':self.current_work_ticket['outfile'],
-                                     'infile':self.current_work_ticket['infile'],
-                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                     'external_label':self.current_work_ticket['vc']['external_label']})
+                        if self.mode != ASSERT:
+                            Trace.alarm(e_errors.WARNING, "CRC error in write client",
+                                        {'outfile':self.current_work_ticket['outfile'],
+                                         'infile':self.current_work_ticket['infile'],
+                                         'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                         'external_label':self.current_work_ticket['vc']['external_label']})
+                        else:
+                            Trace.log(e_errors.WARNING, "CRC error in write client",
+                                      {'outfile':self.current_work_ticket['outfile'],
+                                       'infile':self.current_work_ticket['infile'],
+                                       'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                       'external_label':self.current_work_ticket['vc']['external_label']})
+
                         self.transfer_failed(e_errors.CRC_ERROR_IN_WRITE_CLIENT, error_source=TAPE)
                         return
             self.network_write_active = (self.bytes_written_last != self.bytes_written)
@@ -4679,8 +4694,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(40, "check_connection exits %s" % (mode_name(self.mode),))
 
 
-
     def assert_vol(self):
+        try:
+            self._assert_vol()
+        except Exception as e:
+            Trace.log(e_errors.ERROR, 'exception during assert_vol: %s'%(str(e),))
+        Trace.trace(100, 'Volume assert finished')
+        Trace.log(e_errors.INFO, 'Volume assert finished')
+
+    def _assert_vol(self):
         """
         Performing volume assert.
 
@@ -4845,17 +4867,35 @@ class Mover(dispatching_worker.DispatchingWorker,
                                        after_function=self.start_transfer)
 
                     #self.net_driver.open('/dev/null', WRITE)
-                    Trace.trace(24, "t32 assert_ok returned" )
 
                     self.assert_ok.wait()
+                    Trace.trace(24, "t32 assert_ok returned" )
                     self.need_lm_update = (1, None, 0, None)
                     self.assert_ok.clear()
                     self.net_driver.close()
                     self.network_write_active = False # reset to indicate no network activity
-                    Trace.trace(24, "assert return: %s"%(self.assert_return,))
+                    Trace.trace(24, "assert return: %s tr_failed %s'"%(self.assert_return, self.tr_failed))
                     ticket['return_file_list'][loc_cookie] = self.assert_return
                     if self.assert_return != e_errors.OK:
                         stat = self.assert_return
+                    Trace.log(e_errors.INFO, 'assert return %s tr_failed %s'%(self.assert_return, self.tr_failed))
+                    # It was noticed that sometimes tape_thread does not finish by this time.
+                    # Check if it is gone before proceeding
+                    if not self.tr_failed or self.assert_return == e_errors.CRC_ERROR_IN_WRITE_CLIENT:
+                        thread = getattr(self, 'tape_thread', None)
+                        retries = 10
+                        self.tr_failed = True
+                        while retries > 0:
+                            print('assert_vol: checking tape thread')
+                            if thread and thread.isAlive():
+                                Trace.log(e_errors.INFO,"assert_vol: waiting for tape thread to finish")
+                                retries -= 1
+                                time.sleep(2)
+                            else:
+                                self.tr_failed = False
+                                break
+                        if self.tr_failed:
+                            Trace.log(e_errors.ERROR, 'Volume assert failed due to not finished tape_thread')
                     if self.tr_failed:
                         stat = self._error
                         ticket['return_file_list'][loc_cookie] = stat
@@ -5528,7 +5568,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if self.mode == ASSERT:
             return_here = False
-            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", "FTT_ENODEV", "FTT_ENOTAPE", MEDIA_VERIFY_FAILED))
+            if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", "FTT_ENODEV", "FTT_ENOTAPE", MEDIA_VERIFY_FAILED, e_errors.READ_EOD))
                 or exc == e_errors.ENCP_GONE):
                 # stop assert
                 pass
@@ -7151,14 +7191,30 @@ class Mover(dispatching_worker.DispatchingWorker,
         :arg after_function: function to run after seek is done.
         """
 
-        Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
+        Trace.trace(24, "seeking to %s, after_function=%s"%(location,after_function))
         failed=0
+        thread = getattr(self, 'tape_thread', None)
+        retries = 10
+        failed = 0
+        while retries > 0:
+            Trace.trace(24, 'seek_to_location: checking tape thread')
+            if thread and thread.isAlive():
+                Trace.log(e_errors.INFO,"seek_to_location: waiting for tape thread to finish")
+                retries -= 1
+                time.sleep(2)
+            else:
+                failed = 0
+                break
+        if failed:
+            Trace.log(e_errors.ERROR, 'seek to location %s failed due to not finished tape_thread'%(location,))
+            return
         try:
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
             if self.driver_type == 'FTTDriver':
                 Trace.log(DEBUG_LOG, 'seek ftt errors %s'%(self.ftt._ftt.ftt_get_error(),))
         except:
             exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, 'seek ftt error %s'%(detail,))
 
             ########## Zalokar: April 1, 2004 ##########################
             # If the error is FTT_EBLANK, do a similar action to that in
@@ -7170,9 +7226,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 try:
                     self.current_location, tell = self.tape_driver.tell()
                 except self.ftt.FTTError, detail:
-                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s' % (detail,),
-                                     error_source=DRIVE)
-                    return
+                    if self.mode != ASSERT:
+                        self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s' % (detail,),
+                                             error_source=DRIVE)
+                        return
 
                 Trace.log(e_errors.INFO,
                           "Reached EOT seeking location %s.  Current "
@@ -7319,6 +7376,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 buffer_min_bytes = 0
                 buffer_max_bytes = 0
                 buf = None
+        # see what threads are running
+        threads_info = {}
+        threads = threading.enumerate()
+        for thread in threads:
+            thread_name = thread.getName()
+            if thread.isAlive():
+                threads_info[thread_name] = 'Running'
+            else:
+                threads_info[thread_name] = 'Dead'
+
         tick = { 'status'       : status_info,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
@@ -7352,6 +7419,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'client': self.client_ip,
                  'buffer':'%s'%(buf,),
                  'media_changer_device': self.mc_device,
+                 'threads': threads_info,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
@@ -8981,7 +9049,7 @@ if __name__ == '__main__':
     mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient, media_changer_client = media_changer_cl)
 
     mover.handle_generic_commands(intf)
-    #mover._do_print({'levels':range(10, 100)})
+    #mover._do_print({'levels':range(21, 36)})
 
     mover.start()
     mover.starting = 0
