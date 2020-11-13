@@ -159,17 +159,48 @@ def check_backup(backup_dir, backup_node):
 	return container
 
 def checkPostgres():
-    PSQL_COMMAND = "psql -U enstore enstoredb -c 'select count(*) from volume' 2> /dev/null"
-    psqlFile = os.popen(PSQL_COMMAND)
-    psqlOutput = psqlFile.readlines()
-    psqlFile.close()
-    if not psqlOutput:
-        #sys.stderr.write('Postgres server is not running properly yet\n')
-        return False
-    return True
+
+    db = PooledDB(psycopg2,
+                  maxconnections=1,
+                  maxcached=1,
+                  blocking=True,
+                  host="localhost",
+                  port=5432,
+                  user="enstore",
+                  database="enstoredb")
+
+    cursor, connection = None, None
+    try:
+        connection = db.connection()
+        cursor = connection.cursor()
+        # "hot_standby = on" by default from v10 on.
+        # You could change the configuration and set it to "off",
+        # then PostgreSQL will continue to work as before.
+        #
+        # The alternative way is running this after you connect:
+        #  SELECT pg_is_in_recovery();
+        # If that returns TRUE, recovery is not done yet.
+        # Back out, wait a while, then try again.
+
+        cursor.execute("SELECT pg_is_in_recovery()")
+        res = cursor.fetchall()
+        return not res[0][0]
+    except Exception as e:
+        print("DB check fail:",str(e))
+    finally:
+        for i in (cursor, connection):
+            if i:
+                try:
+                    i.close()
+                except:
+                    pass
+    return False
 
 # start postmaster
 def start_postmaster(db_path):
+        for f in os.listdir(os.path.join(db_path,"conf.d")):
+            if '_archive' in f:
+                os.unlink(os.path.join(db_path,"conf.d", f))
 	cmd = "ps axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)
 	pid = os.popen(cmd).readline()
 	pid = string.strip(pid)
@@ -184,7 +215,10 @@ def start_postmaster(db_path):
 			os.unlink(pid_file)
 
 		# starting postmaster
-		cmd = "postmaster -D %s &"%(db_path)
+                # "hot_standby = on" by default from v10 on.
+                # You could change the configuration and set it to "off",
+                # then PostgreSQL will continue to work as before.
+                cmd = "postmaster -c archive_mode=off -c hot_standby=off -D %s &"%(db_path)
 		os.system(cmd)
 		time.sleep(15)
                 rc = checkPostgres()
@@ -192,7 +226,7 @@ def start_postmaster(db_path):
                     print "Waiting for DB server"
                     time.sleep(60)
                     rc = checkPostgres()
-                    print "DB server is ready"
+                print("DB server is ready")
 
 #stop postmaster
 def stop_postmaster(db_path):
@@ -205,6 +239,7 @@ def stop_postmaster(db_path):
 		print timeofday.tod(), "postmaster is not running"
 
 def extract_backup(backup_dir, container, db_path):
+    print('extract backup', backup_dir, container, db_path)
     # unwind base backup
     cmd = 'tar -xf %s -C %s'%(container, db_path)
     print timeofday.tod(), cmd
@@ -214,6 +249,9 @@ def extract_backup(backup_dir, container, db_path):
     rf = open('%s/recovery.conf'%(db_path,), 'w')
     rf.write("restore_command = 'unxz <"+'"%s/pg_xlog_archive/enstore/'%(backup_dir,)+'%f.xz" >"%p"'+"'\n")
     rf.close()
+
+    #with open("%s/conf.d/2_tuned.conf"%(db_path,),"a") as f:
+    #    f.write("hot_standby = off\n")
 
     cmd = 'chmod 700 %s'%(db_path,)
     print timeofday.tod(), cmd
@@ -320,6 +358,7 @@ Brought to You by: {}
 
     start_time = time.time()
     while True:
+        res = None
         res = cursor.fetchmany(100000)
         if len(res) == 0:
             break
@@ -375,17 +414,17 @@ if __name__ == "__main__":
             (backup_dir, check_dir, current_dir, backup_node, dest_path, db_path)
         #stop postmaster if it was running already
         stop_postmaster(db_path)
-	# checking for the directories
-	if not os.access(check_dir, os.F_OK):
-		os.makedirs(check_dir)
-	check_existance(check_dir, 0)
-	if os.access(db_path, os.F_OK):
+        # checking for the directories
+        if not os.access(check_dir, os.F_OK):
+            os.makedirs(check_dir)
+        check_existance(check_dir, 0)
+        if os.access(db_path, os.F_OK):
             print db_path, "exists, removing it..."
             file_utils.rmdir(db_path)
         os.makedirs(db_path)
 
-	extract_backup(backup_dir, check_backup(backup_dir, backup_node), db_path)
-	start_postmaster(db_path)
+        extract_backup(backup_dir, check_backup(backup_dir, backup_node), db_path)
+        start_postmaster(db_path)
         time.sleep(60)
 	check_db(check_dir)
 	stop_postmaster(db_path)
@@ -400,4 +439,3 @@ if __name__ == "__main__":
             # clean up after ourselves so next
             #
             file_utils.rmdir(db_path)
-
