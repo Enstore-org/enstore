@@ -42,11 +42,13 @@ MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
 rate_lock = threading.Lock()
 acc_db_lock = threading.Lock()
 
-THREE_MINUTES_TTL = 180 #time forked ratekeepers are allowed to live
+CHILD_TTL = 300
 
 #Note: These intervals should probably come from the configuration file.
 DRVBUSY_INTERVAL = 900 #15 minutes
 SLOTS_INTERVAL = 21600 #6 hours
+MVR_RETRY_INTERVAL = 10
+MVR_RETRIES=1
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -108,6 +110,9 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         #ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
         ratekeeper_addr = (ratekeeper_host, ratekeeper_port)
 
+        self.child_ttl = ratekeep.get('spawned_process_lifetime', CHILD_TTL)
+        self.mover_to = ratekeep.get('mover_status_timeout', MVR_RETRY_INTERVAL)
+        self.mover_retries = ratekeep.get('mover_status_retries', MVR_RETRIES)
         #if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
         #    print "Error: Missing ratekeeper configdict directory.",
         #    print "  (ratekeeper_dir)"
@@ -272,7 +277,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 rcv_timeout = 3, rcv_tries = 3
                 )
 
-            if self.fork(THREE_MINUTES_TTL):
+            if self.fork(self.child_ttl):
                 #Parent
                 continue
 
@@ -290,8 +295,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 rcv_timeout = 3, rcv_tries = 3
                 )
 
-
-            if self.fork(THREE_MINUTES_TTL):
+            if self.fork(self.child_ttl):
                 #Parent
                 continue
 
@@ -334,7 +338,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                         # IBM tape library:
                         # query mover to get info.
                         movc = mover_client.MoverClient(self.csc, conf_key)
-                        m_status = movc.status()
+                        m_status = movc.status(self.mover_to, self.mover_retries)
                         if e_errors.is_ok(m_status):
                             valid_drives.append(m_status['media_changer_device'])
 
@@ -586,7 +590,6 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                                    bytes_written_dict.get("REAL", 0),
                                                    bytes_read_dict.get("NULL", 0),
                                                    bytes_written_dict.get("NULL", 0),)
-                    print q
                     self.acc_db.query(q)
                 except (pg.ProgrammingError, pg.InternalError):
                     exc, msg, tb = sys.exc_info()
