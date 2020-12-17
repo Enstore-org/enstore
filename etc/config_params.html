@@ -986,6 +986,43 @@ state. Default - do not restart</td>
 </tr>
 </table>
 
+<h2>Ratekeeper Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="spawned_process_lifetime">spawned_process_lifetime</a></td>
+<td>the life time of the forked process.
+</td>
+<td>Optional
+</td>
+<td>300s</td>
+</tr>
+<tr><td><a NAME="mover_status_timeout">mover_status_timeout</a></td>
+<td>timeout for the mover status request
+</td>
+<td>Optional
+</td>
+<td>10s</td>
+</tr>
+<tr><td><a NAME="mover_status_retries">mover_status_retries</a></td>
+<td>number of retries for the mover status request
+</td>
+<td>Optional
+</td>
+<td>1</td>
+</tr>
+
+</table>
+
+
 <h2>System Keys</h2>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
@@ -1346,7 +1383,7 @@ See details in "Small Files Aggregation High Level Design" document.
 
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Wed Dec 12 12:13:22 CST 2012
+Last modified: Wed Dec  2 10:08:46 CST 2020
 <!-- hhmts end -->
   </body>
 </html>

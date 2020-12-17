@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 4.el7
+Release: 5.el7
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -163,7 +163,7 @@ chmod 740 /etc/sudoers.e
 #reset all environment
 echo 'Defaults env_keep +=	"PATH PYTHON_DIR PYTHONPATH PYTHONINC PYTHONLIB \' >> /etc/sudoers.e
 echo '                          ENSTORE_CONFIG_HOST ENSTORE_CONFIG_PORT ENSTORE_DIR ENSTORE_MAIL \' >> /etc/sudoers.e
-echo '                          FTT_DIR KRBTKFILE ENSTORE_OUT"' >> /etc/sudoers.e
+echo '                          FTT_DIR KRBTKFILE ENSTORE_OUT ENSSH ENSCP"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
 echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
@@ -218,6 +218,8 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /usr/local/etc/setups.sh
 
 %changelog
+* Thu Dec 17 2020  <moibenko@fnal.gov> -
+- v 6.3.4 release 5. Accumulative changes since 6.3.4-4
 * Tue Oct 27 2020  <moibenko@fnal.gov> -
 - v 6.3.4 release 4. Accumulative changes since 6.3.4-3
 * Tue Aug 18 2020  <moibenko@fnal.gov> -
