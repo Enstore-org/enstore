@@ -626,7 +626,9 @@ class AtMovers:
                         if time_in_state > self.max_time_in_other:
                             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 add_to_list = 1
-                            if time_in_state > self.max_time_in_active and state in ['ACTIVE', 'SEEK', 'MOUNT_WAIT','DISMOUNT_WAIT']:
+                            if time_in_state > self.max_time_in_active and state in ['ACTIVE', 'SEEK', 'MOUNT_WAIT','DISMOUNT_WAIT', 'SETUP']:
+                                if (state == 'SETUP' and self.at_movers[mover].get('current_volume')):
+                                    add_to_list = 0 # volume is mounted, trying to connect to client
                                 if (state == 'ACTIVE' and operation == 'ASSERT'):
                                     add_to_list = 0
                                 else:

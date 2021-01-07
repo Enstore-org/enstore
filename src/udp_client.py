@@ -17,6 +17,7 @@ try:
 except ImportError:
     thread_support = 0
 import types
+import inspect
 
 # enstore imports
 import Trace
@@ -26,7 +27,6 @@ import cleanUDP
 import udp_common
 import host_config
 import enstore_constants
-import inspect
 
 MAX_EXPONENT = 6 # do not increase receive TO in send beyond this
 TRANSFER_MAX = enstore_constants.MAX_UDP_PACKET_SIZE #Max size of UDP datagram.
@@ -43,7 +43,7 @@ def wait_rsp(sock, address, rcv_timeout):
         exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO,
                   "UDPClient.send: exception on select after send to %s %s: %s %s"%
-                  (address, x, exc, msg))
+                  (address, x, exc, msg), force_print=True)
         raise e_errors.EnstoreError(None,
                                     "impossible to get these set w/out [r]",
                                     e_errors.NET_ERROR)
@@ -133,7 +133,6 @@ class UDPClient:
         """
         return "%s-%d-%f-%d-%d" % (host, port, time.time(), pid, abs(tid))
 
-
     def fileno(self):
         return self.get_tsd().socket.fileno()
 
@@ -159,7 +158,7 @@ class UDPClient:
 
         if len(message) > TRANSFER_MAX:
             errmsg = "send:message too big, size=%d, max=%d. Check the output" %(len(message), TRANSFER_MAX)
-            Trace.log(e_errors.ERROR, errmsg)
+            Trace.log(e_errors.ERROR, errmsg, force_print=True)
             print('Message too big: %s'%(message,))
             raise e_errors.EnstoreError(errno.EMSGSIZE, errmsg,
                                         e_errors.NET_ERROR)
@@ -224,7 +223,7 @@ class UDPClient:
         timeout = rcv_timeout
         while max_send == 0 or n_sent < max_send:
             #print "SENDING", time.time(), msg, dst
-            Trace.trace(5, "sending %s %s"%(msg, dst))
+            Trace.trace(5, "sending %s %s"%(msg, dst), force_print=True)
             tsd.socket.sendto(msg, dst)
             timeout = timeout*(pow(2, exp))
             if exp < max_exponent:
@@ -238,12 +237,12 @@ class UDPClient:
 
                 if not reply: # receive timed out
                     #print "TIMEOUT", time.time(), msg
-                    Trace.trace(5, "TIMEOUT sending %s"%(msg,))
+                    Trace.trace(5, "TIMEOUT sending %s"%(msg,), force_print=True)
                     break #resend
-                Trace.trace(5, "GOT REPLY %s"%(reply,))
+                Trace.trace(5, "GOT REPLY %s"%(reply,), force_print=True)
                 try:
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
-                    Trace.trace(5, "txn_id %s out %s t %s"%(rcvd_txn_id, out, t))
+                    Trace.trace(5, "txn_id %s out %s t %s"%(rcvd_txn_id, out, t), force_print=True)
                     #tsd.ident
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
@@ -251,7 +250,7 @@ class UDPClient:
                     if 'r_a' in out:
                         client_id = out['r_a'][2]
                         del out['r_a']
-                        Trace.trace(5, "client_id %s"%(client_id,))
+                        Trace.trace(5, "client_id %s"%(client_id,), force_print=True)
 
                         if client_id != tsd.ident:
                             errmsg = "Wrong client id in reply. Expected %s %s. received %s %s"% \
@@ -260,7 +259,7 @@ class UDPClient:
                             return out
                     else:
                         Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'):%s"%
-                                  (server_addr, out))
+                                  (server_addr, out), force_print=True)
                         #Trace.log(e_errors.WARNING, "CALL 1: %s"%(inspect.stack(),))
 
                 except (SyntaxError, TypeError, ValueError):
@@ -277,7 +276,7 @@ class UDPClient:
                     except IndexError:
                         message = "%s: %s: From server %s: %s" % \
                                   (exc, msg, server_addr, reply)
-                    Trace.log(10, message)
+                    Trace.log(10, message, force_print=True)
                     #Trace.handle_error(exc, msg, tb, severity=10)
                     del tb  #Avoid resource leak.
 
@@ -333,7 +332,7 @@ class UDPClient:
 
             reply = tsd.socket.sendto(message, address)
         except:
-            Trace.handle_error()
+            Trace.handle_error(force_print=True)
             reply = None
         return reply
 
@@ -455,7 +454,7 @@ class UDPClient:
                     if 'r_a' in out:
                         client_id = out['r_a'][2]
                         del out['r_a']
-                        Trace.trace(5, "client_id %s"%(client_id,))
+                        Trace.trace(5, "client_id %s"%(client_id,), force_print=True)
 
                         if client_id != tsd.ident:
                             errmsg = "Wrong client id in reply. Expected %s %s. received %s %s"% \
@@ -464,7 +463,7 @@ class UDPClient:
                             return out, rcvd_txn_id
                     else:
                         Trace.log(e_errors.WARNING, "reply from %s has no reply address ('r_a'):%s"%
-                                  (server_addr, out))
+                                  (server_addr, out), force_print=True)
                         #Trace.log(e_errors.WARNING, "CALL 2: %s"%(sys._getframe(1).f_code.co_name,))
 
                 except (SyntaxError, TypeError):
@@ -479,7 +478,7 @@ class UDPClient:
                     except IndexError:
                         message = "%s: %s: From server %s: %s" % \
                                   (exc, msg, server_addr, reply)
-                    Trace.log(10, message)
+                    Trace.log(10, message, force_print=True)
                     #Trace.handle_error(exc, msg, tb, severity=10)
                     del tb  #Avoid resource leak.
 
@@ -682,4 +681,3 @@ if __name__ == "__main__":
     del u
 
     sys.exit(status)  #Note: status is global.
-
