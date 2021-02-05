@@ -33,7 +33,8 @@ if [ "$?" != "0" ] ; then
         exit 1
 fi
 
-source ~enstore/.bashrc
+source /usr/local/etc/setups.sh 2>/dev/null
+setup enstore
 
 ${ENSTORE_DIR}/sbin/enrcp ${out} enstore@${remotebackup}/../pnfs-backup.xlogs
 
