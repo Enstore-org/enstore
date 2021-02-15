@@ -15,6 +15,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from future.utils import raise_
 from HTMLgen import *
 from HTMLcolors import *
 import string
@@ -39,11 +40,11 @@ class InputTable:
             for entry in entries:
                 self.append(entry)
         for item in kw.keys():
-            if self.__dict__.has_key(item):
+            if item in self.__dict__:
                 self.__dict__[item] = kw[item]
             else:
                 detail = "%s not a valid parameter of the %s class." % (item, self.__class__)
-                raise KeyError, detail
+                raise_(KeyError, detail)
 
     def append(self, *items):
         for item in items:

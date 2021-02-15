@@ -4,6 +4,7 @@
 This script creates requests tickets in ServiceNow
 to be used to create tab flip tickets
 """
+from __future__ import print_function
 
 import socket
 import snow_interface
@@ -18,10 +19,12 @@ CI_NAME = socket.gethostname().split('.')[0].upper()
 def submit_ticket(**kwargs):
     intf = snow_interface.SnowInterface()
     ticket = intf.create_request(CiName=kwargs.get("CiName", CI_NAME).upper(),
-                                 Summary=kwargs.get("Summary", SHORT_DESCRIPTION),
+                                 Summary=kwargs.get(
+                                     "Summary", SHORT_DESCRIPTION),
                                  Notes=kwargs.get("Description", DESCRIPTION),
                                  Comments=kwargs.get("Comments", COMMENTS),)
     return ticket
+
 
 if __name__ == "__main__":
     result = submit_ticket()

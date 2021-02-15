@@ -85,7 +85,7 @@ VALUES ({},'{}',{},'{}',{},'{}')
 """
 SQL query that insert a record into volume_audit table w/o error string
 """
-INSERT_QUERY_WO_ERROR="""
+INSERT_QUERY_WO_ERROR = """
 INSERT INTO volume_audit (volume, start,finish, bfid,result)
 VALUES ({},'{}',{},'{}',{})
 """
@@ -94,12 +94,12 @@ VALUES ({},'{}',{},'{}',{})
 encp options
 """
 ENCP_ARGS = ["encp"] + ["--skip-pnfs",
-                       "--verbose", "10",
-                       "--priority", "10",
-                       "--bypass-filesystem-max-filesize-check",
-                       "--max-resubmit", "7",
-                       "--delayed-dismount", "1",
-                       "--get-bfid"]
+                        "--verbose", "10",
+                        "--priority", "10",
+                        "--bypass-filesystem-max-filesize-check",
+                        "--max-resubmit", "7",
+                        "--delayed-dismount", "1",
+                        "--get-bfid"]
 
 Trace.init("VOLUME_AUDIT")
 
@@ -113,6 +113,7 @@ class VolumeAudit:
     on the volume passed as argument and running
     encp of first, last and random file in between from that tape. Records
     encp result in enstoredb"""
+
     def __init__(self, csc, duration=360, volume=None):
         """constructor.
 
@@ -128,8 +129,10 @@ class VolumeAudit:
         self.duration = duration
         dbInfo = csc.get("database")
         self.db = dbaccess.DatabaseAccess(maxconnections=1,
-                                          host=dbInfo.get('db_host', "localhost"),
-                                          database=dbInfo.get('dbname', "enstoredb"),
+                                          host=dbInfo.get(
+                                              'db_host', "localhost"),
+                                          database=dbInfo.get(
+                                              'dbname', "enstoredb"),
                                           port=dbInfo.get('db_port', 5432),
                                           user=dbInfo.get('dbuser', "enstore"))
 
@@ -143,7 +146,10 @@ class VolumeAudit:
             res = self.db.query(QUERY_VOLUME, (self.volume,))
             l = len(res)
             if l <= 0:
-                Trace.alarm(e_errors.INFO, "Could not find volume {}".format(self.volume))
+                Trace.alarm(
+                    e_errors.INFO,
+                    "Could not find volume {}".format(
+                        self.volume))
                 return
         else:
             #
@@ -156,14 +162,18 @@ class VolumeAudit:
             exclude test tape libraries
             """
             active_volumes = []
-            test_libraries = self.csc.get('crons', {}).get('test_library_list', [])
-            lms = [lm for lm in lms if lm['library_manager'] not in test_libraries]
+            test_libraries = self.csc.get(
+                'crons', {}).get(
+                'test_library_list', [])
+            lms = [lm for lm in lms if lm['library_manager']
+                   not in test_libraries]
             for l in lms:
-                lmc = library_manager_client.LibraryManagerClient(self.csc, l["name"])
+                lmc = library_manager_client.LibraryManagerClient(
+                    self.csc, l["name"])
                 active_volumes.extend(lmc.get_active_volumes())
                 movers = self.csc.get_movers2(l["name"])
                 movers = [x.get('name') for x in movers
-                         if x.get('status') == (e_errors.OK, None) and x.get('name')]
+                          if x.get('status') == (e_errors.OK, None) and x.get('name')]
                 hasIdle = False
                 for m in movers:
                     mvc = mover_client.MoverClient((enstore_functions2.default_host(),
@@ -184,21 +194,22 @@ class VolumeAudit:
             # time the query finishes. Not sure what we can
             # do about it.
             #
-            q = QUERY_RANDOM_VOLUME.format(string.join(libs, "','"), self.duration)
+            q = QUERY_RANDOM_VOLUME.format(
+                string.join(libs, "','"), self.duration)
             res = self.db.query(q)
             l = len(res)
             if l <= 0:
                 Trace.alarm(e_errors.INFO,
-                "Could not find a random volume. Decrease -d option value. Current value is {}".
-                format(self.duration))
+                            "Could not find a random volume. Decrease -d option value. Current value is {}".
+                            format(self.duration))
                 return
         # pick random file from interval that excludes 1st and last
-        index = random.randint(1, l-2) if l > 2 else 0
+        index = random.randint(1, l - 2) if l > 2 else 0
         volume = res[0][2]
         label = res[0][3]
         random_file = res[index][0]
         first_file = res[0][0]
-        last_file = res[l-1][0]
+        last_file = res[l - 1][0]
         bfid_list = [first_file, random_file, last_file]
         error_msg = None
         start = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
@@ -206,9 +217,11 @@ class VolumeAudit:
         rc = 0
         while bfid_list:
             bfid = bfid_list.pop(0)
-            while bfid in bfid_list:         # this is to avoid doing duplicate work if tape has only 1 (or 2) files
+            # this is to avoid doing duplicate work if tape has only 1 (or 2)
+            # files
+            while bfid in bfid_list:
                 bfid_list.remove(bfid)
-            argv = ENCP_ARGS+[bfid,"/dev/null"]
+            argv = ENCP_ARGS + [bfid, "/dev/null"]
             encp = encp_wrapper.Encp()
             rc = encp.encp(argv)
             error_msg = encp.err_msg
@@ -221,13 +234,26 @@ class VolumeAudit:
             #
             # need to escape single ' with '' for SQL to work
             #
-            q = INSERT_QUERY_WITH_ERROR.format(volume, start, 'now()', bfid, rc, error_msg.replace("'", "''"),)
+            q = INSERT_QUERY_WITH_ERROR.format(
+                volume,
+                start,
+                'now()',
+                bfid,
+                rc,
+                error_msg.replace(
+                    "'",
+                    "''"),
+            )
             if rc:
-                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with error %s, return code %d"%(label, bfid, error_msg, rc))
+                Trace.alarm(
+                    e_errors.WARNING, "Failed on volume %s, bfid %s with error %s, return code %d" %
+                    (label, bfid, error_msg, rc))
         else:
-            q = INSERT_QUERY_WO_ERROR.format(volume,start,'now()',bfid,rc)
+            q = INSERT_QUERY_WO_ERROR.format(volume, start, 'now()', bfid, rc)
             if rc:
-                Trace.alarm(e_errors.WARNING, "Failed on volume %s, bfid %s with return code %d"%(label, bfid, rc,))
+                Trace.alarm(
+                    e_errors.WARNING, "Failed on volume %s, bfid %s with return code %d" %
+                    (label, bfid, rc,))
         """
         Only insert in DB if volume was selected automatically for audit.
         """
@@ -255,4 +281,3 @@ if __name__ == "__main__":
     audit = VolumeAudit(csc, options.days, options.volume)
     rc = audit.do_work()
     sys.exit(rc)
-

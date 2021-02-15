@@ -26,6 +26,7 @@ WEB_SUB_DIRECTORY = enstore_constants.DRIVE_HOURS_SEP_PLOTS_SUBDIR
 """Subdirectory in which to write plots. This constant is also referenced by
 the :mod:`enstore_make_plot_page` module."""
 
+
 class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot drive usage hours versus date, separately for each unique drive
     type and storage group combination."""

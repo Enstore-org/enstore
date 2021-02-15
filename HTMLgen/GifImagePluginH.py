@@ -19,6 +19,7 @@
 #
 
 
+from future.utils import raise_
 __version__ = "0.4"
 
 
@@ -58,7 +59,7 @@ class GifImageFile(ImageFileH.ImageFile):
 	# Screen
 	s = self.fp.read(13)
 	if s[:6] not in ["GIF87a", "GIF89a"]:
-	    raise SyntaxError, "not a GIF file"
+	    raise SyntaxError("not a GIF file")
 
 	self.info["version"] = s[:6]
 
@@ -87,7 +88,7 @@ class GifImageFile(ImageFileH.ImageFile):
 
 	# FIXME: can only seek to next frame; should add rewind capability
 	if frame != self.frame + 1:
-	    raise ValueError, "cannot seek to frame %d" % frame
+	    raise_(ValueError, "cannot seek to frame %d" % frame)
 	self.frame = frame
 
 	self.tile = []
@@ -180,7 +181,7 @@ class GifImageFile(ImageFileH.ImageFile):
 
 	if not self.tile:
 	    self.fp2 = None
-	    raise EOFError, "no more images in GIF file"
+	    raise EOFError("no more images in GIF file")
 
 	self.mode = "L"
 	if self.palette:
@@ -262,7 +263,7 @@ def getheader(im):
     try:
         rawmode = RAWMODE[im.mode]
     except KeyError:
-	raise IOError, "cannot save mode %s as GIF" % im.mode
+	raise_(IOError, "cannot save mode %s as GIF" % im.mode)
 
     s = [
 	"GIF87a" +		# magic

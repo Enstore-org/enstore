@@ -13,19 +13,19 @@ import generic_client
 import option
 
 NINETY_SECONDS = 90
-    
+
 
 def do_real_work(intf):
 
     erc = event_relay_client.EventRelayClient()
     # we will get all of the info from the event relay.
-    erc.start([event_relay_messages.ALL,])
+    erc.start([event_relay_messages.ALL, ])
     start = time.time()
 
     # event loop - wait for events for 90 seconds, we should
     # receive at least 1 alive from all entered servers. if
     # not raise an alarm.
-    while 1:
+    while True:
         readable, junk, junk = select.select([erc.sock], [], [], 5)
         now = time.time()
         if readable:
@@ -43,15 +43,16 @@ def do_real_work(intf):
             if intf.servers:
                 # there are servers for which we did not get an
                 # alive.
-                os.system("%s %s"%(intf.filename, string.join(intf.servers)))
+                os.system("%s %s" % (intf.filename, string.join(intf.servers)))
             return
+
 
 class StethoscopeInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
         self.servers = None
         self.filename = None
-	generic_client.GenericClientInterface.__init__(self, args=args,
+        generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
     stethoscope_options = {}
@@ -69,10 +70,10 @@ class StethoscopeInterface(generic_client.GenericClientInterface):
             self.servers = string.split(self.args[1], " ")
 
     def valid_dictionaries(self):
-	return (self.help_options, self.stethoscope_options)
+        return (self.help_options, self.stethoscope_options)
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     intf = StethoscopeInterface(user_mode=0)
 

@@ -57,78 +57,82 @@ QUOTA = "quota"
 
 
 ENGLISH_TITLES = {
-		   "ADICDrvBusy" : "(e)Get ADIC Drive Info",
-		   "aml2logs" : "(e)Get AML2 Logs",
-		   "aml2mirror" : "(e)Mirror AML2 Disk",
-		   "backup" : "(e)Backup Enstore Db",
-		   "backupsystem2Tape" : "(e)Backup tarit Output To Tape",
-		   "backup2Tape" : "(e)Back up Metadata To Tape Daily",
-		   "checkdb" : "(e)Scan Db keys",
-		   "chkcrons" : "(r)Make CRON plots",
-                   "chk_prod_code" : "(e)Check Production Code Consistency",
-		   "cleaning_report" : "(e)Get # Cleanings/Tapes",
-		   "copy_ran_file" : "(e)Read 3 Random Files",
-		   "delfile" : "(r)PNFS delete",
-		   "dailyblanks" : "(e)STK Tape/Blank Rpt",
-		   "d0-aml2-drives" : "(e)Check D0 AML/2 Drive Status",
-		   "enstoreNetwork" : "(e)Measure Network Encp Speeds",
-		   "enstoreSystem" : "(e)Make SAAG Page",
-		   "enstore_overall_status" : "(r)Make Operator SAAG Page",
-		   "failedX" : "(e)Get Failed Transfers",
-		   "fix_url" : "(e)Fix CGI URLs",
-		   "getcons" : "(r)Get Console Logs",
-		   "getnodeinfo" : "(r)Get Node Info",
-		   "inqPlotUpdate" : "(e)Make Inq Plots",
-		   "log-stash" : "(e)Save Logs to history",
-		   "make_cron_plot_page" : "(r)Make CRON Plot Page",
-		   "make_overall_plot" : "(r)Make Total BPD Plot",
-		   "makeplot" : "(e)Make Rate Plots",
-		   "noaccess" : "(e)Make VOLUME/NOACCESS Page",
-		   "offline_inventory" : "(e)Get Tape Inv Info",
-		   "PNFSRATE" : "(e)Get PNFS Rate Info",
-		   "plog" : "(r)Rollover PNFS Log",
-		   "pnfsExports" : "(r)Make PNFS Exports Page",
-		   "pnfsFastBackup" : "(r)Backup PNFS Files",
-		   "quickcheck" : "(r)Get Netperf Rates",
-		   "quickquota" : "(e)Get Volume Quotas",
-		   "raidcheck" : "(r)Check Raid Disk",
-		   "readDcache" : "(e)Read From Disk Cache",
-		   "rdist-log" : "(e)Backup Enstore Logs to srv3",
-		   "robot_inventory" : "(e)Get AML Volume Status",
-		   "STKDrvBusy" : "(r,e)Get STK Drive Info",
-		   "STKlog" : "(e)Get STK Logs",
-		   "STKquery" : "(e)Measure STK Response Time",
-		   "STKrobot_inventory" : "(e)Get STK Volume Info",
-		   "Sdr" : "(r)Get Node Temps/Fan",
-		   "Sel" : "(r)Get System Event Log",
-		   "selbit" : "(r)Clear System Event Log",
-		   "sgPlotUpdate" : "(e)Make Storage Group Plot",
-		   "silocheck" : "(e)Find Non-Standard Tapes",
-		   "stk_response_time" : "(e)STK Response Time",
-		   "syncit" : "(r)Rsync Mover Nodes",
-                   "tarit" : "(r)Backup Host Files",
-		   "udpclog" : "(r)Get UDP Clog Info",
-		   "user_bytes" : "(e)Get User Bytes on Tape",
-		   "volmap" : "(r)Chmod volmap Dirs" }
+    "ADICDrvBusy": "(e)Get ADIC Drive Info",
+    "aml2logs": "(e)Get AML2 Logs",
+                   "aml2mirror": "(e)Mirror AML2 Disk",
+                   "backup": "(e)Backup Enstore Db",
+                   "backupsystem2Tape": "(e)Backup tarit Output To Tape",
+                   "backup2Tape": "(e)Back up Metadata To Tape Daily",
+                   "checkdb": "(e)Scan Db keys",
+                   "chkcrons": "(r)Make CRON plots",
+                   "chk_prod_code": "(e)Check Production Code Consistency",
+                   "cleaning_report": "(e)Get # Cleanings/Tapes",
+                   "copy_ran_file": "(e)Read 3 Random Files",
+                   "delfile": "(r)PNFS delete",
+                   "dailyblanks": "(e)STK Tape/Blank Rpt",
+                   "d0-aml2-drives": "(e)Check D0 AML/2 Drive Status",
+                   "enstoreNetwork": "(e)Measure Network Encp Speeds",
+                   "enstoreSystem": "(e)Make SAAG Page",
+                   "enstore_overall_status": "(r)Make Operator SAAG Page",
+                   "failedX": "(e)Get Failed Transfers",
+                   "fix_url": "(e)Fix CGI URLs",
+                   "getcons": "(r)Get Console Logs",
+                   "getnodeinfo": "(r)Get Node Info",
+                   "inqPlotUpdate": "(e)Make Inq Plots",
+                   "log-stash": "(e)Save Logs to history",
+                   "make_cron_plot_page": "(r)Make CRON Plot Page",
+                   "make_overall_plot": "(r)Make Total BPD Plot",
+                   "makeplot": "(e)Make Rate Plots",
+                   "noaccess": "(e)Make VOLUME/NOACCESS Page",
+                   "offline_inventory": "(e)Get Tape Inv Info",
+                   "PNFSRATE": "(e)Get PNFS Rate Info",
+                   "plog": "(r)Rollover PNFS Log",
+                   "pnfsExports": "(r)Make PNFS Exports Page",
+                   "pnfsFastBackup": "(r)Backup PNFS Files",
+                   "quickcheck": "(r)Get Netperf Rates",
+                   "quickquota": "(e)Get Volume Quotas",
+                   "raidcheck": "(r)Check Raid Disk",
+                   "readDcache": "(e)Read From Disk Cache",
+                   "rdist-log": "(e)Backup Enstore Logs to srv3",
+                   "robot_inventory": "(e)Get AML Volume Status",
+                   "STKDrvBusy": "(r,e)Get STK Drive Info",
+                   "STKlog": "(e)Get STK Logs",
+                   "STKquery": "(e)Measure STK Response Time",
+                   "STKrobot_inventory": "(e)Get STK Volume Info",
+                   "Sdr": "(r)Get Node Temps/Fan",
+                   "Sel": "(r)Get System Event Log",
+                   "selbit": "(r)Clear System Event Log",
+                   "sgPlotUpdate": "(e)Make Storage Group Plot",
+                   "silocheck": "(e)Find Non-Standard Tapes",
+                   "stk_response_time": "(e)STK Response Time",
+                   "syncit": "(r)Rsync Mover Nodes",
+                   "tarit": "(r)Backup Host Files",
+                   "udpclog": "(r)Get UDP Clog Info",
+                   "user_bytes": "(e)Get User Bytes on Tape",
+                   "volmap": "(r)Chmod volmap Dirs"}
 
 # find all the files under the current directory that are jpg files.
 # (*.jpg). then create a smaller version of each file (if it does not
 # exist) with the name *_stamp.jpg, to serve as a stamp file on
 # the web page and create a ps file (if it does not exist) with the
 # name *.ps.
-def find_jpg_files((jpgs, stamps, pss, input_dir, url), dirname, names):
+
+
+def find_jpg_files(xxx_todo_changeme, dirname, names):
+    (jpgs, stamps, pss, input_dir, url) = xxx_todo_changeme
     ignore = []
     (tjpgs, tstamps, tpss) = enstore_plots.find_files(names, dirname, ignore)
     dir_name = string.split(dirname, input_dir)[-1]
     # when we add the found file to the list of files, we need to add the
     # directory that it was found in to the name
     for filename in tjpgs:
-	# add the last modification time of the file
-        jpgs.append(("%s%s/%s"%(url, dir_name, filename[0]), filename[1]))
+        # add the last modification time of the file
+        jpgs.append(("%s%s/%s" % (url, dir_name, filename[0]), filename[1]))
     for filename in tstamps:
-        stamps.append(("%s%s/%s"%(url, dir_name, filename[0]), filename[1]))
+        stamps.append(("%s%s/%s" % (url, dir_name, filename[0]), filename[1]))
     for filename in tpss:
-        pss.append(("%s%s/%s"%(url, dir_name, filename[0]), filename[1]))
+        pss.append(("%s%s/%s" % (url, dir_name, filename[0]), filename[1]))
+
 
 def do_the_walk(input_dir, url):
     # walk the directory tree structure and return a list of all jpg, stamp
@@ -138,11 +142,11 @@ def do_the_walk(input_dir, url):
     pss = []
     # make sure the input directory and url contain the ending / in them
     if input_dir[-1] != "/":
-        input_dir = "%s/"%(input_dir,)
+        input_dir = "%s/" % (input_dir,)
     if url[-1] != "/":
-        url = "%s/"%(url,)
+        url = "%s/" % (url,)
     os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss,
-					     input_dir, url))
+                                             input_dir, url))
     jpgs.sort()
     stamps.sort()
     pss.sort()
@@ -154,12 +158,12 @@ class PlotPage(enstore_html.EnPlotPage):
     def __init__(self, title, gif, description, url, outofdate=0):
         self.url = url
         enstore_html.EnPlotPage.__init__(self, title, gif, description)
-	self.source_server = "Enstore"
-	self.help_file = ""
+        self.source_server = "Enstore"
+        self.help_file = ""
         self.outofdate = outofdate
         if self.outofdate:
             today = time.time()
-            day_secs = 26.*60.*60.
+            day_secs = 26. * 60. * 60.
             self.yesterday = today - day_secs
         else:
             self.yesterday = 0.0
@@ -173,16 +177,15 @@ class CronPlotPage(PlotPage):
         self.help_file = "cronHelp.html"
         self.english_titles = ENGLISH_TITLES
 
-
     def find_label(self, text):
         l = len(self.url)
         # get rid of the .jpg ending and the url at the beginning and _stamp
-	text_lcl = text[l:-10]
-	# translate this text to more understandable english
+        text_lcl = text[l:-10]
+        # translate this text to more understandable english
         # currently it has this format - node/cronjob. make this node/text.
         nodeNName = string.split(text_lcl, "/")
         text = self.english_titles.get(nodeNName[1], nodeNName[1])
-	return "%s<BR>%s<BR>"%(text_lcl, text)
+        return "%s<BR>%s<BR>" % (text_lcl, text)
 
 
 class QuotaPlotPage(PlotPage):
@@ -194,83 +197,82 @@ class QuotaPlotPage(PlotPage):
     def find_label(self, text):
         l = len(self.url)
         # get rid of the .jpg ending and the url at the beginning and _stamp
-	text_lcl = text[l:-10]
+        text_lcl = text[l:-10]
         # get rid of the // and then use this
         text_lcl = string.replace(text_lcl, "/", "")
-	return text_lcl
+        return text_lcl
 
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
-	# fill in the defaults for the possible options
-	self.description = "Graphical representation of the exit status of Enstore cron jobs."
-	self.title = "Enstore Cron Processes Output"
-	self.title_gif = "en_cron_pics.gif"
+        # fill in the defaults for the possible options
+        self.description = "Graphical representation of the exit status of Enstore cron jobs."
+        self.title = "Enstore Cron Processes Output"
+        self.title_gif = "en_cron_pics.gif"
         self.dir = enstore_functions.get_html_dir()
-	self.input_dir = "%s/CRONS"%(self.dir,)
-	self.html_file = "%s/cron_pics.html"%(self.dir,)
+        self.input_dir = "%s/CRONS" % (self.dir,)
+        self.html_file = "%s/cron_pics.html" % (self.dir,)
         self.url = "CRONS/"
         self.plot = ""
         self.outofdate = 0
-	generic_client.GenericClientInterface.__init__(self, args=args,
+        generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
     plot_options = {
-       option.INPUT_DIR:{option.HELP_STRING:"directory containing plot image files",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"directory",
-                         option.USER_LEVEL:option.ADMIN,
-                         },
-       option.DESCRIPTION:{option.HELP_STRING:"description for html page",
-                           option.VALUE_TYPE:option.STRING,
-                           option.VALUE_USAGE:option.REQUIRED,
-                           option.VALUE_LABEL:"text",
-                           option.USER_LEVEL:option.ADMIN,
+        option.INPUT_DIR: {option.HELP_STRING: "directory containing plot image files",
+                           option.VALUE_TYPE: option.STRING,
+                           option.VALUE_USAGE: option.REQUIRED,
+                           option.VALUE_LABEL: "directory",
+                           option.USER_LEVEL: option.ADMIN,
                            },
-       option.TITLE:{option.HELP_STRING:"title for html page",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"text",
-                     option.USER_LEVEL:option.ADMIN,
+        option.DESCRIPTION: {option.HELP_STRING: "description for html page",
+                             option.VALUE_TYPE: option.STRING,
+                             option.VALUE_USAGE: option.REQUIRED,
+                             option.VALUE_LABEL: "text",
+                             option.USER_LEVEL: option.ADMIN,
+                             },
+        option.TITLE: {option.HELP_STRING: "title for html page",
+                       option.VALUE_TYPE: option.STRING,
+                       option.VALUE_USAGE: option.REQUIRED,
+                       option.VALUE_LABEL: "text",
+                       option.USER_LEVEL: option.ADMIN,
+                       },
+        option.HTML_FILE: {option.HELP_STRING: "html file to create",
+                           option.VALUE_TYPE: option.STRING,
+                           option.VALUE_USAGE: option.REQUIRED,
+                           option.VALUE_LABEL: "filename",
+                           option.USER_LEVEL: option.ADMIN,
+                           },
+        option.TITLE_GIF: {option.HELP_STRING: "gif image containing title of html page",
+                           option.VALUE_TYPE: option.STRING,
+                           option.VALUE_USAGE: option.REQUIRED,
+                           option.VALUE_LABEL: "gif_file",
+                           option.USER_LEVEL: option.ADMIN,
+                           },
+        option.URL: {option.HELP_STRING: "url to use for plot images",
+                     option.VALUE_TYPE: option.STRING,
+                     option.VALUE_USAGE: option.REQUIRED,
+                     option.VALUE_LABEL: "url",
+                     option.USER_LEVEL: option.ADMIN,
                      },
-       option.HTML_FILE:{option.HELP_STRING:"html file to create",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"filename",
-                         option.USER_LEVEL:option.ADMIN,
-                         },
-       option.TITLE_GIF:{option.HELP_STRING:"gif image containing title of html page",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"gif_file",
-                         option.USER_LEVEL:option.ADMIN,
-                         },
-       option.URL:{option.HELP_STRING:"url to use for plot images",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"url",
-                         option.USER_LEVEL:option.ADMIN,
-                         },
-       option.PLOT:{option.HELP_STRING:"type of html plot page to create",
-                    option.VALUE_TYPE:option.STRING,
-                    option.VALUE_USAGE:option.REQUIRED,
-                    option.VALUE_LABEL:"type",
-                    option.USER_LEVEL:option.ADMIN,
-                    },
-       option.OUTOFDATE:{option.HELP_STRING:"if the plot is older than 26 hours, flag it",
-                      option.DEFAULT_TYPE:option.INTEGER,
-                      option.DEFAULT_VALUE:option.DEFAULT,
-                      option.DEFAULT_NAME:"outofdate",
-                      option.VALUE_USAGE:option.IGNORED,
-                      option.USER_LEVEL:option.ADMIN,
-                      }
-       }
-
+        option.PLOT: {option.HELP_STRING: "type of html plot page to create",
+                      option.VALUE_TYPE: option.STRING,
+                      option.VALUE_USAGE: option.REQUIRED,
+                      option.VALUE_LABEL: "type",
+                      option.USER_LEVEL: option.ADMIN,
+                      },
+        option.OUTOFDATE: {option.HELP_STRING: "if the plot is older than 26 hours, flag it",
+                           option.DEFAULT_TYPE: option.INTEGER,
+                           option.DEFAULT_VALUE: option.DEFAULT,
+                           option.DEFAULT_NAME: "outofdate",
+                           option.VALUE_USAGE: option.IGNORED,
+                           option.USER_LEVEL: option.ADMIN,
+                           }
+    }
 
     def valid_dictionaries(self):
-	return (self.help_options, self.plot_options)
+        return (self.help_options, self.plot_options)
 
 
 def do_work(intf):
@@ -289,7 +291,7 @@ def do_work(intf):
         (jpgs, stamps, pss) = do_the_walk(intf.input_dir, intf.url)
         html_page.body(jpgs, stamps, pss)
         # open the temporary html file and output the html text to it
-        tmp_html_file = "%s%s"%(intf.html_file, TMP)
+        tmp_html_file = "%s%s" % (intf.html_file, TMP)
         html_file = enstore_files.EnFile(tmp_html_file)
         html_file.open()
         html_file.write(html_page)
@@ -313,29 +315,31 @@ def do_work(intf):
 # links_l : Only the top page should specify this.  It is a list of
 #           tuples containing the sub-plot-directories and the description
 #           of the plots.
-def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l = None):
 
-    #Append the plots filename that will be created in this directory.
+
+def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l=None):
+
+    # Append the plots filename that will be created in this directory.
     plot_file = os.path.join(full_subdir_path,
                              enstore_files.plot_html_file_name())
 
-    #For all the link dirs, we need to append the plots filename that
+    # For all the link dirs, we need to append the plots filename that
     # will be created in this directory.
     use_links_l = []
     if links_l:
-        for link_dir,link_name in links_l:
+        for link_dir, link_name in links_l:
             use_links_l.append((os.path.join(link_dir,
-                                         enstore_files.plot_html_file_name()),
-                               link_name))
+                                             enstore_files.plot_html_file_name()),
+                                link_name))
 
-    #Override use of system_tag to contain the name of the plot page.
+    # Override use of system_tag to contain the name of the plot page.
     system_tag = plot_name
     html_of_plots = enstore_files.HTMLPlotFile(plot_file, system_tag, url_gif_dir,
-                                               url_gif_dir = url_gif_dir)
+                                               url_gif_dir=url_gif_dir)
     html_of_plots.open()
     # get the list of stamps and jpg files
     (jpgs, stamps, pss) = enstore_plots.find_jpg_files(full_subdir_path)
-    mount_label = "" #???
+    mount_label = ""  # ???
     html_of_plots.write(jpgs, stamps, pss, mount_label, use_links_l)
     html_of_plots.close()
     html_of_plots.install()
@@ -356,7 +360,7 @@ def do_work2(intf):
 
     plots_subdir = os.path.join(html_dir, enstore_constants.PLOTS_SUBDIR)
 
-    #Is there a better place for this list?
+    # Is there a better place for this list?
     subdir_description_list = [
         (enstore_constants.MOUNT_PLOTS_SUBDIR,
          "Number of Mounts per Media Type"),
@@ -396,7 +400,7 @@ def do_work2(intf):
          "Mount Latency plots"),
         (enstore_constants.MOUNTS_PER_ROBOT_PLOTS_SUBDIR,
          "Mounts/day per tape library"),
-        ]
+    ]
 
     if csc.get("dispatcher"):
         # Append link only if SFA is in configuration
@@ -404,13 +408,13 @@ def do_work2(intf):
                                         "Small Files Aggregation Statistics"))
 
         use_subdir_list = []
-    #Loop over all the plot subdirs making pages.
+    # Loop over all the plot subdirs making pages.
     for subdir, plot_name in subdir_description_list:
         full_subdir_path = os.path.join(plots_subdir, subdir)
-        #The top plots directory needs some additional attention.
+        # The top plots directory needs some additional attention.
         if full_subdir_path == plots_subdir:
             continue
-        #Skip if the directory does not exist.
+        # Skip if the directory does not exist.
         if not os.path.isdir(full_subdir_path):
             continue
 
@@ -418,16 +422,17 @@ def do_work2(intf):
 
         use_subdir_list.append((subdir, plot_name))
 
-    #Create the top plot page.
+    # Create the top plot page.
     make_plot(plots_subdir, url_dir, "Enstore Plots", use_subdir_list)
 
 #########################################################################
 #  END OF NEW WAY
 #########################################################################
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
 
     intf = PlotPageInterface(user_mode=0)
 
     do_work(intf)
-    #do_work2(intf)
+    # do_work2(intf)

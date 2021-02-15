@@ -23,24 +23,26 @@ In the Accounting DB to create the necessary table:
 create table quotas ( time timestamp with time zone DEFAULT CURRENT_TIMESTAMP, library character varying not null, storage_group character varying not null, allocated int, blank int not null, written int not null, requested int null, authorized int null, quota int null,  PRIMARY KEY (time,library,storage_group));
 """
 
-DAYS_AGO = 30*3  #Days in the past to start ploting data from.
+DAYS_AGO = 30 * 3  # Days in the past to start ploting data from.
 DAYS_AHEAD = 30
-DAY_IN_SECONDS = 60*60*24 #Seconds in a day.
+DAY_IN_SECONDS = 60 * 60 * 24  # Seconds in a day.
+
 
 class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
-    def __init__(self,name,isActive=True):
-        enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
+    def __init__(self, name, isActive=True):
+        enstore_plotter_module.EnstorePlotterModule.__init__(
+            self, name, isActive)
 
-
-    #Write out the file that gnuplot will use to plot the data.
+    # Write out the file that gnuplot will use to plot the data.
     # plot_filename = The file that will be read in by gnuplot containing
     #                 the gnuplot commands.
     # data_filename = The data file that will be read in by gnuplot
     #                 containing the data to be plotted.
     # ps_filename = The postscript file that will be created by gnuplot.
+
     def write_plot_file(self, plot_filename, data_filename, ps_filename,
                         library, storage_group, allocated, blanks, written,
-                        authorized, quota, alarm = ""):
+                        authorized, quota, alarm=""):
 
         time_val = time.localtime(time.time() - (DAYS_AGO * DAY_IN_SECONDS))
         last_quarter = time.strftime("%Y-%m-%d %H:%M:%S", time_val)
@@ -52,8 +54,8 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         plot_fp.write("set terminal postscript color solid\n")
         plot_fp.write("set output \"%s\"\n" % (ps_filename,))
-        plot_fp.write("set title \"%s %s     Authorized=%s Quota=%s " \
-                      "Allocated=%s Written=%s\"\n" \
+        plot_fp.write("set title \"%s %s     Authorized=%s Quota=%s "
+                      "Allocated=%s Written=%s\"\n"
                       % (library, storage_group, authorized, quota,
                          allocated, written))
         plot_fp.write("set ylabel \"Blank Tapes Left\"\n")
@@ -63,19 +65,19 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.write("set grid\n")
         plot_fp.write("#set key left\n")
         plot_fp.write("set nokey\n")
-        plot_fp.write("set label \"Plotted %s\" at graph 1.01,0 rotate " \
+        plot_fp.write("set label \"Plotted %s\" at graph 1.01,0 rotate "
                       "font \"Helvetica,10\"\n" % (time.ctime(),))
-        plot_fp.write("set label \"%s blanks left\" at graph .1,.85 " \
+        plot_fp.write("set label \"%s blanks left\" at graph .1,.85 "
                       "font  \"Helvetica,20\"\n" % blanks)
         if alarm:
-            plot_fp.write("set label \"%s\" at graph .2,.5 " \
+            plot_fp.write("set label \"%s\" at graph .2,.5 "
                           "font \"Helvetica,50\"\n" % (alarm,))
         plot_fp.write("set xrange ['%s':'%s']\n"
                       % (last_quarter, next_month))
         plot_fp.write("set yrange [0:]\n")
-        plot_fp.write("plot \"%s\" using 1:6 title \"Blanks Left\" with impulses\n" \
+        plot_fp.write("plot \"%s\" using 1:6 title \"Blanks Left\" with impulses\n"
                       % (data_filename,))
-        #plot_fp.write("plot \"%s\" using 1:6 title \"Blanks Left\" with impulses, \"%s\" using 1:7 title \"Tapes Used\" with impulses\n" \
+        # plot_fp.write("plot \"%s\" using 1:6 title \"Blanks Left\" with impulses, \"%s\" using 1:7 title \"Tapes Used\" with impulses\n" \
         #              % (data_filename,data_filename))
 
         plot_fp.close()
@@ -85,14 +87,14 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     #######################################################################
 
     def book(self, frame):
-        #Get cron directory information.
+        # Get cron directory information.
         cron_dict = frame.get_configuration_client().get("crons", {})
 
-        #Pull out just the information we want.
+        # Pull out just the information we want.
         self.temp_dir = cron_dict.get("tmp_dir", "/tmp")
         html_dir = cron_dict.get("html_dir", "")
 
-        #Handle the case were we don't know where to put the output.
+        # Handle the case were we don't know where to put the output.
         if not html_dir:
             sys.stderr.write("Unable to determine html_dir.\n")
             sys.exit(1)
@@ -105,13 +107,13 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #  here we create data points
 
         edb = frame.get_configuration_client().get("database", {})
-        db = pg.DB(host   = edb.get('dbhost', "localhost"),
-                   dbname = edb.get('dbname', "enstoredb"),
-                   port   = edb.get('dbport', 5432),
-                   user   = edb.get('dbuser', "enstore")
+        db = pg.DB(host=edb.get('dbhost', "localhost"),
+                   dbname=edb.get('dbname', "enstoredb"),
+                   port=edb.get('dbport', 5432),
+                   user=edb.get('dbuser', "enstore")
                    )
 
-        #Get the current volume count and quota information.  Let's
+        # Get the current volume count and quota information.  Let's
         # also skip null and deleted volumes.
         sql_cmd = "select v1.library, v1.storage_group," \
                   "count(v1.library) as allocated," \
@@ -129,20 +131,20 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                   " group by v1.library,v1.storage_group,q.requested," \
                   "q.authorized,q.quota,q.significance;"
 
-        #Get the values from the Enstore DB.
+        # Get the values from the Enstore DB.
         self.db_result = db.query(sql_cmd).getresult()
 
         acc = frame.get_configuration_client().get(
             enstore_constants.ACCOUNTING_SERVER, {})
-        acc_db = pg.DB(host   = acc.get('dbhost', "localhost"),
-                       dbname = acc.get('dbname', "accounting"),
-                       port   = acc.get('dbport', 5432),
-                       user   = acc.get('dbuser', "enstore")
+        acc_db = pg.DB(host=acc.get('dbhost', "localhost"),
+                       dbname=acc.get('dbname', "accounting"),
+                       port=acc.get('dbport', 5432),
+                       user=acc.get('dbuser', "enstore")
                        )
 
         for row in self.db_result:
 
-            lib_sg = (row[0], row[1]) #(library, storage group)
+            lib_sg = (row[0], row[1])  # (library, storage group)
 
             # 0: library
             # 1: storage group
@@ -163,14 +165,14 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             authorized = row[6]
             quota = row[7]
 
-            if requested == None:
+            if requested is None:
                 requested = "NULL"
-            if authorized == None:
+            if authorized is None:
                 authorized = "NULL"
-            if quota == None:
+            if quota is None:
                 quota = "NULL"
 
-            #Form the statement for inserting this moments values into
+            # Form the statement for inserting this moments values into
             # the DB.  Time is set to the current time by default.
             sql_cmd = "insert into quotas " \
                 "(library, storage_group, " \
@@ -179,34 +181,35 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 (library, storage_group,
                  allocated, blank, written, requested, authorized, quota)
 
-            #Insert the current info into the accounting DB for historical
+            # Insert the current info into the accounting DB for historical
             # plotting purposes.
             acc_db.query(sql_cmd)
 
-            #Form the statement for obtaining the values to plot.
+            # Form the statement for obtaining the values to plot.
             sql_cmd = "select * from quotas where " \
                       "time > CURRENT_TIMESTAMP - interval '%d days' " \
                       "and library='%s' and storage_group='%s';" \
                       % (DAYS_AGO, library, storage_group)
 
-            #Get the data from the database.
+            # Get the data from the database.
             res = acc_db.query(sql_cmd).getresult()
 
-            #Write out the datafile.
+            # Write out the datafile.
             pts_filename = os.path.join(self.temp_dir,
                                         "quotas_%s_%s.pts" % tuple(lib_sg))
             pts_fp = open(pts_filename, "w")
 
             for row in res:
-                #Strip off the partial seconds information.
+                # Strip off the partial seconds information.
                 row_as_list = list(row)
-                #First, remove potential parts of seconds.  Then, remove
+                # First, remove potential parts of seconds.  Then, remove
                 # possible timezone adjustments.
                 row_as_list[0] = row_as_list[0].split(".")[0]
-                row_as_list[0] = string.join(row_as_list[0].split("-")[:3], "-")
+                row_as_list[0] = string.join(
+                    row_as_list[0].split("-")[:3], "-")
                 line = string.join(map(str, row_as_list), " ")
 
-                #Write out to the datafile.
+                # Write out to the datafile.
                 pts_fp.write(line + "\n")
 
             pts_fp.close()
@@ -214,7 +217,7 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def plot(self):
 
         for row in self.db_result:
-            lib_sg = (row[0], row[1]) #(library, storage group)
+            lib_sg = (row[0], row[1])  # (library, storage group)
 
             plot_filename = os.path.join(self.temp_dir,
                                          "quotas_%s_%s.plot" % lib_sg)
@@ -223,20 +226,20 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             ps_filename = os.path.join(self.web_dir,
                                        "quotas_%s_%s.ps" % lib_sg)
             jpg_filename = os.path.join(self.web_dir,
-                                       "quotas_%s_%s.jpg" % lib_sg)
+                                        "quotas_%s_%s.jpg" % lib_sg)
             jpg_filename_stamp = os.path.join(self.web_dir,
-                                        "quotas_%s_%s_stamp.jpg" % lib_sg)
+                                              "quotas_%s_%s_stamp.jpg" % lib_sg)
 
-            #Get the information.  Some may not be set, handle those
+            # Get the information.  Some may not be set, handle those
             # fields.
             library = row[0]
             storage_group = row[1]
             allocated = int(row[2])
             blank = int(row[3])
             written = int(row[4])
-            #try:   #kept for future use
+            # try:   #kept for future use
             #    requested = int(row[5])
-            #except (TypeError, IndexError):
+            # except (TypeError, IndexError):
             #    requested = None
             try:
                 authorized = int(row[6])
@@ -246,14 +249,14 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 quota = int(row[7])
             except (TypeError, IndexError):
                 quota = None
-            #try:  #kept for future use
+            # try:  #kept for future use
             #    significance = row[8]
-            #except (TypeError, IndexError):
+            # except (TypeError, IndexError):
             #    significance = None
 
-            #Is emergency or none the "correct" string?
+            # Is emergency or none the "correct" string?
             if storage_group.find("emergency") != -1 or \
-                   storage_group.find("none") != -1:
+                    storage_group.find("none") != -1:
                 if blank == 0:
                     alarm = "NO BLANKS LEFT"
                 elif blank == 1:
@@ -269,40 +272,38 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             else:
                 alarm = ""
 
-            #Make the file that tells gnuplot what to do.
+            # Make the file that tells gnuplot what to do.
             self.write_plot_file(plot_filename, pts_filename, ps_filename,
                                  library, storage_group,
                                  allocated, blank, written, authorized, quota,
-                                 alarm = alarm)
+                                 alarm=alarm)
 
             # make the plot
             rtn = os.system("gnuplot < %s" % (plot_filename,))
             if rtn:
-		sys.stderr.write("gnuplot failed\n")
-		sys.exit(1)
+                sys.stderr.write("gnuplot failed\n")
+                sys.exit(1)
 
             # convert to jpeg
             rtn = os.system("convert -flatten -background lightgray -rotate 90 -modulate 80 %s %s" %
-                      (ps_filename, jpg_filename))
+                            (ps_filename, jpg_filename))
             if rtn:
-                    sys.stderr.write("convert failed\n")
-                    sys.exit(1)
+                sys.stderr.write("convert failed\n")
+                sys.exit(1)
             rtn = os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
-                      (ps_filename, jpg_filename_stamp))
+                            (ps_filename, jpg_filename_stamp))
             if rtn:
-                    sys.stderr.write("convert failed\n")
-                    sys.exit(1)
+                sys.stderr.write("convert failed\n")
+                sys.exit(1)
 
-            #clean up the temporary files.
+            # clean up the temporary files.
             try:
                 os.remove(plot_filename)
                 pass
-            except:
+            except BaseException:
                 pass
             try:
                 os.remove(pts_filename)
                 pass
-            except:
+            except BaseException:
                 pass
-
-

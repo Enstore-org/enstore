@@ -171,7 +171,7 @@ class StickyForm(Form):
 """
 
     def __init__(self, cgi = None, state=None,**kw):
-        apply(Form.__init__, (self,cgi), kw)
+        Form.__init__(*(self,cgi), **kw)
         if type(state) == StringType:
             self.state=FormState()
             self.state.restore(state)
@@ -217,7 +217,7 @@ class StickyForm(Form):
         except:
             return str(input)
 
-        if self.state.has_key(input.name):
+        if input.name in self.state:
             input_state=self.state[input.name]
         else:
             return str(input)

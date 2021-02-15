@@ -6,6 +6,7 @@ import setpath
 import generic_driver
 import strbuffer
 
+
 class StringDriver(generic_driver.Driver):
 
     def __init__(self, src):

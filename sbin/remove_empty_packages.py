@@ -12,7 +12,7 @@ import e_errors
 import option
 import Trace
 
-MY_NAME='RM_EMPTY_PACK'
+MY_NAME = 'RM_EMPTY_PACK'
 
 """
 SQL query that produces a list of bfid,pnfs_id,pnfs_path for all SFA packages with 0 active files
@@ -41,21 +41,24 @@ WHERE package_id=%s
    AND deleted!='y'
 """
 
+
 class Remover:
     def __init__(self):
         self.fcc = file_clerk_client.FileClient((enstore_functions2.default_host(),
                                                  enstore_functions2.default_port()))
         dbInfo = self.fcc.csc.get('database')
         self.db = dbaccess.DatabaseAccess(maxconnections=1,
-                                          host=dbInfo.get('db_host', "localhost"),
-                                          database=dbInfo.get('dbname', "enstoredb"),
+                                          host=dbInfo.get(
+                                              'db_host', "localhost"),
+                                          database=dbInfo.get(
+                                              'dbname', "enstoredb"),
                                           port=dbInfo.get('db_port', 5432),
                                           user=dbInfo.get('dbuser_reader', "enstore_reader"))
         self.removed = 0
         self.total = 0
 
     def member_files(self, package_id):
-        return self.db.query(QUERY_MEMBERS,(package_id,))[0][0]
+        return self.db.query(QUERY_MEMBERS, (package_id,))[0][0]
 
     def rm_empty_packages(self):
         res = self.db.query(QUERY_EMPTY_PACKAGES)
@@ -66,14 +69,18 @@ class Remover:
         self.total = len(res)
         for f in res:
             rc = self.member_files(f[0])
-            if rc == 1: # 0 members. 1- stands for the package itself
+            if rc == 1:  # 0 members. 1- stands for the package itself
                 try:
                     os.remove(f[2])
-                    Trace.log(e_errors.INFO, 'Removed empty package %s'%(f[2],))
+                    Trace.log(
+                        e_errors.INFO, 'Removed empty package %s' %
+                        (f[2],))
                     self.removed += 1
                 except Exception as e:
                     fail = True
-                    Trace.log(e_errors.ALARM, 'Error %s removing empty package %s'%((e, f[2])))
+                    Trace.log(
+                        e_errors.ALARM, 'Error %s removing empty package %s' %
+                        ((e, f[2])))
         return fail
 
     def do_work(self):
@@ -81,25 +88,22 @@ class Remover:
         exit_code = 0
         try:
             exit_status = self.rm_empty_packages()
-        except (SystemExit, KeyboardInterrupt), msg:
+        except (SystemExit, KeyboardInterrupt) as msg:
             Trace.log(e_errors.ERROR, 'delfile aborted from: %s' % str(msg))
             exit_code = 1
-        except:
+        except BaseException:
             Trace.handle_error()
             exit_code = 1
         if exit_status:
-            Trace.alarm(e_errors.WARNING, "failed to remove at least one file, see log")
+            Trace.alarm(
+                e_errors.WARNING,
+                "failed to remove at least one file, see log")
             exit_code = 1
-        Trace.log(e_errors.INFO, '%d empty packages found. %s packages removed. %s packages failed to remove'%
-                  (self.total, self.removed, self.total-self.removed))
+        Trace.log(e_errors.INFO, '%d empty packages found. %s packages removed. %s packages failed to remove' %
+                  (self.total, self.removed, self.total - self.removed))
         sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     remover = Remover()
     remover.do_work()
-
-
-
-
-
-

@@ -9,8 +9,10 @@
 # configuration file ( can be specified separately)                     #
 #########################################################################
 """
+from __future__ import print_function
 
 # system imports
+from future.utils import raise_
 import Queue
 import base64
 import cPickle
@@ -41,10 +43,10 @@ try:
 except ImportError:
     has_multiprocessing = False
 
-MY_NAME = enstore_constants.LOG_CLIENT   #"LOG_CLIENT"
-MY_SERVER = enstore_constants.LOG_SERVER #"log_server"
+MY_NAME = enstore_constants.LOG_CLIENT  # "LOG_CLIENT"
+MY_SERVER = enstore_constants.LOG_SERVER  # "log_server"
 YESTERDAY = "yesterday"
-VALID_PERIODS = {"today":1, YESTERDAY:2, "week":7, "month":30, "all":-1}
+VALID_PERIODS = {"today": 1, YESTERDAY: 2, "week": 7, "month": 30, "all": -1}
 RCV_TIMEOUT = 3
 RCV_TRIES = 1
 RECONNECT_TIMEOUT = 20
@@ -58,25 +60,27 @@ MAX_QUEUE_SIZE = 200000
 # PRECONDITION  : A VALID LINE IN STRING FORMAT
 # POSTCONDITION : AN ACCURATE (HOPEFULLY) ERROR MESSAGE
 ##############################################################################
+
+
 def genMsgType(msg, ln, severity):
     #TRUE = 1
     #FALSE = 0
 
-    clientFlg = False # DETERMINES IF A VALID CLIENT DEFINITION WAS FOUND
-    functFlg  = False # FOR FUNCTION DEFINITIONS
-    sevFlg    = False # FOR SEVERITY DEFINITIONS
+    clientFlg = False  # DETERMINES IF A VALID CLIENT DEFINITION WAS FOUND
+    functFlg = False  # FOR FUNCTION DEFINITIONS
+    sevFlg = False  # FOR SEVERITY DEFINITIONS
     clientMsg = ''    # CONTAINS THE ACTUAL CLIENT PORTION OF ERROR MESSAGE
-    functMsg  = ''    # FUNCTION PORTION OF ERROR MESSAGE
-    sevMsg    = ''    # SEVERITY PORTION OF ERROR MESSAGE
-    listNum  = 0      # MESSAGES START ON THIS PORTION OF LINE INPUT
-    msgStrt   = 0     # ANCHOR FOR WHERE MESSAGE STARTS
+    functMsg = ''    # FUNCTION PORTION OF ERROR MESSAGE
+    sevMsg = ''    # SEVERITY PORTION OF ERROR MESSAGE
+    listNum = 0      # MESSAGES START ON THIS PORTION OF LINE INPUT
+    msgStrt = 0     # ANCHOR FOR WHERE MESSAGE STARTS
 
     tmpLine = string.split(msg)      # 2 LINES CAUSE A GROUP OF CHARACTERS TO
-                                     # BE SPLIT APART AND THEN
-    msg = string.joinfields(tmpLine) # RE-ASSEMBLED LEAVING ONLY 1 SPACE IN
-                                     # BETWEEN EACH GROUP.
+    # BE SPLIT APART AND THEN
+    msg = string.joinfields(tmpLine)  # RE-ASSEMBLED LEAVING ONLY 1 SPACE IN
+    # BETWEEN EACH GROUP.
     lowLine = string.lower(msg)      # CONVERTS LINE TO ALL LOWER CASE FOR
-                                     # STRING CHECKS.
+    # STRING CHECKS.
 
     if string.find(lowLine, "file clerk") >= 0:
         cKey = "fc"
@@ -248,18 +252,18 @@ def genMsgType(msg, ln, severity):
     while listNum < len(tmpLine):
         if clientFlg and functFlg and sevFlg:
             break
-        while 1:
-            if listNum > msgStrt: # ONLY DO ELSE THE FIRST TIME THROUGH
+        while True:
+            if listNum > msgStrt:  # ONLY DO ELSE THE FIRST TIME THROUGH
                 key = string.lower(tmpLine[listNum])
                 cKey = key
                 fKey = key
                 sKey = key
             else:
-                if e_errors.ctypedict.has_key(cKey):
+                if cKey in e_errors.ctypedict:
                     clientMsg = e_errors.ctypedict[cKey]
                     clientFlg = True
-                if e_errors.ftypedict.has_key(fKey):
-                    if e_errors.stypedict.has_key(fKey):
+                if fKey in e_errors.ftypedict:
+                    if fKey in e_errors.stypedict:
                         functMsg = e_errors.ftypedict[fKey]
                         functFlg = True
                         sevMsg = e_errors.stypedict[fKey]
@@ -267,26 +271,26 @@ def genMsgType(msg, ln, severity):
                     else:
                         functMsg = e_errors.ftypedict[fKey]
                         functFlg = True
-                elif e_errors.stypedict.has_key(sKey):
+                elif sKey in e_errors.stypedict:
                     sevMsg = e_errors.stypedict[sKey]
                     sevFlg = True
 
-            if not clientFlg:  #clientFlg == False
-                if e_errors.ctypedict.has_key(cKey):
+            if not clientFlg:  # clientFlg == False
+                if cKey in e_errors.ctypedict:
                     clientMsg = e_errors.ctypedict[cKey]
                     clientFlg = True
                     listNum = listNum + 1
                     break
 
-            if not clientFlg:  #functFlg == False
-                if e_errors.ftypedict.has_key(fKey):
+            if not clientFlg:  # functFlg == False
+                if fKey in e_errors.ftypedict:
                     functMsg = e_errors.ftypedict[fKey]
                     functFlg = True
                     listNum = listNum + 1
                     break
 
-            if not sevFlg:  #sevFlg == False
-                if e_errors.stypedict.has_key(sKey):
+            if not sevFlg:  # sevFlg == False
+                if sKey in e_errors.stypedict:
                     sevMsg = e_errors.stypedict[sKey]
                     sevFlg = True
                     listNum = listNum + 1
@@ -299,66 +303,67 @@ def genMsgType(msg, ln, severity):
     if sevMsg == functMsg:
         functFlg = False
         functMsg = ""
-    if not clientFlg:  #clientFlg == False
+    if not clientFlg:  # clientFlg == False
         clientMsg = string.upper(ln)
     clientMsg = "_" + clientMsg
-    if string.lower(sevMsg) == "suc" and  string.lower(severity) != "i":
+    if string.lower(sevMsg) == "suc" and string.lower(severity) != "i":
         sevFlg = False
-    if not sevFlg:  #sevFlg == False
+    if not sevFlg:  # sevFlg == False
         sKey = string.lower(severity)
         sevMsg = e_errors.stypedict[sKey]
-    if functFlg:  #functFlg == True
+    if functFlg:  # functFlg == True
         sevMsg = "_" + sevMsg
 
-    return  "%s%s%s%s" % (Trace.MSG_TYPE, functMsg, sevMsg, clientMsg)
+    return "%s%s%s%s" % (Trace.MSG_TYPE, functMsg, sevMsg, clientMsg)
+
 
 class LoggerClient(generic_client.GenericClient):
 
-    def __init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
-                 server_address = None, flags = 0, alarmc = None,
-                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
+    def __init__(self, csc, name=MY_NAME, server_name=MY_SERVER,
+                 server_address=None, flags=0, alarmc=None,
+                 rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES):
 
         # need the following definition so the generic client init does not
         # get another logger client
-	flags = flags | enstore_constants.NO_LOG
+        flags = flags | enstore_constants.NO_LOG
         generic_client.GenericClient.__init__(self, csc, name, server_address,
                                               flags=flags, alarmc=alarmc,
                                               rcv_timeout=rcv_timeout,
                                               rcv_tries=rcv_tries,
-                                              server_name = server_name)
+                                              server_name=server_name)
 
         self.log_name = name
         try:
             self.uname = pwd.getpwuid(os.getuid())[0]
-        except:
+        except BaseException:
             self.uname = 'unknown'
         self.log_priority = 7
-	#self.logger_address = self.get_server_address(servername, rcv_timeout, rcv_tries)
+        #self.logger_address = self.get_server_address(servername, rcv_timeout, rcv_tries)
         self.logger_address = self.server_address
-        lticket = self.csc.get( server_name, rcv_timeout, rcv_tries)
+        lticket = self.csc.get(server_name, rcv_timeout, rcv_tries)
         self.log_dir = lticket.get("log_file_path", "")
-        Trace.set_log_func( self.log_func )
+        Trace.set_log_func(self.log_func)
 
-    def log_func( self, time, pid, name, args ):
-        #Even though this implimentation of log_func() does not use the time
+    def log_func(self, time, pid, name, args):
+        # Even though this implimentation of log_func() does not use the time
         # parameter, others will.
         __pychecker__ = "unusednames=time"
 
-	severity = args[0]
-	msg      = args[1]
-        #if self.log_name:
+        severity = args[0]
+        msg = args[1]
+        # if self.log_name:
         #    ln = self.log_name
-        #else:
+        # else:
         #    ln = name
-	if severity > e_errors.MISC:
+        if severity > e_errors.MISC:
             msg = '%s %s' % (severity, msg)
             severity = e_errors.MISC
 
-	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
-				       e_errors.sevdict[severity],name,msg)
-	ticket = {'work':'log_message', 'message':msg}
-        Trace.trace(300,"UDP %s"%(ticket,))
-        self.u.send_no_wait( ticket, self.logger_address, unique_id=True)
+        msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
+                                       e_errors.sevdict[severity], name, msg)
+        ticket = {'work': 'log_message', 'message': msg}
+        Trace.trace(300, "UDP %s" % (ticket,))
+        self.u.send_no_wait(ticket, self.logger_address, unique_id=True)
 
 #    def send( self, severity, priority, format, *args ):
 #	if args != (): format = format%args
@@ -384,34 +389,36 @@ class LoggerClient(generic_client.GenericClient):
 
     # get the current log file name
     def get_logfile_name(self, rcv_timeout=0, tries=0):
-        x = self.u.send( {'work':'get_logfile_name'}, self.logger_address,
-			 rcv_timeout, tries )
+        x = self.u.send({'work': 'get_logfile_name'}, self.logger_address,
+                        rcv_timeout, tries)
         return x
 
     # get the last n log file names
     def get_logfiles(self, period, rcv_timeout=0, tries=0):
-	x = self.u.send( {'work':'get_logfiles', 'period':period},
-			 self.logger_address, rcv_timeout, tries )
+        x = self.u.send({'work': 'get_logfiles', 'period': period},
+                        self.logger_address, rcv_timeout, tries)
         return x
 
     # get the last log file name
     def get_last_logfile_name(self, rcv_timeout=0, tries=0):
-        x = self.u.send( {'work':'get_last_logfile_name'}, self.logger_address,
-	                 rcv_timeout, tries )
+        x = self.u.send({'work': 'get_last_logfile_name'}, self.logger_address,
+                        rcv_timeout, tries)
         return x
 
+
 class TCPLoggerClient(LoggerClient):
-    def __init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
-                 server_address = None, flags = 0, alarmc = None,
-                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES, reconnect_timeout=RECONNECT_TIMEOUT):
+    def __init__(self, csc, name=MY_NAME, server_name=MY_SERVER,
+                 server_address=None, flags=0, alarmc=None,
+                 rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES, reconnect_timeout=RECONNECT_TIMEOUT):
 
-        LoggerClient.__init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
-                 server_address = None, flags = 0, alarmc = None,
-                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES)
+        LoggerClient.__init__(self, csc, name=MY_NAME, server_name=MY_SERVER,
+                              server_address=None, flags=0, alarmc=None,
+                              rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES)
 
-	Trace.set_log_func( self.log_func )
+        Trace.set_log_func(self.log_func)
         if has_multiprocessing:
-            self.message_buffer = multiprocessing.Queue(MAX_QUEUE_SIZE) # intermediate message storage
+            self.message_buffer = multiprocessing.Queue(
+                MAX_QUEUE_SIZE)  # intermediate message storage
         else:
             self.message_buffer = Queue.Queue(MAX_QUEUE_SIZE)
         self.rcv_timeout = rcv_timeout
@@ -421,9 +428,11 @@ class TCPLoggerClient(LoggerClient):
         try:
             user_name = pwd.getpwuid(os.geteuid())[0]
         except KeyError:
-            user_name = '%s'%(os.geteuid(),)
-        # if there are problems with connection to log server dump messages locally
-        dirpath = os.path.join(enstore_functions.get_enstore_tmp_dir(), user_name)
+            user_name = '%s' % (os.geteuid(),)
+        # if there are problems with connection to log server dump messages
+        # locally
+        dirpath = os.path.join(
+            enstore_functions.get_enstore_tmp_dir(), user_name)
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
         self.dump_file = os.path.join(dirpath, name)
@@ -432,38 +441,38 @@ class TCPLoggerClient(LoggerClient):
         self.lock = threading.Lock()
         self.message_arrived = threading.Event()
         # Start sender thread
-        sender_thread = threading.Thread(target = self.sender)
+        sender_thread = threading.Thread(target=self.sender)
         try:
             sender_thread.start()
             self.run = True
-        except:
+        except BaseException:
             exc, detail, tb = sys.exc_info()
-            print "TCPLoggerClient problem", detail
-            raise exc, detail
+            print("TCPLoggerClient problem", detail)
+            raise_(exc, detail)
 
     def log_func(self, time, pid, name, args):
-        #Even though this implimentation of log_func() does not use the time
+        # Even though this implimentation of log_func() does not use the time
         # parameter, others will.
         __pychecker__ = "unusednames=time"
 
-	severity = args[0]
-	msg      = args[1]
-        #if self.log_name:
+        severity = args[0]
+        msg = args[1]
+        # if self.log_name:
         #    ln = self.log_name
-        #else:
+        # else:
         #    ln = name
-	if severity > e_errors.MISC:
+        if severity > e_errors.MISC:
             msg = '%s %s' % (severity, msg)
             severity = e_errors.MISC
 
-	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
-				       e_errors.sevdict[severity],name,msg)
-	ticket = {'work':'log_message', 'message':msg}
-        Trace.trace(301, "TCP %s"%(ticket,))
+        msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
+                                       e_errors.sevdict[severity], name, msg)
+        ticket = {'work': 'log_message', 'message': msg}
+        Trace.trace(301, "TCP %s" % (ticket,))
         try:
             self.message_buffer.put_nowait(ticket)
         except Queue.Full:
-            print "Message Queue is full"
+            print("Message Queue is full")
 
     def stop(self):
         self.run = False
@@ -477,39 +486,41 @@ class TCPLoggerClient(LoggerClient):
         self.socket.bind((socket.gethostname(), 0))
         try:
             self.socket.connect(self.logger_address)
-        except socket.error, detail:
-            print detail
+        except socket.error as detail:
+            print(detail)
             if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
                 pass
-            #The TCP handshake is in progress.
+            # The TCP handshake is in progress.
             elif detail[0] == errno.EINPROGRESS:
                 pass
             else:
-                print "error connecting to %s (%s)"%\
-                    (self.logger_address, detail)
-                raise socket.error, detail
+                print("error connecting to %s (%s)" %
+                      (self.logger_address, detail))
+                raise_(socket.error, detail)
 
-        #Check if the socket is open for reading and/or writing.
-        r, w, ex = select.select([self.socket], [self.socket], [], self.rcv_timeout)
+        # Check if the socket is open for reading and/or writing.
+        r, w, ex = select.select(
+            [self.socket], [self.socket], [], self.rcv_timeout)
 
         if r or w:
-            #Get the socket error condition...
+            # Get the socket error condition...
             try:
-                rtn = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-            except:
+                rtn = self.socket.getsockopt(
+                    socket.SOL_SOCKET, socket.SO_ERROR)
+            except BaseException:
                 exc, detail, tb = sys.exc_info()
-                print "RTN< EXC", exc, detail
+                print("RTN< EXC", exc, detail)
                 return False
 
         else:
-            print "error connecting to %s (%s)"%\
-                      (self.logger_address, os.strerror(errno.ETIMEDOUT))
-            raise errno.ETIMEDOUT
+            print("error connecting to %s (%s)" %
+                  (self.logger_address, os.strerror(errno.ETIMEDOUT)))
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
 
-        #...if it is zero then success, otherwise it failed.
+        # ...if it is zero then success, otherwise it failed.
         if rtn != 0:
-            raise socket.error,(rtn, os.strerror(rtn))
-            #raise RuntimeError('error connecting to %s (%s)'%\
+            raise socket.error(rtn, os.strerror(rtn))
+            # raise RuntimeError('error connecting to %s (%s)'%\
             #    (self.logger_address, os.strerror(rtn)))
         # we have a connection
         fcntl.fcntl(self.socket.fileno(), fcntl.F_SETFL, flags)
@@ -526,7 +537,8 @@ class TCPLoggerClient(LoggerClient):
 
     def write_to_local_log(self, message):
         tm = time.localtime(time.time())
-        msg_to_write = '%.4d-%.2d-%.2d  %.2d:%.2d:%.2d %s %s\n'%(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5], message.get('sender', 'unknown'), message.get('message'))
+        msg_to_write = '%.4d-%.2d-%.2d  %.2d:%.2d:%.2d %s %s\n' % (
+            tm[0], tm[1], tm[2], tm[3], tm[4], tm[5], message.get('sender', 'unknown'), message.get('message'))
         self.dump_here.write(msg_to_write)
         self.dump_here.flush()
 
@@ -534,8 +546,8 @@ class TCPLoggerClient(LoggerClient):
         try:
             self.conn_start = time.time()
             self.connect()
-        except socket.error, detail:
-            print "will try to reconnect"
+        except socket.error as detail:
+            print("will try to reconnect")
         while True:
             if not self.run:
                 self.socket.close()
@@ -545,10 +557,12 @@ class TCPLoggerClient(LoggerClient):
                 if self.connected:
                     try:
                         callback.write_tcp_obj_new(self.socket, message)
-                        #self.socket.send(cPickle.dumps(message))
-                    except:
+                        # self.socket.send(cPickle.dumps(message))
+                    except BaseException:
                         exc, detail, tb = sys.exc_info()
-                        print "error sending: %s %s %s " % (exc, detail, message)
+                        print(
+                            "error sending: %s %s %s " %
+                            (exc, detail, message))
                         self.connected = False
                 if not self.connected:
                     self.write_to_local_log(message)
@@ -558,26 +572,31 @@ class TCPLoggerClient(LoggerClient):
                         try:
                             self.conn_start = time.time()
                             self.connect()
-                        except socket.error, detail:
-                            print "will try to reconnect"
+                        except socket.error as detail:
+                            print("will try to reconnect")
 
 # stand alone function to send a log message
+
+
 def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
     import configuration_client
     # get config port and host
     port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
     host = os.environ.get('ENSTORE_CONFIG_HOST', '')
     # convert port to integer
-    if port: port = int(port)
+    if port:
+        port = int(port)
     if port and host:
         # if port and host defined create config client
-        csc = configuration_client.ConfigurationClient((host,port))
+        csc = configuration_client.ConfigurationClient((host, port))
         # create log client  (Sets Trace global so Trace.log() works.)
         LoggerClient(csc, logname, MY_SERVER)
     Trace.init(logname)
     Trace.log(sev_level, message)
 
 # send a message to the logger
+
+
 def logit(logc, message="HELLO", logname="LOGIT"):
     # reset our log name
     logc.log_name = logname
@@ -585,7 +604,7 @@ def logit(logc, message="HELLO", logname="LOGIT"):
     # send the message
     Trace.log(e_errors.INFO, message)
 
-    return {"status" : (e_errors.OK, None)}
+    return {"status": (e_errors.OK, None)}
 
 ###############################################################################
 # NAME        : FERMI LABS - RICHARD KENNA
@@ -598,6 +617,8 @@ def logit(logc, message="HELLO", logname="LOGIT"):
 #             : THEN TO SEE DIFFERENT VALUES, TYPE: a['time']
 #             : IT WILL RESPOND WITH: '12:02:12' - OR THE TIME IN THE MESSAGE
 ###############################################################################
+
+
 def parse(lineIn):
 
     tmpLine = string.split(lineIn)
@@ -608,9 +629,9 @@ def parse(lineIn):
     severity = tmpLine[4]
     server = tmpLine[5]
 
-    lineDict = { 'time' : time, 'host' : host, 'pid' : pid,
-                 'user' : user, 'severity' : severity,
-                 'server' : server }
+    lineDict = {'time': time, 'host': host, 'pid': pid,
+                'user': user, 'severity': severity,
+                'server': server}
 
     mNum = string.find(lineIn, server) + len(server) + 1
     dNum = string.find(lineIn, "MSG_DICT:")
@@ -629,7 +650,7 @@ def parse(lineIn):
         msg_type = msg_type[1]
         lineDict['msg_type'] = msg_type
     if dNum < 0:
-        dNum = tNum;
+        dNum = tNum
     else:
         msg_dict = []
         num = dNum
@@ -652,6 +673,7 @@ def parse(lineIn):
 
     return lineDict
 
+
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -660,9 +682,9 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
         self.message = ""
         self.alive_rcv_timeout = RCV_TIMEOUT
         self.alive_retries = RCV_TRIES
-	self.get_logfile_name = 0
-	self.get_logfiles = ""
-	self.get_last_logfile_name = 0
+        self.get_logfile_name = 0
+        self.get_logfiles = ""
+        self.get_last_logfile_name = 0
         self.client_name = ""
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -672,40 +694,40 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
                 self.log_options)
 
     log_options = {
-        option.GET_LAST_LOGFILE_NAME:{option.HELP_STRING:
-                                     "return the fname of yesturdays log file",
-                                      option.DEFAULT_TYPE:option.INTEGER,
-                                      option.DEFAULT_VALUE:option.DEFAULT,
-                                      option.VALUE_USAGE:option.IGNORED,
-                                      option.USER_LEVEL:option.ADMIN,
+        option.GET_LAST_LOGFILE_NAME: {option.HELP_STRING:
+                                       "return the fname of yesturdays log file",
+                                       option.DEFAULT_TYPE: option.INTEGER,
+                                       option.DEFAULT_VALUE: option.DEFAULT,
+                                       option.VALUE_USAGE: option.IGNORED,
+                                       option.USER_LEVEL: option.ADMIN,
+                                       },
+        option.GET_LOGFILE_NAME: {option.HELP_STRING:
+                                  "return the name of the current log file",
+                                  option.DEFAULT_TYPE: option.INTEGER,
+                                  option.DEFAULT_VALUE: option.DEFAULT,
+                                  option.VALUE_USAGE: option.IGNORED,
+                                  option.USER_LEVEL: option.ADMIN,
+                                  },
+        option.GET_LOGFILES: {option.HELP_STRING: "return the last 'n' log file "
+                              "names (today, week, month, all)",
+                              option.VALUE_TYPE: option.STRING,
+                              option.VALUE_USAGE: option.REQUIRED,
+                              option.VALUE_LABEL: "period",
+                              option.USER_LEVEL: option.ADMIN,
                               },
-        option.GET_LOGFILE_NAME:{option.HELP_STRING:
-                                 "return the name of the current log file",
-                                 option.DEFAULT_TYPE:option.INTEGER,
-                                 option.DEFAULT_VALUE:option.DEFAULT,
-                                 option.VALUE_USAGE:option.IGNORED,
-                                 option.USER_LEVEL:option.ADMIN,
-                                 },
-        option.GET_LOGFILES:{option.HELP_STRING:"return the last 'n' log file "
-                             "names (today, week, month, all)",
-                             option.VALUE_TYPE:option.STRING,
-                             option.VALUE_USAGE:option.REQUIRED,
-                             option.VALUE_LABEL:"period",
-                             option.USER_LEVEL:option.ADMIN,
+        option.CLIENT_NAME: {option.HELP_STRING: "set log client name",
+                             option.VALUE_TYPE: option.STRING,
+                             option.VALUE_USAGE: option.REQUIRED,
+                             option.VALUE_LABEL: "client_name",
+                             option.USER_LEVEL: option.ADMIN,
                              },
-        option.CLIENT_NAME:{option.HELP_STRING:"set log client name",
-                        option.VALUE_TYPE:option.STRING,
-                        option.VALUE_USAGE:option.REQUIRED,
-                        option.VALUE_LABEL:"client_name",
-                        option.USER_LEVEL:option.ADMIN,
-                        },
-        option.MESSAGE:{option.HELP_STRING:"log a message",
-                        option.VALUE_TYPE:option.STRING,
-                        option.VALUE_USAGE:option.REQUIRED,
-                        option.VALUE_LABEL:"message",
-                        option.USER_LEVEL:option.ADMIN,
-                        },
-        }
+        option.MESSAGE: {option.HELP_STRING: "log a message",
+                         option.VALUE_TYPE: option.STRING,
+                         option.VALUE_USAGE: option.REQUIRED,
+                         option.VALUE_LABEL: "message",
+                         option.USER_LEVEL: option.ADMIN,
+                         },
+    }
 
 
 def do_work(intf):
@@ -724,32 +746,34 @@ def do_work(intf):
 
     elif intf.get_last_logfile_name:
         ticket = logc.get_last_logfile_name(intf.alive_rcv_timeout,
-	                                    intf.alive_retries)
-	print(ticket['last_logfile_name'])
+                                            intf.alive_retries)
+        print(ticket['last_logfile_name'])
 
     elif intf.get_logfile_name:
         ticket = logc.get_logfile_name(intf.alive_rcv_timeout,
-	                               intf.alive_retries)
-	print(ticket['logfile_name'])
+                                       intf.alive_retries)
+        print(ticket['logfile_name'])
 
     elif intf.get_logfiles:
         ticket = logc.get_logfiles(intf.get_logfiles, intf.alive_rcv_timeout,
-				   intf.alive_retries)
-	print(ticket['logfiles'])
+                                   intf.alive_retries)
+        print(ticket['logfiles'])
 
     elif intf.message:
         ticket = logit(logc, intf.message)
 
     else:
-	intf.print_help()
+        intf.print_help()
         sys.exit(0)
 
     del logc.csc.u
-    del logc.u # del now, otherwise get name exception (just for python v1.5??)
+    # del now, otherwise get name exception (just for python v1.5??)
+    del logc.u
 
     logc.check_ticket(ticket)
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
     # fill in interface
     intf = LoggerClientInterface(user_mode=0)
 

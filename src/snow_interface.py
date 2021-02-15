@@ -14,7 +14,9 @@ import urllib2
 
 import ConfigParser
 
-CONFIG_FILE = os.path.join(os.environ["ENSTORE_DIR"], "etc/servicenow_create_entry.cf")
+CONFIG_FILE = os.path.join(
+    os.environ["ENSTORE_DIR"],
+    "etc/servicenow_create_entry.cf")
 HTTP_SUCCESS_CODES = (200, 201)
 
 CI_NAME = socket.gethostname().split('.')[0].upper()
@@ -47,7 +49,8 @@ class SnowInterface(object):
         """
         self.password_manager.add_password(None,
                                            url,
-                                           self.config_parser.get("HelpDesk", "acct"),
+                                           self.config_parser.get(
+                                               "HelpDesk", "acct"),
                                            self.config_parser.get("HelpDesk", "passwd"))
         request = urllib2.Request(url, json.dumps(payload))
         request.add_header("Content-Type", "application/json")
@@ -69,23 +72,23 @@ class SnowInterface(object):
             raise Exception("service now URL is not defined")
 
         data = {
-            "impact":  kwargs.get("Impact_Type", "3-Moderate/Limited"),
+            "impact": kwargs.get("Impact_Type", "3-Moderate/Limited"),
             "u_monitored_ci_name": kwargs.get("CiName").upper(),
             "short_description": kwargs.get("Summary", None),
             "description": kwargs.get("Notes", None),
             "comments": kwargs.get("Comments", None),
             "u_reported_source": kwargs.get("Reported_Source_Type", "Event Monitoring"),
             "u_service": kwargs.get("Service_Type", "Storage"),
-            "urgency":  kwargs.get("Urgency_Type", "3-Medium"),
+            "urgency": kwargs.get("Urgency_Type", "3-Medium"),
             "u_monitored_categorization": kwargs.get("Monitored_Categorization",
                                                      self.config_parser.get("create_entry", "categorization")),
             "caller_id": self.config_parser.get("create_entry", "user_first") + " " +
-                         self.config_parser.get("create_entry", "user_last"),
+            self.config_parser.get("create_entry", "user_last"),
             "u_categorization": kwargs.get("Categorization",
                                            self.config_parser.get("create_entry", "u_categorization")),
             "u_virtual_organization": kwargs.get("Virtual_Organization",
                                                  self.config_parser.get("create_entry", "u_virtual_organization")),
-            }
+        }
         response = self.post(url, data)
         return response["result"]["number"]
 
@@ -104,20 +107,20 @@ class SnowInterface(object):
         First we create the request ticket
         """
         data = {
-                "catalog_item": {
-                    "sys_id": kwargs.get("Sys_Id",
-                                         self.config_parser.get("create_entry", "sys_id")),
-                    "vars": {
-                        "u_monitored_ci_name": kwargs.get("CiName", CI_NAME).upper(),
-                        "short_description": kwargs.get("Summary", SHORT_DESCRIPTION),
-                        "description": kwargs.get("Description", DESCRIPTION),
-                        "watch_list": kwargs.get("Watch_List",
-                                                 self.config_parser.get("create_entry", "watch_list")),
-                        "u_requestor_email": kwargs.get("E_Mail",
-                                                        self.config_parser.get("create_entry", "u_requestor_email")),
-                        }
-                    }
+            "catalog_item": {
+                "sys_id": kwargs.get("Sys_Id",
+                                     self.config_parser.get("create_entry", "sys_id")),
+                "vars": {
+                    "u_monitored_ci_name": kwargs.get("CiName", CI_NAME).upper(),
+                    "short_description": kwargs.get("Summary", SHORT_DESCRIPTION),
+                    "description": kwargs.get("Description", DESCRIPTION),
+                    "watch_list": kwargs.get("Watch_List",
+                                             self.config_parser.get("create_entry", "watch_list")),
+                    "u_requestor_email": kwargs.get("E_Mail",
+                                                    self.config_parser.get("create_entry", "u_requestor_email")),
                 }
+            }
+        }
         response = self.post(url, data)
         ticket_number = response["items"][0]["number"]
         url = response["items"][0]["link"]

@@ -29,7 +29,7 @@ class ImagePalette:
         self.mode = mode
         self.palette = palette or range(256)*len(self.mode)
 	if len(self.mode)*256 != len(self.palette):
-	    raise ValueError, "wrong palette size"
+	    raise ValueError("wrong palette size")
 
     def tostring(self):
         if jpython == 0:
@@ -113,7 +113,7 @@ def load(filename):
             pass
 
     if not lut:
-        raise IOError, "cannot load palette"
+        raise IOError("cannot load palette")
 
     return lut # data, rawmode
 

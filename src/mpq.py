@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """A priority queue which supports multiple comparison methods"""
+from __future__ import print_function
 ###############################################################################
 #
 # $Id$
@@ -11,22 +12,26 @@
 # This code copied from bisect.py but modified to use a comparison
 # function rather than the "<" operator, which invokes an object's
 # __cmp__ method.  We want to be able to put the *same* object
-#into multiple queues, without changing the object's class definition
-#to overload __cmp__
+# into multiple queues, without changing the object's class definition
+# to overload __cmp__
 import sys
 import Trace
+
 
 def _insort(a, x, compare, lo=0, hi=None):
     if hi is None:
         hi = len(a)
-    while lo<hi:
-        mid = (lo+hi)/2
+    while lo < hi:
+        mid = (lo + hi) / 2
         try:
-            if compare(x, a[mid])<0:
+            if compare(x, a[mid]) < 0:
                 hi = mid
-            else: lo = mid+1
+            else:
+                lo = mid + 1
         except IndexError:
-            Trace.trace(5, "(Trace)mpq: insort index error %s %s %s"%(lo, mid, hi))
+            Trace.trace(
+                5, "(Trace)mpq: insort index error %s %s %s" %
+                (lo, mid, hi))
             return
     a.insert(lo, x)
 
@@ -35,12 +40,15 @@ def _insort(a, x, compare, lo=0, hi=None):
 
 def _bisect(a, x, compare, lo=0, hi=None):
     if hi is None:
-        hi = len(a)-1
+        hi = len(a) - 1
     while lo < hi:
-        mid = (lo+hi)/2
-        if compare(x,a[mid])<0: hi = mid
-        else: lo = mid+1
-    if lo >= len(a): lo = len(a)
+        mid = (lo + hi) / 2
+        if compare(x, a[mid]) < 0:
+            hi = mid
+        else:
+            lo = mid + 1
+    if lo >= len(a):
+        lo = len(a)
     return lo
 
 
@@ -55,68 +63,65 @@ class MPQ:
 
     def bisect(self, item):
         return _bisect(self.items, item, self.comparator)
+
     def remove(self, item):
         try:
             self.items.remove(item)
         except ValueError:
             exc, msg = sys.exc_info()[:2]
-            print "remove: error", exc,msg
+            print("remove: error", exc, msg)
 
     def __getitem__(self, index):
         return self.items[index]
-    
+
     def __len__(self):
         return len(self.items)
 
     def __nonzero__(self):
-        return len(self)!=0
+        return len(self) != 0
 
     def __repr__(self):
         return str(self.items)
-        
-##test case    
+
+
+# test case
 if __name__ == "__main__":
 
     class Req:
-        def __init__(self,size,priority):
-            self.size=size
-            self.priority=priority
+        def __init__(self, size, priority):
+            self.size = size
+            self.priority = priority
 
         def __repr__(self):
             return "<size=%s, priority=%s>" % (self.size, self.priority)
 
-    def compare_priority(r1,r2):
+    def compare_priority(r1, r2):
         return -cmp(r1.priority, r2.priority)
 
-    def compare_size(r1,r2):
-        return cmp(r1.size,r2.size)
+    def compare_size(r1, r2):
+        return cmp(r1.size, r2.size)
 
-            
-    r1=Req(size=1,priority=10)
-    r2=Req(size=10,priority=1)
-    r3=Req(size=5, priority=5)
-    r4=Req(size=1, priority=1)
+    r1 = Req(size=1, priority=10)
+    r2 = Req(size=10, priority=1)
+    r3 = Req(size=5, priority=5)
+    r4 = Req(size=1, priority=1)
 
-    
-    q1=MPQ(compare_priority)
-    q2=MPQ(compare_size)
+    q1 = MPQ(compare_priority)
+    q2 = MPQ(compare_size)
 
-    for r in r1,r2,r3,r4:
+    for r in r1, r2, r3, r4:
         q1.insort(r)
         q2.insort(r)
 
-    print "q1, sorted by priority:", q1
-    print "q2, sorted by size:", q2
+    print("q1, sorted by priority:", q1)
+    print("q2, sorted by size:", q2)
 
-
-    print "Now let's find the smallest size element, and delete it from both queues"
-    e=q2[0]
-    print "smallest is", e
+    print("Now let's find the smallest size element, and delete it from both queues")
+    e = q2[0]
+    print("smallest is", e)
     q1.remove(e)
     q2.remove(e)
-    print "Now the queues are:"
-    
-    print "q1, sorted by priority:", q1
-    print "q2, sorted by size:", q2
+    print("Now the queues are:")
 
-
+    print("q1, sorted by priority:", q1)
+    print("q2, sorted by size:", q2)

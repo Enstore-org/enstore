@@ -6,6 +6,7 @@
 ###############################################################################
 
 # system imports
+from __future__ import print_function
 import math
 import pg
 import os
@@ -25,15 +26,15 @@ enstoredb-#     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE (
 """
 
 ###
-### SQL command to return the number of closed and in progress volumes
-### being migrated.
+# SQL command to return the number of closed and in progress volumes
+# being migrated.
 ###
 
 # Note: This sql command is similar to the daily Migrated/Duplicated tables
 # in the sbin/migration_summary and sbin/duplication_summary scripts.  Be
 # sure to modify them when you modify this sql statement.
 SQL_COMMAND = \
-"""
+    """
 /*This outer select just sorts the merged s1, s2 and s3 'day' columns into
   a unified sorted order. */
 select * from
@@ -222,9 +223,9 @@ order by s1.day,s2.day,s3.day
 """
 
 
-#SQL command to obtain the number of tapes still needing to be migrated.
+# SQL command to obtain the number of tapes still needing to be migrated.
 SQL_COMMAND3 = \
-"""
+    """
 select /* It should be as simple as just using the media_type. However,
           LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
           in the AML/2 when it was first put into use. */
@@ -271,9 +272,9 @@ where ( /* We obviously need to include un-migrated tapes in the robot. */
 group by media_type,capacity_bytes;
 """
 
-#SQL command to obtain the number of non-empty tapes.
+# SQL command to obtain the number of non-empty tapes.
 SQL_COMMAND4 = \
-"""
+    """
 select /* It should be as simple as just using the media_type. However,
           LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
           in the AML/2 when it was first put into use. */
@@ -302,12 +303,14 @@ ACCUMULATED_NG = "accumulated_ng"
 ACCUMULATED_LG = "accumulated_log"
 DAILY = "daily"
 
-class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
-    def __init__(self,name,isActive=True):
-        enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
 
+class MigrationSummaryPlotterModule(
+        enstore_plotter_module.EnstorePlotterModule):
+    def __init__(self, name, isActive=True):
+        enstore_plotter_module.EnstorePlotterModule.__init__(
+            self, name, isActive)
 
-    #Write out the file that gnuplot will use to plot the data.
+    # Write out the file that gnuplot will use to plot the data.
     # plot_filename = The file that will be read in by gnuplot containing
     #                 the gnuplot commands.
     # data_filename = The data file that will be read in by gnuplot
@@ -315,6 +318,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
     # ps_filename = The postscript file that will be created by gnuplot.
     # key = The key to access information in the various instance member
     #       variables.  Here it is the media_type.
+
     def write_plot_file(self, plot_filename, data_filename, ps_filename,
                         key, plot_type, columns, titles):
         plot_fp = open(plot_filename, "w+")
@@ -328,7 +332,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
         plot_fp.write('set terminal postscript color solid "Helvectica,19"\n')
         plot_fp.write('set output "%s"\n' % (ps_filename,))
-        plot_fp.write('set title "%s" font "TimesRomanBold,16"\n' % \
+        plot_fp.write('set title "%s" font "TimesRomanBold,16"\n' %
                       (use_title,))
         plot_fp.write('set ylabel "Volumes Done"\n')
         plot_fp.write('set xlabel "Year-month-day"\n')
@@ -338,21 +342,23 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         plot_fp.write('set xtics rotate\n')
         plot_fp.write('set grid\n')
         #plot_fp.write('set nokey\n')
-        plot_fp.write('set label "Plotted %s " at graph 1.01,0 rotate font "Helvetica,10"\n' % (time.ctime(),))
+        plot_fp.write(
+            'set label "Plotted %s " at graph 1.01,0 rotate font "Helvetica,10"\n' %
+            (time.ctime(),))
 
-        if plot_type in ( ACCUMULATED, ACCUMULATED_NG, ACCUMULATED_LG):
-            started_count = self.summary_started.get(key, 0L)
+        if plot_type in (ACCUMULATED, ACCUMULATED_NG, ACCUMULATED_LG):
+            started_count = self.summary_started.get(key, 0)
             #done_count = self.summary_done.get(key, 0L)
-            closed_count = self.summary_closed.get(key, 0L)
-            remaining_count = self.summary_remaining.get(key, 0L)
-            total_count = self.summary_total.get(key, 0L)
-            #This is possibly used for adjusting the goal line.  See comment
+            closed_count = self.summary_closed.get(key, 0)
+            remaining_count = self.summary_remaining.get(key, 0)
+            total_count = self.summary_total.get(key, 0)
+            # This is possibly used for adjusting the goal line.  See comment
             # below for possible reasons.
             if started_count > total_count:
                 goal_adjust = started_count - total_count
             else:
                 goal_adjust = 0
-            #Determine the number of volumes that is the goal.  Basically
+            # Determine the number of volumes that is the goal.  Basically
             # this takes the sum of the number of tapes closed added to the
             # number of tapes remaining.  However, it is far more complicated.
             #
@@ -363,55 +369,60 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             # comes into play
             total_volumes = max(total_count + goal_adjust,
                                 (closed_count + remaining_count))
-            #This is possibly used for adjusting the goal line.  See comm
+            # This is possibly used for adjusting the goal line.  See comm
             if plot_type == ACCUMULATED_LG:
                 plot_fp.write('set logscale y\n')
-                miny=1.0
+                miny = 1.0
             else:
-                miny=0
+                miny = 0
             if total_volumes:
-                 percent = min(100,100*(float(closed_count)/total_volumes))
-                 #Don't set yrange if total_volumes is zero, otherwise the
-                 # plot will fail from the error:
-                 # "line 0: Can't plot with an empty y range!"
+                percent = min(100, 100 * (float(closed_count) / total_volumes))
+                # Don't set yrange if total_volumes is zero, otherwise the
+                # plot will fail from the error:
+                # "line 0: Can't plot with an empty y range!"
 
-                 if plot_type != ACCUMULATED_NG:
-                    plot_fp.write('set yrange [ %f : %f ]\n' % (miny,total_volumes * 1.1))
+                if plot_type != ACCUMULATED_NG:
+                    plot_fp.write(
+                        'set yrange [ %f : %f ]\n' %
+                        (miny, total_volumes * 1.1))
             else:
-                percent=100
-            plot_fp.write('set label "Remaining %s " at graph .05,.95\n' \
-                          % (self.summary_remaining.get(key, 0L),))
-            plot_fp.write('set label "Started %s" at graph .05,.88\n' \
-                          % (self.summary_started.get(key, 0L),))
-            plot_fp.write('set label "Migrated %s" at graph .05,.81\n' \
-                          % (self.summary_done.get(key, 0L),))
-            plot_fp.write('set label "Closed %s (%.2f%% done)" at graph .05,.74\n' \
-                          % (self.summary_closed.get(key, 0L),percent))
-            plot_fp.write('set label "Total %s" at graph .05,.67\n' \
+                percent = 100
+            plot_fp.write('set label "Remaining %s " at graph .05,.95\n'
+                          % (self.summary_remaining.get(key, 0),))
+            plot_fp.write('set label "Started %s" at graph .05,.88\n'
+                          % (self.summary_started.get(key, 0),))
+            plot_fp.write('set label "Migrated %s" at graph .05,.81\n'
+                          % (self.summary_done.get(key, 0),))
+            plot_fp.write('set label "Closed %s (%.2f%% done)" at graph .05,.74\n'
+                          % (self.summary_closed.get(key, 0), percent))
+            plot_fp.write('set label "Total %s" at graph .05,.67\n'
                           % (total_volumes,))
             if total_volumes:
-                plot_fp.write('set yrange [ 1 : %f]\n'%(1.3*total_volumes))
-        else: #Daily
+                plot_fp.write('set yrange [ 1 : %f]\n' % (1.3 * total_volumes))
+        else:  # Daily
             plot_fp.write('set yrange [ 0 : ]\n')
 
-        #Build the plot command line.
+        # Build the plot command line.
         plot_line = "plot "
         for i in range(len(columns)):
             column = columns[i]
             if plot_line != "plot ":
-                #If we are on the first plot, don't append the comma.
+                # If we are on the first plot, don't append the comma.
                 plot_line = "%s, " % (plot_line,)
 
-            #Add the next set of plots.
-            plot_line = plot_line + '"%s" using 1:%d title "%s" with impulses lw 10' % (data_filename, column, titles[i])
-        #If the plot is accumulated, plot the total to migrate.
-        if plot_type in ( ACCUMULATED, ACCUMULATED_LG):
-            plot_line = '%s, x,%s title "goal" with lines lw 4' % (plot_line, total_volumes)
+            # Add the next set of plots.
+            plot_line = plot_line + \
+                '"%s" using 1:%d title "%s" with impulses lw 10' % (
+                    data_filename, column, titles[i])
+        # If the plot is accumulated, plot the total to migrate.
+        if plot_type in (ACCUMULATED, ACCUMULATED_LG):
+            plot_line = '%s, x,%s title "goal" with lines lw 4' % (
+                plot_line, total_volumes)
             pass
-        #Put the whole thing together.
+        # Put the whole thing together.
         plot_line = "%s\n" % (plot_line,)
 
-        #Write out the plot line.
+        # Write out the plot line.
         plot_fp.write(plot_line)
 
         plot_fp.close()
@@ -421,14 +432,14 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
     #######################################################################
 
     def book(self, frame):
-        #Get cron directory information.
+        # Get cron directory information.
         cron_dict = frame.get_configuration_client().get("crons", {})
 
-        #Pull out just the information we want.
+        # Pull out just the information we want.
         self.temp_dir = cron_dict.get("tmp_dir", "/tmp")
         html_dir = cron_dict.get("html_dir", "")
 
-        #Handle the case were we don't know where to put the output.
+        # Handle the case were we don't know where to put the output.
         if not html_dir:
             sys.stderr.write("Unable to determine html_dir.\n")
             sys.exit(1)
@@ -443,21 +454,21 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         #  here we create data points
 
         edb = frame.get_configuration_client().get("database", {})
-        db = pg.DB(host   = edb.get('dbhost', "localhost"),
-                   dbname = edb.get('dbname', "enstoredb"),
-                   port   = edb.get('dbport', 5432),
-                   user   = edb.get('dbuser', "enstore")
+        db = pg.DB(host=edb.get('dbhost', "localhost"),
+                   dbname=edb.get('dbname', "enstoredb"),
+                   port=edb.get('dbport', 5432),
+                   user=edb.get('dbuser', "enstore")
                    )
 
         ###
-        ### Lets get the daily values.
+        # Lets get the daily values.
         ###
-        print "Starting SQL_COMMAND:", time.ctime()
+        print("Starting SQL_COMMAND:", time.ctime())
 
-        #This query is for volumes that are all done.
+        # This query is for volumes that are all done.
         res = db.query(SQL_COMMAND).getresult()
 
-        #Open the datafiles.
+        # Open the datafiles.
         self.pts_files = {}
         self.summary_started = {}
         self.summary_done = {}
@@ -466,44 +477,43 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         previous_today_completed = {}
         previous_today_closed = {}
         previous_summary_started = {}
-        previous_summary_done =  {}
+        previous_summary_done = {}
         previous_summary_closed = {}
         previous_time = {}
         for row in res:
-            #row[0] is the date (YYYY-mm-dd)
-            #row[1] is the media type
-            #row[2] is the number of migrated tapes started
-            #row[3] is the number of migrated tapes migrated/duplicated
-            #row[4] is the number of migrated tapes closed
+            # row[0] is the date (YYYY-mm-dd)
+            # row[1] is the media type
+            # row[2] is the number of migrated tapes started
+            # row[3] is the number of migrated tapes migrated/duplicated
+            # row[4] is the number of migrated tapes closed
             if not self.pts_files.get(row[1], None):
                 fname = os.path.join(self.temp_dir,
                                      "migration_summary_%s.pts" % (row[1],))
                 self.pts_files[row[1]] = open(fname, "w")
-                self.summary_started[row[1]] = 0L
-                self.summary_done[row[1]] = 0L #Set the key values to zeros.
-                self.summary_closed[row[1]] = 0L
+                self.summary_started[row[1]] = 0
+                self.summary_done[row[1]] = 0  # Set the key values to zeros.
+                self.summary_closed[row[1]] = 0
 
-                if row[1] not in  previous_time:
-                     previous_time[row[1]] = time.mktime(time.strptime(row[0],'%Y-%m-%d'))-86400
+                if row[1] not in previous_time:
+                    previous_time[row[1]] = time.mktime(
+                        time.strptime(row[0], '%Y-%m-%d')) - 86400
 
-                previous_today_started[row[1]]=0
-                previous_today_completed[row[1]]=0
-                previous_today_closed[row[1]]=0
-                previous_summary_started[row[1]]=0
-                previous_summary_done[row[1]]=0
-                previous_summary_closed[row[1]]=0
-
-
-
+                previous_today_started[row[1]] = 0
+                previous_today_completed[row[1]] = 0
+                previous_today_closed[row[1]] = 0
+                previous_summary_started[row[1]] = 0
+                previous_summary_done[row[1]] = 0
+                previous_summary_closed[row[1]] = 0
 
         ###
-        ### Now that the information for each day is obtained, lets output
-        ### the data to the data file.
+        # Now that the information for each day is obtained, lets output
+        # the data to the data file.
 
-        #Output to temporary files the data that gnuplot needs to plot.
+        # Output to temporary files the data that gnuplot needs to plot.
         for row in res:
             try:
-                self.summary_started[row[1]] = self.summary_started[row[1]] + row[2]
+                self.summary_started[row[1]
+                                     ] = self.summary_started[row[1]] + row[2]
             except TypeError:
                 pass
             try:
@@ -511,143 +521,142 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             except TypeError:
                 pass
             try:
-                self.summary_closed[row[1]] = self.summary_closed[row[1]] + row[4]
+                self.summary_closed[row[1]
+                                    ] = self.summary_closed[row[1]] + row[4]
             except TypeError:
                 pass
 
-            #Get the daily values.  If there isn't one, use zero.
-            if row[2] == None:
-                today_started = 0L
+            # Get the daily values.  If there isn't one, use zero.
+            if row[2] is None:
+                today_started = 0
             else:
                 today_started = row[2]
-            if row[3] == None:
-                today_completed = 0L    #completed = migrated/duplicated
+            if row[3] is None:
+                today_completed = 0  # completed = migrated/duplicated
             else:
                 today_completed = row[3]
-            if row[4] == None:
-                today_closed = 0L
+            if row[4] is None:
+                today_closed = 0
             else:
                 today_closed = row[4]
 
-            now_time = time.mktime(time.strptime(row[0],'%Y-%m-%d'))
+            now_time = time.mktime(time.strptime(row[0], '%Y-%m-%d'))
             t = previous_time[row[1]]
             while t < now_time:
                 t += 86400
 
-                if math.fabs(t-now_time) > 0.1 :
-                # Here we write the contents to the file.
+                if math.fabs(t - now_time) > 0.1:
+                    # Here we write the contents to the file.
                     self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
-                            time.strftime('%Y-%m-%d',time.localtime(t)),
-                            previous_today_started[row[1]], previous_today_completed[row[1]], previous_today_closed[row[1]],
-                            previous_summary_started[row[1]],  previous_summary_done[row[1]], previous_summary_closed[row[1]]))
+                        time.strftime('%Y-%m-%d', time.localtime(t)),
+                        previous_today_started[row[1]], previous_today_completed[row[1]
+                                                                                 ], previous_today_closed[row[1]],
+                        previous_summary_started[row[1]], previous_summary_done[row[1]], previous_summary_closed[row[1]]))
                 else:
-                # Here we write the contents to the file.
+                    # Here we write the contents to the file.
                     self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
-                            time.strftime('%Y-%m-%d',time.localtime(t)),
-                            today_started, today_completed, today_closed,
-                            self.summary_started[row[1]], self.summary_done[row[1]],
-                            self.summary_closed[row[1]]))
+                        time.strftime('%Y-%m-%d', time.localtime(t)),
+                        today_started, today_completed, today_closed,
+                        self.summary_started[row[1]
+                                             ], self.summary_done[row[1]],
+                        self.summary_closed[row[1]]))
 
-
-            previous_time[row[1]] = time.mktime(time.strptime(row[0],'%Y-%m-%d'))
+            previous_time[row[1]] = time.mktime(
+                time.strptime(row[0], '%Y-%m-%d'))
             previous_today_started[row[1]] = today_started
             previous_today_completed[row[1]] = today_completed
             previous_today_closed[row[1]] = today_closed
             previous_summary_started[row[1]] = self.summary_started[row[1]]
-            previous_summary_done[row[1]] =  self.summary_done[row[1]]
+            previous_summary_done[row[1]] = self.summary_done[row[1]]
             previous_summary_closed[row[1]] = self.summary_closed[row[1]]
 
-
-
-        #Avoid resource leaks.
+        # Avoid resource leaks.
         for key in self.pts_files.keys():
             self.pts_files[key].close()
 
-
         ###
-        ### Now lets get some totals about what is left to go.
+        # Now lets get some totals about what is left to go.
         ###
-        print "Starting SQL_COMMAND3:", time.ctime()
+        print("Starting SQL_COMMAND3:", time.ctime())
 
-        #This query is for volumes that are all done.
+        # This query is for volumes that are all done.
         res3 = db.query(SQL_COMMAND3).getresult()
 
         self.summary_remaining = {}
         for row3 in res3:
-            #row3[0] is the media type
-            #row3[1] is the remaing tapes to migrate
+            # row3[0] is the media type
+            # row3[1] is the remaing tapes to migrate
             self.summary_remaining[row3[0]] = row3[1]
 
-
         ###
-        ### Now lets get some totals about how many tapes there are.
+        # Now lets get some totals about how many tapes there are.
         ###
-        print "Starting SQL_COMMAND4:", time.ctime()
+        print("Starting SQL_COMMAND4:", time.ctime())
 
-        #This query is for volumes that are all done.
+        # This query is for volumes that are all done.
         res4 = db.query(SQL_COMMAND4).getresult()
 
         self.summary_total = {}
         for row4 in res4:
-            #row3[0] is the media type
-            #row3[1] is the number of tapes
+            # row3[0] is the media type
+            # row3[1] is the number of tapes
             self.summary_total[row4[0]] = row4[1]
-
 
     def plot(self):
         for key in self.pts_files.keys():
-            #Key at this point is unique media types (that have been migrated).
+            # Key at this point is unique media types (that have been
+            # migrated).
 
-            print "Plotting %s accumulated" % (key,)
+            print("Plotting %s accumulated" % (key,))
             self._plot(key, ACCUMULATED)
-            print "Plotting %s accumulated_ng" % (key,)
-            self._plot(key,ACCUMULATED_NG)
-            print "Plotting %s accumulated_lg" % (key,)
-            self._plot(key,ACCUMULATED_LG)
-            print "Plotting %s daily" % (key,)
+            print("Plotting %s accumulated_ng" % (key,))
+            self._plot(key, ACCUMULATED_NG)
+            print("Plotting %s accumulated_lg" % (key,))
+            self._plot(key, ACCUMULATED_LG)
+            print("Plotting %s daily" % (key,))
             self._plot(key, DAILY)
 
-            #Cleanup the temporary files for this loop.
+            # Cleanup the temporary files for this loop.
             try:
-                #os.remove(self.pts_files[key].name)
+                # os.remove(self.pts_files[key].name)
                 pass
-            except:
+            except BaseException:
                 pass
 
-    #Plot type is either ACCUMULATED ACCUULATED_NG ACCUMULATED_LG or DAILY.
+    # Plot type is either ACCUMULATED ACCUULATED_NG ACCUMULATED_LG or DAILY.
     def _plot(self, key, plot_type):
 
-            #Get some filenames for the various files that get created.
-            ps_filename = os.path.join(self.web_dir,
-                      "migration_%s_%s.ps" % (plot_type, key,))
-            jpeg_filename = os.path.join(self.web_dir,
-                      "migration_%s_%s.jpg" % (plot_type, key,))
-            jpeg_filename_stamp = os.path.join(self.web_dir,
-                      "migration_%s_%s_stamp.jpg" % (plot_type, key,))
-            plot_filename = os.path.join(self.temp_dir,
-                      "migration_%s_%s.plot" % (plot_type, key,))
+        # Get some filenames for the various files that get created.
+        ps_filename = os.path.join(self.web_dir,
+                                   "migration_%s_%s.ps" % (plot_type, key,))
+        jpeg_filename = os.path.join(self.web_dir,
+                                     "migration_%s_%s.jpg" % (plot_type, key,))
+        jpeg_filename_stamp = os.path.join(self.web_dir,
+                                           "migration_%s_%s_stamp.jpg" % (plot_type, key,))
+        plot_filename = os.path.join(self.temp_dir,
+                                     "migration_%s_%s.plot" % (plot_type, key,))
 
-            titles = ['started', 'migrated/duplicated', 'closed']
-            if plot_type in ( ACCUMULATED, ACCUMULATED_NG, ACCUMULATED_LG):
-                columns = [5, 6, 7]
-            elif plot_type == DAILY:
-                columns = [2, 3, 4]
-            else:
-                columns = [0]  #What happens when we get here?
+        titles = ['started', 'migrated/duplicated', 'closed']
+        if plot_type in (ACCUMULATED, ACCUMULATED_NG, ACCUMULATED_LG):
+            columns = [5, 6, 7]
+        elif plot_type == DAILY:
+            columns = [2, 3, 4]
+        else:
+            columns = [0]  # What happens when we get here?
 
-            #Write the gnuplot command file(s).
-            self.write_plot_file(plot_filename, self.pts_files[key].name,
-                                 ps_filename, key, plot_type, columns, titles)
+        # Write the gnuplot command file(s).
+        self.write_plot_file(plot_filename, self.pts_files[key].name,
+                             ps_filename, key, plot_type, columns, titles)
 
-            #Make the plot and convert it to jpg.
-            os.system("gnuplot < %s" % plot_filename)
-            os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
-                      % (ps_filename, jpeg_filename))
-            os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
-                      % (ps_filename, jpeg_filename_stamp))
+        # Make the plot and convert it to jpg.
+        os.system("gnuplot < %s" % plot_filename)
+        os.system("convert -flatten -background lightgray -rotate 90  %s %s\n"
+                  % (ps_filename, jpeg_filename))
+        os.system("convert -flatten -background lightgray -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+                  % (ps_filename, jpeg_filename_stamp))
 
-            #Cleanup the temporary files for this loop.
-            try:
-                os.remove(plot_filename)
-            except:
-                pass
+        # Cleanup the temporary files for this loop.
+        try:
+            os.remove(plot_filename)
+        except BaseException:
+            pass

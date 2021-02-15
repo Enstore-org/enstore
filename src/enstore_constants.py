@@ -33,68 +33,68 @@ NO_DEBUG_LOG = "no_debug_log"
 IS_ALIVE = 1
 IS_DEAD = 0
 
-KB=1024L
-MB=KB*KB
-GB=KB*MB
-TB=KB*GB
-PB=KB*TB
+KB = 1024
+MB = KB * KB
+GB = KB * MB
+TB = KB * GB
+PB = KB * TB
 
 SECS_PER_DAY = 86400
 SECS_PER_HALF_DAY = 43200
 
-#These strings are the beginning parts of the capacity and rate constants.
-CAPACITY_PREFIX="CAP_"
-RATE_PREFIX="RATE_"
+# These strings are the beginning parts of the capacity and rate constants.
+CAPACITY_PREFIX = "CAP_"
+RATE_PREFIX = "RATE_"
 
 # tape capacity in GB
-CAP_9840=20
-CAP_9940=60
-CAP_9940B=200
-CAP_LTO1=100
-CAP_LTO2=200
-CAP_LTO3=400
-CAP_LTO4=800
-CAP_T10000T2=5401
-CAP_T10000T2D=8400
-CAP_M8=9000    # LTO7 tape formatted for LTO8 drives, a.k.a. M8
-CAP_L8=11718   # standard LTO8 tape a.k.a. L8
-CAP_LTO8=11718 # LTO8 tape
+CAP_9840 = 20
+CAP_9940 = 60
+CAP_9940B = 200
+CAP_LTO1 = 100
+CAP_LTO2 = 200
+CAP_LTO3 = 400
+CAP_LTO4 = 800
+CAP_T10000T2 = 5401
+CAP_T10000T2D = 8400
+CAP_M8 = 9000    # LTO7 tape formatted for LTO8 drives, a.k.a. M8
+CAP_L8 = 11718   # standard LTO8 tape a.k.a. L8
+CAP_LTO8 = 11718  # LTO8 tape
 
 # tape rate in MB
-RATE_9840=10.5
-RATE_9940=10.5
-RATE_9940B=27.0
-RATE_LTO1=15.0
-RATE_LTO2=27.0
-RATE_LTO3=55.0
-RATE_LTO4=120.0
-RATE_T10000T2=240.0
-RATE_T10000T2D=240.0
-RATE_M8=350.0
-RATE_L8=350.0
-RATE_LTO8=350.0
+RATE_9840 = 10.5
+RATE_9940 = 10.5
+RATE_9940B = 27.0
+RATE_LTO1 = 15.0
+RATE_LTO2 = 27.0
+RATE_LTO3 = 55.0
+RATE_LTO4 = 120.0
+RATE_T10000T2 = 240.0
+RATE_T10000T2D = 240.0
+RATE_M8 = 350.0
+RATE_L8 = 350.0
+RATE_LTO8 = 350.0
 
 EXTRA_LINKS = "extra_links"
 ENSTORE_PLOTS = "enstore_plots"
 
 # used by the inquisitor plot command
-MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
-D_MPD_FILE = "-%s%s"%(FILE_PREFIX, MPD)
-MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
-MPD_MONTH_FILE = "%s%s"%(FILE_PREFIX, MPD_MONTH)
-MLAT_FILE = "%s%s"%(FILE_PREFIX, MLAT)
-TOTAL_BPD_FILE = "%s%s"%(FILE_PREFIX, TOTAL_BPD)
-TOTAL_BPD_FILE_W = "%s_w"%(TOTAL_BPD_FILE,)
-BPD_FILE = "%s%s"%(FILE_PREFIX, BPD)
-BPD_FILE_D = "%s-"%(BPD_FILE,)
-BPD_FILE_R = "%s_r"%(BPD_FILE,)
-BPD_FILE_W = "%s_w"%(BPD_FILE,)
-BPD_MONTH_FILE = "%s%s"%(FILE_PREFIX, BPD_MONTH)
-BPD_MONTH_FILE_W = "%s_w_month"%(BPD_FILE,)
-XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
-XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
-UTIL_FILE = "_%s"%(UTIL,)
-SG_FILE = "%s%s"%(FILE_PREFIX, SG)
+MPH_FILE = "%s%s" % (FILE_PREFIX, MPH)
+D_MPD_FILE = "-%s%s" % (FILE_PREFIX, MPD)
+MPD_FILE = "%s%s" % (FILE_PREFIX, MPD)
+MPD_MONTH_FILE = "%s%s" % (FILE_PREFIX, MPD_MONTH)
+MLAT_FILE = "%s%s" % (FILE_PREFIX, MLAT)
+TOTAL_BPD_FILE = "%s%s" % (FILE_PREFIX, TOTAL_BPD)
+TOTAL_BPD_FILE_W = "%s_w" % (TOTAL_BPD_FILE,)
+BPD_FILE = "%s%s" % (FILE_PREFIX, BPD)
+BPD_FILE_D = "%s-" % (BPD_FILE,)
+BPD_FILE_R = "%s_r" % (BPD_FILE,)
+BPD_FILE_W = "%s_w" % (BPD_FILE,)
+BPD_MONTH_FILE = "%s%s" % (FILE_PREFIX, BPD_MONTH)
+BPD_MONTH_FILE_W = "%s_w_month" % (BPD_FILE,)
+XFER_FILE = "%s%s" % (FILE_PREFIX, XFER)
+XFERLOG_FILE = "%s%s" % (XFER_FILE, LOG)
+UTIL_FILE = "_%s" % (UTIL,)
+SG_FILE = "%s%s" % (FILE_PREFIX, SG)
 BPD_SUBDIR = "bpd_per_mover"
 # ratekeeper generated plot data files
 NULL_RATES = "null_rates"
@@ -128,7 +128,7 @@ NO_UDP = 8
 
 ALIVE_INTERVAL = "alive_interval"
 DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
-CONFIG_SERVER_ALIVE_INTERVAL = 30 # there is none in config file
+CONFIG_SERVER_ALIVE_INTERVAL = 30  # there is none in config file
 NOT_MONITORING = "not monitoring"
 DEAD = "dead"
 NO_SUSPECT_VOLS = "CANNOT UPDATE SUSPECT VOLS"
@@ -137,7 +137,7 @@ NO_ACTIVE_VOLS = "CANNOT UPDATE ACTIVE VOLS"
 NO_STATE = "CANNOT UPDATE STATUS"
 TIMED_OUT = NO_STATE
 FILE_LIST_NAME = "enstore_files.html"
-PAGE_THRESHOLDS= "page_thresholds"
+PAGE_THRESHOLDS = "page_thresholds"
 FILE_LIST = "file_list"
 ENCP_IP = "encp_ip"
 OVERALL_RATE = "overall_rate"
@@ -162,8 +162,8 @@ LMD = "Library Manager Director"
 DISPR = "PE Server and Migr. Dispatcher"
 
 # server names used in config file
-###Note: enstore start/stop assumes that the spelling here matches that of
-### the .py file of the matching server (save www_server).
+# Note: enstore start/stop assumes that the spelling here matches that of
+# the .py file of the matching server (save www_server).
 ACCOUNTING_SERVER = "accounting_server"
 DRIVESTAT_SERVER = "drivestat_server"
 LOG_SERVER = "log_server"
@@ -175,30 +175,30 @@ VOLUME_CLERK = "volume_clerk"
 PNFS_AGENT = "pnfs_agent"
 INQUISITOR = "inquisitor"
 CONFIG_SERVER = "configuration_server"  # included for use by inquisitor
-CONFIGURATION_SERVER = "configuration_server" # included for use by inquisitor
+CONFIGURATION_SERVER = "configuration_server"  # included for use by inquisitor
 WWW_SERVER = "www_server"
 RATEKEEPER = "ratekeeper"
 MONITOR_SERVER = "monitor_server"
 LM_DIRECTOR = "lm_director"
-DISPATCHER = "dispatcher" # Policy Engine server and Migration Dispatcher
+DISPATCHER = "dispatcher"  # Policy Engine server and Migration Dispatcher
 
 SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
                 DRVS: DRIVESTAT_SERVER,
-                LOGS : LOG_SERVER,
-		ALARMS : ALARM_SERVER,
-		FILEC : FILE_CLERK,
-		INQ : INQUISITOR,
-                INFO : INFO_SERVER,
-		VOLC : VOLUME_CLERK,
-		PNFSA : PNFS_AGENT,
-		CONFIGS : CONFIG_SERVER,
-		EV_RLY : EVENT_RELAY,
-		RATE : RATEKEEPER,
+                LOGS: LOG_SERVER,
+                ALARMS: ALARM_SERVER,
+                FILEC: FILE_CLERK,
+                INQ: INQUISITOR,
+                INFO: INFO_SERVER,
+                VOLC: VOLUME_CLERK,
+                PNFSA: PNFS_AGENT,
+                CONFIGS: CONFIG_SERVER,
+                EV_RLY: EVENT_RELAY,
+                RATE: RATEKEEPER,
                 LMD: LM_DIRECTOR,
                 DISPR: DISPATCHER,
                 }
 
-#The client names.
+# The client names.
 ACCOUNTING_CLIENT = "accounting_client"
 ALARM_CLIENT = "ALARM_CLIENT"
 CONFIG_CLIENT = "CONFIG_CLIENT"
@@ -215,15 +215,15 @@ LOG_CLIENT = "LOG_CLIENT"
 MEDIA_CHANGER_CLIENT = ".MC"
 MIGRATOR_CLIENT = "MIGRATOR_CLIENT"
 MONITOR_CLIENT = "MNTR_CLI"
-#MOVER_CLIENT = ?
+# MOVER_CLIENT = ?
 UDP_PROXY_CLIENT = "UDP_PROXY_CLIENT"
 RATEKEEPER_CLIENT = "RATEKEEPER_CLIENT"
 VOLUME_CLERK_CLIENT = "VOLUME_C_CLIENT"
 PNFS_AGENT_CLIENT = "PNFS_A_CLIENT"
 
-#The following are directory names appended by the plotter_main.py to
+# The following are directory names appended by the plotter_main.py to
 # the html_dir to put different types of plots in different sub-directories.
-PLOTS_SUBDIR = ""  #plots/"
+PLOTS_SUBDIR = ""  # plots/"
 MOUNT_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 RATEKEEPER_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 DRIVE_UTILIZATION_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
@@ -246,11 +246,11 @@ MOUNT_LATENCY_SUMMARY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "latencies")
 MOUNTS_PER_ROBOT_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "mounts-per-robot")
 SFA_STATS_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "sfa")
 
-#The following are directory names appended by the html_main.py to
+# The following are directory names appended by the html_main.py to
 # the html_dir to put different types of pages in different sub-directories.
 WEB_SUBDIR = "generated_html/"
 OLD_WEB_SUBDIR = ""
-WEEKLY_SUMMARY_SUBDIR = "%s%s" % (WEB_SUBDIR, "weekly_summary") #hardcoded!
+WEEKLY_SUMMARY_SUBDIR = "%s%s" % (WEB_SUBDIR, "weekly_summary")  # hardcoded!
 SERVER_HTML_SUBDIR = "%s%s" % (OLD_WEB_SUBDIR, "")
 TAPE_INVENTORY_SUBDIR = "%s%s" % (OLD_WEB_SUBDIR, "tape_inventory")
 MISC_HTML_SUBDIR = "%s%s" % (WEB_SUBDIR, "miscellaneous")
@@ -373,14 +373,14 @@ DISK_MOVER = "DiskMover"
 VC = "vc"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
-UDP_PROXY_SERVER="udp_proxy_server"
+UDP_PROXY_SERVER = "udp_proxy_server"
 LM_DIRECTOR_CLIENT = "lm_director_client"
 DISPATCHER_CLIENT = "dispatcher_client"
 
-GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
-                    DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER,
-                    INQUISITOR, LOG_SERVER, PNFS_AGENT, RATEKEEPER,
-                    VOLUME_CLERK, LM_DIRECTOR, DISPATCHER ]
+GENERIC_SERVERS = [ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
+                   DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER,
+                   INQUISITOR, LOG_SERVER, PNFS_AGENT, RATEKEEPER,
+                   VOLUME_CLERK, LM_DIRECTOR, DISPATCHER]
 
 # Trace.trace output levels used by the inquisitor
 INQFILEDBG = 6
@@ -399,13 +399,13 @@ INQERTHREAD = 19
 # other Trace.trace levels
 DISPWORKDBG = 7
 
-#List of well known ports (other than the config server).
+# List of well known ports (other than the config server).
 EVENT_RELAY_PORT = 55510
 MONITOR_PORT = 7499
 
 EVENT_RELAY_HEARTBEAT = 60
 
-#Pnfs interface info.
+# Pnfs interface info.
 BFID_LAYER = 1
 #PARKED_LAYER = 2
 DCACHE_LAYER = 2
@@ -414,40 +414,40 @@ DUPLICATE_LAYER = 3
 XREF_LAYER = 4
 
 
-#Default encp retry values.
+# Default encp retry values.
 DEFAULT_ENCP_RETRIES = 3
 DEFAULT_ENCP_RESUBMISSIONS = None
 
-#Time constants (in seconds) for the mover to send 'transfer' messages.
+# Time constants (in seconds) for the mover to send 'transfer' messages.
 MIN_TRANSFER_TIME = 1.0
 MAX_TRANSFER_TIME = 5.0
 
-#Allowed file deleted states
-FILE_DELETED_FLAGS = ["y", "n","u","yes","no", "unknown"]
+# Allowed file deleted states
+FILE_DELETED_FLAGS = ["y", "n", "u", "yes", "no", "unknown"]
 
 # Volume clerk related constants
-SAFETY_FACTOR=1.05 # used to estimate volume space left
-#MIN_LEFT=long(300*MB) # minimal size of free space allowed for volume
-MIN_LEFT=0L # for now, this is disabled.
+SAFETY_FACTOR = 1.05  # used to estimate volume space left
+# MIN_LEFT=long(300*MB) # minimal size of free space allowed for volume
+MIN_LEFT = 0  # for now, this is disabled.
 
 
-#Storage Filesystem class types.
-PNFS="PNFS"
-PNFS_AGENT="pnfs_agent"
-CHIMERA="Chimera"
-#find_pnfs_file requested filesystems constant type values.
-BOTH="BOTH"
-FS="FS"
-NONFS="NONFS"
+# Storage Filesystem class types.
+PNFS = "PNFS"
+PNFS_AGENT = "pnfs_agent"
+CHIMERA = "Chimera"
+# find_pnfs_file requested filesystems constant type values.
+BOTH = "BOTH"
+FS = "FS"
+NONFS = "NONFS"
 
 # UDP related
-MAX_UDP_PACKET_SIZE = 64*KB-200
+MAX_UDP_PACKET_SIZE = 64 * KB - 200
 #MAX_UDP_PACKET_SIZE = 16*KB-200
 
-#clerk related
-PARALLEL_QUEUE_SIZE=100000
-SEQUENTIAL_QUEUE_SIZE=100000
-MAX_CONNECTION_FAILURE=5
-MAX_THREADS=50
-FILES_IN_TRANSITION_CHECK_INTERVAL=3600
-ARCHIVING_FILES_IN_TRANSITION_CHECK_INTERVAL=86400
+# clerk related
+PARALLEL_QUEUE_SIZE = 100000
+SEQUENTIAL_QUEUE_SIZE = 100000
+MAX_CONNECTION_FAILURE = 5
+MAX_THREADS = 50
+FILES_IN_TRANSITION_CHECK_INTERVAL = 3600
+ARCHIVING_FILES_IN_TRANSITION_CHECK_INTERVAL = 86400

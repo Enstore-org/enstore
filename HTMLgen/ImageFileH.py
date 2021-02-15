@@ -21,6 +21,7 @@
 #
 
 
+from future.utils import raise_
 import ImageH
 import traceback, sys
 
@@ -62,21 +63,21 @@ class ImageFile(ImageH.Image):
 
 	try:
 	    self._open()
-	except IndexError, v: # end of data
+	except IndexError as v: # end of data
 	    if ImageH.DEBUG > 1:
 		traceback.print_exc()
-	    raise SyntaxError, v
-	except TypeError, v: # end of data (ord)
+	    raise_(SyntaxError, v)
+	except TypeError as v: # end of data (ord)
 	    if ImageH.DEBUG > 1:
 		traceback.print_exc()
-	    raise SyntaxError, v
-	except KeyError, v: # unsupported mode
+	    raise_(SyntaxError, v)
+	except KeyError as v: # unsupported mode
 	    if ImageH.DEBUG > 1:
 		traceback.print_exc()
-	    raise SyntaxError, v
+	    raise_(SyntaxError, v)
 
 	if not self.mode or self.size[0] <= 0:
-	    raise SyntaxError, "not identified by this driver"
+	    raise SyntaxError("not identified by this driver")
 
     def draft(self, mode, size):
 	"Set draft mode"
@@ -96,7 +97,7 @@ class ImageFile(ImageH.Image):
 	ImageH.Image.load(self)
 
 	if self.tile == None:
-	    raise IOError, "cannot load this image"
+	    raise IOError("cannot load this image")
 	if not self.tile:
 	    return
 
@@ -149,7 +150,7 @@ class ImageFile(ImageH.Image):
 		    s = self.load_read(self.decodermaxblock)
 		    if not s:
 			self.tile = []
-			raise IOError, "image file is truncated, %d bytes left" % len(b)
+                        raise_(IOError, "image file is truncated, %d bytes left" % len(b))
 		    b = b + s
 		    n, e = d.decode(b)
 		    if n < 0:
@@ -161,7 +162,7 @@ class ImageFile(ImageH.Image):
 	self.fp = None # might be shared
 
 	if not self.map and e < 0:
-	    raise IOError, "decoder error %d when reading image file" % e
+	    raise_(IOError, "decoder error %d when reading image file" % e)
 
 	# post processing
 	if hasattr(self, "tile_post_rotate"):
@@ -215,7 +216,7 @@ def _save(im, fp, tile):
 		if s:
 		    break
 	    if s < 0:
-		raise IOError, "encoder error %d when writing image file" % s
+		raise_(IOError, "encoder error %d when writing image file" % s)
     else:
 	# slight speedup: compress to real file object
 	for e, b, o, a in tile:
@@ -225,7 +226,7 @@ def _save(im, fp, tile):
 	    e.setimage(im.im, b)
 	    s = e.encode_to_file(fh, bufsize)
 	    if s < 0:
-		raise IOError, "encoder error %d when writing image file" % s
+		raise_(IOError, "encoder error %d when writing image file" % s)
     try:
         fp.flush()
     except: pass

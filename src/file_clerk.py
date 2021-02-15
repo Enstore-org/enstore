@@ -8,6 +8,7 @@
 
 # system import
 
+from future.utils import raise_
 import Queue
 import os
 import select
@@ -125,15 +126,21 @@ try:
 
         isSFA = True
     except ImportError as msg:
-        Trace.log(e_errors.INFO, "Failed to import cache.messaging.pe_client: %s" % (str(msg),))
+        Trace.log(
+            e_errors.INFO, "Failed to import cache.messaging.pe_client: %s" %
+            (str(msg),))
         pass
     try:
         import cache.en_logging.en_logging
     except ImportError as msg:
-        Trace.log(e_errors.INFO, "Failed to import cache.en_logging.en_logging: %s" % (str(msg),))
+        Trace.log(
+            e_errors.INFO, "Failed to import cache.en_logging.en_logging: %s" %
+            (str(msg),))
         pass
 except ImportError as msg:
-    Trace.log(e_errors.INFO, "Failed to import cache.messaging.client: %s" % (str(msg),))
+    Trace.log(
+        e_errors.INFO, "Failed to import cache.messaging.client: %s" %
+        (str(msg),))
     pass
 
 
@@ -169,7 +176,6 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     ####################################################################
 
-
     # These extract value functions are used to get a value from the ticket
     # and perform validity checks in a consistant fashion.  These functions
     # duplicated in volume_clerk.py; they should be made more generic to
@@ -178,14 +184,14 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def extract_value_from_ticket(self, key, ticket, fail_None=False):
         try:
             value = ticket[key]
-        except KeyError, detail:
+        except KeyError as detail:
             message = "%s: key %s is missing" % (MY_NAME, detail)
             ticket["status"] = (e_errors.KEYERROR, message)
             Trace.log(e_errors.ERROR, message)
             self.reply_to_caller(ticket)
             return None
 
-        if fail_None and value == None:
+        if fail_None and value is None:
             message = "%s: key %s is None" % (MY_NAME, key,)
             ticket["status"] = (e_errors.KEYERROR, message)
             Trace.log(e_errors.ERROR, message)
@@ -284,14 +290,16 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     ####################################################################
 
-    #### DONE
+    # DONE
     def get_user_sockets(self, ticket):
         try:
             file_clerk_host, file_clerk_port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
-            ticket["file_clerk_callback_addr"] = (file_clerk_host, file_clerk_port)
+            ticket["file_clerk_callback_addr"] = (
+                file_clerk_host, file_clerk_port)
             address_family = socket.getaddrinfo(file_clerk_host, None)[0][0]
-            self.control_socket = socket.socket(address_family, socket.SOCK_STREAM)
+            self.control_socket = socket.socket(
+                address_family, socket.SOCK_STREAM)
             self.control_socket.connect(ticket['callback_addr'])
             callback.write_tcp_obj(self.control_socket, ticket)
             r, w, x = select.select([listen_socket], [], [], 15)
@@ -305,7 +313,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 return 0
             self.data_socket = data_socket
             listen_socket.close()
-        except:
+        except BaseException:
             exc, msg = sys.exc_info()[:2]
             Trace.handle_error(exc, msg)
             return 0
@@ -313,7 +321,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     ####################################################################
 
-    #### DONE
+    # DONE
     # get_all_bfids(external_label) -- get all bfids of a particular volume
 
     def get_all_bfids(self, external_label):
@@ -333,19 +341,19 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ####################################################################
 
     ###
-    ### These functions are called via dispatching worker.
+    # These functions are called via dispatching worker.
     ###
 
     # show_state -- show internal configuration values
     def show_state(self, ticket):
         ticket['state'] = {}
         for i in self.__dict__.keys():
-            ticket['state'][i] = `self.__dict__[i]`
+            ticket['state'][i] = repr(self.__dict__[i])
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
 
-    #### DONE
+    # DONE
     def get_crcs(self, ticket):
 
         bfid, record = self.extract_bfid_from_ticket(ticket)
@@ -385,7 +393,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         try:
             for i in self.filedb_dict.query_getresult(q, (bfid,)):
                 bfids.append(i[0])
-        except:
+        except BaseException:
             pass
         return bfids
 
@@ -404,10 +412,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             #
             # edb module raises underlying DB errors as EnstoreError.
             #
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket["copies"] = []
             ticket["status"] = (msg.type, str(msg))
-        except:
+        except BaseException:
             ticket["copies"] = []
             ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
@@ -421,7 +429,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             res = self.filedb_dict.query_getresult(q, (bfid,))
             if len(res):
                 return res[0][0]
-        except:
+        except BaseException:
             pass
         return None
 
@@ -439,10 +447,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             #
             # edb module raises underlying DB errors as EnstoreError.
             #
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket["original"] = None
             ticket["status"] = (msg.type, str(msg))
-        except:
+        except BaseException:
             ticket["original"] = None
             ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
@@ -478,11 +486,11 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             #
             # edb module raises underlying DB errors as EnstoreError.
             #
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket["src_bfid"] = None
             ticket["dst_bfid"] = None
             ticket["status"] = (msg.type, str(msg))
-        except:
+        except BaseException:
             ticket["src_bfid"] = None
             ticket["dst_bfid"] = None
             ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
@@ -496,21 +504,25 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         dst_res = []
 
         if find_src:
-            q = "select * from migration where src_bfid = %s order by {}".format(order_by)
+            q = "select * from migration where src_bfid = %s order by {}".format(
+                order_by)
             Trace.log(e_errors.INFO, q)
             #
             # convert datetime.datetime to string
             #
-            src_res = edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q, (bfid,)))
+            src_res = edb.sanitize_datetime_values(
+                self.filedb_dict.query_dictresult(q, (bfid,)))
             Trace.log(e_errors.INFO, src_res)
 
         if find_dst:
-            q = "select * from migration where dst_bfid = %s order by {}".format(order_by)
+            q = "select * from migration where dst_bfid = %s order by {}".format(
+                order_by)
             Trace.log(e_errors.INFO, q)
             #
             # convert datetime.datetime to string
             #
-            dst_res = edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q, (bfid,)))
+            dst_res = edb.sanitize_datetime_values(
+                self.filedb_dict.query_dictresult(q, (bfid,)))
             Trace.log(e_errors.INFO, dst_res)
 
         return src_res + dst_res
@@ -525,16 +537,16 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # extract the additional information if source and/or destination
         # information is requested.
         find_src = self.extract_value_from_ticket('find_src', ticket)
-        if find_src == None:
+        if find_src is None:
             return  # extract_value_from_ticket handles its own errors.
         find_dst = self.extract_value_from_ticket('find_dst', ticket)
-        if find_dst == None:
+        if find_dst is None:
             return  # extract_value_from_ticket handles its own errors.
 
         # extrace the column name of the timestamp field that will be used
         # to sort the responses.
         order_by = self.extract_value_from_ticket('order_by', ticket)
-        if order_by == None:
+        if order_by is None:
             return  # extract_value_from_ticket handles its own errors.
 
         try:
@@ -543,18 +555,21 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                                                                   find_dst,
                                                                   order_by)
             ticket['status'] = (e_errors.OK, None)
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket['status'] = (msg.type, str(msg))
-        except:
+        except BaseException:
             ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
         return
 
-    #### DONE
+    # DONE
     # __has_undeleted_file(self, vol) -- check if all files are deleted
 
     def __has_undeleted_file(self, vol):
-        Trace.log(e_errors.INFO, 'checking if files of volume %s are deleted' % (vol))
+        Trace.log(
+            e_errors.INFO,
+            'checking if files of volume %s are deleted' %
+            (vol))
         q = "select bfid from file, volume \
              where volume.label = %s and \
                    file.volume = volume.id and \
@@ -562,7 +577,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         res = self.filedb_dict.query(q, (vol,))
         return len(res)
 
-    #### DONE
+    # DONE
     # has_undeleted_file -- server service
 
     def has_undeleted_file(self, ticket):
@@ -570,7 +585,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         # catch any failure
         try:
@@ -579,21 +595,21 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             #
             # edb module raises underlying DB errors as EnstoreError.
             #
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket["status"] = (msg.type, str(msg))
-        except:
+        except BaseException:
             ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
         # and return to the caller
         self.reply_to_caller(ticket)
         return
 
-    #### DONE
+    # DONE
     # exist_bfids -- check if a, or a list of, bfid(s) exists/exist
 
     def exist_bfids(self, ticket):
         try:
             bfids = ticket['bfids']
-        except KeyError, detail:
+        except KeyError as detail:
             message = "%s: key %s is missing" % (MY_NAME, detail,)
             ticket["status"] = (e_errors.KEYERROR, message)
             Trace.log(e_errors.ERROR, message)
@@ -607,7 +623,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         ##########################################################
 
-        if type(bfids) == type([]):  # a list
+        if isinstance(bfids, type([])):  # a list
             result = []
             for i in bfids:
                 rec = self.filedb_dict[i]
@@ -627,7 +643,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-    #### DONE
+    # DONE
     # get_bfids(self, ticket) -- get bfids of a certain volume
     #        This is almost the same as tape_list() yet it does not
     #        retrieve any information from primary file database
@@ -637,7 +653,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         bfids = self.get_all_bfids(external_label)
 
@@ -669,7 +686,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         # get bfids
         bfid_list = self.get_all_bfids(external_label)
@@ -679,7 +697,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         try:
             self.send_reply_with_long_answer(ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "get_bfids2: %s" % (str(msg),))
             return
 
@@ -691,7 +709,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # rename the keys from the query.
     # If all_files is False then get list of files, only resided on tape,
     # do not include members of packages.
-    def __tape_list(self, external_label, export_format=False, all_files=True, skip_unknown=False):
+    def __tape_list(self, external_label, export_format=False,
+                    all_files=True, skip_unknown=False):
         q = """
             SELECT f.bfid,
                 f.crc,
@@ -729,10 +748,11 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 location_cookies[lc] = location_cookies.get(lc, 0) + 1
             if value['deleted'] == 'unknown' and skip_unknown:
                 continue
-            if not value.has_key('pnfs_name0'):
+            if 'pnfs_name0' not in value:
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
-            if file_info.get("bfid", None) == file_info.get("package_id", None) and all_files:
+            if file_info.get("bfid", None) == file_info.get(
+                    "package_id", None) and all_files:
                 result = self.filedb_dict.query_dictresult("""
                SELECT f.bfid,
 	              f.crc,
@@ -752,18 +772,21 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                    AND f.bfid<>%s
                       """, (file_info.get("bfid"), file_info.get("bfid")))
                 for finfo in result:
-                    finfo["location_cookie"] = file_info.get("location_cookie", None)
+                    finfo["location_cookie"] = file_info.get(
+                        "location_cookie", None)
                     finfo["label"] = file_info.get("label", None)
                     if export_format:
                         value = self.filedb_dict.export_format(finfo)
                     else:
                         value = finfo
-                    if not value.has_key('pnfs_name0'):
+                    if 'pnfs_name0' not in value:
                         value['pnfs_name0'] = "unknown"
                     file_list.append(value)
 
         if skip_unknown:
-            duplicate_cookies = [cookie for cookie, count in location_cookies.iteritems() if count > 1]
+            duplicate_cookies = [
+                cookie for cookie,
+                count in location_cookies.iteritems() if count > 1]
             if duplicate_cookies:
                 Trace.alarm(e_errors.WARNING, "Volume {} contains duplicate cookie(s) : {}".format(external_label,
                                                                                                    string.join(
@@ -771,12 +794,13 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                                                                                                        " ")))
         return file_list
 
-    #### DONE
+    # DONE
     def tape_list(self, ticket):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -808,7 +832,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -844,7 +869,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label + " (3)")
@@ -853,7 +879,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         try:
             control_socket = self.send_reply_with_long_answer_part1(ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "tape_list3(): %s" % (str(msg),))
             return
 
@@ -872,14 +898,14 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # send the reply
         try:
             self.send_reply_with_long_answer_part2(control_socket, ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "tape_list3(): %s" % (str(msg),))
             return
 
         # log the activity
         Trace.log(e_errors.INFO, "finish listing " + external_label + " (3)")
 
-    #### DONE
+    # DONE
     # list_active(self, ticket) -- list the active files on a volume
     #     only the /pnfs path is listed
     #     the purpose is to generate a list for deletion before the
@@ -890,7 +916,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -923,7 +950,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         for ff in res:
             value = self.filedb_dict.export_format(ff)
-            if value.has_key('pnfs_name0') and value['pnfs_name0']:
+            if 'pnfs_name0' in value and value['pnfs_name0']:
                 alist.append(value['pnfs_name0'])
 
         # finishing up
@@ -958,7 +985,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -986,13 +1014,14 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         # start communication
         ticket["status"] = (e_errors.OK, None)
         try:
             control_socket = self.send_reply_with_long_answer_part1(ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "list_active3(): %s" % (str(msg),))
             return
 
@@ -1007,7 +1036,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # send the reply
         try:
             self.send_reply_with_long_answer_part2(control_socket, ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "list_active3(): %s" % (str(msg),))
             return
 
@@ -1051,7 +1080,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         try:
             self.send_reply_with_long_answer(ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "show_bad2: %s" % (str(msg),))
             return
 
@@ -1068,7 +1097,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # check that this is indeed the package file.
         #
         if bfid != record['package_id'] or \
-                        type(record['package_id']) == types.NoneType:
+                isinstance(record['package_id'], type(None)):
             ticket["status"] = (e_errors.ERROR, "This is not a package file")
             self.reply_to_caller(ticket)
             return
@@ -1076,13 +1105,17 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         file_records = None
         if field:
             try:
-                colnames, res = self.filedb_dict.dbaccess.query_with_columns("select * from file limit 1")
+                colnames, res = self.filedb_dict.dbaccess.query_with_columns(
+                    "select * from file limit 1")
                 if field not in colnames:
-                    ticket["status"] = (e_errors.WRONGPARAMETER, "No such field %s" % (field,))
+                    ticket["status"] = (
+                        e_errors.WRONGPARAMETER, "No such field %s" %
+                        (field,))
                     self.reply_to_caller(ticket)
                     return
                 res = self.filedb_dict.query_getresult(
-                    "select {} from file where package_id = %s and deleted='n' and bfid<>%s".format(field),
+                    "select {} from file where package_id = %s and deleted='n' and bfid<>%s".format(
+                        field),
                     (bfid, bfid))
                 file_records = [r[0] for r in res]
             except Exception as e:
@@ -1102,7 +1135,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         try:
             self.send_reply_with_long_answer(ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "get_children: %s" % (str(msg),))
 
 
@@ -1116,8 +1149,9 @@ class FileClerkMethods(FileClerkInfoMethods):
         try:
             brand = self.csc.get('file_clerk')['brand']
             Trace.log(e_errors.INFO, "The brand is %s" % (brand))
-        except:
-            brand = string.upper(string.split(os.uname()[1], ".")[0][:2]) + 'MS'
+        except BaseException:
+            brand = string.upper(string.split(
+                os.uname()[1], ".")[0][:2]) + 'MS'
             Trace.log(e_errors.INFO,
                       "No brand is found, using '%s'" % (brand,))
         self.en_qpid_client = None
@@ -1126,15 +1160,18 @@ class FileClerkMethods(FileClerkInfoMethods):
             self.amqp_broker_dict = self.csc.get(AMQP_BROKER, None)
             if self.amqp_broker_dict and self.amqp_broker_dict["status"][0] == e_errors.OK:
                 dispatcher_conf = self.csc.get('dispatcher', None)
-                authentication_mechanism = self.amqp_broker_dict.get('sasl-mechanism')
+                authentication_mechanism = self.amqp_broker_dict.get(
+                    'sasl-mechanism')
                 if dispatcher_conf and dispatcher_conf["status"][0] == e_errors.OK:
                     try:
                         cache.en_logging.en_logging.set_logging(self.log_name)
-                    except NameError, msg:
+                    except NameError as msg:
                         # import error already reported
                         pass
-                    fc_queue = "%s; {create: always}" % (dispatcher_conf['queue_reply'],)
-                    pe_queue = "%s; {create: always}" % (dispatcher_conf['queue_work'],)
+                    fc_queue = "%s; {create: always}" % (
+                        dispatcher_conf['queue_reply'],)
+                    pe_queue = "%s; {create: always}" % (
+                        dispatcher_conf['queue_work'],)
                     self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
                                                                     self.amqp_broker_dict['port']),
                                                                    fc_queue,
@@ -1142,22 +1179,31 @@ class FileClerkMethods(FileClerkInfoMethods):
                                                                    authentication=authentication_mechanism)
                     try:
                         self.en_qpid_client.start()
-                    except:
+                    except BaseException:
                         exc, msg = sys.exc_info()[:2]
                         Trace.alarm(e_errors.ALARM,
                                     "file_clerk failed to start, failed to connect to qpid server, reason: {}".format(
                                         str((str(exc), str(msg)))))
-                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                        raise_(
+                            sys.exc_info()[0],
+                            sys.exc_info()[1],
+                            sys.exc_info()[2])
                 else:
                     if dispatcher_conf:
                         Trace.log(e_errors.INFO, dispatcher_conf["status"][1])
                     else:
-                        Trace.log(e_errors.INFO, "Failed to extract 'dispatcher' from configuration")
+                        Trace.log(
+                            e_errors.INFO,
+                            "Failed to extract 'dispatcher' from configuration")
             else:
                 if self.amqp_broker_dict:
-                    Trace.log(e_errors.INFO, self.amqp_broker_dict["status"][1])
+                    Trace.log(
+                        e_errors.INFO,
+                        self.amqp_broker_dict["status"][1])
                 else:
-                    Trace.log(e_errors.INFO, "Failed to extract '%s' from configuration" % (AMQP_BROKER,))
+                    Trace.log(
+                        e_errors.INFO, "Failed to extract '%s' from configuration" %
+                        (AMQP_BROKER,))
 
         # Retrieve database information from the configuration.
         Trace.log(e_errors.INFO, "determine dbHome")
@@ -1165,12 +1211,15 @@ class FileClerkMethods(FileClerkInfoMethods):
         try:
             dbInfo = self.csc.get('database')
             dbHome = dbInfo['db_dir']
-        except:
+        except BaseException:
             dbHome = os.environ['ENSTORE_DIR']
 
-        self.sequentialQueueSize = self.keys.get('sequential_queue_size', SEQUENTIAL_QUEUE_SIZE)
-        self.parallelQueueSize = self.keys.get('parallel_queue_size', PARALLEL_QUEUE_SIZE)
-        self.numberOfParallelWorkers = self.keys.get('max_threads', MAX_THREADS)
+        self.sequentialQueueSize = self.keys.get(
+            'sequential_queue_size', SEQUENTIAL_QUEUE_SIZE)
+        self.parallelQueueSize = self.keys.get(
+            'parallel_queue_size', PARALLEL_QUEUE_SIZE)
+        self.numberOfParallelWorkers = self.keys.get(
+            'max_threads', MAX_THREADS)
         self.max_connections = self.numberOfParallelWorkers + 1
 
         self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host', None),
@@ -1184,7 +1233,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
         self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
-        self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue, self)
+        self.sequentialWorker = dispatching_worker.ThreadExecutor(
+            self.sequentialThreadQueue, self)
         self.sequentialWorker.start()
 
         self.copy_lock = threading.Lock()
@@ -1194,12 +1244,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         self.parallelThreads = []
         for i in range(self.numberOfParallelWorkers):
-            worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue, self)
+            worker = dispatching_worker.ThreadExecutor(
+                self.parallelThreadQueue, self)
             self.parallelThreads.append(worker)
             worker.start()
 
     ###
-    ### These functions are internal file_clerk functions.
+    # These functions are internal file_clerk functions.
     ###
 
     def invoke_function(self, function, args=()):
@@ -1225,15 +1276,15 @@ class FileClerkMethods(FileClerkInfoMethods):
                                  "new_bit_file",
                                  "set_pnfsid"):
             Trace.trace(5, "Putting on parallel thread queue %d %s" % (
-            self.parallelThreadQueue.qsize(), function.__name__))
+                self.parallelThreadQueue.qsize(), function.__name__))
             self.parallelThreadQueue.put([function.__name__, args])
 
         elif function.__name__ == "quit":
             # needs to run on main thread
-            apply(function, args)
+            function(*args)
         else:
             Trace.trace(5, "Putting on sequential thread queue %d %s" % (
-            self.sequentialThreadQueue.qsize(), function.__name__))
+                self.sequentialThreadQueue.qsize(), function.__name__))
             self.sequentialThreadQueue.put([function.__name__, args])
 
     # set_brand(brand) -- set brand
@@ -1246,7 +1297,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-    #### DONE
+    # DONE
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
@@ -1258,10 +1309,11 @@ class FileClerkMethods(FileClerkInfoMethods):
     def register_copy(self, original, copy):
         Trace.log(e_errors.INFO,
                   'register copy %s of original %s' % (copy, original))
-        q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');" % (original, copy)
+        q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');" % (
+            original, copy)
         try:
             res = self.filedb_dict.insert(q)
-        except:
+        except BaseException:
             return 1
         return
 
@@ -1272,7 +1324,7 @@ class FileClerkMethods(FileClerkInfoMethods):
                 values ('%s', %d);" % (bfid, n)
         try:
             res = self.filedb_dict.insert(q)
-        except:
+        except BaseException:
             return 1
         return
 
@@ -1282,36 +1334,43 @@ class FileClerkMethods(FileClerkInfoMethods):
         q = "select * from active_file_copying where bfid = %s"
         res = self.filedb_dict.query_dictresult(q, (bfid,))
         if not res:
-            Trace.log(e_errors.ERROR, "made_copy(): %s does not have copies" % (bfid))
+            Trace.log(
+                e_errors.ERROR,
+                "made_copy(): %s does not have copies" %
+                (bfid))
             return 0
         if res[0]['remaining'] <= 1:
             # all done, delete this entry
             q = "delete from active_file_copying where bfid = %s"
             try:
                 res = self.filedb_dict.remove(q, (bfid,))
-            except:
+            except BaseException:
                 return 1
         else:  # decrease the number
             q = "update active_file_copying set remaining =  remaining - 1 where bfid = %s"
             try:
                 res = self.filedb_dict.update(q, (bfid,))
-            except:
+            except BaseException:
                 return 1
         return 0
 
     ####################################################################
 
     ###
-    ### These functions are called via dispatching worker.
+    # These functions are called via dispatching worker.
     ###
 
-    #### DONE
+    # DONE
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket):
         # input ticket is a file clerk part of the main ticket
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
-        record = {'pnfsid': '', 'drive': '', 'pnfs_name0': '', 'deleted': 'unknown'}
+        record = {
+            'pnfsid': '',
+            'drive': '',
+            'pnfs_name0': '',
+            'deleted': 'unknown'}
 
         record["external_label"] = ticket["fc"]["external_label"]
         record["location_cookie"] = ticket["fc"]["location_cookie"]
@@ -1323,13 +1382,13 @@ class FileClerkMethods(FileClerkInfoMethods):
             record["cache_location"] = record["location_cookie"]
 
         # uid and gid
-        if ticket["fc"].has_key("uid"):
+        if "uid" in ticket["fc"]:
             record["uid"] = ticket["fc"]["uid"]
-        if ticket["fc"].has_key("gid"):
+        if "gid" in ticket["fc"]:
             record["gid"] = ticket["fc"]["gid"]
 
         # does it have bfid?
-        if ticket["fc"].has_key("bfid"):
+        if "bfid" in ticket["fc"]:
             bfid = ticket["fc"]["bfid"]
             rc, reason = self.bfid_generator.check(bfid)
             if not rc:
@@ -1350,12 +1409,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         # check for copy
         original_bfid = None
-        if ticket["fc"].has_key("original_bfid"):
+        if "original_bfid" in ticket["fc"]:
             # check if it is valid
             original_bfid = ticket["fc"].get("original_bfid")
             original_file = self.filedb_dict[original_bfid]
             if not original_file:
-                msg = "new_bit_file(copy): original bfid %s does not exist" % (original_bfid)
+                msg = "new_bit_file(copy): original bfid %s does not exist" % (
+                    original_bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.NO_FILES, msg)
                 self.reply_to_caller(ticket)
@@ -1379,7 +1439,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             # check sanity_cookie
             if original_file['sanity_cookie'] != record["sanity_cookie"]:
                 msg = "new_bit_file(copy): wrong sanity_cookie %s, (%s, %s)" % (
-                    `record["sanity_cookie"]`, original_bfid, `original_file['sanity_cookie']`)
+                    repr(record["sanity_cookie"]), original_bfid, repr(original_file['sanity_cookie']))
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
@@ -1407,13 +1467,14 @@ class FileClerkMethods(FileClerkInfoMethods):
                     Trace.alarm(e_errors.ERROR,
                                 "Failed to insert new file record with bfid {} : {}".format(bfid, str(e)))
                     ticket["status"] = (
-                    e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
+                        e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
                     self.reply_to_caller(ticket)
                     return
         # if it is a copy, register it
         if original_bfid:
             if self.register_copy(original_bfid, bfid):
-                msg = "new_bit_file(copy): failed to register copy %s, %s" % (original_bfid, bfid)
+                msg = "new_bit_file(copy): failed to register copy %s, %s" % (
+                    original_bfid, bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
@@ -1422,7 +1483,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         count = ticket["fc"].get("copies", 0)
         if count > 0:
             if self.log_copies(bfid, count):
-                msg = "new_bit_file(copy): failed to log copy count %s, %d" % (bfid, count)
+                msg = "new_bit_file(copy): failed to log copy count %s, %d" % (
+                    bfid, count)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
@@ -1457,13 +1519,14 @@ class FileClerkMethods(FileClerkInfoMethods):
         record = dict(filter(lambda i: i[0] in keys, ticket["fc"].iteritems()))
         record["deleted"] = "no"
 
-        if "mover_type" in ticket["fc"] and ticket["fc"].get("mover_type") == "DiskMover":
+        if "mover_type" in ticket["fc"] and ticket["fc"].get(
+                "mover_type") == "DiskMover":
             record["cache_location"] = record["location_cookie"]
             record["cache_status"] = file_cache_status.CacheStatus.CACHED
             record["cache_mod_time"] = time2timestamp(time.time())
 
         # does it have bfid?
-        if ticket["fc"].has_key("bfid"):
+        if "bfid" in ticket["fc"]:
             bfid = ticket["fc"]["bfid"]
             rc, reason = self.bfid_generator.check(bfid)
             if not rc:
@@ -1484,12 +1547,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         # check for copy
         original_bfid = None
-        if ticket["fc"].has_key("original_bfid"):
+        if "original_bfid" in ticket["fc"]:
             # check if it is valid
             original_bfid = ticket["fc"].get("original_bfid")
             original_file = self.filedb_dict[original_bfid]
             if not original_file:
-                msg = "new_bit_file(copy): original bfid %s does not exist" % (original_bfid)
+                msg = "new_bit_file(copy): original bfid %s does not exist" % (
+                    original_bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.NO_FILES, msg)
                 self.reply_to_caller(ticket)
@@ -1513,7 +1577,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             # check sanity_cookie
             if original_file['sanity_cookie'] != record["sanity_cookie"]:
                 msg = "new_bit_file(copy): wrong sanity_cookie %s, (%s, %s)" % (
-                    `record["sanity_cookie"]`, original_bfid, `original_file['sanity_cookie']`)
+                    repr(record["sanity_cookie"]), original_bfid, repr(original_file['sanity_cookie']))
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
@@ -1534,15 +1598,20 @@ class FileClerkMethods(FileClerkInfoMethods):
                 record["bfid"] = bfid
                 # last try failed, report
                 if not retries:
-                    Trace.log(e_errors.ERROR, "Failed to insert new file record with bfid {} : {}".format(bfid, str(e)))
+                    Trace.log(
+                        e_errors.ERROR,
+                        "Failed to insert new file record with bfid {} : {}".format(
+                            bfid,
+                            str(e)))
                     ticket["status"] = (
-                    e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
+                        e_errors.ERROR, "Failed to create new record with bfid {}, see server log for details".format(bfid))
                     self.reply_to_caller(ticket)
                     return
         # if it is a copy, register it
         if original_bfid:
             if self.register_copy(original_bfid, bfid):
-                msg = "new_bit_file(copy): failed to register copy %s, %s" % (original_bfid, bfid)
+                msg = "new_bit_file(copy): failed to register copy %s, %s" % (
+                    original_bfid, bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
@@ -1551,7 +1620,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         count = ticket["fc"].get("copies", 0)
         if count > 0:
             if self.log_copies(bfid, count):
-                msg = "new_bit_file(copy): failed to log copy count %s, %d" % (bfid, count)
+                msg = "new_bit_file(copy): failed to log copy count %s, %d" % (
+                    bfid, count)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
@@ -1567,7 +1637,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         #
 
         if self.en_qpid_client:
-            if "mover_type" in ticket["fc"] and ticket["fc"].get("mover_type") == "DiskMover":
+            if "mover_type" in ticket["fc"] and ticket["fc"].get(
+                    "mover_type") == "DiskMover":
 
                 try:
                     record["storage_group"] = ticket["vc"]["storage_group"]
@@ -1575,8 +1646,9 @@ class FileClerkMethods(FileClerkInfoMethods):
                     record["wrapper"] = ticket["vc"]["wrapper"]
                     event = pe_client.evt_cache_written_fc(ticket, record)
                     self.en_qpid_client.send(event)
-                except:
-                    ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+                except BaseException:
+                    ticket["status"] = (
+                        str(sys.exc_info()[0]), str(sys.exc_info()[1]))
 
         ticket["fc"]["bfid"] = bfid
         self.reply_to_caller(ticket)
@@ -1584,7 +1656,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         Trace.trace(12, 'new_bit_file %s' % (ticket,))
         return
 
-    #### DONE
+    # DONE
     # add_file_record() -- create a file record
     #
     # This is very dangerous!
@@ -1593,7 +1665,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
     def add_file_record(self, ticket):
 
-        if ticket.has_key('bfid'):
+        if 'bfid' in ticket:
             bfid = ticket['bfid']
             # to see if the bfid has already been used
             record = self.filedb_dict[bfid]
@@ -1611,7 +1683,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         if bfid[0] in string.letters:
             sequence = long(bfid[4:] + 'L')
-            while self.filedb_dict.has_key(self.bfid_generator.get_brand() + str(sequence)):
+            while self.bfid_generator.get_brand() + str(sequence) in self.filedb_dict:
                 sequence = sequence + 1
             bfid = self.bfid_generator.get_brand() + str(sequence)
 
@@ -1627,7 +1699,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             pnfsvid = ticket.get('pnfsvid')
             sanity_cookie = ticket['sanity_cookie']
             size = ticket['size']
-        except KeyError, detail:
+        except KeyError as detail:
             message = "%s: add_file_record() -- key %s is missing" \
                       % (MY_NAME, detail,)
             ticket["status"] = (e_errors.KEYERROR, message)
@@ -1650,9 +1722,9 @@ class FileClerkMethods(FileClerkInfoMethods):
         record['size'] = size
 
         # handle uid and gid
-        if ticket.has_key("uid"):
+        if "uid" in ticket:
             record["uid"] = ticket["uid"]
-        if ticket.has_key("gid"):
+        if "gid" in ticket:
             record["gid"] = ticket["gid"]
 
         # assigning it to database
@@ -1664,7 +1736,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         finally:
             self.reply_to_caller(ticket)
 
-    #### DONE
+    # DONE
     # modify_file_record() -- modify file record
     #
     # This is very dangerous!
@@ -1677,7 +1749,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             return  # extract_bfid_from_ticket handles its own errors.
 
         # better log this
-        Trace.log(e_errors.INFO, "start modifying " + `record`)
+        Trace.log(e_errors.INFO, "start modifying " + repr(record))
 
         # can't change bfid, filter it out retaining
         # only keys being modfied
@@ -1686,7 +1758,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         try:
             r = self.filedb_dict.update_record(bfid, updated_record)
-            Trace.log(e_errors.INFO, 'modified to ' + `updated_record`)
+            Trace.log(e_errors.INFO, 'modified to ' + repr(updated_record))
             ticket['status'] = (e_errors.OK, None)
         except Exception as msg:
             ticket['status'] = (e_errors.ERROR, str(msg))
@@ -1706,12 +1778,16 @@ class FileClerkMethods(FileClerkInfoMethods):
                 # we never update bfid, so yank it from dictionary
                 del (record["bfid"])
                 r = self.filedb_dict.update_record(bfid, record)
-                ticket["list"].append({"bfid": bfid, "status": (e_errors.OK, None)})
+                ticket["list"].append(
+                    {"bfid": bfid, "status": (e_errors.OK, None)})
             except Exception as msg:
-                ticket["list"].append({"bfid": bfid, "status": (e_errors.ERROR, str(msg))})
+                ticket["list"].append(
+                    {"bfid": bfid, "status": (e_errors.ERROR, str(msg))})
                 has_failure = True
         if has_failure:
-            ticket["status"] = (e_errors.ERROR, "some of the records in the list failed to be updated, check the list")
+            ticket["status"] = (
+                e_errors.ERROR,
+                "some of the records in the list failed to be updated, check the list")
         self.reply_to_caller(ticket)
 
     def set_pnfsid(self, ticket):
@@ -1727,7 +1803,8 @@ class FileClerkMethods(FileClerkInfoMethods):
             self.reply_to_caller(ticket)
             return
 
-        bfid = self.extract_bfid_from_ticket(ticket.get('fc', {}), check_exists=False)
+        bfid = self.extract_bfid_from_ticket(
+            ticket.get('fc', {}), check_exists=False)
         if not bfid:
             return  # extract_bfid_from_ticket handles its own errors.
 
@@ -1753,17 +1830,18 @@ class FileClerkMethods(FileClerkInfoMethods):
         record["pnfsid"] = pnfsid
         record["drive"] = drive
         # temporary workaround - see above
-        if pnfsvid != None:
+        if pnfsvid is not None:
             record["pnfsvid"] = pnfsvid
-        if pnfs_name0 != None:
+        if pnfs_name0 is not None:
             record["pnfs_name0"] = pnfs_name0
-        if uid != None:
+        if uid is not None:
             record["uid"] = uid
-        if gid != None:
+        if gid is not None:
             record["gid"] = gid
         record["deleted"] = "no"
         record["original_library"] = ticket["fc"].get("original_library", None)
-        record["file_family_width"] = ticket["fc"].get("file_family_width", None)
+        record["file_family_width"] = ticket["fc"].get(
+            "file_family_width", None)
         if ticket["fc"].get("mover_type", None) == "DiskMover":
             record["cache_status"] = file_cache_status.CacheStatus.CACHED
 
@@ -1777,9 +1855,13 @@ class FileClerkMethods(FileClerkInfoMethods):
         try:
             record = self.filedb_dict.update_record(bfid, record)
         except Exception as e:
-            Trace.alarm(e_errors.ERROR, "Failed to update file record with bfid {} : {}".format(bfid, str(e)))
+            Trace.alarm(
+                e_errors.ERROR,
+                "Failed to update file record with bfid {} : {}".format(
+                    bfid,
+                    str(e)))
             ticket["status"] = (
-            e_errors.ERROR, "Failed to update file record with bfid {}, see server log for details".format(bfid))
+                e_errors.ERROR, "Failed to update file record with bfid {}, see server log for details".format(bfid))
             self.reply_to_caller(ticket)
             return
 
@@ -1791,8 +1873,9 @@ class FileClerkMethods(FileClerkInfoMethods):
                 event = pe_client.evt_cache_written_fc(ticket, record)
                 try:
                     self.en_qpid_client.send(event)
-                except:
-                    ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+                except BaseException:
+                    ticket["status"] = (
+                        str(sys.exc_info()[0]), str(sys.exc_info()[1]))
 
         self.reply_to_caller(ticket)
 
@@ -1818,10 +1901,11 @@ class FileClerkMethods(FileClerkInfoMethods):
             ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
             return
-        record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED;
+        record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
         try:
-            r = self.filedb_dict.update_record(bfid, {"cache_status": record["cache_status"]})
-        except  Exception as msg:
+            r = self.filedb_dict.update_record(
+                bfid, {"cache_status": record["cache_status"]})
+        except Exception as msg:
             ticket['status'] = (e_errors.ERROR, str(msg))
             self.reply_to_caller(ticket)
             return
@@ -1838,14 +1922,15 @@ class FileClerkMethods(FileClerkInfoMethods):
                 Trace.log(e_errors.ERROR,
                           "open_bitfile: failed to send cache miss event for bfid {} : {}".format(bfid, str(e)))
                 ticket["status"] = (
-                e_errors.ERROR, "Failed to send cache miss event for bfid {}, see server log for details".format(bfid))
+                    e_errors.ERROR, "Failed to send cache miss event for bfid {}, see server log for details".format(bfid))
                 record["cache_status"] = cache_status
                 try:
                     """
                     set cache_status to original value, rolling back the change
                     """
-                    r = self.filedb_dict.update_record(bfid, {"cache_status": record["cache_status"]})
-                except  Exception as msg:
+                    r = self.filedb_dict.update_record(
+                        bfid, {"cache_status": record["cache_status"]})
+                except Exception as msg:
                     Trace.log(e_errors.ERROR,
                               "open_bitfile: failed to rollback cache_status change for bfid {} : {}".format(bfid,
                                                                                                              str(msg)))
@@ -1879,7 +1964,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         # check that this is indeed the package file.
         #
         if bfid != record['package_id'] or \
-                        type(record['package_id']) == types.NoneType:
+                isinstance(record['package_id'], type(None)):
             ticket["status"] = (e_errors.ERROR, "This is not a package file")
             self.reply_to_caller(ticket)
             return
@@ -1887,8 +1972,9 @@ class FileClerkMethods(FileClerkInfoMethods):
         record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
 
         try:
-            r = self.filedb_dict.update_record(bfid, {"cache_status": record["cache_status"]})
-        except  Exception as msg:
+            r = self.filedb_dict.update_record(
+                bfid, {"cache_status": record["cache_status"]})
+        except Exception as msg:
             ticket['status'] = (e_errors.ERROR, str(msg))
             self.reply_to_caller(ticket)
             return
@@ -1898,8 +1984,9 @@ class FileClerkMethods(FileClerkInfoMethods):
         ticket["fc"] = record
         library = None
         try:
-            library = self.filedb_dict.query_getresult(q, (record["package_id"],))[0][0]
-        except:
+            library = self.filedb_dict.query_getresult(
+                q, (record["package_id"],))[0][0]
+        except BaseException:
             ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
             self.reply_to_caller(ticket)
             return
@@ -1944,11 +2031,12 @@ class FileClerkMethods(FileClerkInfoMethods):
             event = pe_client.evt_cache_miss_fc(ticket, record)
             try:
                 self.en_qpid_client.send(event)
-            except:
+            except BaseException:
                 Trace.log(e_errors.ERROR,
                           "open_bitfile_for_package: failed to send cache miss event for bfid {} : {}".format(bfid, str(
                               sys.exc_info()[1])))
-                ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+                ticket["status"] = (str(sys.exc_info()[0]),
+                                    str(sys.exc_info()[1]))
 
         self.reply_to_caller(ticket)
 
@@ -1969,7 +2057,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         # check that this is indeed the package file.
         #
         if bfid != record['package_id'] or \
-                        type(record['package_id']) == types.NoneType:
+                isinstance(record['package_id'], type(None)):
             ticket["status"] = (e_errors.ERROR, "This is no a package file")
             self.reply_to_caller(ticket)
             return
@@ -1977,7 +2065,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         # modify values for package file
         #
         for k in ticket.keys():
-            if k != 'bfid' and record.has_key(k):
+            if k != 'bfid' and k in record:
                 record[k] = ticket[k]
         #
         # retrieve the children. Note that the query below retrieves the parent
@@ -2011,7 +2099,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         #  this function is needed to migration
         #
         bfid = self.extract_value_from_ticket('bfid', ticket, fail_None=True)
-        new_bfid = self.extract_value_from_ticket('new_bfid', ticket, fail_None=True)
+        new_bfid = self.extract_value_from_ticket(
+            'new_bfid', ticket, fail_None=True)
         if not bfid or not new_bfid:
             return
         #
@@ -2024,9 +2113,10 @@ class FileClerkMethods(FileClerkInfoMethods):
             ticket["status"] = e.ticket["status"]
             self.reply_to_caller(ticket)
             return
-        except:
+        except BaseException:
             exc_type, exc_value = sys.exc_info()[:2]
-            message = 'swap_package(): ' + str(exc_type) + ' ' + str(exc_value) + ' query: ' + q
+            message = 'swap_package(): ' + str(exc_type) + ' ' + \
+                str(exc_value) + ' query: ' + q
             Trace.log(e_errors.ERROR, message)
             ticket["status"] = (e_errors.ERROR, message)
             self.reply_to_caller(ticket)
@@ -2069,7 +2159,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
             self.filedb_dict.update(q)
 
-    #### DONE
+    # DONE
     def set_crcs(self, ticket):
 
         bfid = self.extract_bfid_from_ticket(ticket, check_exists=False)
@@ -2090,12 +2180,16 @@ class FileClerkMethods(FileClerkInfoMethods):
             ticket["complete_crc"] = record["complete_crc"]
             ticket["sanity_cookie"] = record["sanity_cookie"]
         except Exception as e:
-            Trace.log(e_errors.ERROR, "set_crcs : failed to update file record with bfid {} : {}".format(bfid, str(e)))
+            Trace.log(
+                e_errors.ERROR,
+                "set_crcs : failed to update file record with bfid {} : {}".format(
+                    bfid,
+                    str(e)))
             ticket["status"] = (e_errors.ERROR, str(e))
 
         self.reply_to_caller(ticket)
 
-    #### DONE
+    # DONE
     # change the delete state element in the dictionary
     def set_deleted(self, ticket):
 
@@ -2106,10 +2200,11 @@ class FileClerkMethods(FileClerkInfoMethods):
         deleted = self.extract_value_from_ticket('deleted', ticket)
         if not deleted:
             return  # extract_value_from_ticket handles its own errors.
-        deleted = string.lower(deleted);
+        deleted = string.lower(deleted)
 
         if deleted not in enstore_constants.FILE_DELETED_FLAGS:
-            message = "Unsupported delete flag \"%s\", supported flags are " % (deleted,)
+            message = "Unsupported delete flag \"%s\", supported flags are " % (
+                deleted,)
             for f in enstore_constants.FILE_DELETED_FLAGS:
                 message = message + "\"" + f + "\","
             message = message[:-1]  # remove trailing comma
@@ -2118,15 +2213,18 @@ class FileClerkMethods(FileClerkInfoMethods):
             return
 
         if record.get("package_id", None) == bfid and \
-                        record.get("active_package_files_count") > 0:
-            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "cannot set deleted non-empty package file")
+                record.get("active_package_files_count") > 0:
+            ticket["status"] = (
+                e_errors.FILE_CLERK_ERROR,
+                "cannot set deleted non-empty package file")
             self.reply_to_caller(ticket)
             return
 
         if record["deleted"] != deleted:
             record["deleted"] = deleted
             try:
-                r = self.filedb_dict.update_record(bfid, {"deleted": record["deleted"]})
+                r = self.filedb_dict.update_record(
+                    bfid, {"deleted": record["deleted"]})
             except Exception as e:
                 Trace.log(e_errors.ERROR,
                           "set_deleted : failed to update file record with bfid {} : {}".format(bfid, str(e)))
@@ -2142,14 +2240,15 @@ class FileClerkMethods(FileClerkInfoMethods):
             if record:
                 if record["deleted"] != deleted:
                     record["deleted"] = deleted
-                    r = self.filedb_dict.update_record(i, {"deleted": record["deleted"]})
+                    r = self.filedb_dict.update_record(
+                        i, {"deleted": record["deleted"]})
         ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
         Trace.log(e_errors.INFO, 'set_deleted %s' % (ticket,))
         return
 
-    #### DONE
+    # DONE
     # change the delete state element in the dictionary
     def del_bfid(self, ticket):
 
@@ -2160,7 +2259,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         # This is a restricted service
         status = self.restricted_access()
         if status:
-            msg = "attempt to delete file %s from %s" % (bfid, self.reply_address[0])
+            msg = "attempt to delete file %s from %s" % (
+                bfid, self.reply_address[0])
             Trace.log(e_errors.ERROR, msg)
             ticket['status'] = status
             self.reply_to_caller(ticket)
@@ -2176,7 +2276,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         Trace.trace(12, 'del_bfid %s' % (ticket,))
         return
 
-    #### DONE
+    # DONE
     # __erase_volume(self, vol) -- delete all files belonging to vol
     #
     # This is only the file clerk portion of erasing a volume.
@@ -2189,9 +2289,10 @@ class FileClerkMethods(FileClerkInfoMethods):
         Trace.log(e_errors.INFO, 'erasing files of volume %s' % (vol))
         try:
             bfids = self.get_all_bfids(vol)
-        except:
+        except BaseException:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = "__erase_volume(): can not get bfids for '%s' %s %s" % (vol, str(exc_type), str(exc_value))
+            msg = "__erase_volume(): can not get bfids for '%s' %s %s" % (
+                vol, str(exc_type), str(exc_value))
             Trace.log(e_errors.ERROR, msg)
             return e_errors.ERROR, msg
 
@@ -2199,9 +2300,10 @@ class FileClerkMethods(FileClerkInfoMethods):
         for bfid in bfids:
             try:
                 del self.filedb_dict[bfid]
-            except:
+            except BaseException:
                 exc_type, exc_value = sys.exc_info()[:2]
-                msg = "__erase_volume(): failed to remove record '%s' %s %s" % (bfid, str(exc_type), str(exc_value))
+                msg = "__erase_volume(): failed to remove record '%s' %s %s" % (
+                    bfid, str(exc_type), str(exc_value))
                 Trace.log(e_errors.ERROR, msg)
                 return e_errors.ERROR, msg
 
@@ -2209,21 +2311,23 @@ class FileClerkMethods(FileClerkInfoMethods):
         return e_errors.OK, None
 
     # erase_volume -- server service
-    #### DONE
+    # DONE
     def erase_volume(self, ticket):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         ticket["status"] = (e_errors.OK, None)
         # catch any failure
         try:
             ticket['status'] = self.__erase_volume(external_label)
-        except:
+        except BaseException:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = 'erase failed due to: ' + str(exc_type) + ' ' + str(exc_value)
+            msg = 'erase failed due to: ' + \
+                str(exc_type) + ' ' + str(exc_value)
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
         # and return to the caller
@@ -2234,9 +2338,12 @@ class FileClerkMethods(FileClerkInfoMethods):
     #
     # Note: this is NOT the counter part of __delete_volume() in
     #       volume clerk, which is simply a renaming to *.deleted
-    #### DONE
+    # DONE
     def __delete_volume(self, vol):
-        Trace.log(e_errors.INFO, 'marking files of volume %s as deleted' % (vol))
+        Trace.log(
+            e_errors.INFO,
+            'marking files of volume %s as deleted' %
+            (vol))
         #
         # query that marks deleted all packaged files on a volume
         #
@@ -2270,14 +2377,16 @@ class FileClerkMethods(FileClerkInfoMethods):
         # I have noticed that performance
         # of combined query to be slow
 
-
         for q in (q1, q2):
             res = self.filedb_dict.update(q, (vol,))
 
-        Trace.log(e_errors.INFO, 'all files of volume %s are marked deleted' % (vol))
+        Trace.log(
+            e_errors.INFO,
+            'all files of volume %s are marked deleted' %
+            (vol))
         return
 
-    #### DONE
+    # DONE
     # delete_volume -- server service
 
     def delete_volume(self, ticket):
@@ -2285,13 +2394,14 @@ class FileClerkMethods(FileClerkInfoMethods):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists=False)
         if not external_label or external_label == (None, None):
-            return  # extract_external_lable_from_ticket handles its own errors.
+            # extract_external_lable_from_ticket handles its own errors.
+            return
 
         ticket["status"] = (e_errors.OK, None)
         # catch any failure
         try:
             self.__delete_volume(external_label)
-        except:
+        except BaseException:
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, "delete failed")
         # and return to the caller
         self.reply_to_caller(ticket)
@@ -2304,7 +2414,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             ticket['status'] = (e_errors.OK, None)
             ticket['start_backup'] = "yes"
         # catch any error and keep going. server needs to be robust
-        except:
+        except BaseException:
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = str(exc), str(msg)
             Trace.log(e_errors.ERROR, "start_backup %s" % (ticket['status'],))
@@ -2319,7 +2429,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             ticket['status'] = (e_errors.OK, None)
             ticket['stop_backup'] = "yes"
         # catch any error and keep going. server needs to be robust
-        except:
+        except BaseException:
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = str(exc), str(msg)
             Trace.log(e_errors.ERROR, "stop_backup %s" % (ticket['status'],))
@@ -2334,7 +2444,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             ticket['status'] = (e_errors.OK, None)
             ticket['backup'] = "yes"
         # catch any error and keep going. server needs to be robust
-        except:
+        except BaseException:
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = str(exc), str(msg)
             Trace.log(e_errors.ERROR, "backup %s" % (ticket['status'],))
@@ -2367,9 +2477,10 @@ class FileClerkMethods(FileClerkInfoMethods):
         try:
             res = self.filedb_dict.insert(q)
             ticket['status'] = (e_errors.OK, None)
-        except:
+        except BaseException:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = "failed to mark %s bad due to " % (bfid) + str(exc_type) + ' ' + str(exc_value)
+            msg = "failed to mark %s bad due to " % (
+                bfid) + str(exc_type) + ' ' + str(exc_value)
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
             Trace.log(e_errors.KEYERROR, msg)
 
@@ -2386,9 +2497,10 @@ class FileClerkMethods(FileClerkInfoMethods):
         try:
             res = self.filedb_dict.remove(q)
             ticket['status'] = (e_errors.OK, None)
-        except:
+        except BaseException:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = "failed to unmark %s bad due to " % (bfid) + str(exc_type) + ' ' + str(exc_value)
+            msg = "failed to unmark %s bad due to " % (
+                bfid) + str(exc_type) + ' ' + str(exc_value)
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
             Trace.log(e_errors.KEYERROR, msg)
 
@@ -2553,7 +2665,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         self.reply_to_caller(ticket)
         return
 
-    # set_closed():  Update record to indicate the migration has been completed.
+    # set_closed():  Update record to indicate the migration has been
+    # completed.
     def set_closed(self, ticket):
         q_base = "update migration set closed = '%s' where \
                   src_bfid = '%s' and dst_bfid = '%s';"
@@ -2603,7 +2716,8 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
         threading.Thread(target=self.replay_cache_written_events).start()
 
-        self.check_files_in_transiion_thread = threading.Thread(target=self.check_files_in_transition)
+        self.check_files_in_transiion_thread = threading.Thread(
+            target=self.check_files_in_transition)
         self.check_files_in_transiion_thread.start()
 
         self.check_archiving_files_in_transition_thread = threading.Thread(
@@ -2613,7 +2727,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
     # overriden from dispatching_worker
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
-        ###XXX should have a global exception handler here
+        # XXX should have a global exception handler here
         count = 0
         if self.use_raw_input:
             # prepare raw input
@@ -2635,7 +2749,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
         if self.is_child:
             Trace.trace(6, "serve_forever, child process exiting")
-            os._exit(0)  ## in case the child process doesn't explicitly exit
+            os._exit(0)  # in case the child process doesn't explicitly exit
         else:
             Trace.trace(6, "serve_forever, shouldn't get here")
 
@@ -2662,9 +2776,13 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                                     }, record)
             try:
                 self.en_qpid_client.send(event)
-                Trace.log(e_errors.INFO, "Succesfully replayed CACHE_WRITTEN event for %s" % (bfid,))
-            except:
-                Trace.log(e_errors.INFO, "Failed replay CACHE_WRITTEN event for %s" % (bfid,))
+                Trace.log(
+                    e_errors.INFO, "Succesfully replayed CACHE_WRITTEN event for %s" %
+                    (bfid,))
+            except BaseException:
+                Trace.log(
+                    e_errors.INFO, "Failed replay CACHE_WRITTEN event for %s" %
+                    (bfid,))
                 pass
 
     def replay(self, ticket):
@@ -2675,10 +2793,12 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
             ticket["status"] = (e_errors.OK, None)
             try:
                 func(arg)
-            except:
-                ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            except BaseException:
+                ticket["status"] = (str(sys.exc_info()[0]),
+                                    str(sys.exc_info()[1]))
         else:
-            ticket["status"] = (e_errors.ERROR, "No qpid client defined, check configuration")
+            ticket["status"] = (e_errors.ERROR,
+                                "No qpid client defined, check configuration")
         self.reply_to_caller(ticket)
 
     def __check_files_in_transition(self, query, filename):
@@ -2703,26 +2823,35 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                 for row in res:
                     txt += "%s\n" % (row[0])
                 f.write("%s" % (txt,))
-                f.close();
+                f.close()
                 inq_d = self.csc.get(enstore_constants.INQUISITOR, {})
                 html_dir = inq_d.get("html_file", enstore_files.default_dir)
                 html_host = inq_d.get("host", "localhost")
-                cmd = "$ENSTORE_DIR/sbin/enrcp %s %s:%s" % (f.name, html_host, html_dir)
+                cmd = "$ENSTORE_DIR/sbin/enrcp %s %s:%s" % (
+                    f.name, html_host, html_dir)
                 rc = enstore_functions2.shell_command2(cmd)
                 failed = False
                 if rc:
                     if rc[0] != 0:
                         failed = True
                         txt = "Failed to execute command %s\n. Output was %s\n. List of files: %s\n" % (
-                        cmd, rc[2], txt,)
+                            cmd, rc[2], txt,)
                 else:
                     failed = True
-                    txt = "Failed to execute command %s\n. List of files: %s\n" % (cmd, txt,)
+                    txt = "Failed to execute command %s\n. List of files: %s\n" % (
+                        cmd, txt,)
                 if not failed:
                     txt = 'See <A HREF="{0}">{0}</A>'.format(filename)
-                Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transition table" % len(res), txt)
+                Trace.alarm(
+                    e_errors.WARNING,
+                    " %d files stuck in files_in_transition table" %
+                    len(res),
+                    txt)
         except Exception as e:
-            Trace.alarm(e_errors.INFO, "Failed to execute file in transition check %s" % (str(e)))
+            Trace.alarm(
+                e_errors.INFO,
+                "Failed to execute file in transition check %s" %
+                (str(e)))
 
     def check_files_in_transition(self):
         """
@@ -2776,16 +2905,16 @@ if __name__ == "__main__":
     fc.handle_generic_commands(intf)
 
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
-    while 1:
+    while True:
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
         except e_errors.EnstoreError:
             continue
-        except SystemExit, exit_code:
+        except SystemExit as exit_code:
             fc.filedb_dict.close()
             sys.exit(exit_code)
-        except:
+        except BaseException:
             fc.serve_forever_error(fc.log_name)
             continue
     Trace.trace(e_errors.ERROR, "File Clerk finished (impossible)")

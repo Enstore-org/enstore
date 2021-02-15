@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import sys
 import os
 
@@ -14,5 +15,4 @@ else:
     cron = sys.argv[1]
 
 # find associated text
-print enstore_make_plot_page.ENGLISH_TITLES.get(cron, "")
-    
+print(enstore_make_plot_page.ENGLISH_TITLES.get(cron, ""))

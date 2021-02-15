@@ -32,7 +32,7 @@ XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib64 -L/usr/X11R6/lib -L/usr/lib/X11 -l
 #-lXext -lXmu -lXt -lXi -lSM -lICE
 FTT_INCLUDES=-I. -I$(FTT_DIR)/ftt_lib -I$(FTT_DIR)/include
 FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt $(LIBDS)
-FTTTEST_LIBS=$(FTT_LIBS) -lftt_test
+FTTTEST_LIBS=$(FTT_LIBS)
 CFLAGS=$(BITS_FLAG) $(MACOS_FLAGS)
 
 Makefile.modules: Setup
@@ -74,6 +74,7 @@ Modules:
 	- cp ftt2cmodule.so _ftt2module.so
 	cp runoncmodule.so _runonmodule.so
 	cp enroutecmodule.so _enroutemodule.so
+	cp mtxcmodule.so _mtxmodule.so 
 
 adler32.o: adler32.c
 	$(CC) $(CFLAGS) -c $(PIC) adler32.c

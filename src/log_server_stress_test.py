@@ -10,7 +10,7 @@ import Trace
 msg = sys.argv[1]
 max_count = int(sys.argv[2])
 intf = log_client.LoggerClientInterface(user_mode=0)
-name="STRESS"
+name = "STRESS"
 Trace.init(name)
 logc = log_client.LoggerClient((intf.config_host, intf.config_port), name,
                                enstore_constants.LOG_SERVER)
@@ -21,6 +21,6 @@ logc = log_client.LoggerClient((intf.config_host, intf.config_port), name,
 count = 0
 
 while count < max_count:
-    log_client.logit(logc, "%s %s"%(msg, count,))
-    #time.sleep(0.001)
+    log_client.logit(logc, "%s %s" % (msg, count,))
+    # time.sleep(0.001)
     count += 1

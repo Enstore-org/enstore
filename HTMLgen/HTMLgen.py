@@ -42,7 +42,9 @@ populate the TableLite container object.
 .. [O Reilly] http://www.oreilly.com/catalog/html3/index.html
 .. [Yale Web Style Manual] http://info.med.yale.edu/caim/manual/contents.html
 """
+from __future__ import print_function
 
+from future.utils import raise_
 import string, re, time, os
 import UserList, copy
 from imgsize import imgsize
@@ -187,7 +189,7 @@ class BasicDocument:
             f = open(mpath(filename), 'w')
             f.write(str(self))
             f.close()
-            if PRINTECHO: print 'wrote: "'+filename+'"'
+            if PRINTECHO: print('wrote: "'+filename+'"')
         else:
             import sys
             sys.stdout.write(str(self))
@@ -421,7 +423,7 @@ class SeriesDocument(SimpleDocument):
             elif bannertype == InstanceType:
                 s.append(str(self.banner) + '<BR>\n')
             else:
-                raise TypeError, 'banner must be either a tuple, instance, or string.'
+                raise TypeError('banner must be either a tuple, instance, or string.')
         if self.place_nav_buttons:
             s.append(self.nav_buttons())
         s.append(str(Heading(3,self.title)))
@@ -586,14 +588,14 @@ class StringTemplate:
                     f = open(filename, 'w')
                     f.write(str(self))
                     f.close()
-                    if PRINTECHO: print 'wrote: "'+filename+'"'
+                    if PRINTECHO: print('wrote: "'+filename+'"')
                 else:
-                    if PRINTECHO: print 'file unchanged: "'+filename+'"'
+                    if PRINTECHO: print('file unchanged: "'+filename+'"')
             else:
                 f = open(filename, 'w')
                 f.write(str(self))
                 f.close()
-                if PRINTECHO: print 'wrote: "'+filename+'"'
+                if PRINTECHO: print('wrote: "'+filename+'"')
         else:
             import sys
             sys.stdout.write(str(self))
@@ -874,10 +876,10 @@ class Href:
         self.url = url
         self.text = text
         for item in kw.keys():
-            if self.__dict__.has_key(item):
+            if item in self.__dict__:
                 self.__dict__[item] = kw[item]
             else:
-                raise KeyError, `item`+' not a valid parameter for this class.'
+                raise_(KeyError, repr(item)+' not a valid parameter for this class.')
 
     def __str__(self):
         s = ['<A HREF="%s"' % self.url]
@@ -1251,7 +1253,7 @@ def overlay_values(obj, dict):
         if hasattr(obj, key):
             obj.__dict__[key] = dict[key]
         else:
-            raise KeyError(`key` + ' not a keyword for ' + obj.__class__.__name__)
+            raise KeyError(repr(key) + ' not a keyword for ' + obj.__class__.__name__)
 
 
 class Input:
@@ -1300,12 +1302,12 @@ class Input:
         self.border = None
         self.align = ''
         for item in kw.keys():
-            if self.__dict__.has_key(item):
+            if item in self.__dict__:
                 self.__dict__[item] = kw[item]
             else:
-                raise KeyError, `item`+' not a valid parameter of the Input class.'
+                raise_(KeyError, repr(item)+' not a valid parameter of the Input class.')
         if Input.re_type.search(self.type) is None:
-            raise KeyError, `self.type`+' not a valid type of Input class.'
+            raise_(KeyError, repr(self.type)+' not a valid type of Input class.')
 
     def __str__(self):
         s = []
@@ -1358,10 +1360,10 @@ class Select(UserList.UserList):
         self.onChange = ''
         self.onFocus = ''
         for item in kw.keys():
-            if self.__dict__.has_key(item):
+            if item in self.__dict__:
                 self.__dict__[item] = kw[item]
             else:
-                raise KeyError, `item`+' not a valid parameter of the Select class.'
+                raise_(KeyError, repr(item)+' not a valid parameter of the Select class.')
 
     def __str__(self):
         s = ['<SELECT NAME="%s"' % self.name]
@@ -1414,10 +1416,10 @@ class Textarea:
         self.onFocus = ''
         self.onSelect = ''
         for item in kw.keys():
-            if self.__dict__.has_key(item):
+            if item in self.__dict__:
                 self.__dict__[item] = kw[item]
             else:
-                raise KeyError, `item`+' not a valid parameter of the Textarea class.'
+                raise_(KeyError, repr(item)+' not a valid parameter of the Textarea class.')
 
     def __str__(self):
         s = ['<TEXTAREA NAME="%s" ROWS=%s COLS=%s' % (self.name, self.rows, self.cols)]
@@ -1450,10 +1452,10 @@ class Script:
         self.code = ''
         # Now overlay the keyword arguments from caller
         for k in kw.keys():
-            if self.__dict__.has_key(k):
+            if k in self.__dict__:
                 self.__dict__[k] = kw[k]
             else:
-                print `k`, "isn't a valid parameter for this class."
+                print(repr(k), "isn't a valid parameter for this class.")
 
     def __str__(self):
         s = ['<SCRIPT LANGUAGE="%s" ' % self.language]
@@ -1533,10 +1535,10 @@ class Table:
         self.heading_color=None
         # Now overlay the keyword arguments from caller
         for k in kw.keys():
-            if self.__dict__.has_key(k):
+            if k in self.__dict__:
                 self.__dict__[k] = kw[k]
             else:
-                print `k`, "isn't a valid parameter for this class."
+                print(repr(k), "isn't a valid parameter for this class.")
 
     def __str__(self):
         """Generates the html for the entire table.
@@ -1702,7 +1704,7 @@ class Image(AbstractTagSingle):
     attr_template , attr_dict = _make_attr_inits(attrs)
 
     def __init__(self, *args, **kw):
-        apply(AbstractTagSingle.__init__, (self,) + args, kw)
+        AbstractTagSingle.__init__(*(self,) + args, **kw)
         self.prefix = None
         self.absolute = None
         if self.args:
@@ -1869,7 +1871,7 @@ class AbstractTag:
             self.contents = self.contents + other
             return self
         else:
-            raise TypeError, 'can only add lists to this object'
+            raise TypeError('can only add lists to this object')
             
     def append(self, *items):
         """Append one or more items to the end of the container.
@@ -1924,7 +1926,7 @@ class AbstractTag:
         Returns the number of matching text groups.
         """
         collapse = 0
-        if kw.has_key('collapse'): collapse = kw['collapse']
+        if 'collapse' in kw: collapse = kw['collapse']
         text = string.join(map(str, self.contents))
         newtext, count = markup_re(text, rex, marker, collapse)
         if count:
@@ -2051,7 +2053,7 @@ class Heading(AbstractTag):
     def __str__(self):
         if not self.tagname:
             if self.contents[0] not in (1,2,3,4,5,6):
-                raise AttributeError, "First arg of Heading must be int from 1 to 6."
+                raise AttributeError("First arg of Heading must be int from 1 to 6.")
             self.tagname = 'H%d' % self.contents[0]
             del self.contents[0]
         return AbstractTag.__str__(self)

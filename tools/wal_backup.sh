@@ -24,7 +24,7 @@ in=${1}
 out=${archive_dir}/${2}.Z
 
 if [ -f ${out} ] ; then
-        rm -f ${out}
+        exit 100
 fi
 
 compress <$in >${out}
@@ -33,10 +33,10 @@ if [ "$?" != "0" ] ; then
         exit 1
 fi
 
-source /usr/local/etc/setups.sh 2>/dev/null
+source /usr/local/etc/setups.sh
 setup enstore
 
-${ENSTORE_DIR}/sbin/enrcp ${out} enstore@${remotebackup}/../pnfs-backup.xlogs
+${ENSTORE_DIR}/sbin/enrcp ${out} ${remotebackup}/../pnfs-backup.xlogs
 
 if [ "$?" != "0" ] ; then
         rm -f ${out}

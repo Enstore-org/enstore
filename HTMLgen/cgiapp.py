@@ -1,3 +1,5 @@
+from __future__ import print_function
+from future.utils import raise_
 __version__ = '$Id$'
 from HTMLgen import *
 from HTMLcolors import *
@@ -41,33 +43,33 @@ class CGI(Document):
 
         self.http = { 'Content-type': 'text/html' }
         for item in kw.keys():
-            if self.__dict__.has_key(item):
+            if item in self.__dict__:
                 self.__dict__[item] = kw[item]
             else:
-                raise KeyError,\
-                        `item`+' not a valid parameter of the CGI class'
+                raise_(KeyError,\
+                        repr(item)+' not a valid parameter of the CGI class')
 
     def get_form(self):
         self.form = _fstodict(cgi.FieldStorage())
-        if self.form.has_key('function'):
+        if 'function' in self.form:
             f = self.form['function']
             if f in self.valid.keys():
                 self.function = f
 
     def verify(self):
         for tok in self.form_defaults.keys():
-            if not self.form.has_key(tok):
+            if tok not in self.form:
                 self.form[tok] = self.form_defaults[tok]
         for tok in self.form_errors.keys():
-            if not form.has_key(tok):
+            if tok not in form:
                 self.form_messages.append(self.form_errors[tok])
                 self.form_ok = 0
 
     def run(self, cont=0):
         # Print HTTP messages
         for key in self.http.keys():
-            print '%s: %s' % (key, self.http[key])
-        print
+            print('%s: %s' % (key, self.http[key]))
+        print()
 
         # Redirect stderr
         sys.stderr = open(self._tempfile, 'w')
@@ -78,7 +80,7 @@ class CGI(Document):
         # Function handling
         if not self.active:
             ret = _not_active(self)
-            print self
+            print(self)
             sys.exit(0)
         elif not '_no_function' in self.valid.keys():
             self.valid['_no_function'] = _no_function
@@ -95,7 +97,7 @@ class CGI(Document):
             f.close()
 
         # Print Document object
-        print self
+        print(self)
         if not cont:
             sys.exit(0) # Provide a speedy exit
 

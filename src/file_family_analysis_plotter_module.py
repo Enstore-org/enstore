@@ -18,24 +18,26 @@ import enstore_constants
 
 WEB_SUB_DIRECTORY = enstore_constants.FILE_FAMILY_ANALYSIS_PLOT_SUBDIR
 
-class FileFamilyAnalysisPlotterModule(enstore_plotter_module.EnstorePlotterModule):
-    def __init__(self,name,isActive=True):
-        enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
 
+class FileFamilyAnalysisPlotterModule(
+        enstore_plotter_module.EnstorePlotterModule):
+    def __init__(self, name, isActive=True):
+        enstore_plotter_module.EnstorePlotterModule.__init__(
+            self, name, isActive)
 
     #######################################################################
     # The following functions must be defined by all plotting modueles.
     #######################################################################
 
     def book(self, frame):
-        #Get cron directory information.
+        # Get cron directory information.
         cron_dict = frame.get_configuration_client().get("crons", {})
 
-        #Pull out just the information we want.
+        # Pull out just the information we want.
         #temp_dir = cron_dict.get("tmp_dir", "/tmp")
         html_dir = cron_dict.get("html_dir", "")
 
-        #Handle the case were we don't know where to put the output.
+        # Handle the case were we don't know where to put the output.
         if not html_dir:
             sys.stderr.write("Unable to determine html_dir.\n")
             sys.exit(1)
@@ -44,33 +46,32 @@ class FileFamilyAnalysisPlotterModule(enstore_plotter_module.EnstorePlotterModul
         if not os.path.exists(self.web_dir):
             os.makedirs(self.web_dir)
 
-
     def fill(self, frame):
 
-        #  here we create data points 
-        
+        #  here we create data points
+
         edb = frame.get_configuration_client().get('database', {})
-        db = pg.DB(host   = edb.get('dbhost', "localhost"),
-                   dbname = edb.get('dbname', "enstoredb"),
-                   port   = edb.get('dbport', 5432),
-                   user   = edb.get('dbuser', "enstore"),
+        db = pg.DB(host=edb.get('dbhost', "localhost"),
+                   dbname=edb.get('dbname', "enstoredb"),
+                   port=edb.get('dbport', 5432),
+                   user=edb.get('dbuser', "enstore"),
                    )
 
         sql_cmd = "select distinct(storage_group) from volume;"
 
         res = db.query(sql_cmd)
 
-        #Remember the list of storage groups to pass to plot().
+        # Remember the list of storage groups to pass to plot().
         self.storage_groups = []
         for row in res.getresult():
             if not row:
                 continue
             self.storage_groups.append(row[0])
 
-        now_time   = time.time()
-        start_time  = now_time-365*3600*24 #One year ago.
+        now_time = time.time()
+        start_time = now_time - 365 * 3600 * 24  # One year ago.
 
-        #Execute the fill() function for each histogram.
+        # Execute the fill() function for each histogram.
         self.histograms = []
         for sg in self.storage_groups:
             h1 = histogram.Histogram1D(sg, "%s tape occupancy" % (sg),
@@ -82,15 +83,17 @@ class FileFamilyAnalysisPlotterModule(enstore_plotter_module.EnstorePlotterModul
             h1.set_opt_stat(True)
 
             h2 = histogram.Histogram1D("%s_active" % sg,
-                                       "%s active volumes vs last access time"%(sg),
+                                       "%s active volumes vs last access time" % (
+                                           sg),
                                        120, float(start_time), float(now_time))
             h2.set_ylabel("Number of active volumes ")
             h2.set_xlabel("Date")
             h2.set_time_axis(True)
             h2.set_marker_type("points")
 
-            h3 = histogram.Histogram1D("%s_time"%sg,
-                                       "%s tape occupancy  vs last access time"%(sg),
+            h3 = histogram.Histogram1D("%s_time" % sg,
+                                       "%s tape occupancy  vs last access time" % (
+                                           sg),
                                        120, float(start_time), float(now_time))
             h3.set_ylabel("Fill Fraction")
             h3.set_xlabel("Date")
@@ -104,24 +107,23 @@ class FileFamilyAnalysisPlotterModule(enstore_plotter_module.EnstorePlotterModul
                 if not row:
                     continue
                 h1.fill(row[2])
-                if (row[1] == 'none'):  
+                if (row[1] == 'none'):
                     h2.fill(time.mktime(time.strptime(row[0],
                                                       '%Y-%m-%d %H:%M:%S')))
                     h3.fill(time.mktime(time.strptime(row[0],
                                                       '%Y-%m-%d %H:%M:%S')),
                             row[2])
-            
-            #Add this to the list to pass to plot().
+
+            # Add this to the list to pass to plot().
             self.histograms.append(h1)
             self.histograms.append(h2)
             self.histograms.append(h3)
 
-        #Close these to avoid resource leaks.
+        # Close these to avoid resource leaks.
         db.close()
 
     def plot(self):
         for hist in self.histograms:
             # crazy hack to plot only non-empty histograms
-            #if (hist.n_entries() > 0):
-                hist.plot(directory = self.web_dir)
-
+            # if (hist.n_entries() > 0):
+            hist.plot(directory=self.web_dir)

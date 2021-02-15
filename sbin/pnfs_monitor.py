@@ -83,13 +83,23 @@ def print_yes_no(value):
     else:
         return 'y'
 
+
 HEADER_FORMAT = "{0:^20} | {1:^36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:^14} | {7:} \n"
 FORMAT = "{0:<20} | {1:<36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:>14} | {7:<} \n"
 Trace.init("PNFS_MONITOR")
 
 
 def print_header(fh):
-    fh.write(HEADER_FORMAT.format("date", "pnfsid", "layer1", "layer2", "layer4", "pools", "size [bytes]", "path"))
+    fh.write(
+        HEADER_FORMAT.format(
+            "date",
+            "pnfsid",
+            "layer1",
+            "layer2",
+            "layer4",
+            "pools",
+            "size [bytes]",
+            "path"))
 
 
 def select(db, query):
@@ -99,10 +109,10 @@ def select(db, query):
         cursor.execute(query)
         result = cursor.fetchall()
         return result
-    except:
+    except BaseException:
         exc_type, exc_value = sys.exc_info()[:2]
         sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",
-                                       time.localtime(time.time()))+" : " + str(exc_type)+' '+str(exc_value)+'\n')
+                                       time.localtime(time.time())) + " : " + str(exc_type) + ' ' + str(exc_value) + '\n')
         sys.stderr.flush()
         raise
     finally:
@@ -116,26 +126,28 @@ def insert(db, query):
         cursor = db.cursor()
         cursor.execute(query)
         db.commit()
-    except:
+    except BaseException:
         exc_type, exc_value = sys.exc_info()[:2]
         sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",
-                                       time.localtime(time.time()))+" : " + str(exc_type)+' '+str(exc_value)+'\n')
+                                       time.localtime(time.time())) + " : " + str(exc_type) + ' ' + str(exc_value) + '\n')
         sys.stderr.flush()
         try:
             if db:
                 db.rollback()
-        except:
+        except BaseException:
             pass
         raise
     finally:
         if cursor:
             cursor.close()
 
+
 if __name__ == "__main__":
 
     csc = configuration_client.get_config_dict()
     web_server_dict = csc.get("web_server")
-    web_server_name = web_server_dict.get("ServerName", "localhost").split(".")[0]
+    web_server_name = web_server_dict.get(
+        "ServerName", "localhost").split(".")[0]
     output_file = "/tmp/%s_pnfs_monitor" % (web_server_name,)
     html_dir = csc.get("crons").get("html_dir", None)
     inq_d = csc.get(enstore_constants.INQUISITOR, {})
@@ -143,7 +155,7 @@ if __name__ == "__main__":
 
     if not html_dir:
         sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",
-                                       time.localtime(time.time()))+" : html_dir is not found \n")
+                                       time.localtime(time.time())) + " : html_dir is not found \n")
         sys.stderr.flush()
         sys.exit(1)
 
@@ -210,72 +222,72 @@ if __name__ == "__main__":
                 res = select(chimeradb, QUERY1)
 
             for row in res:
-                    isVolatile = False
-                    pnfsid = row['ipnfsid']
-                    inumber = row['inumber']
-                    date = row['imtime']
-                    layer2 = row['layer2']
-                    layer1 = row['layer1']
-                    layer4 = row['layer4']
-                    isize = row['isize']
-                    rp = row['retention_policy']
-                    #
-                    # empty layer is as "good" as non-existsnt
-                    #
-                    if layer1 and layer1.strip() == "":
-                        layer1 = None
-                    if layer4 and layer4.strip() == "":
-                        layer4 = None
-                    if (layer1 and layer4) or isize == 0:
-                        if pnfsid in pnfsids:
-                            insert(monitordb,
-                                   "delete from files_with_no_layers where ipnfsid='%s'" % (pnfsid, ))
-                        continue
-                    if layer2:
-                        for part in layer2.split('\n'):
-                            if not part:
-                                continue
-                            pieces = part.split(';')
-                            for p in pieces:
-                                c = p.strip(':')
-                                if c == "h=no":
-                                    isVolatile = True
-                    if isVolatile or (rp is None and rp != 0):
-                        if pnfsid in pnfsids:
-                            insert(monitordb,
-                                   "delete from files_with_no_layers where ipnfsid='%s'" % (pnfsid, ))
-                        continue
-                    pres = select(chimeradb,
-                                  "select ilocation from t_locationinfo where inumber = %s and itype=1" % (inumber, ))
-                    pools = ""
-                    if len(pres) > 0:
-                        for p in pres:
-                            pools += p["ilocation"] + ","
-                        if pools != "":
-                            pools = pools[:-1]
-                        else:
-                            pools = "N/A"
-                    if pools.startswith("v"):
-                        continue
-                    rpath = select(chimeradb,
-                                   "select inode2path('{}') AS path".format(pnfsid))
-                    path = rpath[0]["path"]
-                    if not path:
-                        continue
-                    f.write(FORMAT.format(date.strftime("%Y-%m-%d %H:%M:%S"),
-                                          pnfsid, print_yes_no(layer1),
-                                          print_yes_no(layer2),
-                                          print_yes_no(layer4),
-                                          pools,
-                                          isize,
-                                          path))
-                    if pnfsid not in pnfsids:
+                isVolatile = False
+                pnfsid = row['ipnfsid']
+                inumber = row['inumber']
+                date = row['imtime']
+                layer2 = row['layer2']
+                layer1 = row['layer1']
+                layer4 = row['layer4']
+                isize = row['isize']
+                rp = row['retention_policy']
+                #
+                # empty layer is as "good" as non-existsnt
+                #
+                if layer1 and layer1.strip() == "":
+                    layer1 = None
+                if layer4 and layer4.strip() == "":
+                    layer4 = None
+                if (layer1 and layer4) or isize == 0:
+                    if pnfsid in pnfsids:
                         insert(monitordb,
-                               "insert into files_with_no_layers values ('%s')" % (pnfsid, ))
-        except:
+                               "delete from files_with_no_layers where ipnfsid='%s'" % (pnfsid, ))
+                    continue
+                if layer2:
+                    for part in layer2.split('\n'):
+                        if not part:
+                            continue
+                        pieces = part.split(';')
+                        for p in pieces:
+                            c = p.strip(':')
+                            if c == "h=no":
+                                isVolatile = True
+                if isVolatile or (rp is None and rp != 0):
+                    if pnfsid in pnfsids:
+                        insert(monitordb,
+                               "delete from files_with_no_layers where ipnfsid='%s'" % (pnfsid, ))
+                    continue
+                pres = select(chimeradb,
+                              "select ilocation from t_locationinfo where inumber = %s and itype=1" % (inumber, ))
+                pools = ""
+                if len(pres) > 0:
+                    for p in pres:
+                        pools += p["ilocation"] + ","
+                    if pools != "":
+                        pools = pools[:-1]
+                    else:
+                        pools = "N/A"
+                if pools.startswith("v"):
+                    continue
+                rpath = select(chimeradb,
+                               "select inode2path('{}') AS path".format(pnfsid))
+                path = rpath[0]["path"]
+                if not path:
+                    continue
+                f.write(FORMAT.format(date.strftime("%Y-%m-%d %H:%M:%S"),
+                                      pnfsid, print_yes_no(layer1),
+                                      print_yes_no(layer2),
+                                      print_yes_no(layer4),
+                                      pools,
+                                      isize,
+                                      path))
+                if pnfsid not in pnfsids:
+                    insert(monitordb,
+                           "insert into files_with_no_layers values ('%s')" % (pnfsid, ))
+        except BaseException:
             exc_type, exc_value = sys.exc_info()[:2]
             sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",
-                                           time.localtime(time.time()))+" : " + str(exc_type)+' '+str(exc_value)+'\n')
+                                           time.localtime(time.time())) + " : " + str(exc_type) + ' ' + str(exc_value) + '\n')
             sys.stderr.flush()
             failed = True
             pass
@@ -285,25 +297,27 @@ if __name__ == "__main__":
                     item.close()
 
     if not failed:
-        cmd = "$ENSTORE_DIR/sbin/enrcp {} {}:{}".format(f.name, html_host, html_dir)
+        cmd = "$ENSTORE_DIR/sbin/enrcp {} {}:{}".format(
+            f.name, html_host, html_dir)
         rc = os.system(cmd)
         if rc:
-            txt = "Failed to execute command %s\n.\n"%(cmd,)
+            txt = "Failed to execute command %s\n.\n" % (cmd,)
             sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",
-                                           time.localtime(time.time()))+" : "+txt+"\n")
+                                           time.localtime(time.time())) + " : " + txt + "\n")
             sys.stderr.flush()
             sys.exit(1)
         cmd = "$ENSTORE_DIR/sbin/enrcp {} {}:{}/{}_{}".format(f.name,
                                                               html_host,
                                                               html_dir,
-                                                              os.path.basename(f.name),
+                                                              os.path.basename(
+                                                                  f.name),
                                                               time.strftime("%Y-%m-%d",
                                                                             time.localtime(time.time())))
         rc = os.system(cmd)
         if rc:
             txt = "Failed to execute command %s\n.\n" % (cmd, )
             sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",
-                                           time.localtime(time.time()))+" : "+txt+"\n")
+                                           time.localtime(time.time())) + " : " + txt + "\n")
             sys.stderr.flush()
             sys.exit(1)
     else:

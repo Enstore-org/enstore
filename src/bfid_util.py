@@ -1,3 +1,4 @@
+from __future__ import print_function
 import re
 import string
 import threading
@@ -5,6 +6,7 @@ import time
 import types
 
 MAGIC_NUMBER = 100000
+
 
 def is_bfid(bfid):
     """
@@ -16,41 +18,42 @@ def is_bfid(bfid):
     :rtype: :obj:`bool` - True/False
 
     """
-    if type(bfid) == types.StringType:
+    if isinstance(bfid, bytes):
 
-        #Older files that do not have bfid brands should only be digits.
+        # Older files that do not have bfid brands should only be digits.
         result = re.search("^[0-9]{11,16}$", bfid)
-        if result != None:
+        if result is not None:
             return 1
 
-        #The only part of the bfid that is of constant form is that the last
+        # The only part of the bfid that is of constant form is that the last
         # n characters are all digits.  There are no restrictions on what
         # is in a brand or how long it can be (though there should be).
         # Since, the bfid is based on its creation time, as time passes the
         # number of digits in a bfid will grow.  (Assume 12 as minumum).
         result = re.search("^[a-zA-Z0-9]*[0-9]{11,16}$", bfid)
-        if result != None:
+        if result is not None:
             return 1
 
-        #Allow for bfids of file copies.
+        # Allow for bfids of file copies.
         #result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
-        #if result != None:
+        # if result != None:
         #    return 1
 
-        #Some older files (year 2000) have a long() "L" appended to
+        # Some older files (year 2000) have a long() "L" appended to
         # the bfid.  This seems to be consistant between the file
         # database and layers one & four.  So, return true in these cases.
         result = re.search("^[0-9]{11,16}L{1}$", bfid)
-        if result != None:
+        if result is not None:
             return 1
 
-        #6 files on D0en have brands and the "L" appended to them.  They
+        # 6 files on D0en have brands and the "L" appended to them.  They
         # belong to PRF355, PRF532 and PRF545.
-        ## This part of the function should go away when those bfids go.
+        # This part of the function should go away when those bfids go.
         result = re.search("^[a-zA-Z0-9]*[0-9]{11,16}L{1}$", bfid)
-        if result != None:
+        if result is not None:
             return 1
     return 0
+
 
 def extract_brand(bfid):
     """
@@ -63,27 +66,28 @@ def extract_brand(bfid):
 
     """
     if is_bfid(bfid):
-        #Older files that do not have bfid brands should only be digits.
+        # Older files that do not have bfid brands should only be digits.
         #
-        #Some older files (year 2000) have a long() "L" appended to
+        # Some older files (year 2000) have a long() "L" appended to
         # the bfid.  This seems to be consistant between the file
         # database and layers one & four.  So, return true in these cases.
         result = re.search("^[0-9]{13,15}L{0,1}$", bfid)
-        if result != None:
+        if result is not None:
             return ""
 
-        #The only part of the bfid that is of constant form is that the last
+        # The only part of the bfid that is of constant form is that the last
         # n characters are all digits.  There are no restrictions on what
         # is in a brand or how long it can be (though there should be).
         # Since, the bfid is based on its creation time, as time passes the
         # number of digits in a bfid will grow.  (Assume 14 as minumum).
         result = re.search("[0-9]{13,15}$", bfid)
-        if result != None:
+        if result is not None:
             brand = bfid[:-(len(result.group()))]
             if brand.isalnum():
                 return brand
 
     return None
+
 
 def strip_brand(bfid):
     """
@@ -96,27 +100,28 @@ def strip_brand(bfid):
 
     """
     if is_bfid(bfid):
-        #Older files that do not have bfid brands should only be digits.
+        # Older files that do not have bfid brands should only be digits.
         #
-        #Some older files (year 2000) have a long() "L" appended to
+        # Some older files (year 2000) have a long() "L" appended to
         # the bfid.  This seems to be consistant between the file
         # database and layers one & four.  So, return true in these cases.
         result = re.search("^[0-9]{13,15}L{0,1}$", bfid)
-        if result != None:
+        if result is not None:
             return bfid
 
-        #The only part of the bfid that is of constant form is that the last
+        # The only part of the bfid that is of constant form is that the last
         # n characters are all digits.  There are no restrictions on what
         # is in a brand or how long it can be (though there should be).
         # Since, the bfid is based on its creation time, as time passes the
         # number of digits in a bfid will grow.  (Assume 14 as minumum).
         result = re.search("[0-9]{13,15}$", bfid)
-        if result != None:
+        if result is not None:
             brand = bfid[:-(len(result.group()))]
             if brand.isalnum():
                 return bfid[-(len(result.group())):]
 
     return None
+
 
 def bfid2time(bfid):
     """
@@ -156,7 +161,7 @@ class BfidGenerator:
 
     singleton = False
 
-    def __init__(self,brand):
+    def __init__(self, brand):
         """
         :type brand: :obj:`str`
         :arg  brand: bfid brand
@@ -164,10 +169,10 @@ class BfidGenerator:
         if BfidGenerator.singleton:
             raise Exception("more than one instance of singleton disallowed")
 
-        self.__brand      = brand.upper()
-        self.__timestamp  = int(time.time())
-        self.__counter    = 0
-        self.__lock       = threading.Lock()
+        self.__brand = brand.upper()
+        self.__timestamp = int(time.time())
+        self.__counter = 0
+        self.__lock = threading.Lock()
         BfidGenerator.singleton = True
 
     def get_brand(self):
@@ -179,7 +184,7 @@ class BfidGenerator:
         """
         return self.__brand
 
-    def set_brand(self,brand):
+    def set_brand(self, brand):
         """
         set brand
 
@@ -189,7 +194,7 @@ class BfidGenerator:
         """
         self.__brand = brand
 
-    def check(self,bfid):
+    def check(self, bfid):
         """
         check bfid
 
@@ -201,9 +206,10 @@ class BfidGenerator:
         """
         sbfid = str(bfid)
         if sbfid[:len(self.__brand)] != self.__brand:
-            return (False,"wrong brand {} ({})".format( sbfid[:len(self.__brand)],self.__brand))
+            return (False, "wrong brand {} ({})".format(
+                sbfid[:len(self.__brand)], self.__brand))
         if not is_bfid(sbfid):
-            return (False,"invalid bfid {}".format(sbfid))
+            return (False, "invalid bfid {}".format(sbfid))
         else:
             return (True, "good")
 
@@ -222,27 +228,27 @@ class BfidGenerator:
                 self.__timestamp = bfid
             else:
                 self.__counter += 1
-            bfid = self.__timestamp*MAGIC_NUMBER+\
-                   self.__counter%MAGIC_NUMBER
-            return self.__brand+str(bfid)
+            bfid = self.__timestamp * MAGIC_NUMBER +\
+                self.__counter % MAGIC_NUMBER
+            return self.__brand + str(bfid)
         finally:
             self.__lock.release()
+
 
 if __name__ == "__main__":
     generator = BfidGenerator("CMS")
     bfid = generator.create()
-    print bfid, str(bfid), bfid[:10]
-    print generator.check("GCMS14261923030000x1")
-    print generator.check("CMS1426192303000001")
-
+    print(bfid, str(bfid), bfid[:10])
+    print(generator.check("GCMS14261923030000x1"))
+    print(generator.check("CMS1426192303000001"))
 
     bfid = generator.create()
-    print "----->", bfid
+    print("----->", bfid)
     generator.set_brand("")
     bfid = generator.create()
-    print "----->", bfid
+    print("----->", bfid)
 
     try:
         generator = BfidGenerator("ABC")
-    except Exception, msg:
-        print "Failed :",str(msg)
+    except Exception as msg:
+        print("Failed :", str(msg))

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import os
 import types
@@ -15,17 +16,17 @@ if port:
         # we have a host
         csc = configuration_client.ConfigurationClient((host, port))
     else:
-        print "cannot find config host"
+        print("cannot find config host")
         sys.exit(-1)
 else:
-    print "cannot find config port"
+    print("cannot find config port")
     sys.exit(-1)
 
 dbInfo = csc.get('database')
 dbHome = dbInfo['db_dir']
 jouHome = dbInfo['jou_dir']
-print "dbHome", dbHome
-print "jouHome", jouHome
+print("dbHome", dbHome)
+print("jouHome", jouHome)
 
 vcdict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
 fcdict = db.DbTable("file", dbHome, jouHome, ['external_label'])
@@ -35,19 +36,23 @@ for k in vcdict.keys():
     lib = rec['library']
     if lib in ('samm2',):
         ### del vcdict[k] ###!!!###
-        print k, rec['library'], rec['non_del_files']
+        print(k, rec['library'], rec['non_del_files'])
 
-D=open('/home/enstore/DE','r')
+D = open('/home/enstore/DE', 'r')
 for b in D.readlines():
-    b=b[:-1]
+    b = b[:-1]
     ### del fcdict[b] ###!!!###
     try:
         if fcdict[b]['deleted'] != 'yes':
-            print b, fcdict[b]['deleted'], fcdict[b]['external_label'],fcdict[b]['pnfs_name0']
-    except:
-        print 'Trouble', fcdict[b]
+            print(
+                b,
+                fcdict[b]['deleted'],
+                fcdict[b]['external_label'],
+                fcdict[b]['pnfs_name0'])
+    except BaseException:
+        print('Trouble', fcdict[b])
 
-#for k in dict.keys():
+# for k in dict.keys():
 #    rec =  dict[k]
 #    ff = rec['file_family']
 #    if ff != 'none':

@@ -18,7 +18,7 @@ import configuration_client
 import dbaccess
 import enstore_functions2
 
-QUERY_TOP_DIRECTORIES="""
+QUERY_TOP_DIRECTORIES = """
 WITH RECURSIVE paths(ino, pnfsid, path, type, depth)
 AS (VALUES(pnfsid2inumber('000000000000000000000000000000000000'),'','',16384,0)
 UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
@@ -29,7 +29,7 @@ UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
          WHERE p.type=16384 and p.depth>3 and p.path ~ '/pnfs/fs/usr'
 """
 
-QUERY_TOP_DIRECTORY="""
+QUERY_TOP_DIRECTORY = """
 WITH RECURSIVE paths(ino, pnfsid, path, type, depth)
 AS (VALUES(pnfsid2inumber('000000000000000000000000000000000000'),'','',16384,0)
 UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
@@ -40,7 +40,7 @@ UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,i.itype, p.depth+1
          WHERE p.type=16384 and p.depth>3 and p.path = '/pnfs/fs/usr/{}'
 """
 
-DUMP_DIRECTORY="""
+DUMP_DIRECTORY = """
 WITH RECURSIVE paths(ino, pnfsid, path, type, size, uid, gid, ctime, atime, mtime)
 AS (VALUES(pnfsid2inumber('{}'),'','',16384,0::BIGINT,0,0,now(),now(),now())
    UNION SELECT i.inumber, i.ipnfsid, path||'/'||d.iname,
@@ -58,8 +58,9 @@ AS (VALUES(pnfsid2inumber('{}'),'','',16384,0::BIGINT,0,0,now(),now(),now())
 	           l1.inumber=p.ino;
 """
 
+
 def help():
-    HELP="""
+    HELP = """
     usage %prog [SG ...]
 
     Generates chimera dump for a list of storage groups.
@@ -68,11 +69,17 @@ def help():
     """
     return HELP
 
-def dump_directory(path,pnfsid,dbhost,dbname,dbuser,dbport):
-    q=DUMP_DIRECTORY.format(pnfsid,path)
-    outfile=os.path.join("/tmp","CHIMERA_DUMP_%s"%(os.path.basename(path)))
-    cmd = "psql -U  {}   -A -F ' ' -c \"{}\" -o {} -h {} -p {} {}".format(dbuser,q,outfile,dbhost,dbport,dbname)
+
+def dump_directory(path, pnfsid, dbhost, dbname, dbuser, dbport):
+    q = DUMP_DIRECTORY.format(pnfsid, path)
+    outfile = os.path.join(
+        "/tmp",
+        "CHIMERA_DUMP_%s" %
+        (os.path.basename(path)))
+    cmd = "psql -U  {}   -A -F ' ' -c \"{}\" -o {} -h {} -p {} {}".format(
+        dbuser, q, outfile, dbhost, dbport, dbname)
     os.system(cmd)
+
 
 if __name__ == "__main__":
     parser = OptionParser(usage=help())
@@ -90,59 +97,61 @@ if __name__ == "__main__":
     """
     Kludge to skip cms namespace which we do not want to query
     """
-    for key in ("cms","status",) :
+    for key in ("cms", "status",):
         try:
             del namespaceDictionary[key]
-        except:
+        except BaseException:
             pass
 
     for key, value in namespaceDictionary.iteritems():
         dbcon = value
         if "replica" in value:
             dbcon = value.get("replica")
-        if not dbcon  and "master" in value:
+        if not dbcon and "master" in value:
             dbcon = value.get("master")
         db = None
         try:
-            db  = dbaccess.DatabaseAccess(maxconnections=1,
-                                          host     = dbcon.get("dbhost","localhost"),
-                                          database = dbcon.get("dbname","chimera"),
-                                          user     = dbcon.get("dbuser","enstore_reader"),
-                                          port     = dbcon.get("dbport",5432))
+            db = dbaccess.DatabaseAccess(maxconnections=1,
+                                         host=dbcon.get("dbhost", "localhost"),
+                                         database=dbcon.get(
+                                             "dbname", "chimera"),
+                                         user=dbcon.get(
+                                             "dbuser", "enstore_reader"),
+                                         port=dbcon.get("dbport", 5432))
             storage_groups = []
             if len(args) > 0:
                 for arg in set(args):
-                    q=QUERY_TOP_DIRECTORY.format(arg)
-                    res=db.query(q)
+                    q = QUERY_TOP_DIRECTORY.format(arg)
+                    res = db.query(q)
                     for row in res:
-                        path=row[0]
+                        path = row[0]
                         storage_groups.append(os.path.basename(path))
                         dump_directory(row[0],
                                        row[1],
-                                       dbcon.get("dbhost","localhost"),
-                                       dbcon.get("dbname","chimera"),
-                                       dbcon.get("dbuser","enstore_reader"),
-                                       dbcon.get("dbport",5432))
+                                       dbcon.get("dbhost", "localhost"),
+                                       dbcon.get("dbname", "chimera"),
+                                       dbcon.get("dbuser", "enstore_reader"),
+                                       dbcon.get("dbport", 5432))
             else:
-                q=QUERY_TOP_DIRECTORIES
-                res=db.query(q)
+                q = QUERY_TOP_DIRECTORIES
+                res = db.query(q)
 
                 for row in res:
-                    path=row[0]
+                    path = row[0]
                     storage_groups.append(os.path.basename(path))
                     dump_directory(row[0],
                                    row[1],
-                                   dbcon.get("dbhost","localhost"),
-                                   dbcon.get("dbname","chimera"),
-                                   dbcon.get("dbuser","enstore_reader"),
-                                   dbcon.get("dbport",5432))
+                                   dbcon.get("dbhost", "localhost"),
+                                   dbcon.get("dbname", "chimera"),
+                                   dbcon.get("dbuser", "enstore_reader"),
+                                   dbcon.get("dbport", 5432))
             for sg in storage_groups:
-                cmd = "enrcp %s %s"%(os.path.join("/tmp","CHIMERA_DUMP_%s"%(sg,)),dest_path)
+                cmd = "enrcp %s %s" % (os.path.join(
+                    "/tmp", "CHIMERA_DUMP_%s" % (sg,)), dest_path)
                 os.system(cmd)
         except Exception as e:
             sys.stderr.write("Failed to query database {} \n".format(str(e)))
             sys.exit(1)
         finally:
-            if db :
+            if db:
                 db.close()
-

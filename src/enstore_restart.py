@@ -26,19 +26,20 @@ import Trace
 
 MY_NAME = "ENSTORE_RESTART"
 
+
 class EnstoreRestartInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
         self.name = "START"
         self.just = None
-        self.all = 0 #False
+        self.all = 0  # False
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.help_options, self.start_options)
-    
+
     # parse the options like normal but make sure we have other args
     def parse_options(self):
 
@@ -62,12 +63,12 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
             return 1
         if self.just == server_name:
             return 1
-        if self.just == None and server_name not in self.non_default_names:
+        if self.just is None and server_name not in self.non_default_names:
             return 1
 
         return 0
 
-    non_default_names = ["monitor_server","pnfs_agent"]
+    non_default_names = ["monitor_server", "pnfs_agent"]
 
     complete_names = [
         "accounting_server",
@@ -79,8 +80,8 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
         "volume_clerk",
         "file_clerk",
         "info_server",
-#        "db_checkpoint",
-#        "db_deadlock",
+        #        "db_checkpoint",
+        #        "db_deadlock",
         "inquisitor",
         "ratekeeper",
         "library",
@@ -88,24 +89,24 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
         "mover",
         "monitor_server",
         "pnfs_agent",
-        ]
-        
+    ]
 
     start_options = {
-        option.JUST:{option.HELP_STRING:"specify single server",
-                     option.VALUE_NAME:"just",
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_LABEL:"server name",                     
-		     option.USER_LEVEL:option.ADMIN,
+        option.JUST: {option.HELP_STRING: "specify single server",
+                      option.VALUE_NAME: "just",
+                      option.VALUE_USAGE: option.REQUIRED,
+                      option.VALUE_TYPE: option.STRING,
+                      option.VALUE_LABEL: "server name",
+                      option.USER_LEVEL: option.ADMIN,
+                      },
+        option.ALL: {option.HELP_STRING: "specify all servers",
+                     option.VALUE_USAGE: option.IGNORED,
+                     option.DEFAULT_NAME: "all",
+                     option.DEFAULT_TYPE: option.INTEGER,
+                     option.USER_LEVEL: option.ADMIN,
                      },
-        option.ALL:{option.HELP_STRING:"specify all servers",
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.DEFAULT_NAME:"all",
-                     option.DEFAULT_TYPE:option.INTEGER,
-		     option.USER_LEVEL:option.ADMIN,
-                     },
-        }
+    }
+
 
 def do_work(intf):
     __pychecker__ = "unusednames=intf"
@@ -116,7 +117,7 @@ def do_work(intf):
 
     intf_stop = enstore_stop.EnstoreStopInterface(user_mode=0)
     intf_start = enstore_start.EnstoreStartInterface(user_mode=0,
-                                                     nocheck = True)
+                                                     nocheck=True)
 
     enstore_stop.do_work(intf_stop)
     enstore_start.do_work(intf_start)

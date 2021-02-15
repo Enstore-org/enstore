@@ -48,38 +48,45 @@ def makedev(major, minor):
     return (((major) << 8) | (minor))
 
 # extract major number
+
+
 def extract_major(device):
     return (((device) >> 8) & 0xff)
 
 # extract minor number
+
+
 def extract_minor(device):
     return ((device) & 0xff)
 
 # create header
+
+
 def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
-             major, minor, rmajor, rminor, filename):
-    
+                  major, minor, rmajor, rminor, filename):
+
     # files greater than 8GB are just not allowed right now
     max = long(2**30) * 8 - 1
-    if filesize > max :
-        msg = "Files are limited to %s bytes and your %s has %s bytes" %(max, filename, filesize)
-        raise e_errors.EnstoreError(errno.EOVERFLOW, msg,"")  
+    if filesize > max:
+        msg = "Files are limited to %s bytes and your %s has %s bytes" % (
+            max, filename, filesize)
+        raise e_errors.EnstoreError(errno.EOVERFLOW, msg, "")
     fname = filename
     fsize = filesize
     # set this dang mode to something that works on all machines!
-    if ((mode & 0777000) != 0100000) & (filename != "TRAILER!!!"):
-	mode = 0100664
+    if ((mode & 0o777000) != 0o100000) & (filename != "TRAILER!!!"):
+        mode = 0o100664
 
     # make all filenames relative - strip off leading slash
-    if fname[0] == "/" :
-	fname = fname[1:]
+    if fname[0] == "/":
+        fname = fname[1:]
     dev = makedev(major, minor)
     rdev = makedev(rmajor, rminor)
-    header =  "070707%06o%06lo%06lo%06lo%06lo%06lo%06o%011lo%06lo%011lo%s\0" % \
-             (dev & 0xffff, inode & 0xffff, mode & 0xffff,
-              uid & 0xffff, gid & 0xffff, nlink & 0xffff,
-              rdev & 0xfff, mtime, (len(fname)+1)&0xffff,
-              fsize, fname)
+    header = "070707%06o%06lo%06lo%06lo%06lo%06lo%06o%011lo%06lo%011lo%s\0" % \
+        (dev & 0xffff, inode & 0xffff, mode & 0xffff,
+         uid & 0xffff, gid & 0xffff, nlink & 0xffff,
+         rdev & 0xfff, mtime, (len(fname) + 1) & 0xffff,
+         fsize, fname)
     return header
 
 
@@ -87,8 +94,10 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
 def headers(ticket):
 
     inode = ticket.get('inode', 0)
-    if inode == None:
-        Trace.log(e_errors.ERROR,"wrong inode in wrapper: %s. Will set to 0"%(inode,))
+    if inode is None:
+        Trace.log(
+            e_errors.ERROR, "wrong inode in wrapper: %s. Will set to 0" %
+            (inode,))
         inode = 0
     mode = ticket.get('mode', 0)
     uid = ticket.get('uid', 0)
@@ -101,9 +110,9 @@ def headers(ticket):
     rmajor = ticket.get('rmajor', 0)
     rminor = ticket.get('rminor', 0)
     filename = ticket.get('pnfsFilename', '???')
-    
+
     header = create_header(inode, mode, uid, gid, nlink, mtime, filesize,
-             major, minor, rmajor, rminor, filename)
+                           major, minor, rmajor, rminor, filename)
 
     # create the trailer as well
     trailer = create_header(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, "TRAILER!!!")
@@ -113,35 +122,42 @@ def headers(ticket):
     # just a header of one would trip an overflow without converting to longs.
     pad = (long(len(header)) + long(len(trailer)) + long(filesize)) % 512
     if pad:
-        pad = int(512 - pad) #Note: python 1.5 doesn't allow string*long
-        trailer = trailer + '\0'*pad
+        pad = int(512 - pad)  # Note: python 1.5 doesn't allow string*long
+        trailer = trailer + '\0' * pad
     return header, trailer
 
 # the cpio_odc wrapper does not provide a hdr_label or an eof_label
+
+
 def hdr_labels(dummy):
     return ""
+
 
 def eof_labels(dummy):
     return ""
 
+
 def vol_label_length():
     return 80
 
+
 def vol_labels(volume_label, ticket={}, own_id=""):
-    vol1_label = 'VOL1'+ volume_label[0:6]
-    return vol1_label+ (79-len(vol1_label))*' ' + '0'
+    vol1_label = 'VOL1' + volume_label[0:6]
+    return vol1_label + (79 - len(vol1_label)) * ' ' + '0'
+
 
 min_header_size = 76
 
+
 def header_size(header_start):
-    #Note: this can raise TypeError as well as ValueError, if the
+    # Note: this can raise TypeError as well as ValueError, if the
     # string contains NULL bytes
-    filename_size = string.atoi( header_start[59:65], 8 )    
-    header_size = 76+filename_size
+    filename_size = string.atoi(header_start[59:65], 8)
+    header_size = 76 + filename_size
     return header_size
+
 
 def create_wrapper_dict(ticket):
     # the wrapper section already contains all of the information that we need
     wrapper_d = ticket['wrapper']
     return wrapper_d
-

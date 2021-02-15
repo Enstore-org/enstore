@@ -17,6 +17,7 @@
 This module reads a text file containing appointment information and
 generates web pages containing those scheduled appointments in a
 nicely formatted linear table for each month."""
+from __future__ import print_function
 
 import string, time
 from HTMLcolors import *
@@ -66,9 +67,9 @@ class Day:
     """
     def __init__(self, year=1997, month=1, day=1):
         self.weekday = day_name[weekday(year,month,day)]
-        self.year = `year`
-        self.month = `month`
-        self.day = `day`
+        self.year = repr(year)
+        self.month = repr(month)
+        self.day = repr(day)
         self.appointments = []
         
     def append(self, appt):
@@ -126,7 +127,7 @@ class Month( SimpleDocument ):
         self.datetable = DateTable(cellpadding=6, cellspacing=2, border=3)
         self.jumper = ''
         for i in range(1, self.ndays+1):
-            self.jumper = self.jumper + str(Href('#'+`month`+'-'+`i`, `i`)) + ' '
+            self.jumper = self.jumper + str(Href('#'+repr(month)+'-'+repr(i), repr(i))) + ' '
             self.datetable.append(Day(self.year, self.month, i))
         self.append( Center(self.jumper, html_escape='off') )
         self.append('<P>')
@@ -148,7 +149,7 @@ class Month( SimpleDocument ):
         try:
             self.datetable[index] = dayobj
         except IndexError:
-            print 'Not %d days in %s' % (index, self.monthname)
+            print('Not %d days in %s' % (index, self.monthname))
 
     def __getitem__(self, index):
         return self.datetable[index]
@@ -211,7 +212,7 @@ def makeint(value):
         if type(value) == IntType:
             return value
         else:
-            raise TypeError, ('cannot convert to int', value)
+            raise TypeError('cannot convert to int', value)
 import regex
 datepat = regex.compile('^ *\([0-9*][0-9]?\)[/-]' #first 2 char date field
                         '\([0-9][0-9]?\)[/-]?'    #second 2 char date field

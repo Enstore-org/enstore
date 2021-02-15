@@ -8,6 +8,7 @@
 ###############################################################################
 
 # system imports
+from __future__ import print_function
 import sys
 
 # enstore imports
@@ -22,14 +23,15 @@ MY_SERVER = enstore_constants.LM_DIRECTOR
 RCV_TIMEOUT = 10
 RCV_TRIES = 5
 
-class LMDClient(generic_client.GenericClient): 
+
+class LMDClient(generic_client.GenericClient):
 
     def __init__(self, csc, name=MY_SERVER,
                  flags=0, logc=None, alarmc=None,
                  rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
-                 server_address = None):
+                 server_address=None):
         self.name = name
-        generic_client.GenericClient.__init__(self,csc, MY_NAME, server_address,
+        generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address,
                                               server_name=name,
                                               rcv_timeout=rcv_timeout,
                                               rcv_tries=rcv_tries,
@@ -45,7 +47,8 @@ class LMDClient(generic_client.GenericClient):
     def show_policy(self):
         r = self.send({'work': 'show_policy'})
         return r
-        
+
+
 class LMDClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
@@ -65,18 +68,17 @@ class LMDClientInterface(generic_client.GenericClientInterface):
         return (self.help_options, self.alive_options, self.trace_options,
                 self.policy_options)
 
-
-
     policy_options = {
-        option.LOAD:{option.HELP_STRING:"load a new policy file",
-                     option.DEFAULT_TYPE:option.INTEGER,
-		     option.USER_LEVEL:option.ADMIN
-                     },
-        option.SHOW:{option.HELP_STRING:"print the current policy in python format",
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.USER_LEVEL:option.ADMIN,
-                     }
-        }
+        option.LOAD: {option.HELP_STRING: "load a new policy file",
+                      option.DEFAULT_TYPE: option.INTEGER,
+                      option.USER_LEVEL: option.ADMIN
+                      },
+        option.SHOW: {option.HELP_STRING: "print the current policy in python format",
+                      option.DEFAULT_TYPE: option.INTEGER,
+                      option.USER_LEVEL: option.ADMIN,
+                      }
+    }
+
 
 def do_work(intf):
     lmd_client = LMDClient((intf.config_host, intf.config_port))
@@ -85,47 +87,48 @@ def do_work(intf):
 
     if intf.alive:
         if reply['status'] == (e_errors.OK, None):
-            print "Library Manager Director found at %s." % (reply['address'],)
+            print(
+                "Library Manager Director found at %s." %
+                (reply['address'],))
 
     if reply:
         pass
     elif intf.load:
         reply = lmd_client.reload_policy()
-        if reply.has_key('status'):
+        if 'status' in reply:
             if reply['status'][0] != e_errors.OK:
-                print "Error reloading policy: %s"%(reply,)
+                print("Error reloading policy: %s" % (reply,))
                 return
             # This is a special case when policy needs to get loaded to
             # dispatcher as well
             import dispatcher_client
-            disp_client = dispatcher_client.DispatcherClient((intf.config_host, intf.config_port))
+            disp_client = dispatcher_client.DispatcherClient(
+                (intf.config_host, intf.config_port))
             reply = disp_client.reload_policy()
-            if reply.has_key('status'):
+            if 'status' in reply:
                 if reply['status'][0] == e_errors.OK:
-                    print "Policy reloaded"
+                    print("Policy reloaded")
                 else:
-                    print "Error reloading policy: %s"%(reply,)
+                    print("Error reloading policy: %s" % (reply,))
             else:
-                print "Error reloading policy: %s"%(reply,)
+                print("Error reloading policy: %s" % (reply,))
                 return
         else:
-            print "Error reloading policy: %s"%(reply,)
-        
+            print("Error reloading policy: %s" % (reply,))
+
     elif intf.show:
         import pprint
         reply = lmd_client.show_policy()
-        if reply.has_key('status') and reply['status'][0] == e_errors.OK:
+        if 'status' in reply and reply['status'][0] == e_errors.OK:
             # correct reply must contain 'dump' key by design
             pprint.pprint(reply['dump'])
         else:
             pprint.pprint(reply)
     else:
-	intf.print_help()
-    
+        intf.print_help()
 
 
-
-if __name__ == "__main__" :
+if __name__ == "__main__":
     # fill in interface
     intf = LMDClientInterface(user_mode=0)
 

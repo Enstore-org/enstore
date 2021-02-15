@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # The Python Imaging Library.
 # $Id$
@@ -20,6 +21,7 @@
 # See the README file for information on usage and redistribution.
 #
 
+from future.utils import raise_
 __version__ = "0.3"
 
 import string
@@ -96,7 +98,7 @@ class ChunkStream:
 	"Call the appropriate chunk handler"
 
 	if ImageH.DEBUG:
-	    print "STREAM", cid, pos, len
+	    print("STREAM", cid, pos, len)
 	return getattr(self, "chunk_" + cid)(pos, len)
 
     def crc(self, cid, data):
@@ -105,8 +107,8 @@ class ChunkStream:
 	crc1 = ImageH.core.crc32(data, ImageH.core.crc32(cid))
 	crc2 = i16(self.fp.read(2)), i16(self.fp.read(2))
 	if crc1 != crc2:
-	    raise SyntaxError, "broken PNG file"\
-		"(bad header checksum in %s)" % cid
+	    raise_(SyntaxError, "broken PNG file"\
+		"(bad header checksum in %s)" % cid)
 
     def crc_skip(self, cid, data):
 	"Read checksum.  Used of the C module is not present"
@@ -158,7 +160,7 @@ class PngStream(ChunkStream):
 	if ord(s[12]):
 	    self.im_info["interlace"] = 1
 	if ord(s[11]):
-	    raise SyntaxError, "unknown filter category"
+	    raise SyntaxError("unknown filter category")
 	return s
 
     def chunk_IDAT(self, pos, len):
@@ -211,7 +213,7 @@ class PngImageFile(ImageFileH.ImageFile):
     def _open(self):
 
 	if self.fp.read(8) != _MAGIC:
-	    raise SyntaxError, "not a PNG file"
+	    raise SyntaxError("not a PNG file")
 
 	#
 	# Parse headers, up until the first IDAT chunk
@@ -232,7 +234,7 @@ class PngImageFile(ImageFileH.ImageFile):
 
 	    except AttributeError:
 		if ImageH.DEBUG:
-		    print cid, pos, len, "(unknown)"
+		    print(cid, pos, len, "(unknown)")
 		s = self.fp.read(len)
 
 	    self.png.crc(cid, s)
@@ -347,7 +349,7 @@ def _save(im, fp, filename, chunk = putchunk):
 	#
 	# attempt to minimize storage requirements for palette images
 
-	if im.encoderinfo.has_key("bits"):
+	if "bits" in im.encoderinfo:
 
 	    # number of bits specified by user
 	    n = 1 << im.encoderinfo["bits"]
@@ -370,18 +372,18 @@ def _save(im, fp, filename, chunk = putchunk):
 	    mode = "%s;%d" % (mode, bits)
 
     # encoder options
-    if im.encoderinfo.has_key("dictionary"):
+    if "dictionary" in im.encoderinfo:
 	dictionary = im.encoderinfo["dictionary"]
     else:
 	dictionary = ""
 
-    im.encoderconfig = (im.encoderinfo.has_key("optimize"), dictionary)
+    im.encoderconfig = ("optimize" in im.encoderinfo, dictionary)
 
     # get the corresponding PNG mode
     try:
 	rawmode, mode = _OUTMODES[mode]
     except KeyError:
-	raise IOError, "cannot write mode %s as PNG" % mode
+	raise_(IOError, "cannot write mode %s as PNG" % mode)
 
     #
     # write minimal PNG file

@@ -2,6 +2,7 @@
 
 """Examine and fix the height/width attributes on IMG tags in the given files.
 """
+from __future__ import print_function
 #'$Id$'
 
 # COPYRIGHT (C) 1998  ROBIN FRIEDRICH  email:Robin.Friedrich@pdq.net
@@ -45,7 +46,7 @@ def main(filename):
         g.close()
         os.rename(filename, filename+'~')
         os.rename(filename+'_', filename)
-    print "%s, %d image tag(s)" % (filename, n)
+    print("%s, %d image tag(s)" % (filename, n))
     
 def fixsize(imgmatch):
     """fixsize(imgmatch) imgmatch is a match object containing an IMG tag.
@@ -53,7 +54,7 @@ def fixsize(imgmatch):
     All other properties are left alone.
     """
     imgcontent = imgmatch.group(1)
-    if NOOP: print imgmatch.group(0), "<<< Original"
+    if NOOP: print(imgmatch.group(0), "<<< Original")
     attrs = ['src', 'width', 'height']
     dict = {}
     i = 0
@@ -66,7 +67,7 @@ def fixsize(imgmatch):
             attrs.append(name)
         dict[name] = value
     # CONSERV set true means if the IMG has an existing width property trust it.
-    if CONSERV and dict.has_key('width')and dict.has_key('height'):
+    if CONSERV and 'width' in dict and 'height' in dict:
         return imgmatch.group(0)
     srcpath = dict['src']
     if srcpath[0] == '/': #SRC path starting with / will be relative to docroot
@@ -81,7 +82,7 @@ def fixsize(imgmatch):
     for name in attrs:
         s = s + ' %s="%s"' % (name, dict[name])
     s = s + '>'
-    if NOOP: print s, "<<< New Value"
+    if NOOP: print(s, "<<< New Value")
     return s
 
 def unquote(s):
@@ -102,7 +103,7 @@ if __name__ == '__main__':
     try:
         opts, args = getopt.getopt(sys.argv[1:], "ncd:")
     except getopt.error:
-        print USAGE
+        print(USAGE)
         sys.exit(1)
     for opt, optarg in opts:
         if opt == '-n':

@@ -14,7 +14,8 @@ Purpose: use it when a resource is accessed concurrently for read and write
 """
 import threading
 
-DEFAULT_TIMEOUT=30
+DEFAULT_TIMEOUT = 30
+
 
 class ReadWriteConditionVariable:
     def __init__(self):
@@ -37,17 +38,16 @@ class ReadWriteConditionVariable:
         finally:
             self.__read_ready.release()
 
-    def acquire_write(self,timeout=None):
+    def acquire_write(self, timeout=None):
         self.__read_ready.acquire()
         while self.__readers > 0:
             try:
-                to=DEFAULT_TIMEOUT
+                to = DEFAULT_TIMEOUT
                 if timeout:
-                    to=timeout
+                    to = timeout
                 self.__read_ready.wait(to)
             except RuntimeError:
                 self.__readers = 0
 
     def release_write(self):
         self.__read_ready.release()
-

@@ -22,6 +22,7 @@
 # See the README file for information on usage and redistribution.
 #
 
+from future.utils import raise_
 __version__ = "0.3"
 
 import array, string
@@ -67,7 +68,7 @@ def SOF(self, marker):
 
     self.bits = ord(s[0])
     if self.bits != 8:
-	raise SyntaxError, "cannot handle %d-bit layers" % self.bits
+	raise_(SyntaxError, "cannot handle %d-bit layers" % self.bits)
 
     self.layers = ord(s[5])
     if self.layers == 1:
@@ -77,7 +78,7 @@ def SOF(self, marker):
     elif self.layers == 4:
 	self.mode = "CMYK"
     else:
-	raise SyntaxError, "cannot handle %d-layer images" % self.layers
+	raise_(SyntaxError, "cannot handle %d-layer images" % self.layers)
 
     if marker in [0xFFC2, 0xFFC6, 0xFFCA, 0xFFCE]:
 	self.info["progression"] = 1
@@ -99,7 +100,7 @@ def DQT(self, marker):
     s = self.fp.read(i16(self.fp.read(2))-2)
     while len(s):
 	if len(s) < 65:
-	    raise SyntaxError, "bad quantization table marker"
+	    raise SyntaxError("bad quantization table marker")
 	v = ord(s[0])
 	if v/16 == 0:
 	    self.quantization[v&15] = array.array("b", s[1:65])
@@ -192,7 +193,7 @@ class JpegImageFile(ImageFileH.ImageFile):
 	s = self.fp.read(1)
 
 	if ord(s[0]) != 255:
-	    raise SyntaxError, "not an JPEG file"
+	    raise SyntaxError("not an JPEG file")
 
 	# Create attributes
 	self.bits = self.layers = 0
@@ -210,21 +211,21 @@ class JpegImageFile(ImageFileH.ImageFile):
 
 	    i = i16(s)
 
-	    if MARKER.has_key(i):
+	    if i in MARKER:
 		name, description, handler = MARKER[i]
 		# print hex(i), name, description
 		if handler != None:
 		    handler(self, i)
 		if i == 0xFFDA: # start of scan
 		    rawmode = self.mode
-		    if self.mode == "CMYK" and self.info.has_key("adobe"):
+		    if self.mode == "CMYK" and "adobe" in self.info:
 			rawmode = "CMYK;I" # Photoshop 2.5 is broken!
 		    self.tile = [("jpeg", (0,0) + self.size, 0, (rawmode, ""))]
 		    # self.offset = self.fp.tell()
 		    break
 		s = self.fp.read(1)
 	    else:
-	        raise SyntaxError, "no marker found"
+	        raise SyntaxError("no marker found")
 
     def draft(self, mode, size):
 
@@ -289,12 +290,12 @@ def _save(im, fp, filename):
     try:
         rawmode = RAWMODE[im.mode]
     except KeyError:
-	raise IOError, "cannot write mode %s as JPEG" % im.mode
+	raise_(IOError, "cannot write mode %s as JPEG" % im.mode)
     # get keyword arguments
     im.encoderconfig = (_fetch(im.encoderinfo, "quality", 0),
-			im.encoderinfo.has_key("progressive"),
+			"progressive" in im.encoderinfo,
 			_fetch(im.encoderinfo, "smooth", 0),
-			im.encoderinfo.has_key("optimize"),
+			"optimize" in im.encoderinfo,
 			_fetch(im.encoderinfo, "streamtype", 0))
     ImageFileH._save(im, fp, [("jpeg", (0,0)+im.size, 0, rawmode)])
 

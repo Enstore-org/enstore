@@ -5,6 +5,7 @@ and StackedBarChart class to deal with multiple data plotting
 for web pages. Only works for positive data values.
 Also provides a DataList class to support the data handling needed.
 """
+from __future__ import print_function
 __version__ = '$Id$'
 __author__ = 'Robin Friedrich'
 __date__ = 'June 30, 1997'
@@ -246,7 +247,7 @@ class DataList(UserList.UserList):
                 d[self.segment_names[i]] = t[i+1]
             else:
                 d[self.segment_names[i]] = 0
-                print '%s value %s invalid; was set to zero' % (t[0], t[i+1])
+                print('%s value %s invalid; was set to zero' % (t[0], t[i+1]))
         self.append(d)
 
     def load_tuples(self, tt):
@@ -280,7 +281,7 @@ class DataList(UserList.UserList):
             try:
                 self.data[self.index(label)][name] = value
             except TypeError:
-                print '%s not found' % label
+                print('%s not found' % label)
 
     def index(self, label):
         """return dictionary corresponding to *label* string.
@@ -366,7 +367,7 @@ class DataList(UserList.UserList):
 
 def simple_test():
     from time import time
-    print "running barchart test routine" 
+    print("running barchart test routine") 
     dum = [ ('fddo4', 1318), ('cn1', 1472), ('cn2', 1411),
             ('fddo3', 1280), ('asc8', 1371), ('orb3', 1390),
             ('fddo1', 1418), ('asc4', 1292), ('dn2', 1381),
@@ -383,11 +384,11 @@ def simple_test():
     doc.append(b)
     doc.append(Pre(str(dummydata)))
     doc.write('./html/bar.html')
-    print "took", time() - t0, 'sec.'
+    print("took", time() - t0, 'sec.')
 
 def stacked_test():
     from time import time
-    print "running stacked barchart test routine" 
+    print("running stacked barchart test routine") 
     dum = [ ('fddo4', 1318, 456, 235, 290),
             ('fddo3', 1280, 560, 129, 295), 
             ('fddo1', 1418, 1201, 490, 125),
@@ -404,7 +405,7 @@ def stacked_test():
     doc.append(b)
     doc.append(Pre(str(dummydata)))
     doc.write('./html/stackedbar.html')
-    print "took", time() - t0, 'sec.'
+    print("took", time() - t0, 'sec.')
 
 def test():
     import profile, pstats

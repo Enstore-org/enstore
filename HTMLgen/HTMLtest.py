@@ -2,6 +2,7 @@
 
 """Test script which generates the online documentation for HTMLgen.
 """
+from __future__ import print_function
 import string, regex, regsub, os, time, glob
 from HTMLcolors import *
 from HTMLgen import *
@@ -28,7 +29,7 @@ def test():
     import colorcube
     colorcube.main(os.path.join(htmldir, 'colorcube.html'))
     
-    print 'Time to generate pages:', time.clock() - t, 'seconds'
+    print('Time to generate pages:', time.clock() - t, 'seconds')
 
 
 def overview(filename, aft=None, fore=None, top=None, home=None):

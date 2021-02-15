@@ -27,6 +27,7 @@ WEB_SUB_DIRECTORY = enstore_constants.FILES_RW_PLOTS_SUBDIR
 """Subdirectory in which to write plots. This constant is also referenced by
 the :mod:`enstore_make_plot_page` module."""
 
+
 class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot number of files read and written per mount versus date, stacked
        by storage group, individually for each unique drive type."""
@@ -92,12 +93,11 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         for row in res:
             row = row.get
             counts.setdefault(row('drive'), collections.OrderedDict()) \
-                  .setdefault(row('storage_group'), {}) \
-                   [row('date')] = {'reads': row('reads_per_dismount'),
-                                    'writes': row('writes_per_dismount'),
-                                    'reads+writes':
-                                        row('reads_and_writes_per_dismount')
-                                    }
+                  .setdefault(row('storage_group'), {})[row('date')] = {'reads': row('reads_per_dismount'),
+                                                                        'writes': row('writes_per_dismount'),
+                                                                        'reads+writes':
+                                                                        row('reads_and_writes_per_dismount')
+                                                                        }
 
         db.close()
         self.counts = counts
@@ -123,13 +123,13 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         # Note: "width 2" is used above to prevent a residual overlap of the
         # legend's labels and the histogram.
 
-        set_xrange_cmds =  ('set xdata time',
-                            'set timefmt "{}"'.format(str_time_format),
-                            'set xrange ["{}":"{}"]'.format(start_time_str,
-                                                            now_time_str))
+        set_xrange_cmds = ('set xdata time',
+                           'set timefmt "{}"'.format(str_time_format),
+                           'set xrange ["{}":"{}"]'.format(start_time_str,
+                                                           now_time_str))
 
         # Make plots
-        for action in ('reads', 'writes'): #, 'reads+writes'):
+        for action in ('reads', 'writes'):  # , 'reads+writes'):
 
             ylabel = 'Average file {} per mount'.format(action)
 

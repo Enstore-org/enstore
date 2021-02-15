@@ -9,6 +9,7 @@
 '''
 Readonly access to file and volume database
 '''
+from __future__ import print_function
 
 # system import
 import Queue
@@ -45,7 +46,8 @@ MAX_CONNECTIONS = MAX_THREADS + 1
 # exceptions
 
 def err_msg(function, ticket, exc, value, tb=None):
-    return function + ' ' + `ticket` + ' ' + str(exc) + ' ' + str(value) + ' ' + str(tb)
+    return function + ' ' + repr(ticket) + ' ' + \
+        str(exc) + ' ' + str(value) + ' ' + str(tb)
 
 
 class Interface(generic_server.GenericServerInterface):
@@ -77,46 +79,57 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
         dbInfo = None
         try:
             dbInfo = self.csc.get('database')
-        except Exception, msg:
+        except Exception as msg:
             Trace.alarm(e_errors.ERROR, str(msg), {})
-            Trace.log(e_errors.ERROR, "can not find database key in configuration")
+            Trace.log(
+                e_errors.ERROR,
+                "can not find database key in configuration")
             sys.exit(1)
 
         file_clerk.MY_NAME = MY_NAME
         volume_clerk.MY_NAME = MY_NAME
 
-        self.sequentialQueueSize = self.keys.get('sequential_queue_size', SEQUENTIAL_QUEUE_SIZE)
-        self.parallelQueueSize = self.keys.get('parallel_queue_size', PARALLEL_QUEUE_SIZE)
-        self.numberOfParallelWorkers = self.keys.get('max_threads', MAX_THREADS)
+        self.sequentialQueueSize = self.keys.get(
+            'sequential_queue_size', SEQUENTIAL_QUEUE_SIZE)
+        self.parallelQueueSize = self.keys.get(
+            'parallel_queue_size', PARALLEL_QUEUE_SIZE)
+        self.numberOfParallelWorkers = self.keys.get(
+            'max_threads', MAX_THREADS)
         self.max_connections = self.numberOfParallelWorkers + 1
 
         self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host', 'localhost'),
                                           port=dbInfo.get('db_port', 8888),
-                                          user=dbInfo.get('dbuser_reader', 'enstore_reader'),
-                                          database=dbInfo.get('dbname', 'enstoredb'),
-                                          auto_journal=0,
-                                          max_connections=self.max_connections,
-                                          max_idle=int(self.max_connections * 0.9 + 0.5))
+                                          user=dbInfo.get(
+            'dbuser_reader', 'enstore_reader'),
+            database=dbInfo.get(
+                                              'dbname', 'enstoredb'),
+            auto_journal=0,
+            max_connections=self.max_connections,
+            max_idle=int(self.max_connections * 0.9 + 0.5))
 
         self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host', 'localhost'),
                                       port=dbInfo.get('db_port', 8888),
-                                      user=dbInfo.get('dbuser_reader', 'enstore_reader'),
-                                      database=dbInfo.get('dbname', 'enstoredb'),
-                                      auto_journal=0,
-                                      max_connections=self.max_connections,
-                                      max_idle=int(self.max_connections * 0.9 + 0.5))
+                                      user=dbInfo.get(
+            'dbuser_reader', 'enstore_reader'),
+            database=dbInfo.get(
+                                          'dbname', 'enstoredb'),
+            auto_journal=0,
+            max_connections=self.max_connections,
+            max_idle=int(self.max_connections * 0.9 + 0.5))
 
         self.volumedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
         self.filedb_dict.dbaccess.set_retries(MAX_CONNECTION_FAILURE)
 
         self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
-        self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue, self)
+        self.sequentialWorker = dispatching_worker.ThreadExecutor(
+            self.sequentialThreadQueue, self)
         self.sequentialWorker.start()
 
         self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
         self.parallelThreads = []
         for i in range(self.numberOfParallelWorkers):
-            worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue, self)
+            worker = dispatching_worker.ThreadExecutor(
+                self.parallelThreadQueue, self)
             self.parallelThreads.append(worker)
             worker.start()
 
@@ -128,14 +141,14 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 
     def invoke_function(self, function, args=()):
         if function.__name__ == "quit":
-            apply(function, args)
+            function(*args)
         elif function.__name__ in ("find_same_file", "find_same_file2"):
             Trace.trace(5, "Putting on sequential thread queue %d %s" % (
                 self.sequentialThreadQueue.qsize(), function.__name__))
             self.sequentialThreadQueue.put([function.__name__, args])
         else:
             Trace.trace(5, "Putting on parallel thread queue %d %s" % (
-            self.parallelThreadQueue.qsize(), function.__name__))
+                self.parallelThreadQueue.qsize(), function.__name__))
             self.parallelThreadQueue.put([function.__name__, args])
 
     def close(self):
@@ -157,8 +170,10 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
                 return 0
             info_clerk_host, info_clerk_port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
-            ticket["info_clerk_callback_addr"] = (info_clerk_host, info_clerk_port)
-            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ticket["info_clerk_callback_addr"] = (
+                info_clerk_host, info_clerk_port)
+            self.control_socket = socket.socket(
+                socket.AF_INET, socket.SOCK_STREAM)
             self.control_socket.connect(addr)
             callback.write_tcp_obj(self.control_socket, ticket)
 
@@ -174,7 +189,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
             self.data_socket = data_socket
             listen_socket.close()
         # catch any error and keep going. server needs to be robust
-        except:
+        except BaseException:
             exc, msg = sys.exc_info()[:2]
             Trace.handle_error(exc, msg)
             return 0
@@ -185,7 +200,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
     # turn on/off the debugging
     def debugging(self, ticket):
         self.debug = ticket.get('level', 0)
-        print 'debug =', self.debug
+        print('debug =', self.debug)
 
     # These need confirmation
     def quit(self, ticket):
@@ -243,13 +258,13 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
                 combined_dict[key] = vinfo[key]
 
         # Put the information into the ticket in the correct place.
-        if ticket.has_key('file_list'):
+        if 'file_list' in ticket:
             ticket['file_list'].append(combined_dict)
             return
         else:
             if item_name:
                 ticket[item_name] = combined_dict
-                print "ticket:", ticket
+                print("ticket:", ticket)
             else:
                 for key in combined_dict.keys():
                     ticket[key] = combined_dict[key]
@@ -269,11 +284,11 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
         #
         # edb module raises underlying DB errors as EnstoreError.
         #
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket['status'] = (msg.type,
                                 "failed to find bfid for pnfs_path %s" % (pnfs_path,))
             return
-        except:
+        except BaseException:
             ticket['status'] = (e_errors.INFO_SERVER_ERROR,
                                 "failed to find bfid for pnfs_path %s" % (pnfs_path,))
             return
@@ -311,7 +326,8 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
                                                  fail_None=True)
         if not pnfs_id:
             return  # extract_value_from_ticket handles its own errors.
-        if not enstore_functions3.is_pnfsid(pnfs_id) and not enstore_functions3.is_chimeraid(pnfs_id):
+        if not enstore_functions3.is_pnfsid(
+                pnfs_id) and not enstore_functions3.is_chimeraid(pnfs_id):
             message = "pnfsid %s not valid" % \
                       (pnfs_id,)
             ticket["status"] = (e_errors.WRONG_FORMAT, message)
@@ -325,12 +341,12 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
         #
         # edb module raises underlying DB errors as EnstoreError.
         #
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket['status'] = (msg.type,
                                 "failed to find bfid for pnfs_id %s" % (pnfs_id,))
 
             return
-        except:
+        except BaseException:
             ticket['status'] = (e_errors.INFO_SERVER_ERROR,
                                 "failed to find bfid for pnfs_id %s" % (pnfs_id,))
             return
@@ -342,7 +358,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 
         if len(res) > 1:
             ticket['status'] = (e_errors.TOO_MANY_FILES,
-                                "%s: %s %s matches found" % \
+                                "%s: %s %s matches found" %
                                 (MY_NAME, pnfs_id, len(res)))
             ticket['file_list'] = []
             for db_info in res:
@@ -369,9 +385,11 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
     def __find_file_by_location(self, ticket):
 
         # label = self.extract_external_label_from_ticket(ticket):
-        external_label, record = self.extract_external_label_from_ticket(ticket)
+        external_label, record = self.extract_external_label_from_ticket(
+            ticket)
         if not external_label:
-            return  # extract_external_label_from_ticket handles its own errors.
+            # extract_external_label_from_ticket handles its own errors.
+            return
 
         location_cookie = self.extract_value_from_ticket(
             "location_cookie", ticket, fail_None=True)
@@ -390,16 +408,17 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
              "location_cookie = %s")
         res = []
         try:
-            res = self.filedb_dict.query_dictresult(q, (external_label, location_cookie,))
+            res = self.filedb_dict.query_dictresult(
+                q, (external_label, location_cookie,))
         #
         # edb module raises underlying DB errors as EnstoreError.
         #
-        except e_errors.EnstoreError, msg:
+        except e_errors.EnstoreError as msg:
             ticket['status'] = (msg.type,
                                 "failed to find bfid for volume:location %s:%s" % (external_label, location_cookie,))
 
             return ticket
-        except:
+        except BaseException:
             ticket['status'] = (e_errors.INFO_SERVER_ERROR,
                                 "failed to find bfid for volume:location %s:%s" % (external_label, location_cookie,))
             return ticket
@@ -415,7 +434,9 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
                                  (external_label, location_cookie))
         else:
             bfid = res[0].get('bfid')
-            self.__find_file(bfid, ticket, "%s:%s" % (external_label, location_cookie))
+            self.__find_file(
+                bfid, ticket, "%s:%s" %
+                (external_label, location_cookie))
         return ticket
 
     # find_file_by_location() -- find a file using pnfs_path
@@ -468,7 +489,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
                     if (crc <= 0 or
                         sanity_crc <= 0 or
                         record["sanity_cookie"][1] <= 0 or
-                        record["complete_crc"] <= 0):
+                            record["complete_crc"] <= 0):
                         continue
                     crc_adler32 = checksum.convert_0_adler32_to_1_adler32(
                         crc, record["size"])
@@ -522,12 +543,12 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
                                     msg)
                 # self.reply_to_caller(ticket)
                 return True
-        except KeyError, detail:
+        except KeyError as detail:
             msg = "%s: key %s is missing" % (MY_NAME, detail)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             # self.reply_to_caller(ticket)
-            ####XXX client hangs waiting for TCP reply
+            # XXX client hangs waiting for TCP reply
             return True
         return False
 
@@ -540,7 +561,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
             result['result'] = res
             result['ntuples'] = len(res)
             result['status'] = (e_errors.OK, None)
-        except:
+        except BaseException:
             exc_type, exc_value = sys.exc_info()[:2]
             msg = 'query_db(): ' + str(exc_type) + ' ' + str(exc_value) + ' query: ' + q
             result['status'] = (e_errors.DATABASE_ERROR, msg)
@@ -585,7 +606,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
         ticket["status"] = (e_errors.OK, None)
         try:
             control_socket = self.send_reply_with_long_answer_part1(ticket)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "query_db2(): %s" % (str(msg),))
             return
 
@@ -595,7 +616,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
         # send the reply
         try:
             self.send_reply_with_long_answer_part2(control_socket, reply)
-        except (socket.error, select.error), msg:
+        except (socket.error, select.error) as msg:
             Trace.log(e_errors.INFO, "query_db2(): %s" % (str(msg),))
             return
 
@@ -607,15 +628,15 @@ if __name__ == '__main__':
     infoServer = Server(csc)
     infoServer.handle_generic_commands(intf)
 
-    while 1:
+    while True:
         try:
             Trace.log(e_errors.INFO, "Info Server (re)starting")
             infoServer.serve_forever()
         except (e_errors.EnstoreError, ValueError):
             continue
-        except SystemExit, exit_code:
+        except SystemExit as exit_code:
             infoServer.close()
             sys.exit(exit_code)
-        except:
+        except BaseException:
             infoServer.serve_forever_error(string.upper(MY_NAME))
             continue

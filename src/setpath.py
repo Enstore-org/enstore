@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 # $Id$
-    
+
+from __future__ import print_function
 import sys
 import os
 import errno
+
 
 def addpath(p):
     if not p:
@@ -16,31 +18,29 @@ def addpath(p):
 
 
 def set_enstore_paths():
-    #These two paths are necessary for enstore.
+    # These two paths are necessary for enstore.
     addpath('$ENSTORE_DIR/src')
     addpath('$ENSTORE_DIR/modules')
 
-    #In case we are working in a different location...
+    # In case we are working in a different location...
     try:
         cdir = os.getcwd()
         addpath(os.path.join(cdir, '../modules'))
-    except OSError, msg:
+    except OSError as msg:
         if msg.errno == errno.ENOENT:
             sys.stderr.write("%s: %s\n" % (os.strerror(msg.errno),
-                                         "No current working directory"))
+                                           "No current working directory"))
             sys.exit(1)
         else:
             sys.stderr.write(str(msg) + "\n")
             sys.exit(1)
 
-### Why should this be called when the module is imported?  Nothing seems
-###  to break when it is commented out (perhaps a code versus cut
-###  difference exists).  If they did need it, they could call this
-###  function.
+
+# Why should this be called when the module is imported?  Nothing seems
+# to break when it is commented out (perhaps a code versus cut
+# difference exists).  If they did need it, they could call this
+# function.
 set_enstore_paths()
 
-if __name__=='__main__':
-    print sys.path
-
-
-    
+if __name__ == '__main__':
+    print(sys.path)

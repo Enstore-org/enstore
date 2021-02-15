@@ -6,7 +6,7 @@ import configuration_client
 import enstore_functions2
 import dbaccess
 
-QUERY="insert into historic_tape_bytes \
+QUERY = "insert into historic_tape_bytes \
 (date, storage_group, active_bytes, \
 unknown_bytes, deleted_bytes, active_files, unknown_files ,deleted_files) \
 select date_trunc('month',now()), \
@@ -25,19 +25,19 @@ if __name__ == "__main__":
     csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
                                                     enstore_functions2.default_port()))
     dbInfo = csc.get("database")
-    db=None
-    try :
+    db = None
+    try:
         db = dbaccess.DatabaseAccess(maxconnections=1,
-                                     host     = dbInfo.get('db_host', "localhost"),
-                                     database = dbInfo.get('dbname', "enstoredb"),
-                                     port     = dbInfo.get('db_port', 5432),
-                                     user     = dbInfo.get('dbuser', "enstore"))
+                                     host=dbInfo.get('db_host', "localhost"),
+                                     database=dbInfo.get(
+                                         'dbname', "enstoredb"),
+                                     port=dbInfo.get('db_port', 5432),
+                                     user=dbInfo.get('dbuser', "enstore"))
         db.insert(QUERY)
-    except Exception, e:
+    except Exception as e:
         sys.stderr.write(str(e))
         sys.stderr.flush()
         sys.exit(1)
     finally:
         if db:
             db.close()
-

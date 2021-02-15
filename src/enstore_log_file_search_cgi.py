@@ -2,6 +2,7 @@
 ######################################################################
 # src/$RCSfile$   $Revision$
 #
+from __future__ import print_function
 import cgi
 import string
 import os
@@ -12,69 +13,70 @@ import re
 import getpass
 import enstore_utils_cgi
 
+
 def go():
     # first print the two lines for the header
-    print "Content-type: text/html"
-    print
+    print("Content-type: text/html")
+    print()
 
     # now start the real html
-    print "<HTML><HEAD><TITLE>Enstore Command Output</TITLE></HEAD><BODY>"
+    print("<HTML><HEAD><TITLE>Enstore Command Output</TITLE></HEAD><BODY>")
 
     try:
         # get the data from the form
         form = cgi.FieldStorage()
         keys = form.keys()
         an_argv = []
-        if form.has_key("search"):
+        if "search" in form:
             search_string = form["search"].value
         else:
             # the user did not enter a search string
-            print "ERROR: Please enter a search string."
+            print("ERROR: Please enter a search string.")
             raise SystemExit
 
-	# we need to find the location of enstore so we can import
-	(config_host, config_port) = enstore_utils_cgi.find_enstore()
-	config_port = int(config_port)
+        # we need to find the location of enstore so we can import
+        (config_host, config_port) = enstore_utils_cgi.find_enstore()
+        config_port = int(config_port)
 
-	import log_client
-	import log_server
-        if form.has_key("logfile"):
+        import log_client
+        import log_server
+        if "logfile" in form:
             logfile = form["logfile"].value
-	    # as a convenience to the user, we will check if the user forgot to add
-	    # the LOG- prefix onto the log file name, and add it ourselves.
-	    for lkey in log_client.VALID_PERIODS.keys():
-		if logfile == lkey:
-		    # we found a match so we will not be adding the generic log
-		    # file prefix to the name of the entered logfile
-		    break
-	    else:
-		# assume that if the first character of the log file is a nubmer, then
-		# we need to add the file prefix.
-		if logfile[0] in string.digits:
-		    logfile = "%s%s"%(log_server.FILE_PREFIX, logfile)
+            # as a convenience to the user, we will check if the user forgot to add
+            # the LOG- prefix onto the log file name, and add it ourselves.
+            for lkey in log_client.VALID_PERIODS.keys():
+                if logfile == lkey:
+                    # we found a match so we will not be adding the generic log
+                    # file prefix to the name of the entered logfile
+                    break
+            else:
+                # assume that if the first character of the log file is a nubmer, then
+                # we need to add the file prefix.
+                if logfile[0] in string.digits:
+                    logfile = "%s%s" % (log_server.FILE_PREFIX, logfile)
         else:
             # the user did not enter a logfile name assume all
-	    logfile = "all"
+            logfile = "all"
 
-	# get a list of the log files we need
-	logc = log_client.LoggerClient((config_host, config_port))
-	ticket = logc.get_logfiles(logfile, enstore_utils_cgi.TIMEOUT,
-				   enstore_utils_cgi.RETRIES)
-	logfile_names = ticket['logfiles']
-	if logfile_names == []:
-	    # there were no matches
-	    print "<BR><P>"
-	    print "There were no log files that matched the entered description."
-	else:
-	    # put the files in alphabetical order
-	    logfile_names.sort()
+        # get a list of the log files we need
+        logc = log_client.LoggerClient((config_host, config_port))
+        ticket = logc.get_logfiles(logfile, enstore_utils_cgi.TIMEOUT,
+                                   enstore_utils_cgi.RETRIES)
+        logfile_names = ticket['logfiles']
+        if logfile_names == []:
+            # there were no matches
+            print("<BR><P>")
+            print("There were no log files that matched the entered description.")
+        else:
+            # put the files in alphabetical order
+            logfile_names.sort()
             # if the period was yesterday, we do not need today
             if logfile == log_client.YESTERDAY:
-                logfile_names = [logfile_names[0],]
-	    # for each name, search the file using the  search string
-	    enstore_utils_cgi.pgrep_html(search_string, logfile_names, 0)
+                logfile_names = [logfile_names[0], ]
+            # for each name, search the file using the  search string
+            enstore_utils_cgi.pgrep_html(search_string, logfile_names, 0)
     finally:
-        print "</BODY></HTML>"
+        print("</BODY></HTML>")
 
 
 if __name__ == "__main__":

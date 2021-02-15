@@ -11,6 +11,7 @@ extern char ftt_eprint_buf[];
 #define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
 /* device information structure */
 #define MAXDEVSLOTS 80
+
 typedef struct {
 	char *device_name;	/* pathname for device */
 	short int density;	/* density code */
@@ -57,6 +58,7 @@ typedef struct {
 	int		nresets;		/* unexpected BOT's */
 	int		nharderrors;		/* unrecovered r/w errors */
 } ftt_descriptor_buf;
+
 int ftt_set_last_operation(ftt_descriptor d, int op){
 	int prev;
 	ftt_descriptor_buf* fbd;
@@ -73,7 +75,6 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
 
 #ifdef SWIG_VERSION
 /* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. */
-
 %include cpointer.i
 
 %typemap(in) FILE * {
@@ -109,13 +110,77 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
 %{
 /* Include in the generated wrapper file */
 typedef char * cptr;
+typedef char * byteptr;
 %}
 /* Tell SWIG about it */
 typedef char * cptr;
+typedef char * byteptr;
+typedef cher *ftt_stat_buf;
+typedef cher *ftt_descriptor;
 
 %typemap(in) cptr{
         $1 = PyString_AsString($input);
 }
+%typemap(in) byteptr{
+  if (PyString_Check($input)) {
+    // no type mapping if string                                                                                                    
+    $1= PyString_AsString($input);
+  }
+
+  else if (PyList_Check($input)) {
+    int size = PyList_Size($input);
+    int i = 0;
+    char item;
+
+    $1 = (char *) malloc((size+1)*sizeof(char));
+    for (i = 0; i < size; i++) {
+      PyObject *o = PyList_GetItem($input,i);
+      if (PyInt_Check(o)) {
+        item = (char)PyInt_AsLong(PyList_GetItem($input,i));
+        $1[i] = item;
+      }
+      else {
+        PyErr_SetString(PyExc_TypeError,"list must contain integers");
+        free($1);
+        return NULL;
+      }
+    }
+  } else {
+    PyErr_SetString(PyExc_TypeError,"not a list");
+    return NULL;
+  }
+ }
+
+%typemap(out) byteptr{
+  if (PyString_Check($1)) {
+    // no type mapping if string                                                                                                   \
+                                                                                                                                    
+    $result = PyString_AsString($1);
+  }
+
+  else if (PyList_Check($1)) {
+    int size = PyList_Size($1);
+    int i = 0;
+    char item;
+
+    $result = (char *) malloc((size+1)*sizeof(char));
+    for (i = 0; i < size; i++) {
+      PyObject *o = PyList_GetItem($1,i);
+      if (PyInt_Check(o)) {
+        item = (char)PyInt_AsLong(PyList_GetItem($1,i));
+        $result[i] = item;
+      }
+      else {
+        PyErr_SetString(PyExc_TypeError,"list must contain integers");
+        free($result);
+        return NULL;
+      }
+    }
+  } else {
+    PyErr_SetString(PyExc_TypeError,"not a list");
+    return NULL;
+  }
+ }
 
 #else
 /* No SWIG_VERSION defined means a version older than 1.3.11.  Here we only
@@ -123,7 +188,7 @@ typedef char * cptr;
  * for 1.3 versions with a patch level 10 or less. */
 
 %include pointer.i
-
+echo "AAAAAAAAAAAAAA"
 %typemap(python, in) FILE * {
         if (!PyFile_Check($source)) {
 	    PyErr_SetString(PyExc_TypeError, "Expected file object");
@@ -144,12 +209,12 @@ typedef char * cptr;
 
 
 %typedef char * cptr;
-%typemap(python, in) cptr{
+%typemap(in) cptr{
         $target= PyString_AsString($source);
 }
 %typedef char * byteptr; // to map python list < - > array of bytes for do_scsi_command
 
-%typemap(python, in) byteptr{
+%typemap(in) byteptr{
   if (PyString_Check($source)) {
     // no type mapping if string
     $target= PyString_AsString($source);
@@ -159,7 +224,7 @@ typedef char * cptr;
     int size = PyList_Size($source);
     int i = 0;
     char item;
-
+    printf('SZ\n', size);
     $target = (char *) malloc((size+1)*sizeof(char));
     for (i = 0; i < size; i++) {
       PyObject *o = PyList_GetItem($source,i);
@@ -179,33 +244,7 @@ typedef char * cptr;
   }
 }
 
-
-// Wrapper around ftt_do_scsi_command to solve the problem with
-// read/write buffer
-%inline %{
-PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const byteptr cmd_ptr, int cmd_len, int buf_len, int to)
-{
-    int i, res;
-    PyObject * out_list;
-    char * scsi_buf = (char *) malloc(buf_len * sizeof(char));
-    long item;
-
-    res = ftt_do_scsi_command(d, cmd_name, cmd_ptr, cmd_len, scsi_buf, buf_len, to, 0);
-    out_list = PyList_New(buf_len);
-    for (i = 0; i < buf_len; i++) {
-	item = (long)scsi_buf[i];
-	PyList_SetItem(out_list, i, PyInt_FromLong(item));
-    }
-
-    free(scsi_buf);
-    return out_list;
-
-}
-
-%}
 #endif
-
-
 
 /* ftt_defines.h
 **
@@ -484,7 +523,8 @@ int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_write_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_skip_part(ftt_descriptor,int);
 
-int             ftt_do_scsi_command(ftt_descriptor, const cptr,  const byteptr, int, byteptr, int, int, int);
+extern int             ftt_do_scsi_command(ftt_descriptor, const cptr,  const byteptr, int, byteptr, int, int, int);
+//int      ftt_do_scsi_command(ftt_descriptor, cptr,  cptr, int, byteptr, int, int, int);
 
 extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 
@@ -535,3 +575,34 @@ int ftt_set_last_operation(ftt_descriptor, int);
 #define FTT_OP_SETCOMPRESSION	(1 <<  FTT_OPN_SETCOMPRESSION)
 
 /* end HACK*/
+// Wrapper around ftt_do_scsi_command to solve the problem with                                                                                        
+// read/write buffer                                                                                                                                   
+%inline %{
+  //typedef char * cptr;
+  //typedef char * byteptr;
+
+  PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const byteptr cmd_ptr, int cmd_len, int buf_len, int to)
+  {
+    int i, res;
+    PyObject * out_list;
+    char * scsi_buf = (char *) malloc(buf_len * sizeof(char));
+    char * cp;
+    long item;
+
+    res = ftt_do_scsi_command(d, cmd_name, cmd_ptr, cmd_len, scsi_buf, buf_len, to, 0);
+    //cp = scsi_buf;
+    //for (i = 0; i < buf_len; i++) {
+    //  *cp++ = i;
+    //}
+    out_list = PyList_New(buf_len);
+    for (i = 0; i < buf_len; i++) {
+      item = (long)scsi_buf[i];
+      PyList_SetItem(out_list, i, PyInt_FromLong(item));
+    }
+
+    free(scsi_buf);
+    return out_list;
+
+  }
+
+  %}

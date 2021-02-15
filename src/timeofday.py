@@ -4,7 +4,8 @@
 # system imports
 import time
 
-#enstore imports
+# enstore imports
 
-def tod() :
-    return time.strftime("%c",time.localtime(time.time()))
+
+def tod():
+    return time.strftime("%c", time.localtime(time.time()))

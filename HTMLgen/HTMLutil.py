@@ -4,6 +4,7 @@
 This is functionality use by HTMLgen script writers rather than by HTMLgen
 itself. (i.e. HTMLgen.py is not dependant on this module.)
 """
+from __future__ import print_function
 # HTMLutil.py
 # COPYRIGHT (C) 1996-7  ROBIN FRIEDRICH
 # Permission to  use, copy, modify, and distribute this software and its
@@ -197,11 +198,11 @@ def imap_convert(filename, format='NCSA'):
     elif format == 'CERN':
         parse_function = parse_cern_line
     else:
-        raise ValueError, 'Second arg has to be either NCSA or CERN'
-    print 'Parsing', filename, 'assuming the', format, 'imagemap format'
+        raise ValueError('Second arg has to be either NCSA or CERN')
+    print('Parsing', filename, 'assuming the', format, 'imagemap format')
     for line in lines:
         line = string.strip(line)
-        print parse_function(line)
+        print(parse_function(line))
 
 def parse_ncsa_line(line):
     """NCSA format looks like:
@@ -243,18 +244,18 @@ def parse_cern_line(line):
     return HTMLgen.Area(shape=shape_names[shape], href=url, coords=coords)
 
 def test_imap_convert():
-    print 'testing NCSA format parsing'
+    print('testing NCSA format parsing')
     lol = string.split(parse_ncsa_line.__doc__, '\n')
     for line in lol:
         line = string.strip(line)
         if line[:4] in ('rect','circ','poly'):
-            print parse_ncsa_line(line)
-    print 'testing CERN format parsing'
+            print(parse_ncsa_line(line))
+    print('testing CERN format parsing')
     lol = string.split(parse_cern_line.__doc__, '\n')
     for line in lol:
         line = string.strip(line)
         if line[:4] in ('rect','circ','poly'):
-            print parse_cern_line(line)
+            print(parse_cern_line(line))
 
 
 #########################################            
@@ -332,16 +333,16 @@ class Directory(UserList):
         """Print an indented representation of the entire directory
         contents.
         """
-        print pad, self.name+'/'
+        print(pad, self.name+'/')
         pad = pad + '   '
         for item in self.data:
             if type(item) is InstanceType:
                 try:
                     item.ls(pad)
                 except AttributeError:
-                    print id(item), '[non-directory object]'
+                    print(id(item), '[non-directory object]')
             else:
-                print pad, item
+                print(pad, item)
 
 def test_Directory():
     import string
@@ -360,11 +361,11 @@ def test_Directory():
         path = fullpath[:-1]
         D.add_object(path, object)
     T = D.tree()
-    print T
+    print(T)
     D.ls()
     import HTMLgen
-    print HTMLgen.List(T)
-    print 'HOW IS THIS?'
+    print(HTMLgen.List(T))
+    print('HOW IS THIS?')
     
 ###################
 # stuff to test performance idea. Looks like character
@@ -403,13 +404,13 @@ import time
 def test_perf(iter=10):
     t0 = time.clock()
     x = make_string(iter)
-    print time.clock() - t0, 'String', len(x)
+    print(time.clock() - t0, 'String', len(x))
     t0 = time.clock()
     y = make_array(iter)
-    print time.clock() - t0, 'Array', len(y)
+    print(time.clock() - t0, 'Array', len(y))
     t0 = time.clock()
     y = make_list(iter)
-    print time.clock() - t0, 'List', len(y)
+    print(time.clock() - t0, 'List', len(y))
 
 ####
 # getting those damned ..'s out of file paths
@@ -513,7 +514,7 @@ def store_image_inventory(directory=os.curdir, file='images.pkl', prefix=None):
     f = open(dumpfile, 'w')
     dump(images, f)
     f.close()
-    print len(images), 'Image references saved in', dumpfile
+    print(len(images), 'Image references saved in', dumpfile)
 
 def fetch_image_inventory(directory, file='images.pkl'):
     """Return a dict of Image objects from a pickle or marshal file
@@ -546,11 +547,11 @@ def test_image_inventory():
     D1 = fetch_image_inventory('./image') # unpickle
     D2 = fetch_image_inventory('./image', 'images.mar') # unmarshal
     if len(D1) == len(D2):
-        print 'Tests OK'
+        print('Tests OK')
         os.unlink('./image/images.pkl')
         os.unlink('./image/images.mar')
     else:
-        print 'Something is amiss.'
+        print('Something is amiss.')
 
 def print_image_sizes(dir=os.curdir):
     """Calculate image sizes.
@@ -563,7 +564,7 @@ def print_image_sizes(dir=os.curdir):
         filelist = filelist + glob.glob1('', suffix)
     for file in filelist:
         (width, height) = ImageH.open(file).size
-        print "('%s', %d, %d)" % (file, width, height)
+        print("('%s', %d, %d)" % (file, width, height))
 
 def test_template():
     'Test TemplateDocument class.'
@@ -581,10 +582,10 @@ def test_driver():
                     ('Test the Directory class?', test_Directory),
                     ('Test Image inventory tools?', test_image_inventory),
                     ('Test TemplateDocument class?', test_template) )
-    print '    Select one or more tests to perform, just hit return if none.'
+    print('    Select one or more tests to perform, just hit return if none.')
     i = 0
     for (question, function) in things2test:
-        print '[%d] %s' % (i+1, question)
+        print('[%d] %s' % (i+1, question))
         i = i + 1
     answer = raw_input('Type numbers separated by commas: ')
     if answer:
@@ -593,7 +594,7 @@ def test_driver():
             for item in answers:
                 things2test[item-1][1]()
         except (ValueError, IndexError):
-            print "Input error."
+            print("Input error.")
     
 if __name__ == '__main__':
     import sys

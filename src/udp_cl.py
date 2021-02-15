@@ -5,8 +5,10 @@
 # This is a simple udp client used along with udp_srvr.py for testing
 # server port is 6700
 # command line arguments: host_name port message_length
+from __future__ import print_function
 import sys
-import  udp_client
+import udp_client
+
 
 class Client:
     def __init__(self):
@@ -18,9 +20,8 @@ if __name__ == "__main__":
     host = sys.argv[1]
     port = int(sys.argv[2])
     m_len = int(sys.argv[3])
-    ticket = {'work':'echo', 'args':"*"*m_len}
+    ticket = {'work': 'echo', 'args': "*" * m_len}
     addr = (host, port)
 
     ret = cl.udpc.send(ticket, addr, rcv_timeout=10, max_send=1)
-    print ret
-
+    print(ret)

@@ -27,6 +27,7 @@
 
 
 # system imports
+from __future__ import print_function
 import os
 import sys
 import traceback
@@ -44,7 +45,6 @@ import file_clerk_client
 import option
 
 
-
 def delete_trash_record(db, pnfsid):
     delete_cursor = None
     success = True
@@ -54,14 +54,15 @@ def delete_trash_record(db, pnfsid):
         # we are removing only TAPE files (itype=0) DISK files (itype=1) are handled by dCache
         # cleaner
         #
-        delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid=%s and itype=0", (pnfsid,))
+        delete_cursor.execute(
+            "delete from t_locationinfo_trash where ipnfsid=%s and itype=0", (pnfsid,))
         db.commit()
-    except psycopg2.Error, msg:
+    except psycopg2.Error as msg:
         success = False
         try:
             if db:
                 db.rollback()
-        except psycopg2.Error, msg:
+        except psycopg2.Error as msg:
             sys.stderr.write("Failed to rollback delete of pnfsid %s from t_localinfo_trash, %s \n" % (pnfsid,
                                                                                                        str(msg)))
             pass
@@ -69,7 +70,7 @@ def delete_trash_record(db, pnfsid):
         if delete_cursor:
             try:
                 delete_cursor.close()
-            except:
+            except BaseException:
                 pass
             delete_cursor = None
         return success
@@ -102,17 +103,19 @@ def main(intf):
         db = None
 
         dbcon = value
-        if "master" in value :
+        if "master" in value:
             dbcon = value.get("master")
 
         try:
             connectionPool = PooledDB.PooledDB(psycopg2,
-                                               maxconnections = 1,
-                                               blocking = True,
-                                               host = dbcon.get('dbhost', 'localhost'),
-                                               port = dbcon.get('dbport', 5432),
-                                               user = dbcon.get('dbuser', 'enstore'),
-                                               database = dbcon.get('dbname', 'chimera'))
+                                               maxconnections=1,
+                                               blocking=True,
+                                               host=dbcon.get(
+                                                   'dbhost', 'localhost'),
+                                               port=dbcon.get('dbport', 5432),
+                                               user=dbcon.get(
+                                                   'dbuser', 'enstore'),
+                                               database=dbcon.get('dbname', 'chimera'))
             db = connectionPool.connection()
             cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             #
@@ -143,25 +146,31 @@ def main(intf):
                     bfid = url_dict.get('bfid')[0]
                     fcc.bfid = bfid
                     if fcc.bfid_info().get('active_package_files_count', 0) > 0 and \
-                                    fcc.bfid_info().get('package_id', None) == bfid:
+                            fcc.bfid_info().get('package_id', None) == bfid:
                         Trace.log(e_errors.WARNING,
-                                  'Skipping non-empy package file %s' % (bfid,),
+                                  'Skipping non-empy package file %s' % (
+                                      bfid,),
                                   fcc.bfid_info().get('pnfs_name0', None))
-                        print 'skipping non-empty package file', bfid, '...'
+                        print('skipping non-empty package file', bfid, '...')
                         continue
-                    print 'deleting', bfid, '...',
+                    print('deleting', bfid, '...', end=' ')
                     result = fcc.set_deleted('yes')
                     """
                     during SFA testing we encountered many cases where BFID of these file
                     no longer in database. Skip these as not errors.
                     """
-                    if result['status'][0] not in (e_errors.OK, e_errors.NO_FILE):
-                        print bfid, result['status'][1]
+                    if result['status'][0] not in (
+                            e_errors.OK, e_errors.NO_FILE):
+                        print(bfid, result['status'][1])
                         success = False
                     else:
                         success = delete_trash_record(db, pnfsid)
         except psycopg2.OperationalError as opr:
-            Trace.alarm(e_errors.ALARM, "Delfile failed for namespace {} : {}".format(key, opr.message))
+            Trace.alarm(
+                e_errors.ALARM,
+                "Delfile failed for namespace {} : {}".format(
+                    key,
+                    opr.message))
             success = False
         finally:
             for item in [cursor, db, connectionPool]:
@@ -177,10 +186,10 @@ def do_work(intf):
 
     try:
         exit_status = main(intf)
-    except (SystemExit, KeyboardInterrupt), msg:
+    except (SystemExit, KeyboardInterrupt) as msg:
         Trace.log(e_errors.ERROR, "delfile aborted from: %s" % str(msg))
         sys.exit(1)
-    except:
+    except BaseException:
         # Get the uncaught exception.
         exc, msg, tb = sys.exc_info()
         # Print it to terminal.
