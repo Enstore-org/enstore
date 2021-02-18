@@ -52,9 +52,9 @@ if __name__ == "__main__":
     acc = config_dict.get("database",{})
     total_bytes={}
 
-    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active from volume where system_inhibit_0!='DELETED' and media_type!='null'"
+    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active from volume where system_inhibit_0!='DELETED' and media_type not in ('null', 'disk')"
     if system_name.find("stken") != -1 or system_name.find("d0en") != -1 or system_name.find("cdfen") != -1  or system_name.find("gccen") != -1 :
-	    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active  from volume where system_inhibit_0!='DELETED' and media_type!='null' and library not like '%shelf%' and library not like '%test%'"
+	    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active  from volume where system_inhibit_0!='DELETED' and media_type not in ('null', 'disk') and library not like '%shelf%'"
     try:
         db = dbaccess.DatabaseAccess(maxconnections=1,
 				     host     = acc.get('db_host', "localhost"),
@@ -72,5 +72,3 @@ if __name__ == "__main__":
         Trace.handle_error()
 
     work(total_bytes, vq_output_file, vq_output_file2)
-
-

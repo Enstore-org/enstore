@@ -17,6 +17,7 @@ import threading
 import errno
 import smtplib
 import pwd
+import Queue
 
 # enstore imports
 #import setpath
@@ -35,6 +36,9 @@ import udp_client
 import host_config
 
 MY_NAME = enstore_constants.CONFIGURATION_SERVER   #"CONFIG_SERVER"
+SEQUENTIAL_QUEUE_SIZE = enstore_constants.SEQUENTIAL_QUEUE_SIZE
+PARALLEL_QUEUE_SIZE = enstore_constants.PARALLEL_QUEUE_SIZE
+MAX_THREADS = enstore_constants.MAX_THREADS
 
 class ConfigurationDict:
     """
@@ -493,9 +497,25 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         self.update_domains()
 
         # default socket initialization - ConfigurationDict handles requests
-        dispatching_worker.DispatchingWorker.__init__(self, server_address)
+        self.use_raw_udp = os.environ.get('ENSTORE_CONFIG_SERVER_USE_RAW', False)
+        dispatching_worker.DispatchingWorker.__init__(self, server_address, use_raw=self.use_raw_udp)
         self.request_dict_ttl = 10 # Config server is stateless,
                                    # duplicate requests don't hurt us.
+
+        self.sequentialQueueSize = SEQUENTIAL_QUEUE_SIZE
+        self.parallelQueueSize = PARALLEL_QUEUE_SIZE
+        self.numberOfParallelWorkers = MAX_THREADS
+
+        self.sequentialThreadQueue = Queue.Queue(self.sequentialQueueSize)
+        self.sequentialWorker = dispatching_worker.ThreadExecutor(self.sequentialThreadQueue, self)
+        self.sequentialWorker.start()
+
+        self.parallelThreadQueue = Queue.Queue(self.parallelQueueSize)
+        self.parallelThreads = []
+        for i in range(self.numberOfParallelWorkers):
+            worker = dispatching_worker.ThreadExecutor(self.parallelThreadQueue, self)
+            self.parallelThreads.append(worker)
+            worker.start()
 
 	# set up for sending an event relay message whenever we get a
         # new config loaded
@@ -542,7 +562,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         domains = domains.get('domains', {})
         hostaddr.update_domains(domains)
 
-    def invoke_function(self, function, args=(), after_function = None):
+    def invoke_function(self, function, args=()):
         """
         Overridden dispatching_worker function.  This allows us to control
         which functions are started in parallel or not.
@@ -551,20 +571,30 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         :arg function: The function to run in the thread.
         :type args: :obj:`tuple`
         :arg args: arguments.
-        :type after_function: :obj:`callable`
-        :arg after_function: function to run after function completes
-           after_function is only used if overloaded version in a server uses it.
 
         """
+        if function.__name__ in ('lookup',
+                                 'get_keys',
+                                 'dump',
+                                 'dump2',
+                                 'config_timestamp',
+                                 'get_movers',
+                                 'get_media_changer',
+                                 'get_library_managers',
+                                 'get_media_changers',
+                                 'get_migrators',
+                                 'reply_serverlist'):
+            Trace.trace(5, "Putting on parallel thread queue %d %s" % (
+            self.parallelThreadQueue.qsize(), function.__name__))
+            self.parallelThreadQueue.put([function.__name__, args])
 
-        if function.func_name in ['dump', 'dump2']:
-            if self.get_threaded_imp():
-                self.run_in_thread(None, function, args, after_function)
-            else:
-                self.run_in_process(None, function, args, after_function)
+        elif function.__name__ == "quit":
+            # needs to run on main thread
+            apply(function, args)
         else:
-            dispatching_worker.DispatchingWorker.invoke_function(
-                self, function, args)
+            Trace.trace(5, "Putting on sequential thread queue %d %s" % (
+            self.sequentialThreadQueue.qsize(), function.__name__))
+            self.sequentialThreadQueue.put([function.__name__, args])
 
     ####################################################################
 
@@ -997,9 +1027,45 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                             "copy level set to %s" % (self.get_copy_level()))
         self.reply_to_caller(ticket)
 
+    def quit(self, ticket):
+        # set sentinel
+        self.sequentialThreadQueue.put(None)
+        for process in self.parallelThreads:
+            self.parallelThreadQueue.put(None)
+        self.sequentialWorker.join(10.)
+        for process in self.parallelThreads:
+            process.join(10.)
+        dispatching_worker.DispatchingWorker.quit(self, ticket)
+        self.check_files_in_transiion_thread.join(10)
+        self.check_archiving_files_in_transition_thread.join(10)
 
+    # overriden from dispatching_worker
+    def serve_forever(self):
+        """Handle one request at a time until doomsday, unless we are in a child process"""
+        ###XXX should have a global exception handler here
+        count = 0
+        if self.use_raw_udp:
+            # prepare raw input
+            Trace.log(e_errors.INFO, "Will be using raw input")
+            self.set_out_file()
+            self.raw_requests.set_caller_name(MY_NAME)
+            self.raw_requests.set_use_queue()
+            # start receiver thread or process
+            self.raw_requests.receiver()
 
+        while not self.is_child:
+            self.do_one_request()
+            self.collect_children()
+            count = count + 1
+            if count > 20:
+                self.purge_stale_entries()
+                count = 0
 
+        if self.is_child:
+            Trace.trace(6, "serve_forever, child process exiting")
+            os._exit(0)  ## in case the child process doesn't explicitly exit
+        else:
+            print("serve_forever, shouldn't get here")
 
 class ConfigurationServerInterface(generic_server.GenericServerInterface):
     """

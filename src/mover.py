@@ -2822,7 +2822,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def offline(self):
         self.state = OFFLINE
-        Trace.log(e_errors.INFO, "mover is set OFFLINE")
+        Trace.log(e_errors.INFO, 'mover is set OFFLINE. Mode %s'%(mode_name(self.mode),))
         thread = threading.currentThread()
         if thread:
             thread_name = thread.getName()
@@ -4457,7 +4457,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         :type ticket: :obj:`dict`
         :arg ticket: ticket received from library manager.
         """
-        Trace.log(e_errors.INFO,"VOLUME ASSERT")
+        Trace.log(e_errors.INFO,"VOLUME ASSERT %s"%(ticket,))
         self.setup_transfer(ticket, mode=ASSERT)
 
     def setup_transfer(self, ticket, mode):
@@ -4699,7 +4699,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self._assert_vol()
         except Exception as e:
             Trace.log(e_errors.ERROR, 'exception during assert_vol: %s'%(str(e),))
-        Trace.trace(100, 'Volume assert finished')
+            self.transfer_failed(str(e), error_source='ASSERT')
         Trace.log(e_errors.INFO, 'Volume assert finished')
 
     def _assert_vol(self):
@@ -4778,6 +4778,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         # to not dismout volume after assert
         self.delay = self.default_dismount_delay
+        skip_these = []
 
         if ticket.has_key('action'):
             self.current_work_ticket = ticket
@@ -4834,9 +4835,25 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(24, "file_info %s"%(file_info,))
 
                 Trace.trace(24, 'ticket %s'%(ticket,))
-
                 keys = ticket['return_file_list'].keys()
                 keys.sort()
+                start_from = cookie_to_long(ticket['fc']['location_cookie'])
+                if start_from > 0:
+                    new_keys = keys
+                    keys = []
+                    for loc_c in new_keys:
+                        if cookie_to_long(loc_c) >= start_from:
+                            keys.append(loc_c)
+                        else:
+                            del(ticket['return_file_list'][loc_c])
+                if ticket['skip_deleted']:
+                    new_keys = keys
+                    keys = []
+                    for loc_c in new_keys:
+                        if file_info[loc_c]['deleted'] == 'yes':
+                            del(ticket['return_file_list'][loc_c])
+                        else:
+                            keys.append(loc_c)
                 Trace.trace(24, 'keys %s'%(keys,))
                 stat = e_errors.OK
                 # start client network monitor to detect
@@ -4886,7 +4903,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                         retries = 10
                         self.tr_failed = True
                         while retries > 0:
-                            print('assert_vol: checking tape thread')
                             if thread and thread.isAlive():
                                 Trace.log(e_errors.INFO,"assert_vol: waiting for tape thread to finish")
                                 retries -= 1
@@ -4900,6 +4916,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         stat = self._error
                         ticket['return_file_list'][loc_cookie] = stat
                         Trace.trace(24, "ticket!: %s"%(ticket['return_file_list'][loc_cookie],))
+                        self.transfer_completed(stat)
                         break
 
                 if self.interrupt_assert:
@@ -5462,11 +5479,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # log all running proceses
                     self.log_processes(logit=1)
                 if self.stop:
-                    Trace.alarm(e_errors.ERROR, "encountered FTT_EBLANK error. Going OFFLINE. Please check the tape drive. The tape %s will stay in the drive"%(self.current_volume,))
                     self.set_volume_noaccess(volume_label, "encountered FTT_EBLANK error. See log for details")
-                    self.offline() # stop here for investigation
-                    self.net_driver.close()
-                    self.network_write_active = False # reset to indicate no network activity
+                    if self.mode == ASSERT:
+                        self.stop = False
+                        self.assert_ok.set()
+                    else:
+                        Trace.alarm(e_errors.ERROR, "encountered FTT_EBLANK error. Going OFFLINE. Please check the tape drive. The tape %s will stay i\
+n the drive"%(self.current_volume,))
+                        self.offline() # stop here for investigation
+                        self.net_driver.close()
+                        self.network_write_active = False # reset to indicate no network activity
                     return
             elif msg.find("FTT_EUNRECOVERED") != -1:
                 Trace.alarm(e_errors.ERROR, "encountered FTT_EUNRECOVERED error. Going OFFLINE. Please check the tape drive")
@@ -5571,7 +5593,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if (any(s in msg for s in ("FTT_EBLANK", "FTT_EBUSY", "FTT_EIO", "FTT_ENODEV", "FTT_ENOTAPE", MEDIA_VERIFY_FAILED, e_errors.READ_EOD))
                 or exc == e_errors.ENCP_GONE):
                 # stop assert
-                pass
+                self.assert_ok.set()
             else:
                 self.tr_failed = False # to let assert finish
                 self.assert_return = exc

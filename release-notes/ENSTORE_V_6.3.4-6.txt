@@ -1,0 +1,51 @@
+commit 6f028411230b1437e618bcfb43c816509d91a41b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jan 7 09:53:57 2021 -0600
+
+    enstore rpm 6.3.4-6
+
+A	release-notes/ENSTORE_V_6.3.4-5.txt
+M	spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
+
+commit 5e0f8089f8eba2d7963700f322ddc904256da609
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jan 4 17:21:00 2021 -0600
+
+    Do not remove from at_movers when mover is in SETUP with mounted volume.
+    
+    Mover is in SETUP state when it tries to connect to client (encp). If mover is in this state for a long time when it has mounted volume, the library manager would remove it from at_mover list. It is free to get mounted in another mover, which causes mount error. This patch fixes such problem.
+    
+    https://srm.fnal.gov/reviews/r/678/
+    https://srm.fnal.gov/reviews/r/678/bugs/2066/
+
+M	src/library_manager.py
+M	src/mover.py
+
+commit 9d805339895ac12815f7b02bfacd8660916d035e
+Merge: 99e9290 55a5cc7
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jan 4 16:57:34 2021 -0600
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 99e9290492af773dfd4786d137d537a91e4977a6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jan 4 16:50:35 2021 -0600
+
+    Fix cyclic inheritance in udp_client.py
+    
+    When udp_client send_no_wait calls Trace functions (handle_error) these in turn call send_no_wait.
+    This sometimes may cause recursion. This patch breaks such loop. Also some pylint inspired changes.
+    
+    https://srm.fnal.gov/reviews/r/679/
+    https://srm.fnal.gov/reviews/r/679/bugs/2357/
+
+M	src/Trace.py
+M	src/udp_client.py
+
+commit 55a5cc702bd18a1b54b940956a419f00e663051e
+Merge: e665243 af86dd3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Dec 17 14:38:54 2020 -0600
+
+    Merge branch 'release/6.3.4-5' into develop

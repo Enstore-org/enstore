@@ -1676,8 +1676,9 @@ def __get_csc(parameter=None):
             #__acc = accounting_client.accClient(__csc, logname = 'ENCP',
             #                                    logc = __logc,
             #                                    alarmc = __alarmc)
-    else:
-        __csc.dump_and_save(10, 10)
+    ##else:
+    ##    __csc = __csc.saved_dict
+    ##    #__csc.dump_and_save(10, 10)
 
     if __csc.have_complete_config:
         #Nothing valid, just return the default csc.
