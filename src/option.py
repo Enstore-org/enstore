@@ -449,6 +449,7 @@ SKIP_PNFS = "skip-pnfs"                      #super_remove, encp
 SOURCE_ONLY = "source-only"                  #migrate
 SPOOL_DIR = "spool-dir"                      #migrate
 START_DRAINING = "start-draining"            #library
+START_FROM = "start-from"                    # volume assert
 START_TIME = "start-time"                    #plotter
 STATUS = "status"                            #mover, library
 STOP_DRAINING = "stop-draining"              #library
@@ -583,7 +584,7 @@ valid_option_list = [
     SINGLE_THREADED_ENCP,
     SIZE, SKIP_BAD, SKIP_DELETED_FILES, SKIP_PNFS,
     SOURCE_ONLY,
-    START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
+    START_DRAINING, START_FROM, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
     SPOOL_DIR, STORAGE_GROUP, SUBSCRIBE, SUMMARY, SYSTEM_HTML,

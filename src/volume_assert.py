@@ -52,6 +52,12 @@ except NameError:
 
 ############################################################################
 ############################################################################
+def loc_to_cookie(loc):
+    if isinstance(loc, str)
+        loc = cookie_to_long(loc)
+    if loc is None:
+        loc = 0
+    return '%04d_%09d_%07d' % (0, 0, loc)
 
 def volume_assert_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
@@ -131,19 +137,6 @@ def parse_comma_list(comma_seperated_string):
 def get_clerks_list():
     #Determine the entire valid list of configuration servers.
     csc = configuration_client.ConfigurationClient()
-    config_server_addr_list = csc.get('known_config_servers', 10, 6)
-    if not e_errors.is_ok(config_server_addr_list['status']):
-        message = str(config_server_addr_list['status'])
-        try:
-            sys.stderr.write("%s\n" % (message,))
-            sys.stderr.flush()
-        except IOError:
-            pass
-        Trace.log(e_errors.ERROR, message)
-        sys.exit(1)
-    #Remove status.
-    del config_server_addr_list['status']
-    
     #Add this hosts current enstore system to the beginning of the list.
     csc_list = []
     csc_list.append(csc)
@@ -155,23 +148,9 @@ def get_clerks_list():
     fcc_list.append(file_clerk_client.FileClient(csc,
                                                  rcv_timeout=5,
                                                  rcv_tries=2))
-                    
-    #For all systems that respond get the volume clerk and configuration
-    # server clients.
-    for config in config_server_addr_list.values():
-        Trace.trace(4, "Locating volume clerk on %s." % (config,))
-        _csc = configuration_client.ConfigurationClient(config)
-        csc_list.append(_csc)
-        vcc_list.append(volume_clerk_client.VolumeClerkClient(_csc,
-                                                              rcv_timeout=5,
-                                                              rcv_tries=2))
-        fcc_list.append(file_clerk_client.FileClient(_csc,
-                                                          rcv_timeout=5,
-                                                          rcv_tries=2))
-
     return csc_list, vcc_list, fcc_list
 
-def create_assert_list(check_requests, media_validate=None):
+def create_assert_list(check_requests, media_validate=None, start_from=None, skip_deleted = None):
     #The list of volume clerks to check.
     csc_list, vcc_list, fcc_list = get_clerks_list()
 
@@ -228,6 +207,9 @@ def create_assert_list(check_requests, media_validate=None):
             ticket['fc'] = {}  #Easier to do this than modify the mover.
             ticket['fc']['external_label'] = vc['external_label']
             ticket['fc']['location_cookie'] = "0000_000000000_0000000"
+            if start_from:
+                ticket['fc']['location_cookie'] = loc_to_cookie(start_from)
+            ticket['skip_deleted'] = skip_deleted
             ticket['fc']['address'] = fcc_list[i].server_address  #fcc instance
             ticket['fc']['pnfsid'] = ''
             ticket['fc']['pnfs_name0'] = ''
@@ -282,7 +264,6 @@ def create_assert_list(check_requests, media_validate=None):
 
 def submit_assert_requests(assert_list):
     unique_id_list = []
-
     #Submit each request to the library manager.  The necessary information
     # is in the ticket.  While submiting the assert work requests, create
     # a list of the unique_ids created.
@@ -340,16 +321,11 @@ def report_assert_results(done_ticket):
         done_ticket.get('volume', e_errors.UNKNOWN),
         done_ticket.get('status', (e_errors.UNKNOWN, None)))
     if e_errors.is_ok(done_ticket['status']):
-        Trace.trace(1, message)
         exit_status = 0
     else:
-        try:
-            sys.stderr.write(message + "\n")
-            sys.stderr.flush()
-        except IOError:
-            pass
-        Trace.log(e_errors.ERROR, message)
         exit_status = 1
+        Trace.log(e_errors.ERROR, message)
+    Trace.trace(1, message)
 
     #If CRC checks were requested, report the results.
     lc_keys = done_ticket.get('return_file_list', {}).keys()
@@ -358,18 +334,10 @@ def report_assert_results(done_ticket):
         message = "file %s:%s status is %s" % (
             done_ticket.get('volume', e_errors.UNKNOWN), key,
             done_ticket['return_file_list'][key])
-        if e_errors.is_ok(done_ticket['return_file_list'][key]):
-            Trace.trace(1, message)
-        else:
-            try:
-                sys.stderr.write(message + "\n")
-                sys.stderr.flush()
-            except IOError:
-                pass
-            Trace.log(e_errors.ERROR, message) #log files only on error
+        Trace.trace(1, message)
 
     return exit_status
-        
+
 def stall_volume_assert(control_socket):
     while 1:
         try:
@@ -405,9 +373,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
     completed_id_list = []
 
     exit_status = 0  #set to 1 on error
-    
     while len(error_id_list) + len(completed_id_list) < len(assert_list):
-        
         try:
             #Obtain the control socket.
             socket, addr, callback_ticket = \
@@ -572,6 +538,8 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
         self.crc_check = None
         self.media_validate = None
         self.location_cookies = None
+        self.start_from = None
+        self.skip_deleted_files = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -605,6 +573,14 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
                                option.USER_LEVEL:option.ADMIN},
         option.MOVER_TIMEOUT:{option.HELP_STRING:"set mover timeout period "\
                               " in seconds (default 1 hour)",
+                                                    option.VALUE_USAGE:option.REQUIRED,
+                                                    option.VALUE_TYPE:option.INTEGER,
+                              option.USER_LEVEL:option.USER,},
+        option.SKIP_DELETED_FILES:{option.HELP_STRING:"skip deleted files",
+                          option.VALUE_TYPE:option.INTEGER,
+                          option.VALUE_USAGE:option.IGNORED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.START_FROM:{option.HELP_STRING:"start volume assert from position",
                               option.VALUE_USAGE:option.REQUIRED,
                               option.VALUE_TYPE:option.INTEGER,
                               option.USER_LEVEL:option.USER,},
@@ -658,8 +634,14 @@ def main(intf):
                 pass
             Trace.log(e_errors.ERROR, message)
             return 1
-
         check_requests = {vol_list[0] : lc_list}
+        start_from = None
+        if intf.start_from:
+            start_from = int(intf.start_from)
+        skip_deleted = None
+        if intf.skip_deleted_files:
+            skip_deleted = True
+
     elif intf.volume and intf.media_validate: #read from command line arguments.
         if intf.media_validate not in ("complete", "standard"):
             intf.print_usage()
@@ -691,7 +673,7 @@ def main(intf):
     ### just check the label.
 
     #Create the list of assert work requests.
-    assert_list, listen_socket = create_assert_list(check_requests, media_validate=validate)
+    assert_list, listen_socket = create_assert_list(check_requests, media_validate=validate, start_from=start_from, skip_deleted=skip_deleted)
 
     if len(assert_list) == 0:
         message = "No volumes to assert?"
