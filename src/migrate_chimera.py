@@ -8384,7 +8384,6 @@ def final_scan_volume(vol, intf):
             return 1
         for src_vol in m_from:
             log_history(src_vol, vol, vcc, db)
-            set_src_volume_migrated(my_task, src_vol, vcc, db)
         rc = is_migration_history_done(my_task, vol, db)
         debug_log(my_task, 'is_migration_history_done returned: %s'%(rc,))
         debug_log(my_task, 'dst volume %s src_volume %s'%(vol, m_from))
