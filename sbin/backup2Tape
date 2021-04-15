@@ -117,7 +117,7 @@ fi
 ENSTORE=${filePath}/enstore-backup
 ENSTORELOG=${filePath}/enstore-log-backup
 QUIT=$VAULT/QUIT
-TIMEONDISK=1  #days
+TIMEONDISK=2  #days
 
 rc=0
 

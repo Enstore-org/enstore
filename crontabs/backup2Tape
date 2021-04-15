@@ -1,4 +1,1 @@
-30 7 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p backup2Tape backup2Tape  > /dev/null 2> /dev/null
-
-###With cfengine we should not need this one anymore. MWZ 2-29-2008
-#09 09 * * 2 enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p backupSystem2Tape backupSystem2Tape  > /dev/null 2> /dev/null
+30 8 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p backup2Tape backup2Tape  > /dev/null 2> /dev/null
