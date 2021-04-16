@@ -20,14 +20,15 @@ import types
 
 # enstore import
 import bfid_util
-import generic_client
-import option
-import time
 import callback
-import hostaddr
 import e_errors
 import enstore_constants
 import enstore_functions3
+import generic_client
+import hostaddr
+import namespace
+import option
+import time
 import volume_family
 
 MY_NAME = enstore_constants.INFO_CLIENT     #"info_client"
@@ -204,15 +205,6 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "get_bfids2",
                   "external_label": external_label}
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.get_bfids_old(external_label)
-            return done_ticket #Avoid duplicate "convert to external format"
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
 
     def get_children(self, bfid, field=None, timeout = generic_client.DEFAULT_TIMEOUT,
@@ -222,68 +214,13 @@ class fileInfoMethods(generic_client.GenericClient):
                   "field"         : field }
         done_ticket = self.send(ticket, rcv_timeout = timeout,
                                 tries = retry, long_reply = 1)
-
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
         return done_ticket
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def get_bfids_old(self, external_label):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "get_bfids",
-                  "callback_addr" : (host, port),
-                  "external_label": external_label}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            errmsg = "timeout waiting for file clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-
-        ticket= callback.read_tcp_obj(data_path_socket)
-        bfid_list = callback.read_tcp_obj_new(data_path_socket)
-        ticket['bfids'] = bfid_list
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        return ticket
 
     def list_active(self, external_label):
         ticket = {"work"           : "list_active3",
                   "external_label" : external_label}
 
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.list_active_old(external_label)
-            return done_ticket #Avoid duplicate "convert to external format"
         if not e_errors.is_ok(done_ticket):
             return done_ticket
 
@@ -294,55 +231,6 @@ class fileInfoMethods(generic_client.GenericClient):
             done_ticket['active_list'].append(i[0])
 
         return done_ticket
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def list_active_old(self, external_label):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"           : "list_active2",
-                  "callback_addr"  : (host, port),
-                  "external_label" : external_label}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            errmsg = "timeout waiting for file clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-
-        ticket= callback.read_tcp_obj(data_path_socket)
-        active_list = callback.read_tcp_obj_new(data_path_socket)
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        # convert to external format
-        ticket['active_list'] = []
-        for i in active_list:
-            ticket['active_list'].append(i[0])
-        data_path_socket.close()
-
-        return ticket
 
     def tape_list(self, external_label, all_files = True,
                   skip_unknown = False,
@@ -364,61 +252,9 @@ class fileInfoMethods(generic_client.GenericClient):
                   #"callback_addr" : (host, port),
                   }
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.show_bad_old()
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
 
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def show_bad_old(self):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "show_bad",
-                  "callback_addr" : (host, port)}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            errmsg = "timeout waiting for file clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-
-        ticket= callback.read_tcp_obj(data_path_socket)
-        bad_files = callback.read_tcp_obj_new(data_path_socket)
-        ticket['bad_files'] = bad_files
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-        return ticket
-
-    def print_volume_files(self,volume,ticket,print_all=None,package_info=None) :
+    def print_volume_files(self,volume,ticket,print_all=None,package_info=None):
         if ticket['status'][0] == e_errors.OK:
             output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
                             % (len(volume))
@@ -497,83 +333,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   }
 
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.get_vols_old()
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
-
-    # get a list of all volumes
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def get_vols_old(self, key=None, state=None, not_cond=None):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"		  : "get_vols2",
-                  "callback_addr" : (host, port),
-                  "key"		   : key,
-                  "in_state"	  : state,
-                  "not"		   : not_cond}
-
-        # send the work ticket to the library manager
-        ticket = self.send(ticket, 60, 1, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            errmsg = "timeout waiting for info clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-
-        control_socket, address = listen_socket.accept()
-
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        volumes = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-        """
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        if volumes.has_key("header"):		# full info
-            if print_list:
-                show_volume_header()
-                print
-                for v in volumes["volumes"]:
-                    show_volume(v)
-        else:
-            vlist = ''
-            for v in volumes.get("volumes",[]):
-                vlist = vlist+v['label']+" "
-            if print_list:
-                print vlist
-        """
-
-        ticket['volumes'] = volumes.get('volumes',[])
-        ticket['header'] = volumes.get('header', None)
-        return ticket
 
     # get a list of all problem volumes
     def get_pvols(self):
@@ -581,65 +341,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   }
 
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.get_pvols_old()
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
-
-    # get a list of all problem volumes
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def get_pvols_old(self):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"		: "get_pvols",
-                  "callback_addr"	: (host, port)}
-
-        # send the work ticket to the library manager
-        ticket = self.send(ticket, 60, 1, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            errmsg = "timeout waiting for info clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-
-        control_socket, address = listen_socket.accept()
-
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        volumes = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        ticket['volumes'] = volumes.get('volumes',[])
-        return ticket
 
     def get_sg_count(self, lib, sg, timeout=60, retry=10):
         ticket = {'work':'get_sg_count',
@@ -653,63 +355,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   }
 
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.list_sg_count_old()
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
-
-    # list all sg counts
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def list_sg_count_old(self):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"		  : "list_sg_count",
-                          "callback_addr" : (host, port)}
-
-        ticket = self.send(ticket, 60, 1, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            errmsg = "timeout waiting for volume clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-
-        control_socket, address = listen_socket.accept()
-
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        sgcnt = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        ticket['sgcnt'] = sgcnt
-        return ticket
 
     # get a list of all volumes
     def get_vol_list(self):
@@ -717,64 +363,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   }
 
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.get_vol_list_old()
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
-
-    # get a list of all volumes
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def get_vol_list_old(self):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"	  : "get_vol_list",
-                  "callback_addr" : (host, port)}
-
-        # send the work ticket to the library manager
-        ticket = self.send(ticket, 60, 1, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            errmsg = "timeout waiting for volume clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-
-        control_socket, address = listen_socket.accept()
-
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        volumes = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        ticket['volumes'] = volumes
-        return ticket
 
     # show_history
     def show_history(self, vol):
@@ -783,63 +372,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   }
 
         done_ticket = self.send(ticket, long_reply = 1)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            done_ticket = self.show_history_old(vol)
-        if not e_errors.is_ok(done_ticket):
-            return done_ticket
-
         return done_ticket
-
-    # show_history
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def show_history_old(self, vol):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"           : "history",
-                  "external_label" : vol,
-                  "callback_addr"  : (host, port)}
-
-        # send the work ticket to volume clerk
-        ticket = self.send(ticket, 10, 1, long_reply = 0)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            errmsg = "timeout waiting for volume clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-        ticket = callback.read_tcp_obj(data_path_socket)
-        res = callback.read_tcp_obj_new(data_path_socket)
-        ticket['history'] = res
-
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        return ticket
 
     def write_protect_status(self, vol):
         ticket = {"work"           : "write_protect_status",
@@ -918,47 +451,8 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         r = self.send(ticket)
         return r
 
-    def find_file_by_path(self, pnfs_name0):
-        host, port, listen_socket = callback.get_callback()
-        ticket = {"work" : "find_file_by_path2",
-                  "pnfs_name0" : pnfs_name0}
-        r = self.send(ticket)
-
-        #Try old way if the server is old too.
-        if r['status'][0] == e_errors.KEYERROR and \
-               r['status'][1].startswith("cannot find requested function"):
-            r = self.find_file_by_path_old(pnfs_name0)
-
-        if r.has_key('work'):
-            del r['work']
-        return r
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def find_file_by_path_old(self, pnfs_name0):
-        ticket = {"work" : "find_file_by_path",
-                  "pnfs_name0" : pnfs_name0}
-        r = self.send(ticket)
-        if r.has_key('work'):
-            del r['work']
-        return r
-
     def find_file_by_pnfsid(self, pnfsid):
         ticket = {"work" : "find_file_by_pnfsid2", "pnfsid" : pnfsid}
-        r = self.send(ticket)
-
-        #Try old way if the server is old too.
-        if r['status'][0] == e_errors.KEYERROR and \
-               r['status'][1].startswith("cannot find requested function"):
-            r = self.find_file_by_pnfsid_old(pnfsid)
-
-        if r.has_key('work'):
-            del r['work']
-        return r
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def find_file_by_pnfsid_old(self, pnfsid):
-        ticket = {"work" : "find_file_by_pnfsid",
-                  "pnfsid" : pnfsid}
         r = self.send(ticket)
         if r.has_key('work'):
             del r['work']
@@ -968,22 +462,6 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         ticket = {"work" : "find_file_by_location2",
                   "external_label" : vol, "location_cookie" : loc}
         r = self.send(ticket)
-
-        #Try old way if the server is old too.
-        if r['status'][0] == e_errors.KEYERROR and \
-               r['status'][1].startswith("cannot find requested function"):
-            r = self.find_file_by_location_old(vol, loc)
-
-        if r.has_key('work'):
-            del r['work']
-        return r
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def find_file_by_location_old(self, vol, loc):
-        ticket = {"work" : "find_file_by_location",
-                  "external_label" : vol,
-                  "location_cookie" : loc}
-        r = self.send(ticket)
         if r.has_key('work'):
             del r['work']
         return r
@@ -992,17 +470,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         ticket = {"work": "find_same_file2",
                   "bfid": bfid}
         done_ticket = self.send(ticket)
-
-        #Try old way if the server is old too.
-        if done_ticket['status'][0] == e_errors.KEYERROR and \
-               done_ticket['status'][1].startswith("cannot find requested function"):
-            return self.find_same_file_old(bfid)
-
         return done_ticket
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def find_same_file_old(self, bfid):
-        return self.send({"work": "find_same_file", "bfid": bfid})
 
     def query_db(self, q):
         ticket = {"work"          : "query_db2",
@@ -1010,55 +478,6 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
                   #"callback_addr" : (host, port),
                   }
         return self.send(ticket)
-
-
-    ### For backward compatiblility with old servers.  (2-19-2009)
-    def query_db_old(self, q):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "query_db",
-                  "query"         : q,
-                  "callback_addr" : (host, port)}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            errmsg = "timeout waiting for file clerk callback"
-            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            errmsg = "address %s not allowed" % (address,)
-            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['info_clerk_callback_addr'])
-
-        ticket= callback.read_tcp_obj(data_path_socket)
-        result = callback.read_tcp_obj_new(data_path_socket)
-        ticket['result'] = result
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-        return ticket
-
-    ## End info server functions.
-    ###################################################################
 
 def show_query_result(result):
     width = []
@@ -1325,7 +744,13 @@ def do_work(intf):
         elif bfid_util.is_bfid(intf.file):
             ticket = ifc.bfid_info(intf.file)
         else:
-            ticket = ifc.find_file_by_path(intf.file)
+            if os.path.exists(intf.file):
+                fs = namespace.StorageFS(intf.file)
+                ticket = ifc.find_file_by_pnfsid(fs.get_id())
+            else:
+                ticket = {}
+                ticket['status'] = (e_errors.USERERROR,
+                                    "File does not exit or pnfs is not mounted")
         if ticket['status'][0] ==  e_errors.OK:
             status = ticket['status']
             del ticket['status']
@@ -1525,19 +950,8 @@ def do_work(intf):
                 print f['label'], f['bfid'], f['size'], f['path']
     elif intf.query:
         ticket = ifc.query_db(intf.query)
-        #Try the old protocol if the server doesn't know about this one.
-        if ticket['status'][0] == e_errors.KEYERROR and \
-               ticket['status'][1].startswith("cannot find requested function"):
-            ticket = ifc.query_db_old(intf.query)
-            if ticket['status'][0] == e_errors.OK:
-                if ticket['result']['status'][0] != e_errors.OK:
-                    ticket['status'] = ticket['result']['status']
-                else:
-                    show_query_result(ticket['result'])
-        else:
-            #Do the new way.
-            if e_errors.is_ok(ticket):
-                show_query_result(ticket)
+        if e_errors.is_ok(ticket):
+            show_query_result(ticket)
 
     elif intf.ls_sg_count:
         ticket = ifc.list_sg_count()
