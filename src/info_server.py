@@ -258,39 +258,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
 
     # find_file_by_path() -- find a file using pnfs_path
     def __find_file_by_path(self, ticket):
-        pnfs_path = self.extract_value_from_ticket("pnfs_name0", ticket,
-                                                   fail_None=True)
-        if not pnfs_path:
-            return  # extract_value_from_ticket handles its own errors.
-        q = "select bfid from file where pnfs_path=%s"
-        res = []
-        try:
-            res = self.filedb_dict.query_dictresult(q, (pnfs_path,))
-        #
-        # edb module raises underlying DB errors as EnstoreError.
-        #
-        except e_errors.EnstoreError, msg:
-            ticket['status'] = (msg.type,
-                                "failed to find bfid for pnfs_path %s" % (pnfs_path,))
-            return
-        except:
-            ticket['status'] = (e_errors.INFO_SERVER_ERROR,
-                                "failed to find bfid for pnfs_path %s" % (pnfs_path,))
-            return
-        if not res:
-            ticket['status'] = (e_errors.NO_FILE,
-                                "%s: %s not found" % (MY_NAME, pnfs_path))
-            Trace.log(e_errors.ERROR, "%s" % (ticket,))
-            return
-        if len(res) > 1:
-            ticket["status"] = (e_errors.OK, None)
-            ticket['file_list'] = []
-            for db_info in res:
-                bfid = db_info.get('bfid')
-                self.__find_file(bfid, ticket, pnfs_path)
-        else:
-            bfid = res[0].get('bfid')
-            self.__find_file(bfid, ticket, pnfs_path)
+        ticket['status'] = (e_errors.INFO_SERVER_ERROR, "lookup by path disabled, use bfid, of pnfsid")
         return
 
     # find_file_by_path() -- find a file using pnfs id

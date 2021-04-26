@@ -53,7 +53,7 @@ except NameError:
 ############################################################################
 ############################################################################
 def loc_to_cookie(loc):
-    if isinstance(loc, str)
+    if isinstance(loc, str):
         loc = cookie_to_long(loc)
     if loc is None:
         loc = 0

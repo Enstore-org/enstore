@@ -88,19 +88,21 @@ Foreign-key constraints:
 
 """
 
-import pg
-import time
-import pprint
-import types
-import sys
 import os
+import pprint
 import pwd
-import stat
+import time
+import types
 import smtplib
+import stat
+import sys
 # enstore import
-import enstore_functions2
+
 import configuration_client
 import e_errors
+import enstore_functions2
+import dbaccess
+
 try:
 	import snow_fliptab
 except:
@@ -205,7 +207,7 @@ def library_type(cluster, lib):
 def get_cluster(host):
 	if host[:2] == 'd0':
 		return 'D0'
-	elif host[:3] == 'stk':
+	elif host[:3] == 'stk' or host[:7] == 'enstore':
 		return 'STK'
 	elif host[:3] == 'cdf':
 		return 'CDF'
@@ -287,10 +289,18 @@ DEFAULT_LIBRARIES = get_default_library(cluster)
 
 # get_db() -- initialize a database connection
 def get_db():
-	return pg.DB(dbname = DATABASENAME, port = DATABASEPORT, host = DATABASEHOST, user = DATABASEUSER )
+	return dbaccess.DatabaseAccess(maxconnections=1,
+				       database=DATABASENAME,
+				       host=DATABASEHOST,
+				       port=DATABASEPORT,
+				       user=DATABASEUSER)
 
 def get_edb(enstoredb):
-	return pg.DB(host=enstoredb['db_host'], port=enstoredb['db_port'], dbname=enstoredb['dbname'], user = enstoredb['dbuser'])
+	return dbaccess.DatabaseAccess(maxconnections=1,
+				       database=enstoredb['dbname'],
+				       host=enstoredb['db_host'],
+				       port=enstoredb['db_port'],
+				       user=enstoredb['dbuser'])
 
 # global db connection
 db = get_db()
@@ -327,11 +337,13 @@ def get_rem_ticket_number(rem_res):
 
 # get_unfinished_job(cluster) -- get unfinished job of certain cluster
 def get_unfinished_job(cluster=None):
+	res = None
 	if cluster:
-		q = "select name from job where name ilike '%s%%' and finish is null;"%(cluster)
+		q = "select name from job where name ilike '%s%%' and finish is null"%(cluster)
+		res = db.query_getresult()
 	else:
-		q = "select name from job where finish is null;"
-	res = db.query(q).getresult()
+		q = "select name from job where finish is null"
+	res = db.query_getresult(q)
 	jobs = []
 	for i in res:
 		jobs.append(i[0])
@@ -447,10 +459,10 @@ def create_job(name, type, args, comment = ''):
 				object.object = '%s' and \
 				job.id = object.job and \
 				job.finish is null and \
-				job.type = job_definition.id;"%(i)
+				job.type = job_definition.id"%(i)
 		if debug:
 			print q
-		res = db.query(q).dictresult()
+		res = db.query_getresult(q)
 		if res:
 			problem_args[i] = res[0]
 
@@ -479,13 +491,13 @@ def create_job(name, type, args, comment = ''):
 			name, type, comment)
 	if debug:
 		print q
-	db.query(q)
+	db.insert(q)
 	# get job id
 	q = "select id from job where name = '%s';"%(
 		name)
 	if debug:
 		print q
-	id = db.query(q).getresult()[0][0]
+	id = db.query_getresult(q)[0][0]
 	for i in args:
 		# is it association setting?
 		if i[-1] == ':':
@@ -502,7 +514,7 @@ def create_job(name, type, args, comment = ''):
 					q = "insert into object (job, object) values (%d, '%s');"%(id, i)
 		if debug:
 			print q
-		db.query(q)
+		db.insert(q)
 	return id
 
 # get_job_by_name() -- from a name to find the job; name is unique
@@ -510,7 +522,7 @@ def get_job_by_name(name):
 	q = "select * from job where name = '%s';"%(name)
 	if debug:
 		print q
-	res = db.query(q).dictresult()
+	res = db.query_dictresult(q)
 	if res:
 		return retrieve_job(res[0])
 	else:
@@ -521,7 +533,7 @@ def get_job_by_id(id):
 	q = "select * from job where id = %d;"%(id)
 	if debug:
 		print q
-	res = db.query(q).dictresult()
+	res = db.query_dictresult(q)
 	if res:
 		return retrieve_job(res[0])
 	else:
@@ -539,7 +551,7 @@ def get_job_by_time(after, before = None):
 		order by start;"%(after, before)
 	if debug:
 		print q
-	res = db.query(q).dictresult()
+	res = db.query_dictresult(q)
 	if res:
 		return retrieve_job(res[0])
 	else:
@@ -552,7 +564,7 @@ def retrieve_job(job):
 	object = {}
 	if debug:
 		print q
-	res = db.query(q).getresult()
+	res = db.query_getresult(q)
 	for j in res:
 		if object.has_key(j[2]):
 			object[j[2]].append(j[1])
@@ -563,7 +575,7 @@ def retrieve_job(job):
 	q = "select * from job_definition where id = %d;"%(job['type'])
 	if debug:
 		print q
-	job_definition = db.query(q).dictresult()[0]
+	job_definition = db.query_dictresult(q)[0]
 	job['job_definition'] = job_definition
 	q = "select * from task left outer join progress \
 		on (progress.job = %d and task.seq = progress.task) \
@@ -571,7 +583,7 @@ def retrieve_job(job):
 			order by seq;"%(job['id'], job['type'])
 	if debug:
 		print q
-	job['task'] = db.query(q).dictresult()
+	job['task'] = db.query_dictresult(q)
 	job['current'] = get_current_task(job['name'])
 	job['next'] = get_next_task(job['name'])
 	if job['finish']:
@@ -590,7 +602,7 @@ def get_job_tasks(name):
 		order by seq;"%(name)
 	if debug:
 		print q
-	return db.query(q).dictresult()
+	return db.query_dictresult(q)
 
 # start_job_task(job_name, task_id) -- start a task
 def start_job_task(job_name, task_id, args=None, comment=None, timestamp=None):
@@ -615,7 +627,7 @@ def start_job_task(job_name, task_id, args=None, comment=None, timestamp=None):
 			job_name, task_id, comment, args)
 	if debug:
 		print q
-	res = db.query(q)
+	res = db.insert(q)
 	return `res`
 
 # finish_job_task(job_name, task_id) -- finish/close a task
@@ -648,7 +660,7 @@ def finish_job_task(job_name, task_id, comment=None, result=None, timestamp=None
 			timestamp, result, job_name, task_id)
 	if debug:
 		print q
-	res = db.query(q)
+	res = db.insert(q)
 	return `res`
 
 # get_current_task(name) -- get current task
@@ -664,7 +676,7 @@ def get_current_task(name):
 			progress.start is not null;"%(name)
 	if debug:
 		print q
-	res = db.query(q).getresult()
+	res = db.query_getresult(q)
 	return res[0][0]
 
 # get_next_task(name) -- get next task
@@ -674,7 +686,7 @@ def get_next_task(name):
 		job.type = job_definition.id;"%(name)
 	if debug:
 		print q
-	res = db.query(q).getresult()
+	res = db.query_getresult(q)
 	tasks = res[0][0]
 	finish = res[0][1]
 	if finish:
@@ -693,7 +705,7 @@ def has_finished(job, task):
 		job, task)
 	if debug:
 		print q
-	res = db.query(q).getresult()
+	res = db.query_getresult(q)
 	if not res:
 		return False
 	else:
@@ -707,7 +719,7 @@ def has_started(job, task):
 		job, task)
 	if debug:
 		print q
-	res = db.query(q).getresult()
+	res = db.query_getresult(q)
 	if not res:
 		return False
 	else:
@@ -766,7 +778,7 @@ def show_current_task(j):
 			job['id'], job['current'])
 	if debug:
 		print q
-	ct = db.query(q).dictresult()[0]
+	ct = db.query_dictresult(q)[0]
 	if ct['finish'] == None:
 		ct['finish'] = ""
 	if ct['action'] == None:
@@ -797,7 +809,7 @@ def show_next_task(j):
 			job['id'], job['next'])
 	if debug:
 		print q
-	ct = db.query(q).dictresult()[0]
+	ct = db.query_dictresult(q)[0]
 	if ct['action'] == None:
 		ct['action'] = 'default'
 	return "%s\t%s\t%3d %s\t(%s)"%(
@@ -838,7 +850,7 @@ def delete(job):
 		q = "delete from job where name = '%s';"%(job)
 		if debug:
 			print q
-		db.query(q)
+		db.delete(q)
 
 def create_write_protect_on_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_ON', args, comment)
@@ -1108,7 +1120,7 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 
 	if debug:
 		print q
-	excl = db.query(q).getresult()
+	excl = db.query_getresult(q)
 
 	# take care of libraries
 	lb = library.split(",")
@@ -1153,7 +1165,7 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 
 	if debug:
 		print q
-	res = edb.query(q).getresult()
+	res = edb.query_getresult(q)
 	job = {}
 	j = 0
 	cap_n = n
@@ -1204,7 +1216,7 @@ def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit=None):
 			job.finish is null;"
 	if debug:
 		print q
-	excl = db.query(q).getresult()
+	excl = db.query_getresult(q)
 
 	# take care of libraries
 	lb = library.split(",")
@@ -1250,7 +1262,7 @@ def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit=None):
 
 	if debug:
 		print q
-	res = edb.query(q).getresult()
+	res = edb.query_getresult(q)
 	job = {}
 	j = 0
 	cap_n = n
@@ -1338,7 +1350,7 @@ def get_max_cap_number(cluster, op_type=''):
 		from object, job \
 		where name like '%s%s%%' and object.job = job.id;"%(
 		cluster, op_type)
-	res = db.query(q).getresult()
+	res = db.query_getresult(q)
 	if res[0][0]:
 		return int(res[0][0])
 	else:
@@ -1370,7 +1382,7 @@ def get_last_job_time(cluster, job_type):
 			job.name like '%s%%';"%(job_type, cluster)
 	if debug:
 		print q
-	res = db.query(q).getresult()[0][0]
+	res = db.query_getresult(q)[0][0]
 	if res:
 		return timestamp2time(res.split('.')[0])
 	return 0
@@ -1757,7 +1769,7 @@ def execute(args):
 				order by job.start;"%(i)
 			if debug:
 				print q
-			res =  db.query(q).getresult()
+			res =  db.query_getresult(q)
 			for j in res:
 				job = get_job_by_name(j[0])
 				show(job)

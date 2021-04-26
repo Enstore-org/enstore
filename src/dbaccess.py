@@ -250,7 +250,7 @@ class DatabaseAccess:
         try:
             db=self.pool.connection();
             cursor=db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            s += " RETURNING *"
+            s += " RETURNING *, oid"
             if values:
                 cursor.execute(s,values)
             else:
@@ -356,7 +356,7 @@ class DatabaseAccess:
             res.append(r)
         return res
 
-    def query_tuple(self, s, values):
+    def query_tuple(self, s, values=None):
         return self.query(s, values)
 
 
@@ -389,6 +389,3 @@ if __name__ == "__main__":
     res=dbaccess.remove("delete from a where id=%s",(10,))
 
     print res
-
-
-
