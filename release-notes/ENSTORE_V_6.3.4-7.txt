@@ -1,0 +1,77 @@
+commit 2b3b7a83ea8724bc24cd33141079a09e373e67a5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Feb 18 14:26:22 2021 -0600
+
+    Enstore rpm 6.3.4-7
+
+A	release-notes/ENSTORE_V_6.3.4-6.txt
+M	spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
+
+commit a4d0baebb10753c8660c32af5dea4bd435c67ecc
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Feb 18 13:32:16 2021 -0600
+
+        Add start-from and skip_deleted to volume assert.
+    
+    https://srm.fnal.gov/reviews/r/685/
+    https://srm.fnal.gov/reviews/r/685/bugs/2371/
+
+M	src/mover.py
+M	src/option.py
+M	src/volume_assert.py
+
+commit 0d85b6b497e1e637bffa2172dbe8417203780a80
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Feb 18 11:44:34 2021 -0600
+
+    get total, active bytes excluding disk mediatype (and including test library)
+    
+    RB : https://srm.fnal.gov/reviews/r/684/
+
+M	src/get_total_bytes_counter.py
+
+commit 245c7efe7abffc8422774d6517c040b3cdb0ec10
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Feb 9 16:01:28 2021 -0600
+
+    Multithreaded configuration server.
+    Multithreaed implementation of configuration server borrowed from file_clerk. Use rawUDP too.
+    
+    https://srm.fnal.gov/reviews/r/682/
+    https://srm.fnal.gov/reviews/r/682/bugs/2365/
+
+M	src/configuration_server.py
+
+commit d0c6dcd1a8abb0b783bc770c4ee0e8a4e49d7675
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Feb 5 14:06:14 2021 -0600
+
+    replace source ~enstore/.bashrc with setup enstore again
+    
+     RB : https://srm.fnal.gov/reviews/r/676/
+
+M	tools/wal_backup.sh
+
+commit 4a7557261de9b09969f76578190f46987884c703
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jan 14 11:03:45 2021 -0600
+
+    Reduce the number of config server requests.
+    
+    dump_and_save causes config_timestamp request send to configuratoin server. The current encp implementation
+    causes 5 such requests per read request and 7 for write request. The dump_and_save need to be called only
+    once per encp. If it is called 1st time it loads cofiguration dictionary and saves it for the consequent needs.
+    The consequent dum_and_save calls do nothing except causing config_timestamp requests, which in turn do not
+    change anything. This patch makes encp to call dump_and_save only once.
+    
+    https://srm.fnal.gov/reviews/r/680/
+    https://srm.fnal.gov/reviews/r/680/bugs/2364/
+
+M	src/encp.py
+
+commit b1eebf6ceb25e830626d7d7e5c960c96b2ae33d2
+Merge: 5e0f808 6f02841
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jan 7 09:56:37 2021 -0600
+
+    Merge branch 'release/6.3.4-6' into develop
