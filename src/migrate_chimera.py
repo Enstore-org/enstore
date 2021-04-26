@@ -2677,7 +2677,6 @@ def get_file_info(my_task, bfid, fcc, db):
         if not len(res):
             error_log(my_task, "%s does not exist in db" % (bfid,))
             return None
-
         return_copy = copy.copy(res[0])
 
         #Modify the sql result to match fcc.bfid_info() format.
@@ -2884,18 +2883,33 @@ def get_tape_list(my_task, volume, fcc, db, intf, all_files = False):
                use_deleted_sql, use_empty_sql, use_skip_bad)
             )
 
-        if debug:
-            log(my_task, q)
-
+        debug_log(my_task, q)
         return_list = db.query(q).dictresult()
-
+        if not intf.with_deleted:
+            # delete empty packages from migration list
+            new_return_list = []
+            empty_packages = []
+            for i in range(len(return_list)):
+                if (return_list[i]['bfid'] == return_list[i]['package_id'] and return_list[i]['active_package_files_count'] == 0):
+                    empty_packages.append(return_list[i])
+                else:
+                    new_return_list.append(return_list[i])
+            del(return_list)
+            return_list = new_return_list
+            for rec in empty_packages:
+                # try to remove empty packages:
+                debug_log(my_task, 'trying to delete empty SFA package: %s'%(rec['pnfs_name0'],))
+                if os.path.exists(rec['pnfs_name0']):
+                    try:
+                        os.remove(rec['pnfs_name0'])
+                        log(my_task, 'Removed empty SFA package %s'%(rec['pnfs_name0'],))
+                    except Exception as e:
+                        log(my_task, 'Exception %s removing %s'%(e, rec['pnfs_name0']))
         for i in range(len(return_list)):
             #Modify the sql result to match fcc.bfid_info() format.
             return_list[i] = __correct_db_file_info(return_list[i])
 
-    if debug:
-        log(my_task,
-            "found %d files to migrate on %s" % (len(return_list), volume))
+    debug_log(my_task, "found %d files to migrate on %s" % (len(return_list), volume))
 
     return return_list #list of file record dictionaries
 
