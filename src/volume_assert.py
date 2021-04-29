@@ -610,6 +610,8 @@ def main(intf):
     #Log that we have started the assert.
     log_volume_assert_start()
     validate = None
+    start_from = None
+    skip_deleted = None
     #Read in the list of vols.
     if intf.args:  #read from file.
         check_requests = parse_file(intf.args[0])
@@ -635,10 +637,8 @@ def main(intf):
             Trace.log(e_errors.ERROR, message)
             return 1
         check_requests = {vol_list[0] : lc_list}
-        start_from = None
         if intf.start_from:
             start_from = int(intf.start_from)
-        skip_deleted = None
         if intf.skip_deleted_files:
             skip_deleted = True
 
