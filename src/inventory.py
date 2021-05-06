@@ -1489,18 +1489,18 @@ def inventory(output_dir, cache_dir):
     res = file_db.dbaccess.query_getresult("select * from remaining_blanks")
     for i in res:
         q = "insert into blanks values('%s', '%s', %d)"%(time2timestamp(t0), i[0], i[1])
-        acs.db.query(q)
+        acs.db.insert(q)
     print 'done'
 
     # log wpa info once a day to the accounting DB
     hour = time.localtime(t0)[3]
     if hour == 22 :
         q = "insert into write_protect_summary (date, total, should, not_yet, done) values('%s', %d, %d, %d, %d);"%(time2timestamp(t0), n_vols, sum(n_rf_vols.values()), sum(n_not_rp_vols.values()), sum(n_rp_vols.values()))
-        res = acs.db.query(q)
+        res = acs.db.insert(q)
         # log individual numbers according to library
         for i in n_rf_vols.keys():
             q = "insert into write_protect_summary_by_library (date, library, total, should, not_yet, done) values('%s', '%s', %d, %d, %d, %d);"%(time2timestamp(t0), i, n_vols_lib[i], n_rf_vols[i], n_not_rp_vols[i], n_rp_vols[i])
-            res = acs.db.query(q)
+            res = acs.db.insert(q)
 
     #Remember to close the DB connections, too.
 
