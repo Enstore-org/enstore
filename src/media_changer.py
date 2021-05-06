@@ -1392,6 +1392,8 @@ class STK_MediaLoader(MediaLoaderMethods):
         while count > 0 and sts[0] != e_errors.OK:
             try:
                 sts=apply(function,args)
+                if sts[1] == 6: # no record for display_drive
+                   break
                 if sts[1] != 0:
                    if self.logdetail:
                       Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count))
@@ -1687,8 +1689,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 	rt = self.retry_function(self.display_drive, drive)
 	#Update the ticket with additional information.
 	drive_info = {}
-	drive_info['drive'], drive_info['Wwn'] = rt[2].split()
-	ticket['drive_info'] = drive_info
+        if e_errors.is_ok(rt[0]):
+                drive_info['drive'], drive_info['Wwn'] = rt[2].split()
+                ticket['drive_info'] = drive_info
 	return rt[0], rt[1], rt[3], rt[4]
 
 
@@ -2402,6 +2405,12 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         # got response, parse it and put it into the standard form
         answer = string.strip(response[3])
+        if 'No records found' in answer:
+            E=6
+            msg = "DISPLAY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
         answer = string.replace(answer,', ',',') # easier to part drive id
 	# the format of the answer is like:
 	# 2    2    1      12     50.01.04.f0.00.a2.b5.06
