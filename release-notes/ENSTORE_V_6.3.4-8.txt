@@ -1,0 +1,107 @@
+commit aee2f6115946fd1b2fc5e086da2b4d296b0fcfee
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Apr 26 12:34:43 2021 -0500
+
+    Enstore rpm 6.3.4-8
+
+A	release-notes/ENSTORE_V_6.3.4-7.txt
+M	spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
+
+commit b311ee7438611e9783813473e3e641751b120bd6
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Apr 26 11:48:38 2021 -0500
+
+    operation: get rid of PyGreSQL (pg) dependency
+    
+      RB : https://srm.fnal.gov/reviews/r/691/
+
+M	src/operation.py
+
+commit 26aa5721007ae12b1f68916588e9acdd41f8beec
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Apr 26 11:40:41 2021 -0500
+
+    accounting: get rid of dependency on PyGreSQL (pg) and light reformatting
+    
+    RB : https://srm.fnal.gov/reviews/r/690/
+    BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2446
+
+M	src/accounting.py
+M	src/dbaccess.py
+
+commit 2d2531af366fb6d0266ecfc4ca11e9d6feda86da
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Apr 26 10:06:14 2021 -0500
+
+    Do not migrate empty SFA packages.
+    
+    If SFA package has 0 active active files do not migrate it.
+    Also remove the package from namespace.
+    
+    https://srm.fnal.gov/reviews/r/687/
+    https://srm.fnal.gov/reviews/r/687/bugs/2442/
+
+M	src/migrate_chimera.py
+
+commit 5c6e5b5428c9e9166967d4eb07efbb9987737499
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Apr 16 11:26:17 2021 -0500
+
+    info_server: disable lookup by file name since the file name is
+    no longer indexed in DB.
+    
+    info_client: behavior of enstore info --file <path> changed to:
+    
+       - Check if <path> exists on client machine. Fail fast if it does not.
+       - Extract pnfsid and query file by pnfsid.
+    
+    Thus look up by file path requires pnfs mount.
+    
+       RB : https://srm.fnal.gov/reviews/r/688/
+       BZ : https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2444
+
+M	src/info_client.py
+M	src/info_server.py
+
+commit 725c86c462d6289430c74e5b099c1b4bcae78438
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Apr 15 16:07:49 2021 -0500
+
+    crons: move backup2Tape to 8:30 AM, keep backups locally for 2 days
+    
+       https://uqbar.fnal.gov/reviews/r/689/
+
+M	crontabs/backup2Tape
+M	sbin/backup2Tape
+
+commit da9067449f9d592aa7ac6c67c22d719a3c60f101
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Apr 8 14:31:09 2021 -0500
+
+    Do not set source tape 'migrated' while scanning the destination tape.
+    
+    Scan of the destination volume sets all source volumes to "migrated", which is wrong.
+    Only migration of the source volme can set it to "migrated"Do not set source tape 'migrated' while scanning the destination tape.
+    
+    https://srm.fnal.gov/reviews/r/686/
+    https://srm.fnal.gov/reviews/r/686/bugs/2437/
+
+M	src/migrate_chimera.py
+
+commit 8c6027cfa9128114ffec905193956d14e8af389b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Feb 19 11:31:00 2021 -0600
+
+    Add start-from and skip_deleted to volume assert. (fixed)
+    
+    https://srm.fnal.gov/reviews/r/685/
+    https://srm.fnal.gov/reviews/r/685/bugs/2371/
+
+M	src/volume_assert.py
+
+commit 077bc02c45081e7f5b2f49009106e1dffa4d15b8
+Merge: a4d0bae 2b3b7a8
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Feb 18 14:28:53 2021 -0600
+
+    Merge branch 'release/6.3.4-7' into develop
