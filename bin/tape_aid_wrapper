@@ -82,7 +82,8 @@ gang=`gang`
 
 # should use config server to determine media changer host
 case $node in
-  ${gang}srv4 | ${gang}srv4n)
+# quick fix to get this to work Apr 30 2021, jhendry
+  ${gang}srv4 | ${gang}srv4n | enstore04)
     ;;
   *)
     usage
