@@ -458,7 +458,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11k"
+    version_string = "v3_11o"
     encp_file = globals().get('__file__', "")
     if encp_file:
         version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)
@@ -11414,7 +11414,7 @@ class EncpInterface(option.Interface):
                                   option.VALUE_USAGE:option.REQUIRED,
                                   option.VALUE_TYPE:option.STRING,
                                  option.VALUE_NAME:"output_file_family_width",
-                                  option.USER_LEVEL:option.ADMIN,},
+                                  option.USER_LEVEL:option.USER2,},
         option.GET_BFID:{option.HELP_STRING:
                          "Specifies that dcache requested the file and that "
                          "the first 'filename' is really the file's bfid.",
@@ -11454,7 +11454,7 @@ class EncpInterface(option.Interface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_NAME:"output_library",
-                            option.USER_LEVEL:option.ADMIN,},
+                            option.USER_LEVEL:option.USER2,},
         option.MAX_RETRY:{option.HELP_STRING:
                           "Specifies number of non-fatal errors that can "
                           "occur before encp gives up.  Use None "
