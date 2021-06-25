@@ -2258,7 +2258,7 @@ def get_volume_from_bfid(bfid, fcc, db):
         return None
 """
 
-#Returns false if the tape is marked NOTALLOWED or NOACCESS.
+#Returns false if the tape is marked NOACCESS
 def __is_volume_allowed(volume_info):
     if volume_info == None:
         return False
@@ -2267,7 +2267,7 @@ def __is_volume_allowed(volume_info):
         raise TypeError("expected volume information; got %s instead" \
                         % (type(volume_info),))
 
-    not_allowed_list = ("NOACCESS", "NOTALLOWED")
+    not_allowed_list = ("NOTALLOWED", )
 
     if volume_info['system_inhibit'][0] in not_allowed_list:
         return False
@@ -2276,7 +2276,7 @@ def __is_volume_allowed(volume_info):
 
     return True
 
-#Returns false if the tape is marked NOTALLOWED or NOACCESS.
+#Returns false if the tape is marked NOTALLOWED.
 def is_volume_allowed(volume, vcc, db):
     if not enstore_functions3.is_volume(volume):
         return False
@@ -5267,7 +5267,7 @@ def choose_remaining_volume(vcc, db, intf, skip_volume_list=[]):
             system_inhibit_0 = volume_record.get('system_inhibit_0',
                                       volume_record.get('system_inhibit',
                                                         ("none", "none")[0]))
-            if  system_inhibit_0 in ("DELETED", "NOACCESS", "NOTALLOWED"):
+            if  system_inhibit_0 in ("DELETED", "NOACCESS"):
                 continue
 
             #Keep searching if the volume has already been started to be
@@ -5329,7 +5329,7 @@ def choose_remaining_volume(vcc, db, intf, skip_volume_list=[]):
 
         q = "select label " \
             "from volume " \
-            "where system_inhibit_0 not in ('DELETED', 'NOACCESS', 'NOALLOWED') " \
+            "where system_inhibit_0 not in ('DELETED', 'NOACCESS') " \
             "  and system_inhibit_1 not in ('migrating', " \
             "                               'migrated', " \
             "                               'duplicating', " \
@@ -5400,7 +5400,8 @@ def read_file(my_task, read_job, encp, intf):
     argv = ["encp"]
     encp_options = ["--delayed-dismount",str(READ_DISMOUNT_DELAY),
                     "--ignore-fair-share",
-                    "--bypass-filesystem-max-filesize-check"]
+                    "--bypass-filesystem-max-filesize-check",
+                    "--override-notallowed"]
     if debug:
         argv += ["--verbose","4"]
 
@@ -6099,8 +6100,8 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
             if not volume_dict or \
                    not __is_volume_allowed(volume_dict):
                 # If we get here the tape has been marked
-                # NOACCESS or NOTALLOWED.
-                message =  "volume %s is NOACCESS or NOTALLOWED" \
+                # NOTALLOWED.
+                message =  "volume %s is NOACCESS" \
                           % (volume_dict['external_label'],)
                 error_log(my_task, message)
 
@@ -8407,7 +8408,7 @@ def final_scan_volume(vol, intf):
         inh0 = dst_volume_record['system_inhibit'][0]
         inh1 = dst_volume_record['system_inhibit'][1]
         if is_migration_closed:
-            if inh0 != 'none':
+            if inh0 not in ('none', 'NOTALLOWED'):
                 error_log(my_task, 'volume %s is "%s"' % (vol, inh0))
                 return 1
             # If the destination tapes are already migrated, don't continue.
@@ -8559,8 +8560,8 @@ def final_scan_volume(vol, intf):
 
             # Check if the tape is still accessable.
             if not is_volume_allowed(vol, vcc, db):
-                # The tape has been marked NOACCESS or NOTALLOWED.
-                message = "%s is NOACCESS or NOTALLOWED" % (vol,)
+                # The tape has been marked NOACCESS.
+                message = "%s is NOACCESS" % (vol,)
                 error_log(my_task, message)
                 break
 
@@ -8917,7 +8918,7 @@ def migrate_volume(vol, intf):
             error_log(my_task, 'volume %s does not exist' % vol)
             db.close()  #Avoid resource leaks.
             return 1
-    if volume_record['system_inhibit'][0] != 'none':
+    if volume_record['system_inhibit'][0] not in ('none', 'NOTALLOWED'):
             error_log(my_task, vol, 'is', volume_record['system_inhibit'][0])
             db.close()  #Avoid resource leaks.
             return 1
@@ -9930,12 +9931,12 @@ def restore_volume(vol, intf):
                   (vol, src_volume_record['status']))
         db.close()  #Avoid resource leaks.
         sys.exit(1)
-    if src_volume_record['system_inhibit'][0] in ("NOACCESS", "NOTALLOWED"):
+    if src_volume_record['system_inhibit'][0] in ("NOACCESS", ):
         error_log(my_task, "volume %s is %s" % \
                   (vol, src_volume_record['system_inhibit'][0]))
         db.close()  #Avoid resource leaks.
         sys.exit(1)
-    if src_volume_record['user_inhibit'][0] in ("NOACCESS", "NOTALLOWED"):
+    if src_volume_record['user_inhibit'][0] in ("NOACCESS",):
         error_log(my_task, "volume %s is %s" % \
                   (vol, src_volume_record['user_inhibit'][0]))
         db.close()  #Avoid resource leaks.
@@ -10613,5 +10614,3 @@ if __name__ == '__main__':
 		else:
 			raise sys.exc_info()[0], sys.exc_info()[1], \
 			      sys.exc_info()[2]
-
-

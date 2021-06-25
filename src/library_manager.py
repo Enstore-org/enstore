@@ -1423,7 +1423,7 @@ class LibraryManagerMethods:
             ret = e_errors.NOSPACE
         return ret
 
-    def is_vol_available(self, work, label, family=None, size=0, vol_server_address=None, mover=None):
+    def is_vol_available(self, work, label, family=None, size=0, vol_server_address=None, mover=None, override_notallowed=False):
         """
         Copy of volume clerk method adapted for working with records.
         Also checks if volume is available for a given mover, used for admind priority preempting request
@@ -1466,7 +1466,8 @@ class LibraryManagerMethods:
                     Trace.trace(self.trace_level+2, "is_vol_available: reading")
                     # if system_inhibit is NOT in one of the following
                     # states it is NOT available for reading
-                    if record['system_inhibit'][0] != 'none':
+                    if record['system_inhibit'][0] != 'none' and \
+                       override_notallowed == True and record['system_inhibit'][0] != 'NOTALLOWED':
                         ret_stat = (record['system_inhibit'][0], None)
                     elif not enstore_functions2.is_readable_state(
                         record['system_inhibit'][1]):
@@ -1519,6 +1520,9 @@ class LibraryManagerMethods:
             self.set_vcc(vol_server_address)
             Trace.trace(self.trace_level+2, 'is_vol_available work %s label %s family %s size %s'%(work, label, family, size))
             rticket = self.vcc.is_vol_available(work, label, family, size, timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
+            if override_notallowed and rticket["status"][0] == "NOTALLOWED":
+                rticket["status"] =  (e_errors.OK,None)
+
         Trace.trace(self.trace_level+2, 'is_vol_available %s'%(rticket,))
         return rticket
 
@@ -2574,7 +2578,8 @@ class LibraryManagerMethods:
                                                     w["vc"]["volume_family"],
                                                     fsize,
                                                     w['vc']['address'],
-                                                    mover = requestor.get('mover'))
+                                                    mover = requestor.get('mover'),
+                                                    override_notallowed = bool(w.get("override_notallowed",0)))
                         Trace.trace(100, "next_work_any_volume: vcc.is_vol_available, time in state %s"%(time.time()-start_t, ))
 
                     except KeyError, msg:
@@ -2805,14 +2810,14 @@ class LibraryManagerMethods:
                       (self.current_volume_info,))
             return  None, (e_errors.NOWORK, None)
         try:
-            if self.current_volume_info['system_inhibit'][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+            if self.current_volume_info['system_inhibit'][0] == e_errors.NOACCESS:
                 Trace.log(e_errors.ERROR, "Volume %s is unavailable: %s"%(external_label, self.current_volume_info['system_inhibit']))
                 return  None, (e_errors.NOWORK, None)
         except KeyError:
-            exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "Unexpected KeyError processing %s"%(self.current_volume_info,))
-            Trace.handle_error(exc, msg, tb)
-            return  None, (e_errors.NOWORK, None)
+                       exc, msg, tb = sys.exc_info()
+                       Trace.log(e_errors.ERROR, "Unexpected KeyError processing %s"%(self.current_volume_info,))
+                       Trace.handle_error(exc, msg, tb)
+                       return  None, (e_errors.NOWORK, None)
 
         self.init_request_selection()
         self.process_for_bound_vol = external_label
@@ -3935,8 +3940,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # use vc subticket
         v = ticket['vc']
 
-        if (v['system_inhibit'][0] == e_errors.NOACCESS or
-            v['system_inhibit'][0] == e_errors.NOTALLOWED):
+        if ( not bool(ticket.get("override_notallowed", 0)) and
+            v['system_inhibit'][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED)):
             # tape cannot be accessed, report back to caller and do not
             # put ticket in the queue
             ticket["status"] = (v['system_inhibit'][0], None)
@@ -5380,4 +5385,3 @@ if __name__ == "__main__":
     #import profile
     #profile.run('do_work', '/home/enstore/tmp/enstore/profile')
     #do_work()
-

@@ -3256,6 +3256,7 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
             #
             # If the user has elected to skip pnfs access (with --get-bfid
             # only) we skip this part too.
+
             if not (e.override_deleted and
                     request_list[i]['fc']['deleted'] != 'no') and \
                     not e.skip_pnfs:
@@ -3438,8 +3439,9 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
 
                 Trace.alarm(e_errors.ERROR, e_errors.CONFLICT,
                             conflict_ticket)
+
                 raise EncpError(None,
-                           "Missing metadata information: %s" % str(rest),
+                           "Missing  metadata information: %s" % str(rest),
                                 e_errors.CONFLICT, request)
 
             #First check if the file is deleted and the override deleted
@@ -5387,7 +5389,6 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     message = "[1] Time to receive one request: %s sec." % \
               (time.time() - submit_all_request_recv_start_time,)
     Trace.message(TIME_LEVEL, message)
-
     return __submit_request_recv(response_ticket), transaction_id
 
 #Wait for the one response for transaction_id.  Resend the original request
@@ -5440,40 +5441,42 @@ def __submit_request_recv(response_ticket, ticket = {}):
     Trace.message(TICKET_1_LEVEL, "LM RESPONCE TICKET:")
     Trace.message(TICKET_1_LEVEL, pprint.pformat(response_ticket))
 
-    if not e_errors.is_ok(response_ticket['status']):
+    status = response_ticket['status']
+
+    if not e_errors.is_ok(status):
         #If the error is that the tape is NOACCESS or NOTALLOWED then we
         # should handle setting the status to be a little more useful.
         # If we don't do this then we won't see the full test in the
         # encpHistory web page.  The text for the message is used elsewhere
         # in encp.py.
-        if not response_ticket['status'][1]:
-            if response_ticket['status'][0] == e_errors.NOACCESS or \
-                   response_ticket['status'][0] == e_errors.NOTALLOWED:
-                response_ticket['status'] = (response_ticket['status'][0],
+        if not status[1]:
+            if status[0] == e_errors.NOACCESS or \
+               (status[0] == e_errors.NOTALLOWED and not response_ticket.get("override_notallowed")):
+                response_ticket['status'] = (status[0],
                                              "Volume %s is marked %s." %
                                              (volume,
-                                              response_ticket['status'][0]))
+                                              status[0]))
 
-        if e_errors.is_timedout(response_ticket['status']):
+        if e_errors.is_timedout(status):
             #This is not an error condition.  However, the request is
             # sent again.
             pass
-        elif e_errors.is_non_retriable(response_ticket['status']):
+        elif e_errors.is_non_retriable(status):
             Trace.log(e_errors.ERROR,
                       "Ticket receive failed for %s: %s" %
-                      (infilepath, response_ticket['status']))
+                      (infilepath, status))
             Trace.message(ERROR_LEVEL, "Submission to LM failed: " \
-                          + str(response_ticket['status']), out_fp=sys.stderr)
+                          + str(status), out_fp=sys.stderr)
         else:
             Trace.log(e_errors.ERROR,
                       "Ticket receive failed for %s - retrying: %s" %
-                      (infilepath, response_ticket['status']))
+                      (infilepath, status))
             Trace.message(ERROR_LEVEL, "Submission to LM failed - retrying:" \
-                          + str(response_ticket['status']), out_fp=sys.stderr)
+                          + str(status), out_fp=sys.stderr)
 
         #If the ticket was malformed, then we want to see what was sent
         # to the LM.
-        if response_ticket['status'][0] == e_errors.MALFORMED:
+        if status[0] == e_errors.MALFORMED:
             Trace.log(e_errors.ERROR,
                       "Ticket receive failed: %s: %s" % (e_errors.MALFORMED,
                                                          str(response_ticket)))
@@ -9498,18 +9501,9 @@ def get_volume_clerk_info(volume_or_ticket, encp_intf=None):
     # NOTALLOWED inhibit is set.
 
     inhibit = vc_ticket['system_inhibit'][0]
-    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        if encp_intf != None and encp_intf.check:
-            vc_error_ticket = {'vc' : vc_ticket, 'exit_status' : 2}
-        else:
-            vc_error_ticket = {'vc' : vc_ticket}
 
-        raise EncpError(None,
-            "Volume %s is marked %s." % (vc_ticket['external_label'], inhibit),
-                        inhibit, vc_error_ticket)
-
-    inhibit = vc_ticket['user_inhibit'][0]
-    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+    if inhibit == e_errors.NOACCESS or \
+       (inhibit == e_errors.NOTALLOWED and (encp_intf != None and not encp_intf.override_notallowed)):
         if encp_intf != None and encp_intf.check:
             vc_error_ticket = {'vc' : vc_ticket, 'exit_status' : 2}
         else:
@@ -9533,8 +9527,8 @@ def get_clerks_info(bfid, e):
     try:
         vc_ticket = get_volume_clerk_info(fc_ticket, encp_intf=e)
     except EncpError, msg:
-        if msg.type in [e_errors.NOACCESS, e_errors.NOTALLOWED] \
-               and e.override_noaccess:
+        if msg.type == e_errors.NOTALLOWED \
+               and e.override_notallowed:
             #If we get here, then we wish to override the NOACCESS or
             # NOTALLOWED inhibit.
             vc_ticket = msg.ticket
@@ -10335,7 +10329,7 @@ def create_read_request(request, file_number,
             request['method'] = "read_next"
         request['outfile'] = ofullname    #For file access.
         request['outfilepath'] = ofullname  #For reporting.
-        #request['override_noaccess'] = e.override_noaccess #no to this
+        request['override_notallowed'] = e.override_notallowed
         request['override_ro_mount'] = e.override_ro_mount
         request['resend'] = resend
         #request['retry'] = 0
@@ -11207,7 +11201,7 @@ class EncpInterface(option.Interface):
         self.pnfs_is_automounted = 0 # true if pnfs is automounted.
         self.override_ro_mount = 0 # Override a tape marked read only to be
                                    # mounted read/write.
-        self.override_noaccess = 0 # Override reading/writing to a tape
+        self.override_notallowed = 0 # Override reading/writing to a tape
                                    # marked NOACCESS or NOTALLOWED.
         self.override_path = ""    # If --put-cache and --shortcut are used
                                    # this switch will use the specified
@@ -11517,11 +11511,11 @@ class EncpInterface(option.Interface):
                                  option.VALUE_TYPE:option.INTEGER,
                                  option.DEFAULT_VALUE:1,
                                  option.USER_LEVEL:option.ADMIN,},
-        #option.OVERRIDE_NOACCESS:{option.HELP_STRING:
-        #                          "Override NOACCESS inhibit for read/write.",
-        #                          option.DEFAULT_TYPE:option.INTEGER,
-        #                          option.DEFAULT_VALUE:1,
-        #                          option.USER_LEVEL:option.ADMIN,},
+        option.OVERRIDE_NOTALLOWED:{option.HELP_STRING:
+                                    "Override NOTALLOWED inhibit for read/write.",
+                                    option.DEFAULT_TYPE:option.INTEGER,
+                                    option.DEFAULT_VALUE:1,
+                                    option.USER_LEVEL:option.ADMIN,},
         option.OVERRIDE_PATH:{option.HELP_STRING:
                               "When --put-cache and --shortcut are both used "
                               "this will tell encp what the filename "
