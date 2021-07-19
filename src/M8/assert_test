@@ -1,0 +1,6 @@
+#!/bin/sh
+
+for i in `seq 5`;
+    do echo "run $i" >> volume_assert.$1.out; volume_assert --verbose 4 --vol $1 >> volume_assert.$1.out;
+done
+ 
