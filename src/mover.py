@@ -1363,7 +1363,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         :type reason: :obj:`str`
         :arg reason: reason for setting volume to *NOACCESS*.
         """
-
         Trace.alarm(e_errors.ALARM, "marking %s NOACCESS. Mover: %s. Reason: %s"%(volume,  self.shortname, reason))
         ret = self.vcc.set_system_noaccess(volume)
         if ret['status'][0] != e_errors.OK:
@@ -1788,6 +1787,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
             self.ip_map = self.config.get('ip_map','')
             use_local_mc = self.config.get('use_local_mc')
+            detect_mc_device = self.config.get('detect_mc_device')
             if  self.mcc:
                 time.sleep(20)
                 self.can_force_eject = 1
@@ -1961,9 +1961,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ALARM, "Can not start: %s"%(detail,))
                     print "Can not start: %s"%(detail,)
                     sys.exit(-1)
-                if use_local_mc:
+                if use_local_mc or detect_mc_device:
                     # Find and set mc drive address
                     self.mc_device, self.mc_device_phys_location = self.find_mc_drive_address(self.config['serial_num'] )
+                    Trace.log(e_errors.INFO, "MC device %s %s"%(self.mc_device, self.mc_device_phys_location))
                     if not self.mc_device:
                         Trace.alarm(e_errors.ERROR,'Can not find media changer address for this mover. Will terminate')
                         sys.exit(-1)
@@ -4753,6 +4754,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
                     if s:
                         self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+                        if self.stop:
+                            Trace.alarm(e_errors.INFO, 'Tape %s will stay in the drive for investigation'%(self.current_volume,))
+                            self.set_volume_noaccess(self.current_volume, "Rewind retry failed. See log for details")
+                            self.offline()
+                            return
                         Trace.log(e_errors.INFO, "Trying to dismount volume (3) %s"%(self.current_volume,))
                         self.dismount_volume(after_function=self.idle)
                         return
@@ -4772,6 +4778,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if status[0] == e_errors.READ_VOL1_READ_ERR and eod == 'none':
                 Trace.log(e_errors.INFO, "Trying to dismount volume (5) %s"%(self.current_volume,))
                 self.dismount_volume(after_function=self.idle)
+                self.send_client_done(self.current_work_ticket, status[0], status[1])
                 return
             self.transfer_failed(status[0], status[1], error_source=TAPE)
             return
@@ -4955,6 +4962,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_completed(e_errors.OK)
             Trace.log(e_errors.INFO, "The assert for %s is completed" %
                       (ticket['vc']['external_label'],))
+            self.dismount_volume(after_function=self.idle)
 
         #    # read tape and
         #    self.dismount_volume(after_function=self.idle)
