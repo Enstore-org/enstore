@@ -65,7 +65,7 @@ case "$1" in
 	else
 	    # start config server
 	    echo "`date`: su-ing to enstore and doing an enstore start --just config" 2>&1 | tee /dev/console >>$output
-            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start --just config"  
+            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start --just config"
             estat=$?
             if [ $estat -ne 0 ] ; then
                 echo "`date`: can not start config server ... can not continue..." 2>&1 | tee /dev/console >>$output
@@ -74,21 +74,23 @@ case "$1" in
         fi
 
 	# start database servers if it is necessary
-
+	if [ -e  /var/run/postgresql ]; then
+	    chown -R enstore:enstore /var/run/postgresql
+	fi
 	$ENSTORE_DIR/bin/enstore_database_server.py start
 
         if [ $estat -eq 0 ]; then
           # we should be enstore when we start this up (at least not root) if we are a server
           if [ "`whoami`" = "root" ]; then
 	    echo "`date`: su-ing to enstore and doing an enstore Estart $n2" 2>&1 | tee /dev/console >>$output
-            # su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"  
-            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start"  
+            # su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"
+            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start"
           else
             echo "`date`: doing enstore Estart $n2" 2>&1 | tee /dev/console >>$output
-            # enstore Estart $n2 
+            # enstore Estart $n2
             enstore start
           fi
-       
+
         fi
         ;;
 
@@ -104,7 +106,7 @@ case "$1" in
 		enstore stop
 		exit 0
 	fi
-		
+
 	enstore stop
 
 	# should we shut down database servers?

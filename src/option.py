@@ -366,7 +366,7 @@ OUTOFDATE = "outofdate"                      #plotter
 OUTPUT_DIR = "output-dir"                    #plotter, recent_file_listing
 OVERRIDE = "override"                        #inquisitor
 OVERRIDE_DELETED = "override-deleted"        #encp
-OVERRIDE_NOACCESS = "override-noaccess"      #encp
+OVERRIDE_NOTALLOWED = "override-notallowed"    #encp
 OVERRIDE_PATH = "override-path"              #encp
 OVERRIDE_RO_MOUNT = "override-ro-mount"      #encp
 PAGES = "pages"                              #html
@@ -563,7 +563,7 @@ valid_option_list = [
     NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OUTOFDATE, OVERRIDE,
-    OVERRIDE_DELETED, OVERRIDE_NOACCESS, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
+    OVERRIDE_DELETED, OVERRIDE_NOTALLOWED, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
     PAGES, PARENT, PATH, PLOT, PLOTS,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT, POSITION,
     PROC_LIMIT,
@@ -1888,4 +1888,3 @@ if __name__ == '__main__':
         intf.print_help()
     if getattr(intf, "usage", None):
         intf.print_usage()
-
