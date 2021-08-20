@@ -474,11 +474,11 @@ class AtMovers:
     ``DISMOUNT_WAIT`` - wiating for tape to be dismounted
     """
 
-    def __init__(self):
+    def __init__(self, max_time_in_active=7200, max_time_in_other=1200):
         self.at_movers = {}
         self.sg_vf = SG_VF()
-        self.max_time_in_active = 7200
-        self.max_time_in_other = 1200
+        self.max_time_in_active = max_time_in_active
+        self.max_time_in_other = max_time_in_other
         self.dont_update = {}
         self._lock = threading.Lock()
         self.alarm_sent = []
@@ -626,9 +626,9 @@ class AtMovers:
                         if time_in_state > self.max_time_in_other:
                             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 add_to_list = 1
-                            if time_in_state > self.max_time_in_active and state in ['ACTIVE', 'SEEK', 'MOUNT_WAIT','DISMOUNT_WAIT', 'SETUP']:
-                                if (state == 'SETUP' and self.at_movers[mover].get('current_volume')):
-                                    add_to_list = 0 # volume is mounted, trying to connect to client
+                            if (state == 'SETUP' and self.at_movers[mover].get('current_volume')):
+                                add_to_list = 0 # volume is mounted, trying to connect to client
+                            if time_in_state > self.max_time_in_active and state in ['ACTIVE', 'SEEK', 'MOUNT_WAIT','DISMOUNT_WAIT']:
                                 if (state == 'ACTIVE' and operation == 'ASSERT'):
                                     add_to_list = 0
                                 else:
@@ -641,7 +641,6 @@ class AtMovers:
                             else:
                                 if mover in self.alarm_sent:
                                     self.alarm_sent.remove(mover)
-
                             if add_to_list:
                                 self.dont_update[mover] = state
                                 movers_to_delete.append(mover)
@@ -916,7 +915,15 @@ class LibraryManagerMethods:
     def mover_type(self, ticket):
         return ticket.get("mover_type", "Mover")
 
-    def __init__(self, name, csc, sg_limits, min_file_size, max_suspect_movers, max_suspect_volumes):
+    def __init__(self,
+                 name,
+                 csc,
+                 sg_limits,
+                 min_file_size,
+                 max_suspect_movers,
+                 max_suspect_volumes,
+                 max_time_in_active=7200,
+                 max_time_in_other=1200):
         """
 
         :type name: :obj:`str`
@@ -931,7 +938,12 @@ class LibraryManagerMethods:
         :arg max_suspect_movers: maximum number of suspect mover to cause alert and primary page
         :type max_suspect_volumes: :obj:`int`
         :arg max_suspect_volumes: maximum number of suspect volumes to cause alarm
+        :type max_time_in_active: :obj:`int`
+        :arg max_time_in_active: maximum time the mover is allowed to be in active state
+        :type max_time_in_other: :obj:`int`
+        :arg max_time_in_other: maximum time the mover is allowed to be in any other state
        """
+
         self.name = name
         self.min_file_size = min_file_size
         self.max_suspect_movers = max_suspect_movers
@@ -957,7 +969,8 @@ class LibraryManagerMethods:
             self.sg_limits['use_default'] = 0
             self.sg_limits['limits'] = sg_limits
         self.work_at_movers = lm_list.LMList()
-        self.volumes_at_movers = AtMovers() # to keep information about what volumes are mounted at which movers
+        self.volumes_at_movers = AtMovers(max_time_in_active=max_time_in_active,
+                                          max_time_in_other=max_time_in_other) # to keep information about what volumes are mounted at which movers
         self.init_suspect_volumes()
         self.pending_work = manage_queue.Request_Queue() # all incoming copy requests are stored in this queue
         self.idle_movers = [] # list of known idle movers
@@ -3372,7 +3385,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        sg_limits,
                                        min_file_size,
                                        self.max_suspect_movers,
-                                       self.max_suspect_volumes)
+                                       self.max_suspect_volumes,
+                                       max_time_in_active=self.max_time_in_active,
+                                       max_time_in_other=self.max_time_in_other)
         self.init_postponed_requests(self.keys.get('rq_wait_time',3600))
         self.restrictor = discipline.Restrictor(self.csc, self.name)
         self.reinit()
