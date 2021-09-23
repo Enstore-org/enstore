@@ -924,11 +924,12 @@ class PostponedBoundRequests:
         :arg mover_ticket: :obj:`dict`
         """
 
+        Trace.trace(self.trace_level, 'postponed_bound:put: %s'%(self.rq_list,))
         for item in self.rq_list:
             if mover_ticket['mover'] == item[0]:
                 break
         else:
-            Trace.trace(self.trace_level,"postponed_bound_put %s" % (mover_ticket,))
+            Trace.trace(self.trace_level,"postponed_bound:put %s" % (mover_ticket,))
             self.rq_list.append((mover_ticket['mover'], mover_ticket)) 
 
     def get(self):
@@ -938,6 +939,7 @@ class PostponedBoundRequests:
         :rtype: :obj:`dict`
         """
 
+        Trace.trace(self.trace_level, 'postponed_bound:get: %s'%(self.rq_list,))
         if len(self.rq_list) > 0:
             rc = self.rq_list.pop(0)
             return rc[1]
