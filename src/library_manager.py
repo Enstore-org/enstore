@@ -901,16 +901,13 @@ class PostponedRequests:
 
 class PostponedBoundRequests:
     """
-    Postponed requests from movers with bound volumes. 
+    Postponed requests from movers with bound volumes.
     Requests get put into this "list" because they came while the mover thread was alredy running.
 
     """
     def __init__(self):
-        """
-        :type keep_time: :obj:`int`
-        :arg keep_time: maximum time interval to keep request in seconds
-        """
-        self.rq_list = [] # request list 
+
+        self.rq_list = [] # request list
         self.trace_level = 340
 
     def __repr__(self):
@@ -930,7 +927,7 @@ class PostponedBoundRequests:
                 break
         else:
             Trace.trace(self.trace_level,"postponed_bound:put %s" % (mover_ticket,))
-            self.rq_list.append((mover_ticket['mover'], mover_ticket)) 
+            self.rq_list.append((mover_ticket['mover'], mover_ticket))
 
     def get(self):
         """
@@ -4122,7 +4119,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             except:
                                 pass
                         self.in_progress_lock.release()
-                            
+
             else:
                self._mover_idle(mticket)
         Trace.trace(7, "mover_idle:timing mover_idle %s %s %s"%
