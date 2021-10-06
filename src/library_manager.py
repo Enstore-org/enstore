@@ -4489,12 +4489,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.use_threads:
             if not self.in_progress_lock.acquire(False):
                 Trace.trace(5, "mover_bound_volume: mover request in progress sending nowork %s"%(nowork,))
+                """
+                The following code is commented, but may be needed for
+                debugging.
                 threads = threading.enumerate()
                 for thread in threads:
                     if thread.isAlive():
                         thread_name = thread.getName()
                         Trace.trace(5, "active threads: %s"%(thread_name,))
-
+                """
                 self.postponed_bound_requests.put(mticket)
             else:
                 # the lock was acquired
