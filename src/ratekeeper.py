@@ -334,8 +334,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                     if 'mc_device' in config_dict[conf_key]:
                         # SL tape library
                         valid_drives.append(config_dict[conf_key]['mc_device'])
-                    elif 'use_local_mc' in config_dict[conf_key]:
-                        # IBM tape library:
+                    else:
+                        # IBM and Spectra Logic tape libraries:
                         # query mover to get info.
                         movc = mover_client.MoverClient(self.csc, conf_key)
                         m_status = movc.status(self.mover_to, self.mover_retries)
