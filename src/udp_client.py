@@ -99,9 +99,11 @@ class UDPClient:
         if not hasattr(self.thread_specific_data, 'pid'):
             self.reinit(receiver_ip=receiver_ip)
         elif receiver_ip:
-            my_address_family = socket.getaddrinfo(socket.getfqdn(), None)[0][0]
+            ## Reinitialise if sending to new destination IP
+            ## When reinitialising the new port gets picked up and may affect retrires.
+            ## This was noticed for dual IP client configurations.
             receiver_address_family = socket.getaddrinfo(receiver_ip, None)[0][0]
-            if my_address_family != receiver_address_family:
+            if self.thread_specific_data.socket.family != receiver_address_family:
                 self.reinit(receiver_ip=receiver_ip)
         return self.thread_specific_data
 
