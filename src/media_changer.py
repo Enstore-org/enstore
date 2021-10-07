@@ -3953,7 +3953,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             request, client_address = self._get_request_single()
 
         if request:
-            rq_pyobj =  udp_common.r_eval(request, check=False)
+            rq_pyobj =  udp_common.r_eval(request)
             Trace.trace(6, 'RQ %s'%(rq_pyobj,))
             try:
                 work = rq_pyobj[2].get('work')
@@ -4100,8 +4100,8 @@ class MTXN_MediaLoader(MediaLoaderMethods):
     def start_mtx_server(self):
         self.p2cread, self.p2cwrite = os.pipe()
         self.c2pread, self.c2pwrite = os.pipe()
-
 	self.server = multiprocessing.Process(target=self._mtx_server, args = (self.p2cread,self.c2pwrite,self.c2pwrite))
+
 	self.server.start()
 	t = 0
 	while t < self.status_timeout:

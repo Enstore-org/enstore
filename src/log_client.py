@@ -458,7 +458,7 @@ class TCPLoggerClient(LoggerClient):
 
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
 				       e_errors.sevdict[severity],name,msg)
-	ticket = {'work':'log_message', 'message':msg}
+	ticket = {'work':'log_message', 'sender': self.hostname, 'message':msg}
         Trace.trace(301, "TCP %s"%(ticket,))
         try:
             self.message_buffer.put_nowait(ticket)
