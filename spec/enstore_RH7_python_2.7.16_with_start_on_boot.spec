@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 12.el7
+Release: 14.el7
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -219,7 +219,7 @@ rm -rf $RPM_BUILD_ROOT/*
 
 %changelog
 * Thu Oct 07 2021  <moibenko@fnal.gov> -
-- v 6.3.4 release 12. Accumulative changes since 6.3.4-11.
+- v 6.3.4 release 14. Accumulative changes since 6.3.4-11.
 * Tue Aug 31 2021  <moibenko@fnal.gov> -
 - v 6.3.4 release 11. Spectra Logic media changer included.
 * Fri Aug 05 2021  <moibenko@fnal.gov> -
