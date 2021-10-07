@@ -142,9 +142,7 @@ class UDPServer:
         # to use receiver implemented in c
         # to increase the performance
         self.raw_requests = None;
-        self.check_request = True # check request in r_eval
         if self.use_raw:
-            self.check_request = False # dont check request in r_eval, it is checked in rawUDP receiver
             self.raw_requests = rawUDP.RawUDP(receive_timeout=self.rcv_timeout)
             self.raw_requests.init_socket(self.server_socket)
 
@@ -268,14 +266,14 @@ class UDPServer:
                     self.max_packet_size, self.rcv_timeout)
                 #print "REQ", req
                 try:
-                    request, inCRC = udp_common.r_eval(req, check=self.check_request)
+                    request, inCRC = udp_common.r_eval(req)
                     Trace.trace(5,"_get_message: %s"%(request,))
                 except ValueError, detail:
                     Trace.trace(5, "must be event_relay msg %s"%(detail,))
                     # must be an event relay message
                     # it has a different format
                     try:
-                        request = udp_common.r_eval(req, check=self.check_request)
+                        request = udp_common.r_eval(req)
                         raise NameError, request # dispatching_worker will take care of this
                     except:
                         exc, msg = sys.exc_info()[:2]
@@ -387,14 +385,14 @@ class UDPServer:
         """
 
         try:
-            idn, number, ticket = udp_common.r_eval(request, check=self.check_request)
+            idn, number, ticket = udp_common.r_eval(request)
             #Trace.log(e_errors.INFO, "process_request idn %s number %s ticket %s"%(idn, number, ticket))
         except (NameError, ValueError), detail:
             Trace.trace(5, "must be an event relay message %s"%(detail,))
             # must be an event relay message
             # it has a different format
             try:
-                rq = udp_common.r_eval(request, check=self.check_request)
+                rq = udp_common.r_eval(request)
                 self.erc.error_msg = str(rq)
                 self.handle_er_msg(None)
                 return None

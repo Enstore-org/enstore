@@ -139,13 +139,13 @@ class RawUDP:
         client_addr = (message[1])
         request=None
         try:
-            request, inCRC = udp_common.r_eval(req, check=True)
+            request, inCRC = udp_common.r_eval(req)
 
         except ValueError, detail:
             # must be an event relay message
             # it has a different format
             try:
-                request = udp_common.r_eval(req, check=True)
+                request = udp_common.r_eval(req)
             except:
                 exc, msg = sys.exc_info()[:2]
                 # reraise exception
