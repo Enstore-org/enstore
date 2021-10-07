@@ -1,0 +1,127 @@
+commit b337e1181b1e0a84385795471f6ff3eecf04bb4b
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Thu Oct 7 14:30:07 2021 -0500
+
+    Improve security of message parsing. (#7)
+    
+    Use ast.literal_eval istead of eval.
+
+M	src/en_eval.py
+M	src/media_changer.py
+M	src/rawUDP.py
+M	src/rawUDP_p.py
+M	src/udp_common.py
+M	src/udp_server.py
+
+commit 2b7b06a5b38f3c47d7c55b722a8780524a182b25
+Merge: c2c5126 0254cc5
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Wed Oct 6 16:29:46 2021 -0500
+
+    Merge pull request #6 from moibenko/fix_ratekeeper
+    
+    Get information from movers, associated with Spectra Logic.
+
+commit 0254cc559d6136d1ccc7d9bb34287d8c53f3dced
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 16:24:49 2021 -0500
+
+    Get information from movers, associated with Spectra Logic.
+    
+    These movers do not have 'mc_device' in configuration, just like TS4500 movers.
+
+M	src/ratekeeper.py
+
+commit c2c51263aeb8ef79eca57fbc2fdd1b93d38293a1
+Merge: f86327b f264dce
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Wed Oct 6 13:33:52 2021 -0500
+
+    Merge pull request #5 from moibenko/udp_and_dual_ip_1
+    
+     Fix client behavior for dual stack host configurations.
+
+commit f86327b2d0d21391320971a9dc10b3309965b2ab
+Merge: 0343108 e7e284a
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Wed Oct 6 13:00:05 2021 -0500
+
+    Merge pull request #3 from moibenko/fix_lm
+    
+    Library manager does not delete assigned volume if mover fails to con…
+
+commit e7e284ab5145c5b71ae44092d4a0e4ddea01ab9f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 11:42:42 2021 -0500
+
+    Commented code that may be needed for debugging.
+
+M	src/library_manager.py
+
+commit 1db6ca78b7e0e9037caf10093e767c0886dda14a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 10:33:50 2021 -0500
+
+    Removed wrong comments.
+
+M	src/library_manager.py
+
+commit f264dce9f1350d3aa154349f4d5e444a955ca5b6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 10:09:43 2021 -0500
+
+     Fix client behavior for dual stack host configurations.
+    
+    The previous implementation was allowing to reinit if application
+    was running on dual stack host and sending to IPV4 server.
+    This was noticed in encp application. The problem was that retires
+    were sent on differnt ports, which violates enstores communutaion protocol,
+    according to which retries must be sent on the same source port.
+
+M	src/udp_client.py
+
+commit e65d3003ddbb09b93856ffa5530615605e647b7f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Sep 23 10:09:47 2021 -0500
+
+    Added debug output.
+
+M	src/library_manager.py
+
+commit f5f9b650f0be272a492a35e540314330a618321b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 22 14:48:17 2021 -0500
+
+    Library manager does not delete assigned volume if mover fails to connect to client.
+    
+    There are 2 changes. One fixes the stated problem.
+    The second change is to put mover request, coming from mover with bound volumes into postponed bound requests. If there is mover request processing thread running and serve postponed request in the current thread. Before this change the library manager was sending 'nowork' reply to mover in a hope that it would retry later and this retry would be processed ny library manager. This could and would result in expiration of dismount timeout at mover and unnecessary dismount of tape for which there was a potential request.
+
+M	src/library_manager.py
+
+commit 0343108440f536d31260470d33b87e294f8a9e66
+Merge: f87debc d216f1a
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Thu Sep 9 13:42:42 2021 -0500
+
+    Merge pull request #2 from moibenko/fix_tcp_logging
+    
+    Add sender to log ticket for tcp / ip log client.
+
+commit d216f1a9e9ce397e81992531eb26cdf0978851a5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Sep 9 11:46:42 2021 -0500
+
+    Add sender to log ticket for tcp / ip log client.
+    Otherwise log server may identify sender from the last udp message which is not always ftrom the same client.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2483
+
+M	src/log_client.py
+
+commit f87debcabf6b28dcdc80e9e290da81a3d8bf7682
+Merge: 0eb5633 a6733a3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 31 15:18:03 2021 -0500
+
+    Merge branch 'release/6.3.4-11' into develop

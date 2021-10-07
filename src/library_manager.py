@@ -69,6 +69,7 @@ DEBUG_LOG=9 # make entries in DEBUGLOG file at this level
 # SG_VF: 310 - 319
 # AtMovers: 320 - 329
 # PostponedRequests: 330 - 339
+# PostponedBoundRequests: 340
 # LibraryManagerMethods 200 - 239 no internal loops
 #                       240 internal loops
 # Library manager 11 - 99
@@ -439,7 +440,8 @@ class SG_VF:
         :type vf: :obj:`str`
         :arg vf: volume family associated with active mover
         """
-        self.delete(mover, volume, sg, vf) # delete entry to update content
+        self.delete_mover(mover)
+        #self.delete(mover, volume, sg, vf) # delete entry to update content
         if not self.sg.has_key(sg):
             self.sg[sg] = []
         if not self.vf.has_key(vf):
@@ -555,6 +557,7 @@ class AtMovers:
         :rtype: :obj:`int` 0 - success, 1- failure
         """
 
+        Trace.trace(self.trace_level,"AtMovers:delete: %s" % (mover_info,))
         Trace.trace(self.trace_level, "AtMovers delete. before: %s" % (self.at_movers,))
         Trace.trace(self.trace_level+1, "AtMovers delete. before: sg_vf: %s" % (self.sg_vf,))
         mover = mover_info['mover']
@@ -896,6 +899,49 @@ class PostponedRequests:
                 self.sg_list[sg] = self.sg_list[sg]+1
             Trace.trace(self.trace_level, "postponed update %s %s %s"%(sg, deficiency, self.sg_list[sg]))
 
+class PostponedBoundRequests:
+    """
+    Postponed requests from movers with bound volumes.
+    Requests get put into this "list" because they came while the mover thread was alredy running.
+
+    """
+    def __init__(self):
+
+        self.rq_list = [] # request list
+        self.trace_level = 340
+
+    def __repr__(self):
+        return 'rq_list:%s'%(self.rq_list,)
+
+    def put(self, mover_ticket):
+        """
+        Put request into list.
+
+        :type mover_ticket: :obj:`dict`
+        :arg mover_ticket: :obj:`dict`
+        """
+
+        Trace.trace(self.trace_level, 'postponed_bound:put: %s'%(self.rq_list,))
+        for item in self.rq_list:
+            if mover_ticket['mover'] == item[0]:
+                break
+        else:
+            Trace.trace(self.trace_level,"postponed_bound:put %s" % (mover_ticket,))
+            self.rq_list.append((mover_ticket['mover'], mover_ticket))
+
+    def get(self):
+        """
+        Get postponed request.
+
+        :rtype: :obj:`dict`
+        """
+
+        Trace.trace(self.trace_level, 'postponed_bound:get: %s'%(self.rq_list,))
+        if len(self.rq_list) > 0:
+            rc = self.rq_list.pop(0)
+            return rc[1]
+        return None
+
 class LibraryManagerMethods:
     """
     Library manager request processing methods.
@@ -972,6 +1018,7 @@ class LibraryManagerMethods:
         self.volumes_at_movers = AtMovers(max_time_in_active=max_time_in_active,
                                           max_time_in_other=max_time_in_other) # to keep information about what volumes are mounted at which movers
         self.init_suspect_volumes()
+        self.postponed_bound_requests = PostponedBoundRequests()
         self.pending_work = manage_queue.Request_Queue() # all incoming copy requests are stored in this queue
         self.idle_movers = [] # list of known idle movers
         self.trace_level = 200
@@ -4064,7 +4111,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     try:
                         self._mover_idle(mticket)
                     finally:
+                        postponed_bound_rq = self.postponed_bound_requests.get()
+                        if postponed_bound_rq:
+                            Trace.log(e_errors.INFO, 'Starting postponed mover_bound_volume request %s'%(postponed_bound_rq,))
+                            try:
+                                self._mover_bound_volume(postponed_bound_rq)
+                            except:
+                                pass
                         self.in_progress_lock.release()
+
             else:
                self._mover_idle(mticket)
         Trace.trace(7, "mover_idle:timing mover_idle %s %s %s"%
@@ -4434,12 +4489,28 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.use_threads:
             if not self.in_progress_lock.acquire(False):
                 Trace.trace(5, "mover_bound_volume: mover request in progress sending nowork %s"%(nowork,))
-                self.reply_to_caller(nowork)
+                """
+                The following code is commented, but may be needed for
+                debugging.
+                threads = threading.enumerate()
+                for thread in threads:
+                    if thread.isAlive():
+                        thread_name = thread.getName()
+                        Trace.trace(5, "active threads: %s"%(thread_name,))
+                """
+                self.postponed_bound_requests.put(mticket)
             else:
                 # the lock was acquired
                 try:
                     self._mover_bound_volume(mticket)
                 finally:
+                    postponed_bound_rq = self.postponed_bound_requests.get()
+                    if postponed_bound_rq:
+                        Trace.log(e_errors.INFO, 'Starting postponed mover_bound_volume request %s'%(postponed_bound_rq,))
+                        try:
+                            self._mover_bound_volume(postponed_bound_rq)
+                        except:
+                            pass
                     self.in_progress_lock.release()
         else:
             self._mover_bound_volume(mticket)
