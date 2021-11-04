@@ -1593,7 +1593,7 @@ def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string,
 #  or a volume name string.
 
-def __get_csc(parameter=None):
+def __get_csc(parameter=None, intf=None):
     global __csc  #For remembering.
     global __acc
 
@@ -1601,6 +1601,10 @@ def __get_csc(parameter=None):
     bfid = None
     volume = None
     address = None
+    if intf and hasattr(intf, 'config_timeout'):
+        config_timeout = intf.config_timeout
+    else:
+        config_timeout = 60
 
     #Due to branding we need to figure out which system is the correct one.
     # Should only matter for reads.  On a success, the variable 'brand' should
@@ -1650,7 +1654,7 @@ def __get_csc(parameter=None):
     # conifguration client.
     if __csc != csc:
         #Snag the entire configuration.
-        config = csc.dump_and_save(10, 10)
+        config = csc.dump_and_save(config_timeout, 3)
 
         if e_errors.is_timedout(config):
             raise EncpError(errno.ETIMEDOUT,
@@ -1686,9 +1690,9 @@ def __get_csc(parameter=None):
     else:
         return __csc, None
 
-def get_csc(parameter=None):
+def get_csc(parameter=None, intf=None):
 
-    return __get_csc(parameter)[0]
+    return __get_csc(parameter, intf)[0]
 
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string
 def __get_fcc(parameter = None):
@@ -2100,7 +2104,7 @@ def get_vcc(volume = None):
 
     return __get_vcc(volume)[0]
 
-def get_acc():
+def get_acc(intf=None):
     global __acc
     global __csc
 
@@ -2118,7 +2122,7 @@ def get_acc():
         return __acc
     else:
         try:
-            csc, config = __get_csc()
+            csc, config = __get_csc(intf = intf)
         except EncpError:
             csc, config = None, None
 
@@ -2136,7 +2140,7 @@ def get_acc():
                                             server_address = acc_addr)
         return __acc
 
-def get_lmc(library, use_lmc_cache = True):
+def get_lmc(library, use_lmc_cache = True, intf=None):
     global __lmc
 
     #If the shortname was supplied, make it the longname.
@@ -2155,7 +2159,7 @@ def get_lmc(library, use_lmc_cache = True):
         if __lmc and __lmc.server_name == lib:
             return __lmc
 
-    csc = get_csc()
+    csc = get_csc(intf = intf)
 
     #Determine which IP and port to use.  By default it will use the standard
     # 'port' value from the configuration file.  However, if the configuration
@@ -2281,7 +2285,7 @@ def clients(intf):
                 getattr(intf, "enstore_config_port",
                         enstore_functions2.default_port()))
     try:
-        csc, config = __get_csc(csc_addr)
+        csc, config = __get_csc(csc_addr, intf = intf)
     except EncpError, msg:
         return {'status' : (msg.type, str(msg))}
     except (socket.error, select.error):
@@ -2356,11 +2360,11 @@ def clients(intf):
 
 #Return True if the media we are going to use is null media for null movers.
 # False otherwise.
-def is_null_media_type(volume_clerk_ticket):
+def is_null_media_type(volume_clerk_ticket, intf):
     if volume_clerk_ticket['wrapper'] == "null":
 
         #Grab current configuration information.
-        csc = get_csc()
+        csc = get_csc(intf = intf)
         if not csc.have_complete_config:
             csc.save_and_dump()
 
@@ -3004,7 +3008,7 @@ def wrappersize_check(work_ticket):
 
 #Make sure that the library can handle the filesize.
 #def librarysize_check(target_filepath, inputfile):
-def librarysize_check(work_ticket):
+def librarysize_check(work_ticket, intf=None):
 
     verify_library_size_consistancy_start_time = time.time()
 
@@ -3021,7 +3025,7 @@ def librarysize_check(work_ticket):
 
     try:
         #First determine if the library does exist.
-        csc = get_csc()
+        csc = get_csc(intf=intf)
         lib_info = csc.get(use_lm, {})
         if not e_errors.is_ok(lib_info):
             raise EncpError(None, lib_info['status'][1],
@@ -3095,7 +3099,7 @@ def tag_check(work_ticket):
 # path.
 def null_mover_check(work_ticket, e):
     __pychecker__="unusednames=e"
-    csc = get_csc(work_ticket)
+    csc = get_csc(work_ticket, intf=e)
     library_name = work_ticket['vc']['library'] + ".library_manager"
     mover_list = csc.get_movers2(library_name)
 
@@ -3514,7 +3518,7 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
                     # the current CRC value.  If the seed is set to 1,
                     # only report that CRC; if it is zero, report 0 and
                     # 1 seeded.
-                    encp_dict = get_csc().get('encp')
+                    encp_dict = get_csc().get('encp', intf = e)
                     if e_errors.is_ok(encp_dict) and \
                            encp_dict.get('crc_seed') == 1:
                         rest['db_crc'] = db_crc
@@ -5231,7 +5235,7 @@ def submit_one_request_send(ticket, encp_intf):
 
     #Get the answer from the library manager director.
     orig_library = ticket['vc']['library']
-    csc = get_csc()
+    csc = get_csc(intf = encp_intf)
     lm_config = csc.get(orig_library+ ".library_manager", 3, 3)
     if e_errors.is_ok(lm_config) and \
            encp_intf.enable_redirection == 1 and \
@@ -8250,7 +8254,7 @@ def create_write_request(work_ticket, file_number,
             file_clerk['pnfsid'] = e.put_cache
 
         #Determine the max resend values for this transfer.
-        csc = get_csc()
+        csc = get_csc(intf = e)
 
         resend = max_attempts(csc, volume_clerk['library'], e)
 
@@ -10287,7 +10291,7 @@ def create_read_request(request, file_number,
             vc_reply['library'] = lm
 
         #Determine the max resend values for this transfer.
-        csc = get_csc()
+        csc = get_csc(intf = e)
         resend = max_attempts(csc, vc_reply['library'], e)
 
         #Get the crc seed to use.
@@ -11186,7 +11190,8 @@ class EncpInterface(option.Interface):
         self.resubmit_timeout = 15*60 # seconds to wait for the transfer
                                    # before giving up on it.
                                    # 15 minutes
-
+        self.config_timeout = 60   # seconds to get configuration information
+        
         #Options for overriding the pnfs tags.
         self.output_file_family = "" # initial set for use with --ephemeral or
                                      # or --file-family
@@ -11555,6 +11560,15 @@ class EncpInterface(option.Interface):
                                  "before resubmiting the request "
                                  "(default = 15min).",
                                  option.VALUE_NAME:'resubmit_timeout',
+                                 option.VALUE_TYPE:option.INTEGER,
+                                 option.VALUE_USAGE:option.REQUIRED,
+                                 option.USER_LEVEL:option.USER2,
+                                 },
+        option.CONFIG_TIMEOUT:{option.HELP_STRING:
+                                 "Number of seconds to wait for reply "
+                                 "from configuration server "
+                                 "(default = 60s).",
+                                 option.VALUE_NAME:'config_timeout',
                                  option.VALUE_TYPE:option.INTEGER,
                                  option.VALUE_USAGE:option.REQUIRED,
                                  option.USER_LEVEL:option.USER2,
