@@ -408,6 +408,7 @@ RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
 RESTORE_ALL = "restore-all"                  #dbs
 RESUBMIT_TIMEOUT = "resubmit-timeout"        #encp
+CONFIG_TIMEOUT = "config-timeout"            #encp
 RETRIES ="retries"
 RM = "rm"                                    #pnfs
 RM_ACTIVE_VOL = "rm-active-vol"              #library
@@ -516,7 +517,7 @@ valid_option_list = [
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK, CHECK_DATA, CHECK_ONLY_META,
     CLEAN_DRIVE, CLEAR, CLEAR_SG, CLIENT_NAME,
-    CONDITION, CONFIG_FILE, CONFIG_HOSTS, CONST, COPIES, COPY,
+    CONDITION, CONFIG_FILE, CONFIG_HOSTS, CONFIG_TIMEOUT, CONST, COPIES, COPY,
     COUNTERS, COUNTERSN, CP, CRC_CHECK, CREATE, CURSOR,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME, DEBUG,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
