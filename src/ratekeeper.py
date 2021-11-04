@@ -283,7 +283,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
             #child
             self.update_DRVBusy(mcc)
-            
+
             os._exit(0)
 
     # Do update the DB every 6 hours.
@@ -348,12 +348,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                             for drive in drives_list:
                                 if drive['name'] == m_status['media_changer_device']:
                                     if not drive['type']:
-                                        #Trace.trace(10, 'UPDATING %s' % (drive,))
                                         drive['type'] = m_status['drive_id']
                                     break
         Trace.trace(10, 'Drives list %s' % (drives_list,))
         Trace.trace(10, 'Valid drives %s' % (valid_drives,))
-            
+
         for drive in drives_list:
             Trace.trace(10, 'DRIVE %s' % (drive,))
             if not drive['name'] in valid_drives:
@@ -388,7 +387,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                         except IOError:
                             pass
                         continue
-                
+
                 else:
                     continue
                 try:
@@ -726,4 +725,3 @@ if __name__ == "__main__":
             continue
 
     Trace.log(e_errors.ERROR,"Ratekeeper finished (impossible)")
-
