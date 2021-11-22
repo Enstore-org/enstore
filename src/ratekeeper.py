@@ -347,8 +347,9 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                             # find in drives list
                             for drive in drives_list:
                                 if drive['name'] == m_status['media_changer_device']:
-                                    if not drive['type']:
-                                        #Trace.trace(10, 'UPDATING %s' % (drive,))
+                                    if not drive['type']
+                                        ## Spectra logic media changer does not have
+                                        ## a drive type defined. Get it from m_status['drive_id']
                                         drive['type'] = m_status['drive_id']
                                     break
         Trace.trace(10, 'Drives list %s' % (drives_list,))
