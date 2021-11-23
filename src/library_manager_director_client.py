@@ -144,7 +144,7 @@ def unit_test(intf):
             print "No LMD is defined for %s"%(lmdname,)
             sys.exit(1)
     else:
-        print "%s is not in configuration"%(lmname,)
+        print "%s is not in configuration"%(lmdname,)
         sys.exit(1)
 
     print "CLIENT ADDRESS",lmdc.server_address  
