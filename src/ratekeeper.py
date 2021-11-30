@@ -42,7 +42,7 @@ MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
 rate_lock = threading.Lock()
 acc_db_lock = threading.Lock()
 
-CHILD_TTL = 300
+CHILD_TTL = 600
 
 #Note: These intervals should probably come from the configuration file.
 DRVBUSY_INTERVAL = 900 #15 minutes
@@ -283,6 +283,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
             #child
             self.update_DRVBusy(mcc)
+            
             os._exit(0)
 
     # Do update the DB every 6 hours.
@@ -304,6 +305,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             os._exit(0)
 
     def update_DRVBusy(self, mcc):
+        Trace.trace(10, 'update_DRVBusy for %s' % (mcc.name,))
+
         busy_count = {}
         total_count = {}
         drives_list = []
@@ -317,7 +320,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             return
 
         #Get the drives from the media changer.
-        drives_dict = mcc.list_drives(10, 6)
+        drives_dict = mcc.list_drives(30, 3)
         if e_errors.is_ok(drives_dict):
             drives_list = drives_dict['drive_list']
             for d in drives_list:
@@ -341,13 +344,26 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                         m_status = movc.status(self.mover_to, self.mover_retries)
                         if e_errors.is_ok(m_status):
                             valid_drives.append(m_status['media_changer_device'])
-
+                            # find in drives list
+                            for drive in drives_list:
+                                if drive['name'] == m_status['media_changer_device']:
+                                    # consider if not drive.get('type'):
+                                    if not drive['type']:
+                                        ## Spectra logic media changer does not have
+                                        ## a drive type defined. Get it from m_status['drive_id']
+                                        drive['type'] = m_status['drive_id']
+                                    break
+        Trace.trace(10, 'Drives list %s' % (drives_list,))
+        Trace.trace(10, 'Valid drives %s' % (valid_drives,))
+            
         for drive in drives_list:
+            Trace.trace(10, 'DRIVE %s' % (drive,))
             if not drive['name'] in valid_drives:
                 #If the drive isn't attached to a configured mover
                 # skip its count.  It probably belongs to another instance
                 # of Enstore.
                 continue
+            Trace.trace(10, 'DRIVE IN %s' % (drive,))
             try:
                 total_count[drive['type']] = \
                                            total_count[drive['type']] + 1
@@ -357,18 +373,25 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 #busy counts cant have it yet.
 
             if drive['volume']:
+                Trace.trace(10, 'CALLING inquire_vol %s' % (drive['volume'],))
                 v_info=self.vcc.inquire_vol(drive['volume'])
-                sg=None
-                try:
-                    sg=volume_family.extract_storage_group(v_info['volume_family'])
-                except:
-                    exc, msg, tb = sys.exc_info()
+                Trace.trace(10, 'inquire_vol returned %s' % (v_info,))
+                time.sleep(1)
+                sg='UNKNOWN'
+                if e_errors.is_ok(v_info):
                     try:
-                        sys.stderr.write("Can not extract storage group for volume %s : (%s, %s)\n" %
-                                         (drive['volume'],exc, msg))
-                        sys.stderr.flush()
-                    except IOError:
-                        pass
+                        sg=volume_family.extract_storage_group(v_info['volume_family'])
+                    except:
+                        exc, msg, tb = sys.exc_info()
+                        try:
+                            sys.stderr.write("Can not extract storage group for volume %s : (%s, %s)\n" %
+                                             (drive['volume'],exc, msg))
+                            sys.stderr.flush()
+                        except IOError:
+                            pass
+                        continue
+                
+                else:
                     continue
                 try:
                     busy_count[(drive['type'], sg)]  =   busy_count[(drive['type'], sg)] + 1
@@ -382,6 +405,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                            user  = self.acc_conf.get('dbuser', "enstore"))
 
             ## Put the information into the accounting DB.
+            Trace.trace(10, 'Total count %s. Busy Count %s' % (total_count, busy_count))
             for drive_type in total_count.keys():
                 for k in busy_count.keys():
                     if k[0] == drive_type:
@@ -396,7 +420,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                          total_count[drive_type],
                          busy_count[k],
                          )
-                        #print "Executing ",q
+                        Trace.trace(10, 'Executing %s ' % (q,))
                         acc_db.query(q)
             acc_db.close()
         except (pg.ProgrammingError, pg.InternalError):
@@ -407,7 +431,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 sys.stderr.flush()
             except IOError:
                 pass
-        return (busy_count, total_count)
+        Trace.trace(10, 'update_DRVBusy for %s finished' % (mcc.name,))
 
     def update_slots(self, mcc):
         slots_list = []
@@ -685,7 +709,7 @@ if __name__ == "__main__":
     intf = RatekeeperInterface()
 
     rk = Ratekeeper((intf.config_host, intf.config_port))
-
+    #rk._do_print({'levels':[10]}) # do not remove. May be needed for debugging
     reply = rk.handle_generic_commands(intf)
 
     rk_main_thread = threading.Thread(target=rk.main)
