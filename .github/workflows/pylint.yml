@@ -21,4 +21,4 @@ jobs:
     - name: Analysing the code with pylint
       run: |
        export opts=" --disable=all --enable=syntax-error --enable=bad-thread-instantiation --enable=used-before-assignment --enable=undefined-variable --score no "
-       for P in $(find .  -name '*.py') ; do echo $P ; pylint $opts $P 2>/dev/null || echo pylint exited code $?   ; done
+       for P in $(find .  -name '*.py') ; do  pylint $opts $P 2>/dev/null || echo pylint $P exited code $?   ; done
