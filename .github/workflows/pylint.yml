@@ -22,10 +22,10 @@ jobs:
       run: |
        find . -name '*.py' > ./python_file_list
        export num_files=$(wc -l ./python_file_list)
-       export opts=" --disable=all --enable=syntax-error --enable=bad-thread-instantiation --enable=used-before-assignment --enable=undefined-variable --score no "
+       export opts=' --disable=all --enable=syntax-error'
+       export opts=$opts' --enable=bad-thread-instantiation'
+       export opts=$opts' --enable=used-before-assignment'
+       export opts=$opts'--enable=undefined-variable --score no'
        echo "found $num_files python files to analyze"
-       echo 
-       for P in $(cat ./python_file_list) ; do  pylint $opts $P 2>/dev/null || echo pylint $P exited code $? && echo  ; done
-
-      
+       for P in $(cat ./python_file_list) ; do  pylint $opts $P 2>/dev/null || echo $(echo pylint $P exited code $?)   ; done
        echo "analyzed $num_files python files with pylint"
