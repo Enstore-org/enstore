@@ -27,5 +27,5 @@ jobs:
        export opts=$opts' --enable=used-before-assignment'
        export opts=$opts' --enable=undefined-variable --score no'
        echo "found $num_files "
-       for P in $(cat python_files) ; do  pylint $opts $P 2>/dev/null || echo $(echo pylint $P exited code $?; echo)   ; done
+       for P in $(cat python_files) ; do  pylint $opts $P 2>/dev/null || printf "pylint $P exited code $?\n\n"   ; done
        echo "linted $num_files "
