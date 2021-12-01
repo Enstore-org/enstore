@@ -20,7 +20,7 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-       find . name '*.py' > ./python_file_list
+       find . -name '*.py' > ./python_file_list
        export num_files=$(wc -l ./python_file_list)
        export opts=" --disable=all --enable=syntax-error --enable=bad-thread-instantiation --enable=used-before-assignment --enable=undefined-variable --score no "
        echo "found $num_files python files to analyze"
