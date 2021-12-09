@@ -19,6 +19,7 @@ import Interfaces
 import en_eval
 
 def __get_callback(host, port):
+    hostinfo = None
     if host == '':
         # discover primary address family
         hostname = socket.gethostname()
@@ -61,16 +62,19 @@ def __get_callback(host, port):
                 error_message = "%s\n%s" % (error_message,
                                             "Check /etc/hosts and ifconfig -a"
                                             " for inconsistent information.")
-        elif msg.args[0] == errno.EADDRINUSE:
-            #We should include the address information since we know it
+        elif msg.args[0] == errno.EADDRINUSE or msg.args[0] == errno.EINVAL:
+            # We should include the address information since we know it
             # is currently in use by another process.
+	    # Sometimes socket.gethostname() returns IPV6 address for IPV4 host name, causing errno.EINVAL
+	    # Do not know why.
             error_message = "%s: %s" % (msg.args[1], (host, port))
         else:
             error_message = msg.args[1]
 
         #sys.stdout.write("%s\n" % error_message)
-        sys.stdout.write("MY %s\n" % error_message)
-        sys.exit(1)
+        sys.stdout.write("MY %s %s %s %s %s \n" % (error_message, host, port, hostinfo, address_family))
+        # reraise exception
+        raise socket.error, error_message
     if   address_family == socket.AF_INET6:
         host, port, junk, junk = sock.socket.getsockname()
     else:
