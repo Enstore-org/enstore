@@ -62,7 +62,7 @@ def __get_callback(host, port):
                 error_message = "%s\n%s" % (error_message,
                                             "Check /etc/hosts and ifconfig -a"
                                             " for inconsistent information.")
-        elif msg.args[0] == errno.EADDRINUSE or msg.args[0] == errno.EINVAL:
+        elif msg.args[0] in (errno.EADDRINUSE, errno.EINVAL):
             # We should include the address information since we know it
             # is currently in use by another process.
 	    # Sometimes socket.gethostname() returns IPV6 address for IPV4 host name, causing errno.EINVAL
@@ -71,7 +71,6 @@ def __get_callback(host, port):
         else:
             error_message = msg.args[1]
 
-        #sys.stdout.write("%s\n" % error_message)
         sys.stdout.write("MY %s %s %s %s %s \n" % (error_message, host, port, hostinfo, address_family))
         # reraise exception
         raise socket.error, error_message

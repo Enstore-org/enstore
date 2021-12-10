@@ -991,7 +991,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if attr != 'state':
             self.__dict__[attr] = val
             return
-        Trace.trace(10, "setattr: %s to %s"%(attr, val))
+        Trace.trace(10, "setattr: %s to %s" % (attr, val))
         try:
             cur_val = getattr(self, 'state', None)
             if val != cur_val:
@@ -1019,7 +1019,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             del(tb)
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
-        Trace.trace(10, "set state old: %s new: %s %s"%(cur_val, state_name(val), self.__dict__['state_change_time'] ))
+        Trace.trace(10, "set state old: %s new: %s %s" % (cur_val, state_name(val), self.__dict__['state_change_time'] ))
 
 
     def dump(self, ticket):
@@ -5060,7 +5060,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                                  server_address=vc['address'], logc = self.logclient)
         except Exception, detail:
             exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "finish_transfer_setup failed:  %s %s %s %s"%
+            Trace.log(e_errors.ERROR, "finish_transfer_setup failed:  %s %s %s %s" %
                       (exc, msg, detail, traceback.format_tb(tb)))
             self.transfer_failed(e_errors.NET_ERROR, msg, error_source=NETWORK)
             self.state = self.save_state
@@ -6183,7 +6183,7 @@ n the drive"%(self.current_volume,))
                 Trace.trace(10, 'connect_client: listening')
                 self.listen_socket.listen(1)
                 Trace.trace(10, 'connect_client: listening  done')
-                
+
                 # need a control connection setup
                 # otherwise: not because it must be left open
                 ticket['mover']['callback_addr'] = (host,port) #client expects this
@@ -6277,7 +6277,7 @@ n the drive"%(self.current_volume,))
                         return
 
                 #Check if the socket is open for reading and/or writing.
-                Trace.trace(10, 'connect_client: waiting on %s for %s'%(self.control_socket, self.connect_to*self.connect_retry))
+                Trace.trace(10, 'connect_client: waiting on %s for %s' % (self.control_socket, self.connect_to*self.connect_retry))
 
                 r, w, ex = select.select([self.control_socket], [self.control_socket], [], self.connect_to*self.connect_retry)
 
