@@ -99,7 +99,7 @@ class LibraryManagerDirectorClientInterface(generic_client.GenericClientInterfac
 def unit_test(intf):
     # intf - LibraryManagerDirectorClientInterface instance
     if len(intf.argv) != 2:
-        print "Usage: %s <LibraryManager.library_manager>"%(intf.argv[0],)
+        print "Usage: %s <LibraryManager.library_manager>" % (intf.argv[0],)
         return
     ticket={'lm': {'address': ("thehost", 7520)}, 'unique_id': '%s-1005321365-0-28872'%("thehost",), 'infile': '/pnfs/rip6/happy/mam/aci.py',
             'bfid': 'HAMS100471636100000', 'mover': 'MAM01.mover', 'at_the_top': 3, 'client_crc': 1, 'encp_daq': None,
@@ -141,10 +141,10 @@ def unit_test(intf):
             print "LMD name:", lmdname
             lmdc = LibraryManagerDirectorClient(csc, lmdname)
         else:
-            print "No LMD is defined for %s"%(lmdname,)
+            print "No LMD is defined for %s" % (lmdname,)
             sys.exit(1)
     else:
-        print "%s is not in configuration"%(lmdname,)
+        print "%s is not in configuration" % (lmdname,)
         sys.exit(1)
 
     print "CLIENT ADDRESS",lmdc.server_address  
@@ -155,9 +155,9 @@ def unit_test(intf):
     print "SENT", ticket['vc']
 
     for key in t.keys():
-        print "'%s': %s"%(key, t[key])
+        print "'%s': %s" % (key, t[key])
 
-    print "%s"%(t['fc']['location_cookie'],)   
+    print "%s" % (t['fc']['location_cookie'],)   
     
 
 if __name__ == '__main__':
