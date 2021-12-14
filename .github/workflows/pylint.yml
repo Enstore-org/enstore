@@ -20,7 +20,7 @@ jobs:
         pip install pylint pytest
     - name: run unittests with pytest
       run: |
-       cd enstore/src
+       cd src
        find . -name 'test_*.py' > pytests
        export num_files=$(wc -l pytests)
        export PYTHONPATH=.:$PYTHONPATH
