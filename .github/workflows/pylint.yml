@@ -24,8 +24,8 @@ jobs:
        find . -name 'test_*.py' > pytests
        export num_files=$(wc -l pytests)
        export PYTHONPATH=.:$PYTHONPATH
-       echo "running $num_files pytests"
-       for T in $(cat pytests); do echo $T; python $T; done
+       echo "found  $num_files"
+       for T in $(cat pytests); do echo running $T; python $T; done
 
     - name: analysing with pylint
       run: |

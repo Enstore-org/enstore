@@ -12,23 +12,23 @@ class Test_volume_family(unittest.TestCase):
         self.vol2 = "wierd"
 
     def test_extract_storage_group(self):
-        grp  = volume_family.extract_storage_group(self.vol1)
+        grp = volume_family.extract_storage_group(self.vol1)
         self.assertEqual(grp, self.grp)
-    
+
     def test_extract_storage_group2(self):
-        grp  = volume_family.extract_storage_group(self.vol2)
+        grp = volume_family.extract_storage_group(self.vol2)
         self.assertEqual(self.vol2, grp)
-    
+
     def test_extract_storage_group3(self):
-        grp  = volume_family.extract_storage_group("")
+        grp = volume_family.extract_storage_group("")
         self.assertEqual("", grp)
 
     def test_extract_file_family(self):
-        ff  = volume_family.extract_file_family(self.vol1)
+        ff = volume_family.extract_file_family(self.vol1)
         self.assertEqual(ff, self.ff)
 
     def test_extract_file_family_2(self):
-        ff  = volume_family.extract_file_family(self.vol2)
+        ff = volume_family.extract_file_family(self.vol2)
         self.assertEqual("none", ff)
 
     def test_extract_wrapper(self):
