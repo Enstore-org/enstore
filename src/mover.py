@@ -5471,6 +5471,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._error = exc
         self._error_source = error_source
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR or exc == e_errors.POSITIONING_ERROR:
+            if exc == e_errors.READ_ERROR:
+                self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)
+            if exc == e_errors.WRITE_ERROR:
+                self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
             if (msg.find("FTT_") != -1):
                 # log low level diagnostics
                 self.watch_syslog()
@@ -5553,7 +5557,6 @@ n the drive"%(self.current_volume,))
                                                                                    self.failure_interval)
             ### network errors should not count toward rd_err, wr_err
             if self.mode == WRITE:
-                self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
                 # Heuristic: if tape is more than  remaining_factor*capacity full and we get a write error,
                 # mark it full
                 try:
@@ -5576,9 +5579,6 @@ n the drive"%(self.current_volume,))
                 except:
                     exc, msg, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "%s %s" % (exc, msg))
-            else:
-                if self.vcc:
-                    self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)
 
             self.transfers_failed = self.transfers_failed + 1
         encp_gone = exc in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK, e_errors.NET_ERROR)
