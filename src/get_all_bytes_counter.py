@@ -45,7 +45,7 @@ def get_remote_file(node, remote_file, newfile):
     pid = os.fork()
     if pid == 0:
         # this is the child
-        rtn = subprocess.call("enrcp %s:%s %s"%(node, remote_file, newfile), shell=True:)
+        rtn = subprocess.call("enrcp %s:%s %s"%(node, remote_file, newfile), shell=True)
         os._exit(rtn)
     else:
         # this is the parent, allow a total of 30 seconds for the child
