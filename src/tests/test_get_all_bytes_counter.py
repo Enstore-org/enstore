@@ -36,6 +36,7 @@ class TestGetAllBytesCounter(unittest.TestCase):
         rc = ping('127.0.0.1')
         self.assertEqual(ALIVE, rc, "get_all_bytes_counter.test_ping to 127.0.0.1 did not succeed")
 
+    @unittest.skip('output distractiing and messy')
     def test_ping_bad(self):
         DEAD = 0
         ALIVE = 1
