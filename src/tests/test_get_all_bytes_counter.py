@@ -39,7 +39,8 @@ class TestGetAllBytesCounter(unittest.TestCase):
     def test_ping_bad(self):
         DEAD = 0
         ALIVE = 1
-        print "\nIGNORE ping: cannot resolve some.bad.host: Unknown host'\nTODO: SUPPRESS"
+        print "\nIGNORE spurious 'ping: cannot resolve some.bad.host: Unknown host' error"
+        print "TODO: suppress stderr, this test is returning intended error code"
         rc = ping('some.bad.host')
         self.assertEqual(
             DEAD, rc, "get_all_bytes_counter.test_ping to some.bad.host succeeded when it should not")

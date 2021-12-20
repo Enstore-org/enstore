@@ -74,7 +74,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
         newpath = "./tests/fixtures:%s" % path
         os.environ['PATH'] = newpath
         rc = get_remote_file('fake_machine', 'fake_file', 'exit_1')
-        self.assertEquals(rc, 1, "enstore_functins2.get_remote_file expected rc 1, got %s" % rc)
+        self.assertEquals(rc, 1, "enstore_functions2.get_remote_file expected rc 1, got %s" % rc)
         os.environ['PATH'] = path
 
     def test_ping_good(self):
@@ -86,7 +86,8 @@ class TestEnstoreFunctions2(unittest.TestCase):
     def test_ping_bad(self):
         DEAD = 0
         ALIVE = 1
-        print "\nIGNORE ping: cannot resolve some.bad.host: Unknown host'\nTODO: SUPPRESS"
+        print "\nIGNORE spurious 'ping: cannot resolve some.bad.host: Unknown host' error"
+        print "TODO: suppress stderr, this test is returning intended error code"
         rc = ping('some.bad.host')
         self.assertEqual(
             DEAD, rc, "enstore_functions2.test_ping to some.bad.host succeeded when it should not")
