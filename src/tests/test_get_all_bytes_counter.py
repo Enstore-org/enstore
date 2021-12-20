@@ -33,8 +33,8 @@ class TestGetAllBytesCounter(unittest.TestCase):
     def test_ping_good(self):
         DEAD = 0
         ALIVE = 1
-        rc = ping('github.com')
-        self.assertEqual(ALIVE, rc, "get_all_bytes_counter.test_ping to github.com did not succeed")
+        rc = ping('127.0.0.1')
+        self.assertEqual(ALIVE, rc, "get_all_bytes_counter.test_ping to 127.0.0.1 did not succeed")
 
     def test_ping_bad(self):
         DEAD = 0

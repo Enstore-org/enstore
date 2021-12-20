@@ -25,7 +25,7 @@ jobs:
        export num_files=$(wc -l pytests)
        export PYTHONPATH=.:$PYTHONPATH
        echo "found  $num_files"
-       for T in $(cat pytests); do echo running $T; python $T || printf "pytest $T exited code $? "; done
+       for T in $(cat pytests); do echo running $T; python $T || printf "pytest $T exited code $?\n\n "; done
 
     - name: analysing with pylint
       run: |
