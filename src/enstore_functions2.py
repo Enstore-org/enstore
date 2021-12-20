@@ -289,7 +289,7 @@ def get_remote_file(node, remote_file, newfile):
         # this is the child
         rtn = subprocess.call("enrcp %s:%s %s" % (node, remote_file, newfile),
                               shell=True)
-        os._exit(0)
+        os._exit(rtn)
     else:
         # this is the parent, allow a total of 30 seconds for the child
         for i in [0, 1, 2, 3, 4, 5]:
@@ -303,6 +303,7 @@ def get_remote_file(node, remote_file, newfile):
             print "killing the rcp - %s" % (pid,)
             os.kill(pid, signal.SIGKILL)
             return 1
+
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
 YEARFMT = "%Y-%b-%d"
