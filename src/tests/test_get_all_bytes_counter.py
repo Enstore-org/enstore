@@ -19,7 +19,7 @@ class TestGetAllBytesCounter(unittest.TestCase):
         newpath = "./tests/fixtures:%s" % path
         os.environ['PATH'] = newpath
         rc = get_remote_file('fake_machine', 'fake_file', 'exit_0')
-        self.assertEquals(rc, 0, "get_remote_file expected rc 0, got %s" % rc)
+        self.assertEquals(rc, 0, "get_all_bytes_counter.get_remote_file expected rc 0, got %s" % rc)
         os.environ['PATH'] = path
 
     def test_get_remote_file_bad(self):
@@ -27,14 +27,14 @@ class TestGetAllBytesCounter(unittest.TestCase):
         newpath = "./tests/fixtures:%s" % path
         os.environ['PATH'] = newpath
         rc = get_remote_file('fake_machine', 'fake_file', 'exit_1')
-        self.assertEquals(rc, 1, "get_remote_file expected rc 1, got %s" % rc)
+        self.assertEquals(rc, 1, "get_all_bytes_counter.get_remote_file expected rc 1, got %s" % rc)
         os.environ['PATH'] = path
 
     def test_ping_good(self):
         DEAD = 0
         ALIVE = 1
         rc = ping('github.com')
-        self.assertEqual(ALIVE, rc, "test_ping to github.com did not succeed")
+        self.assertEqual(ALIVE, rc, "get_all_bytes_counter.test_ping to github.com did not succeed")
 
     def test_ping_bad(self):
         DEAD = 0
@@ -42,7 +42,7 @@ class TestGetAllBytesCounter(unittest.TestCase):
         print "\nIGNORE ping: cannot resolve some.bad.host: Unknown host'\nTODO: SUPPRESS"
         rc = ping('some.bad.host')
         self.assertEqual(
-            DEAD, rc, "test_ping to some.bad.host succeeded when it should not")
+            DEAD, rc, "get_all_bytes_counter.test_ping to some.bad.host succeeded when it should not")
 
 
 if __name__ == "__main__":
