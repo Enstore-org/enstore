@@ -1,6 +1,5 @@
 #/bin/bash
 for arg in "$@"; do
-    #echo $arg
     if [ "$arg" = "exit_0" ]; then
         echo "$0 $@ ---> exiting status  0"
         exit 0
