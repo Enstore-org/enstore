@@ -264,10 +264,7 @@ def get_days_ago(date, days_ago):
 def ping(node):
     # ping the node to see if it is up.
     times_to_ping = 4
-    # the timeout parameter does not work on d0ensrv2.
-    #timeout = 5
-    #cmd = "ping -c %s -w %s %s"%(times_to_ping, timeout, node)
-    cmd = "ping -c %s %s"%(times_to_ping, node)
+    cmd = "ping -c %s %s" % (times_to_ping, node)
     p = os.popen(cmd, 'r').readlines()
     for line in p:
         if not string.find(line, "transmitted") == -1:
@@ -282,28 +279,30 @@ def ping(node):
         # we did not find the stat line
         return enstore_constants.IS_DEAD
 
-def get_remote_file(node, file, newfile):
+
+def get_remote_file(node, remote_file, newfile):
     __pychecker__ = "unusednames=i"
-    
+
     # we have to make sure that the rcp does not hang in case the remote node is goofy
     pid = os.fork()
     if pid == 0:
-	# this is the child
-	rtn = os.system("enrcp %s:%s %s"%(node, file, newfile))
-	os._exit(0)
+        # this is the child
+        rtn = subprocess.call("enrcp %s:%s %s" % (node, remote_file, newfile),
+                              shell=True)
+        os._exit(0)
     else:
-	# this is the parent, allow a total of 30 seconds for the child
-	for i in [0, 1, 2, 3, 4, 5]:
-	    rtn = os.waitpid(pid, os.WNOHANG)
-	    if rtn[0] == pid:
-		return rtn[1] >> 8   # pick out the top 8 bits as the return code
-	    time.sleep(5)
-	else:
-	    # the child has not finished, be brutal. it may be hung
-	    print "killing the rcp - %s"%(pid,)
-	    os.kill(pid, signal.SIGKILL)
-	    return 1
-
+        # this is the parent, allow a total of 30 seconds for the child
+        for i in [0, 1, 2, 3, 4, 5]:
+            rtn = os.waitpid(pid, os.WNOHANG)
+            if rtn[0] == pid:
+                # pick out the top 8 bits as the return code
+                return rtn[1] >> 8
+            time.sleep(5)
+        else:
+            # the child has not finished, be brutal. it may be hung
+            print "killing the rcp - %s" % (pid,)
+            os.kill(pid, signal.SIGKILL)
+            return 1
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
 YEARFMT = "%Y-%b-%d"
@@ -322,7 +321,7 @@ def unformat_time(strTime, sep=" "):
 # return the directory
 def get_dir(str):
     if os.path.isdir(str):
-	return str
+        return str
     else:
 	# strip off the last set of chars after the last /
 	file_spec = os.path.split(str)
