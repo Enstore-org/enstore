@@ -83,6 +83,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
         rc = ping('127.0.0.1')
         self.assertEqual(ALIVE, rc, "enstore_functions2.test_ping to 127.0.0.1 did not succeed")
 
+    @unittest.skip('output distractiing and messy')
     def test_ping_bad(self):
         DEAD = 0
         ALIVE = 1
