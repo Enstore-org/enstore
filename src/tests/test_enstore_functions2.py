@@ -94,7 +94,6 @@ class TestEnstoreFunctions2(unittest.TestCase):
             DEAD, rc, "enstore_functions2.test_ping to some.bad.host succeeded when it should not")
 
 
-
     @unittest.skip('not implemented')
     def test_format_time(self):
         pass
