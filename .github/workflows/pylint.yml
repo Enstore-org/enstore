@@ -16,30 +16,30 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install enstore
       run: |
-        sudo ./.github/scripts/install-enstore.sh
-        source /tmp/setup-enstore
+       sudo ./.github/scripts/install-enstore.sh
+       source /tmp/setup-enstore
       shell: bash
     - name: Install dependencies
       run: |
-        source /tmp/setup-enstore
-        python -m pip install --upgrade pip
-        pip install pylint pytest
+       source /tmp/setup-enstore
+       python -m pip install --upgrade pip
+       pip install pylint pytest
     - name: run unittests with pytest
       run: |
-        cd src
-        find . -name 'test_*.py' > pytests
-        export num_files=$(wc -l pytests)
-        export PYTHONPATH=.:$PYTHONPATH
-        echo "found  $num_files"
-        for T in $(cat pytests); do echo running $T; python $T; done
+       cd src
+       find . -name 'test_*.py' > pytests
+       export num_files=$(wc -l pytests)
+       export PYTHONPATH=.:$PYTHONPATH
+       echo "found  $num_files"
+       for T in $(cat pytests); do echo running $T; python $T; done
     - name: analysing with pylint
       run: |
-        find . -name '*.py' > python_files
-        export num_files=$(wc -l python_files)
-        export opts=' --disable=all --enable=syntax-error'
-        export opts=$opts' --enable=bad-thread-instantiation'
-        export opts=$opts' --enable=used-before-assignment'
-        export opts=$opts' --enable=undefined-variable --score no'
-        echo "found $num_files "
-        for P in $(cat python_files) ; do  pylint $opts $P 2>/dev/null || printf "pylint $P exited code $?\n\n"   ; done
-        echo "linted $num_files "
+       find . -name '*.py' > python_files
+       export num_files=$(wc -l python_files)
+       export opts=' --disable=all --enable=syntax-error'
+       export opts=$opts' --enable=bad-thread-instantiation'
+       export opts=$opts' --enable=used-before-assignment'
+       export opts=$opts' --enable=undefined-variable --score no'
+       echo "found $num_files "
+       for P in $(cat python_files) ; do  pylint $opts $P 2>/dev/null || printf "pylint $P exited code $?\n\n"   ; done
+       echo "linted $num_files "
