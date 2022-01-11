@@ -1,9 +1,9 @@
-import unittest
-import pytest
-import os
 import movcmd_mc
-from movcmd_mc import *
+import os
+import pytest
+import unittest
 from mock import patch
+from movcmd_mc import *
 
 TESTCONFIG = {
   'enstor01.mover': {
