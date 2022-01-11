@@ -4,6 +4,7 @@ on: [push]
 
 jobs:
   build:
+    runs-on: ubuntu-latest
     container: enstoredev/enstore-dev:latest
     steps:
     - uses: actions/checkout@v2
