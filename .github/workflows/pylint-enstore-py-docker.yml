@@ -1,0 +1,30 @@
+name: Pylint-Docker
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: enstoredev/enstore-dev:latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: run unittests with pytest
+      run: |
+       source /data/setup-enstore
+       cd src
+       find . -name 'test_*.py' > pytests
+       export num_files=$(wc -l pytests)
+       echo "found $num_files"
+       for T in $(cat pytests); do echo running $T; python -m pytest $T; done
+    - name: analysing with pylint
+      run: |
+       source /data/setup-enstore
+       find . -name '*.py' > python_files
+       export num_files=$(wc -l python_files)
+       export opts=' --disable=all --enable=syntax-error'
+       export opts=$opts' --enable=bad-thread-instantiation'
+       export opts=$opts' --enable=used-before-assignment'
+       export opts=$opts' --enable=undefined-variable --score no'
+       echo "found $num_files "
+       for P in $(cat python_files) ; do python -m pylint $opts $P 2>/dev/null || printf "pylint $P exited code $?\n\n"   ; done
+       echo "linted $num_files "
