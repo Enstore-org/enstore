@@ -8,10 +8,9 @@ jobs:
     container: enstoredev/enstore-dev:latest
     steps:
     - uses: actions/checkout@v2
-    - name: setup env
-      run: source /data/setup-enstore
     - name: run unittests with pytest
       run: |
+       source /data/setup-enstore
        cd src
        find . -name 'test_*.py' > pytests
        export num_files=$(wc -l pytests)
@@ -19,6 +18,7 @@ jobs:
        for T in $(cat pytests); do echo running $T; python -m pytest $T; done
     - name: analysing with pylint
       run: |
+       source /data/setup-enstore
        find . -name '*.py' > python_files
        export num_files=$(wc -l python_files)
        export opts=' --disable=all --enable=syntax-error'
