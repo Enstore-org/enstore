@@ -28,7 +28,7 @@ Conversion notes:
 
 * Copy repo details from enstore machine:
 
-    ```
+```
 [enstore@enstore03 ~]$ cat /etc/yum.repos.d/enstore.repo
 [enstore]
 name=Enstore
@@ -41,7 +41,7 @@ sslverify=0
 
 
 
-    ```
+ ```
 [root@fermicloud]# cat <<EOT >> /etc/yum.repos.d/enstore.repo
 [enstore]
 name=Enstore
@@ -71,7 +71,7 @@ EOT
 
 * This user is set up as part of the enstore RPM install, and owns some of the Python directories included in the package.
 
-    ```
+ ```
 [root@fermicloud]# su enstore
 [enstore@fermicloud]$ source /tmp/setup-enstore
 <this gives some warnings that are OK>
@@ -88,7 +88,7 @@ EOT
 
 * Clone git repo
 
-    ```
+ ```
 [root@fermicloud]# su my_user
 [my_user@fermicloud]$ cd ~
 [my_user@fermicloud ~]$ git clone https://github.com/Enstore-org/enstore.git
@@ -97,7 +97,7 @@ EOT
 
 * Create pytest file and run
 
-    ```
+ ```
 [my_user@fermicloud ~]$ source /tmp/setup-enstore
 <this gives some warnings that are OK>
 [my_user@fermicloud ~]$ cd enstore/src/
