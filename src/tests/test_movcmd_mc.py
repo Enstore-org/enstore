@@ -1,3 +1,6 @@
+# movcmd_mc includes C module imports.
+# If this import fails, please read enstore-pytest-c-module.md,
+# and remember to use `python -m pytest`.
 import movcmd_mc
 import os
 import pytest
