@@ -1,4 +1,5 @@
 #!/usr/bin/env python 
+"""Executable. Given module, prints all imported modules and import chains."""
 import sys
 import string
 import pprint
@@ -87,9 +88,21 @@ def mtrace(m):
 counter = 0
 
 def log_trace(t):
+  """Stores the impot path (t) to a module (t[-1]) rm_table[t[-1]]"""
   if not rm_table.has_key(t[-1]) or len(t) < len(rm_table[t[-1]]):
       rm_table[t[-1]] = t
+
 def trace_path(history, module):
+  """Explore module tree imported by a module.
+
+  Given a module, explores the module tree imported by that module according to mtable, and adds the route to each module to rm_table.
+  
+  Args:
+  module: The name of the module who's import tree should be explored.
+    This module should already be in mtable.
+  history: Set of modules which should be included 'above' the module passed,
+    i.a. its ancestors.
+  """
   global counter
   counter = counter + 1
   # print counter, `history`, module
