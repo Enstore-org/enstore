@@ -70,16 +70,17 @@ def Select (R, W, X, timeout) :
         raise select.error, msg #all other errors
     
     time_elapsed = time.time() - t0
+    remaining_timeout = max(timeout - time_elapsed, 0.0)
 
     if r == cleaned_r :
       #If the timeout specified hasn't run out and
       # we don't have a ready socket keep trying.
-      if r == w == x == [] and time_elapsed > timeout:
+      if r == w == x == [] and remaining_timeout > 0.0:
         continue
       
       # all except FD's as the same as not scrubbed
       # previously.
-      return r, w, x, 0.0
+      return r, w, x, remaining_timeout
     cleaned_r = []
     for obj in r :
       try:
