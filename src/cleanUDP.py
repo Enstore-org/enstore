@@ -84,11 +84,11 @@ def Select (R, W, X, timeout) :
     cleaned_r = []
     for obj in r :
       try:
-          if obj.scrub() :
-        cleaned_r.append(obj)     
+        if obj.scrub() :
+          cleaned_r.append(obj)     
       except: 
-          #Trace.trace( 6, "non clean UDP object" )
-          cleaned_r.append(obj)
+        #Trace.trace( 6, "non clean UDP object" )
+        cleaned_r.append(obj)
 
 
 class cleanUDP :
@@ -115,7 +115,7 @@ class cleanUDP :
       # from python.
       try:
         self.socket.setsockopt(socket.SOL_SOCKET,
-                   socket.SO_NO_CHECK, 0)
+          socket.SO_NO_CHECK, 0)
         is_udp_checksum_off = self.socket.getsockopt(
           socket.SOL_SOCKET, socket.SO_NO_CHECK)
         if is_udp_checksum_off:
@@ -162,9 +162,7 @@ class cleanUDP :
     data = ("", ("", 0))
     for n in range(self.retry_max) :
       try:
-        r, junk, junk = select.select([self.socket],
-                    [], [],
-                    rcv_timeout)
+        r, _, _ = select.select([self.socket], [], [], rcv_timeout)
         if r:
           data=self.socket.recvfrom(bufsize)
           return data
