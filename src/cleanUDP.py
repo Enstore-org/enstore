@@ -56,33 +56,30 @@ def Select (R, W, X, timeout) :
 ## we must delete the object from all lists.
 ##
   cleaned_r = []
+  t0 = time.time()
   timeout = max(0.0, timeout)
   while 1 :
-    t0 = time.time()
     try:
       r, w, x = select.select(R, W, X, timeout)
     except select.error, msg:
       #If a signal interupts our select, try again.
       if msg.args[0] in [errno.EINTR]:
         time.sleep(1)
-        timeout = timeout - (time.time() - t0)
-        timeout = max(0.0, timeout)
         continue
       else:
         raise select.error, msg #all other errors
     
-    timeout = timeout - (time.time() - t0)
-    timeout = max(0.0, timeout)
+    time_elapsed = time.time() - t0
 
     if r == cleaned_r :
       #If the timeout specified hasn't run out and
       # we don't have a ready socket keep trying.
-      if r == w == x == [] and timeout > 0.0:
+      if r == w == x == [] and time_elapsed > timeout:
         continue
       
       # all except FD's as the same as not scrubbed
       # previously.
-      return r, w, x, timeout
+      return r, w, x, 0.0
     cleaned_r = []
     for obj in r :
       try:
