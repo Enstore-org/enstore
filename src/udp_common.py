@@ -23,6 +23,7 @@ def __get_callback(host, port):
     if host == '':
         # discover primary address family
         hostname = socket.gethostname()
+        # TODO: IPv6 (AF_INET6)?
         hostinfo = socket.getaddrinfo(hostname, socket.AF_INET)
         # hostinfo is the list of tuples
         # [(Address_Family, Socket_Type, Protocol, Cacnonical_Name, Addres), ....]
@@ -36,6 +37,7 @@ def __get_callback(host, port):
                 af_inet = True
             if e[0] == socket.AF_INET6:
                 af_inet6 = True
+        # prefer IPv6
         if af_inet6:
             address_family = socket.AF_INET6
         else:
