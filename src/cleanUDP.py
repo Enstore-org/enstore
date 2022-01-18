@@ -70,7 +70,7 @@ def Select (R, W, X, timeout) :
         raise select.error, msg #all other errors
     
     time_elapsed = time.time() - t0
-    remaining_timeout = max(timeout - time_elapsed, 0.0)
+    remaining_timeout = max(0.0, timeout - time_elapsed)
 
     if r == cleaned_r :
       #If the timeout specified hasn't run out and
