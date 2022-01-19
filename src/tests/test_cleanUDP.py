@@ -14,7 +14,7 @@ def test_Select():
 
 class TestCleanUDP:
 
-  @pytest.fixture(params=[socket.AF_INET, socket.AF_INET6])
+  @pytest.fixture(params=[socket.AF_INET, socket.AF_INET6], ids=['IPv4', 'IPv6'])
   def udp_clean_udp_pair(self, request):
     clean_udp = cleanUDP(request.param, socket.SOCK_DGRAM)
     clean_udp.retry_max = 2
