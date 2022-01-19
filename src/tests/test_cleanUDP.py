@@ -12,9 +12,25 @@ def test_Select():
   pass
 
 
+def _test_no_ipv(socket_family, peer_addr):
+  try:
+    socket.socket(socket_family, type=socket.SOCK_DGRAM).sendto(b'', peer_addr)
+    return False
+  except socket.error:
+    return True
+
 class TestCleanUDP:
 
-  @pytest.fixture(params=[socket.AF_INET, socket.AF_INET6], ids=['IPv4', 'IPv6'])
+  @pytest.fixture(params=[
+    pytest.param(socket.AF_INET, marks=pytest.mark.skipif(
+      _test_no_ipv(socket.AF_INET, ("", 1)),
+      reason="No IPv4 available on test host."),
+    ),
+    pytest.param(socket.AF_INET6, marks=pytest.mark.skipif(
+      _test_no_ipv(socket.AF_INET6, ("::", 1, 0, 0)),
+      reason="No IPv6 available on test host."),
+    ),
+  ], ids=['IPv4', 'IPv6'])
   def udp_clean_udp_pair(self, request):
     clean_udp = cleanUDP(request.param, socket.SOCK_DGRAM)
     clean_udp.retry_max = 2
