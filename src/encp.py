@@ -8316,7 +8316,7 @@ def create_write_request(work_ticket, file_number,
         # this full name lookup.
 
         if e.shortcut and not e.override_path:
-            if is_null_media_type(volume_clerk):
+            if is_null_media_type(volume_clerk, e):
                 #To avoid an error with the mover, perform a full
                 # pnfs pathname lookup.
                 ofullname_list = sfs.get_path(e.put_cache,
@@ -10303,7 +10303,7 @@ def create_read_request(request, file_number,
         # which conflicts with the task of --shortcut.  So, we need to
         # breakdown and do this full name lookup.
         if e.shortcut:
-            if is_null_media_type(vc_reply):
+            if is_null_media_type(vc_reply, e):
                 if e.get_cache:
                     use_id = e.get_cache
                 else:
@@ -11191,7 +11191,7 @@ class EncpInterface(option.Interface):
                                    # before giving up on it.
                                    # 15 minutes
         self.config_timeout = 60   # seconds to get configuration information
-        
+
         #Options for overriding the pnfs tags.
         self.output_file_family = "" # initial set for use with --ephemeral or
                                      # or --file-family

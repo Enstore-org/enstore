@@ -4,6 +4,7 @@ import os
 import sys
 import string
 import time
+import errno
 import enstore_functions2
 import enstore_functions3
 import configuration_client
