@@ -7278,20 +7278,15 @@ class MTXN_CDB_MediaLoader(MTXN_MediaLoaderSL):
         result = enstore_functions2.shell_command("%s mtx -f %s status | grep 'Data Transfer Element'"%(self.sudo_cmd, self.device_name))
         return result
 
-    # getVolState in the drive; default overridden for other media changers
+    # getVolState in the drive
     def getVolState(self, ticket):
         __pychecker__ = "no-argsused"
+        Trace.log(ACTION_LOG_LEVEL, 'getVolState %s' % (ticket,))
         ticket['status'] = e_errors.OK
-        slot, drive = self.locate_volume(ticket['external_label'])
-        if slot < 0 and drive < 0:
-            ticket['status'] = e_errors.MC_VOLNOTFOUND
-        elif slot < 0 and drive >= 0:
-            ticket['state'] = 'M'
-            ticket['location'] = drive
-        elif slot >= 0 and drive < 0:
-            ticket['state'] = 'O'
-            ticket['location'] = slot
-        return (ticket.get('status'), ticket.get('location'), ticket.get('media_type'), ticket.get('state'))
+        rc = self.locate_volume(ticket['external_label'])
+        ticket.update(rc)
+        Trace.log(ACTION_LOG_LEVEL, 'locate_volume returned %s' % (ticket,))
+        return ticket.get('status')
 
     def getDriveState(self, ticket):
         drive = ticket['drive']
