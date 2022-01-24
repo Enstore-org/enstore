@@ -631,7 +631,7 @@ def do_work(intf):
                        slot_info['used'], slot_info['disabled'])
     elif intf.list_volumes:
         ticket = mcc.list_volumes()
-        if ticket.get('MC_class') == 'MTXN_MediaLoader':
+        if 'MTXN_MediaLoader' in ticket.get('MC_class', ''):
             print ticket['volume_list']
             return
         if e_errors.is_ok(ticket) and ticket.get("volume_list", None):
@@ -642,7 +642,7 @@ def do_work(intf):
     elif intf.list_clean:
         ticket = mcc.list_clean()
         if e_errors.is_ok(ticket) and ticket.get("clean_list", None):
-            if ticket.get('MC_class') == 'MTXN_MediaLoader':
+            if 'MTXN_MediaLoader' in ticket.get('MC_class', ''):
                 print ticket['clean_list']
                 return
             print "%17s %10s %10s %10s %10s" % ("volume", "type", "max",
