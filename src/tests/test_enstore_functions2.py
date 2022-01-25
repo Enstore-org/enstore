@@ -2,11 +2,11 @@ import unittest
 import os
 import mock
 import sys
-sys.modules['enroute'] = mock.MagicMock()
-sys.modules['runon'] = mock.MagicMock()
-sys.modules['Interfaces'] = mock.MagicMock()
-sys.modules['hostaddr'] = mock.MagicMock()
-sys.modules['checksum'] = mock.MagicMock()
+try:
+    import enroute
+except ImportError:
+    import fixtures.mock_imports
+    print "WARNING using mocked import of enstore C library" 
 from enstore_functions2 import get_remote_file
 from enstore_functions2 import ping
 
@@ -63,18 +63,24 @@ class TestEnstoreFunctions2(unittest.TestCase):
 
     def test_get_remote_file_good(self):
         path = os.environ.get('PATH')
-        newpath = "./tests/fixtures:%s" % path
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+        fixture_dir = os.path.join(this_dir, 'fixtures')
+        newpath = "%s:%s" % (fixture_dir, path)
         os.environ['PATH'] = newpath
         rc = get_remote_file('fake_machine', 'fake_file', 'exit_0')
-        self.assertEquals(rc, 0, "enstore_functions2.get_remote_file expected rc 0, got %s" % rc)
+        errmsg = "enstore_functions2.get_remote_file expected rc 0, got %s"
+        self.assertEquals(rc, 0, errmsg % rc)
         os.environ['PATH'] = path
 
     def test_get_remote_file_bad(self):
         path = os.environ.get('PATH')
-        newpath = "./tests/fixtures:%s" % path
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+        fixture_dir = os.path.join(this_dir, 'fixtures')
+        newpath = "%s:%s" % (fixture_dir, path)
         os.environ['PATH'] = newpath
+        errmsg = "enstore_functions2.get_remote_file expected rc 1, got %s"
         rc = get_remote_file('fake_machine', 'fake_file', 'exit_1')
-        self.assertEquals(rc, 1, "enstore_functions2.get_remote_file expected rc 1, got %s" % rc)
+        self.assertEquals(rc, 1, errmsg  % rc)
         os.environ['PATH'] = path
 
     def test_ping_good(self):
