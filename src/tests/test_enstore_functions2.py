@@ -140,14 +140,16 @@ class TestEnstoreFunctions2(unittest.TestCase):
     def test_ping_bad(self):
         addr = '0.0.0.0'
         rc = ping(addr)
-        msg = "enstore_functions2.test_ping to %s succeeded, it should not"
-        self.assertEqual(enstore_constants.IS_DEAD, rc, msg % addr)
+        msg = "enstore_functions2.test_ping to %s expected %s, got %s"
+        expect = enstore_constants.IS_DEAD
+        self.assertEqual(expect, rc, msg % (addr, expect, rc))
 
     def test_ping6_bad(self):
         addr = '::0'
         rc = ping(addr, IPv=6)
-        msg = "enstore_functions2.test_ping to %s succeeded, it should not"
-        self.assertEqual(enstore_constants.IS_DEAD, rc, msg % addr)
+        msg = "enstore_functions2.test_ping to %s expected %s, got %s"
+        expect = enstore_constants.IS_DEAD
+        self.assertEqual(expect, rc, msg % (addr, expect, rc))
 
 
     def test_ping_badIPv(self):
