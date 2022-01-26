@@ -49,9 +49,9 @@ class TestGetAllBytesCounter(unittest.TestCase):
         DEAD = 0
         ALIVE = 1
         # havent figured out how to suppress ping output to stderr
-        rc = ping('0.0.0.0')
+        rc = ping('0.0.0.1')
         self.assertEqual(
-            DEAD, rc, "test_ping to 0.0.0.0 succeeded when it should not")
+            DEAD, rc, "test_ping to 0.0.0.1 succeeded when it should not")
 
 
 if __name__ == "__main__":
