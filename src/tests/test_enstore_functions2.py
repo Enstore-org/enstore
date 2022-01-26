@@ -2,32 +2,73 @@ import unittest
 import os
 import mock
 import sys
+import tempfile
+import stat
 try:
     import enroute
 except ImportError:
     import fixtures.mock_imports
     print "WARNING using mocked import of enstore C library" 
+import enstore_constants
 from enstore_functions2 import get_remote_file
 from enstore_functions2 import ping
+from enstore_functions2 import _get_mode
+from enstore_functions2 import bits_to_numeric
+from enstore_functions2 import bits_to_rwx
+from enstore_functions2 import _get_rwx
+from enstore_functions2 import XMODE
+from enstore_functions2 import WMODE
+from enstore_functions2 import RMODE
 
 
 class TestEnstoreFunctions2(unittest.TestCase):
 
-    @unittest.skip('not implemented')
+    def setUp(self):
+        self.tf1 = tempfile.NamedTemporaryFile(prefix='enstore_functions2_',
+                                               suffix='_test')
+
     def test__get_mode(self):
-        pass
+        pmode = 1
+        rc = _get_mode(pmode,0,0,1)
+        self.assertEqual(XMODE, rc)
+        rc = _get_mode(pmode,0,1,1)
+        self.assertEqual(XMODE | WMODE, rc)
+        rc = _get_mode(pmode,1,1,1)
+        self.assertEqual(XMODE | WMODE | RMODE , rc)
+        rc = _get_mode(pmode,1,0,1)
+        self.assertEqual(XMODE | RMODE , rc)
+        pmode = 0
+        rc = _get_mode(pmode,0,0,1)
+        self.assertEqual(pmode, rc)
+        rc = _get_mode(pmode,1,0,1)
+        self.assertEqual(pmode, rc)
 
-    @unittest.skip('not implemented')
     def test_bits_to_numeric(self):
-        pass
+        os.chmod(self.tf1.name, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR)
+        st = os.stat(self.tf1.name)
+        rc = bits_to_numeric(st.st_mode)
+        self.assertEqual(rc,'0700')
+        bits = st.st_mode | stat.S_IRWXG
+        rc = bits_to_numeric(bits)
+        self.assertEqual(rc,'0770')
 
-    @unittest.skip('not implemented')
-    def test__get_rwx(self):
-        pass
-
-    @unittest.skip('not implemented')
     def test_bits_to_rwx(self):
-        pass
+        os.chmod(self.tf1.name, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR)
+        st = os.stat(self.tf1.name)
+        rc = bits_to_rwx(st.st_mode)
+        self.assertEqual(rc,'-rwx------')
+        bits = st.st_mode | stat.S_IRWXG
+        rc = bits_to_rwx(bits)
+        self.assertEqual(rc,'-rwxrwx---')
+
+
+    def test__get_rwx(self):
+        os.chmod(self.tf1.name, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR)
+        st = os.stat(self.tf1.name)
+        rc = _get_rwx(st.st_mode, stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
+        self.assertEqual(rc,'rwx')
+        rc = _get_rwx(st.st_mode, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP)
+        self.assertEqual(rc,'---')
 
     @unittest.skip('not implemented')
     def test__get_bits(self):
@@ -84,21 +125,35 @@ class TestEnstoreFunctions2(unittest.TestCase):
         os.environ['PATH'] = path
 
     def test_ping_good(self):
-        DEAD = 0
-        ALIVE = 1
-        rc = ping('127.0.0.1')
-        self.assertEqual(ALIVE, rc, "enstore_functions2.test_ping to 127.0.0.1 did not succeed")
+        addr = '127.0.0.1'
+        rc = ping(addr)
+        msg = "enstore_functions2.test_ping to %s did not succeed"
+        self.assertEqual(enstore_constants.IS_ALIVE, rc, msg % addr)
 
-    @unittest.skip('output distractiing and messy')
+    def test_ping6_good(self):
+        addr = '::1'
+        rc = ping(addr,IPv=6)
+        msg = "enstore_functions2.test_ping to %s did not succeed"
+        self.assertEqual(enstore_constants.IS_ALIVE, rc, msg % addr)
+
+
     def test_ping_bad(self):
-        DEAD = 0
-        ALIVE = 1
-        print "\nIGNORE spurious 'ping: cannot resolve some.bad.host: Unknown host' error"
-        print "TODO: suppress stderr, this test is returning intended error code"
-        rc = ping('some.bad.host')
-        self.assertEqual(
-            DEAD, rc, "enstore_functions2.test_ping to some.bad.host succeeded when it should not")
+        addr = '0.0.0.0'
+        rc = ping(addr)
+        msg = "enstore_functions2.test_ping to %s succeeded, it should not"
+        self.assertEqual(enstore_constants.IS_DEAD, rc, msg % addr)
 
+    def test_ping6_bad(self):
+        addr = '::0'
+        rc = ping(addr, IPv=6)
+        msg = "enstore_functions2.test_ping to %s succeeded, it should not"
+        self.assertEqual(enstore_constants.IS_DEAD, rc, msg % addr)
+
+
+    def test_ping_badIPv(self):
+        addr = '::0'
+        with self.assertRaises(ValueError):
+            rc = ping(addr, IPv=99)
 
     @unittest.skip('not implemented')
     def test_format_time(self):

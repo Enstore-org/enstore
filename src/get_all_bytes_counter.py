@@ -21,10 +21,16 @@ DEAD = 0
 ALIVE = 1
 
 
-def ping(node):
+def ping(node, IPv=4):
     # ping the node to see if it is up.
     times_to_ping = 4
-    cmd = "ping -c %s %s" % (times_to_ping, node)
+    if IPv == 4:
+        cmd = "ping -c %s %s" % (times_to_ping, node)
+    elif IPv == 6:
+        cmd = "ping6 -c %s %s" % (times_to_ping, node)
+    else:
+        raise TypeError("%s: IPv%s does not exist" %(__file__,IPv))
+        
     p = os.popen(cmd, 'r').readlines()
     for line in p:
         if not string.find(line, "transmitted") == -1:
