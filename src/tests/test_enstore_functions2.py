@@ -138,7 +138,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
 
 
     def test_ping_bad(self):
-        addr = '0.0.0.0'
+        addr = '0.0.0.1'
         rc = ping(addr)
         msg = "enstore_functions2.test_ping to %s expected %s, got %s"
         expect = enstore_constants.IS_DEAD
