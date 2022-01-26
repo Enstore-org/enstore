@@ -16,6 +16,8 @@ from enstore_functions2 import _get_mode
 from enstore_functions2 import bits_to_numeric
 from enstore_functions2 import bits_to_rwx
 from enstore_functions2 import _get_rwx
+from enstore_functions2 import _get_bits
+from enstore_functions2 import numeric_to_bits
 from enstore_functions2 import XMODE
 from enstore_functions2 import WMODE
 from enstore_functions2 import RMODE
@@ -70,13 +72,29 @@ class TestEnstoreFunctions2(unittest.TestCase):
         rc = _get_rwx(st.st_mode, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP)
         self.assertEqual(rc,'---')
 
-    @unittest.skip('not implemented')
     def test__get_bits(self):
-        pass
+        os.chmod(self.tf1.name, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR)
+        st = os.stat(self.tf1.name)
+        expected = 0
+        rc = _get_bits(0, stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
+        msg = "_get_bits returned %s, expected %s"
+        self.assertEqual(rc, expected, msg % (rc, expected))
+        expected = 448
+        rc = _get_bits(st.st_mode, stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
+        self.assertEqual(rc, expected, msg % (rc, expected))
 
-    @unittest.skip('not implemented')
+
+
+
     def test_numeric_to_bits(self):
-        pass
+        rc = numeric_to_bits('0700')
+        expected = stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR
+        msg = 'numeric_to_bits got %s, expected %s'
+        self.assertEqual(rc, expected, msg % (rc, expected))
+        expected = expected | stat.S_IRWXG
+        rc =  numeric_to_bits('0770')
+        self.assertEqual(rc, expected, msg % (rc, expected))
+
 
     @unittest.skip('not implemented')
     def test_symbolic_to_bits(self):
