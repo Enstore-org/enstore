@@ -275,7 +275,7 @@ def ping(node, IPv=4):
         if not string.find(line, "transmitted") == -1:
             # this is the statistics line
             stats = string.split(line)
-            if stats[0] == stats[3]:
+            if stats[0] == stats[3] and stats[0].isdigit():
                 # transmitted packets = received packets
                 return enstore_constants.IS_ALIVE
             else:
