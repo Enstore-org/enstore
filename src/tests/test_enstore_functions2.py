@@ -84,8 +84,6 @@ class TestEnstoreFunctions2(unittest.TestCase):
         self.assertEqual(rc, expected, msg % (rc, expected))
 
 
-
-
     def test_numeric_to_bits(self):
         rc = numeric_to_bits('0700')
         expected = stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR
