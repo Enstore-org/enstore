@@ -65,17 +65,27 @@ class TestCleanUDP:
     error = clean_udp.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     assert scrub == error == 0
 
+  def _test_retries(self, clean_udp, func_name, exp_calls, *args, **kwargs):
+    with patch.object(clean_udp.socket, func_name,
+           side_effect=socket.error('Mock', 'Error')) as mock_func:
+      try:
+        getattr(clean_udp, func_name)(*args, **kwargs)
+      except socket.error:
+        pass
+      assert(mock_func.call_count == exp_calls)
+
   def test_sendto(self, udp_clean_udp_pair):
     clean_udp, udp = udp_clean_udp_pair
     clean_udp.sendto(b'123', udp.getsockname())
     assert udp.recvfrom(3)[0] == b'123'
-    # TODO test retries
+    self._test_retries(clean_udp, 'sendto', clean_udp.retry_max + 1, b'123', udp.getsockname())
 
   def test_recvfrom(self, udp_clean_udp_pair):
     clean_udp, udp = udp_clean_udp_pair
     udp.sendto(b'123', clean_udp.getsockname())
     assert clean_udp.recvfrom(3)[0] == b'123'
-    # TODO test retries
+    with patch.object(select, 'select', return_value=(1, 0, 0)):
+      self._test_retries(clean_udp, 'recvfrom', clean_udp.retry_max, 3, rcv_timeout=0.1)
 
   def test_logerror(self, udp_clean_udp_pair):
     clean_udp, udp = udp_clean_udp_pair
