@@ -4,6 +4,7 @@ import mock
 import sys
 import tempfile
 import stat
+import time
 try:
     import enroute
 except ImportError:
@@ -18,6 +19,12 @@ from enstore_functions2 import bits_to_rwx
 from enstore_functions2 import _get_rwx
 from enstore_functions2 import _get_bits
 from enstore_functions2 import numeric_to_bits
+from enstore_functions2 import symbolic_to_bits
+from enstore_functions2 import print_list
+from enstore_functions2 import get_mover_status_filename
+from enstore_functions2 import get_migrator_status_filename
+from enstore_functions2 import override_to_status
+from enstore_functions2 import get_days_ago
 from enstore_functions2 import XMODE
 from enstore_functions2 import WMODE
 from enstore_functions2 import RMODE
@@ -94,29 +101,62 @@ class TestEnstoreFunctions2(unittest.TestCase):
         self.assertEqual(rc, expected, msg % (rc, expected))
 
 
-    @unittest.skip('not implemented')
     def test_symbolic_to_bits(self):
-        pass
+        rc = symbolic_to_bits("ug=rw")
+        expected = 432
+        msg = 'symbolic_to_bits got %s, expected %s'
+        self.assertEqual(rc,expected,msg%(rc,expected))
+        rc = symbolic_to_bits("u=rwx")
+        expected = stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR
+        self.assertEqual(rc,expected,msg%(rc,expected))
 
-    @unittest.skip('not implemented')
     def test_print_list(self):
-        pass
+        a_list = ["a", "b", "c"]
+        rc = print_list(a_list)
+        expected = 'a b c'
+        msg = 'test_print returned  "%s", expected "%s"'
+        self.assertEqual(rc, expected, msg % (rc, expected))
 
-    @unittest.skip('not implemented')
+        
+
     def test_get_mover_status_filename(self):
-        pass
+        rc = get_mover_status_filename()
+        expected = "enstore_movers.html"
+        msg = 'get_mover_status_filename  returned  "%s", expected "%s"'
+        self.assertEqual(rc, expected, msg % (rc, expected))
 
-    @unittest.skip('not implemented')
     def test_get_migrator_status_filename(self):
-        pass
+        rc = get_migrator_status_filename()
+        expected = "enstore_migrators.html"
+        msg = 'get_migrator_status_filename  returned  "%s", expected "%s"'
+        self.assertEqual(rc, expected, msg % (rc, expected))
 
-    @unittest.skip('not implemented')
     def test_override_to_status(self):
-        pass
+        for sval in enstore_constants.SAAG_STATUS:
+            lval = [sval]
+            rc1 = override_to_status(sval)
+            rc2 = override_to_status(lval)
+            idx  = enstore_constants.SAAG_STATUS.index(sval)
+            rc3 = enstore_constants.REAL_STATUS[idx]
+            msg = 'enstore_constants.SAAG_STATUS mismatch to enstore_constants.REAL_STATUS'
+            self.assertEqual(rc1, rc2, msg)
+            self.assertEqual(rc2, rc3, msg)
+            
 
-    @unittest.skip('not implemented')
+
     def test_get_days_ago(self):
-        pass
+        now = time.time()
+        sec_in_day = 86400
+        msg = 'get_days_ago  returned  %s, expected %s'
+        two_days_ago = float(sec_in_day*2)
+        expected = now - two_days_ago
+        rc = get_days_ago(now, 2)
+        self.assertEqual(rc, expected, msg % (rc, expected))
+        ten_days_ago = float(sec_in_day*10)
+        expected = now - ten_days_ago
+        rc = get_days_ago(now, 10)
+        self.assertEqual(rc, expected, msg % (rc, expected))
+
 
     def test_get_remote_file_good(self):
         path = os.environ.get('PATH')
