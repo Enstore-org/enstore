@@ -25,6 +25,19 @@ from enstore_functions2 import get_mover_status_filename
 from enstore_functions2 import get_migrator_status_filename
 from enstore_functions2 import override_to_status
 from enstore_functions2 import get_days_ago
+from enstore_functions2 import format_time
+from enstore_functions2 import unformat_time
+from enstore_functions2 import format_plot_time
+from enstore_functions2 import get_dir
+from enstore_functions2 import strip_file_dir
+from enstore_functions2 import strip_node
+from enstore_functions2 import is_this
+from enstore_functions2 import is_library_manager
+from enstore_functions2 import is_udp_proxy_server
+from enstore_functions2 import is_mover
+from enstore_functions2 import is_media_changer
+from enstore_functions2 import is_migrator
+from enstore_functions2 import get_name
 from enstore_functions2 import XMODE
 from enstore_functions2 import WMODE
 from enstore_functions2 import RMODE
@@ -213,57 +226,82 @@ class TestEnstoreFunctions2(unittest.TestCase):
         with self.assertRaises(ValueError):
             rc = ping(addr, IPv=99)
 
-    @unittest.skip('not implemented')
-    def test_format_time(self):
-        pass
+    def test_format_and_unformattime(self):
+        now = long(time.time())
+        fmted = format_time(now)
+        expected = long(unformat_time(fmted))
+        msg = "format_time unformat_time disagree returned %s expected %s"
+        self.assertEqual(now, expected, msg %(expected, now))
 
-    @unittest.skip('not implemented')
     def test_format_plot_time(self):
-        pass
+        now = time.time()
+        rc = format_plot_time(now)
+        self.assertNotEqual(rc,None)
+        self.assertNotEqual(rc,'')
 
-    @unittest.skip('not implemented')
-    def test_unformat_time(self):
-        pass
 
-    @unittest.skip('not implemented')
     def test_get_dir(self):
-        pass
+        expected = os.getcwd()
+        rc = get_dir(expected)
+        self.assertEqual(rc, expected)
+        inp = expected+'/foo/bar/'
+        expected = inp[:-1]
+        rc = get_dir(inp)
+        self.assertEqual(rc, expected)
 
-    @unittest.skip('not implemented')
     def test_strip_file_dir(self):
-        pass
+        inp = "/the/deep/deep/deep/dir"
+        expected = "dir"
+        rc = strip_file_dir(inp)
+        self.assertEqual(expected, rc)
 
-    @unittest.skip('not implemented')
     def test_strip_node(self):
-        pass
+        inp = 'somenode.fnal.gov'
+        expected = 'somenode'
+        rc = strip_node(inp)
+        self.assertEqual(rc,expected)
+        inp = None
+        expected = None
+        rc = strip_node(inp)
+        self.assertEqual(inp,expected)
 
-    @unittest.skip('not implemented')
     def test_is_this(self):
-        pass
+        input = 'aview.of.reality'
+        self.assertTrue(is_this(input,'reality'))
+        self.assertFalse(is_this(input,'fantasy'))
 
-    @unittest.skip('not implemented')
     def test_is_library_manager(self):
-        pass
+        input1 = 'this.is.library_manager'
+        input2 = 'this.is.not_library_manager'
+        self.assertTrue(is_library_manager(input1))
+        self.assertFalse(is_library_manager(input2))
 
-    @unittest.skip('not implemented')
     def test_is_udp_proxy_server(self):
-        pass
+        input1 = 'this.is.udp_proxy_server'
+        input2 = 'this.is.not_udp_proxy_server'
+        self.assertTrue(is_udp_proxy_server(input1))
+        self.assertFalse(is_udp_proxy_server(input2))
 
-    @unittest.skip('not implemented')
     def test_is_mover(self):
-        pass
+        input1 = 'this.is.mover'
+        input2 = 'this.is.not_mover'
+        self.assertTrue(is_mover(input1))
+        self.assertFalse(is_mover(input2))
 
-    @unittest.skip('not implemented')
     def test_is_migrator(self):
-        pass
+        input1 = 'this.is.migrator'
+        input2 = 'this.is.not_migrator'
+        self.assertTrue(is_migrator(input1))
+        self.assertFalse(is_migrator(input2))
 
-    @unittest.skip('not implemented')
     def test_is_media_changer(self):
-        pass
+        input1 = 'this.is.media_changer'
+        input2 = 'this.is.not_media_changer'
+        self.assertTrue(is_media_changer(input1))
+        self.assertFalse(is_media_changer(input2))
 
-    @unittest.skip('not implemented')
     def test_get_name(self):
-        pass
+        self.assertEqual('foo',get_name('foo.bar.baz'))
 
     @unittest.skip('not implemented')
     def test_get_bpd_subdir(self):
