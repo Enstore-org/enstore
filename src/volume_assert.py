@@ -39,6 +39,8 @@ import generic_client
 import delete_at_exit
 import enstore_functions3
 import file_clerk_client
+# dont want to risk side effects of importing other stuff from mover
+from mover import cookie_to_long
 
 MY_NAME = "ASSERT"
 

@@ -9864,7 +9864,7 @@ def restore_package(dst_file_record, dst_bfid, dst_path,
     rtn_code = mark_deleted(my_task, src_bfid, fcc, db)
     if rtn_code:
         err_msg = "failed to mark deleted migration file %s %s" \
-                      % (dst_bfid, mig_path,)
+                      % (dst_bfid, dst_path,)
         error_log(my_task, msg)
         return err_msg
 
