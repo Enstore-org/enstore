@@ -1,0 +1,7 @@
+[enstore]
+name=Enstore
+baseurl=https://ssasrv1.fnal.gov/en/slf7x/x86_64
+enabled=1
+gpgcheck=0
+priority=85
+sslverify=0

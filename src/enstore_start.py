@@ -31,6 +31,7 @@ import enstore_functions
 import enstore_functions2
 import generic_client
 import option
+import hostaddr
 import Trace
 import Interfaces
 
@@ -453,7 +454,7 @@ def check_server(csc, name, intf, cmd):
     if e_errors.is_ok(info) and name == enstore_constants.MONITOR_SERVER:
         info['host'] = socket.gethostname()
         #info['hostip'] = socket.gethostbyname(info['host'])
-	info['hostip'] = hostaddr.name_to_address(info['host'])
+        info['hostip'] = hostaddr.name_to_address(info['host'])
         info['port'] = enstore_constants.MONITOR_PORT
     ##END HACK.
     if not is_on_host(info.get('host', None)) and \

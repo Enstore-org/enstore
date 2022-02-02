@@ -298,6 +298,7 @@ class DispatchingWorker(udp_server.UDPServer):
         if pid != 0:  #We're in the parent process
             if ttl is not None:
                 self.kill_list.append(pid)
+                # pylint: disable=undefined-variable
                 self.add_interval_func(lambda self=self,pid=pid,sig=signal.SIGTERM: self.kill(pid,sig), ttl, one_shot=1)
                 self.add_interval_func(lambda self=self,pid=pid,sig=signal.SIGKILL: self.kill(pid,sig), ttl+5, one_shot=1)
             self.is_child = 0
@@ -418,6 +419,7 @@ class DispatchingWorker(udp_server.UDPServer):
         if pid > 0:  #parent
             #Add this to the list.
             self.kill_list.append(pid)
+            # pylint: disable=undefined-variable
             self.add_interval_func(lambda self=self, pid=pid,
                                    sig=signal.SIGTERM: self.kill(pid, sig),
                                    DEFAULT_TTL, one_shot = 1)
