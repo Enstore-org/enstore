@@ -1,0 +1,18 @@
+commit 333bfef99f86b4de6fe7b58262497832e2ca470c
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Feb 7 19:15:33 2022 +0000
+
+    Add a test log message to the config server
+
+diff --git a/src/configuration_server.py b/src/configuration_server.py
+index 2e1aac6..deab754 100755
+--- a/src/configuration_server.py
++++ b/src/configuration_server.py
+@@ -46,6 +46,7 @@ class ConfigurationDict:
+     """
+ 
+     def __init__(self):
++        Trace.log(11, 'This is a renbauer test message - Configuration Dict Initialized')
+         self.serverlist = {}
+         self.config_load_timestamp = None
+         self.use_thread = 1
