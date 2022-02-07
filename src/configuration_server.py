@@ -46,6 +46,7 @@ class ConfigurationDict:
     """
 
     def __init__(self):
+        Trace.log(11, 'This is a renbauer test message - Configuration Dict Initialized')
         self.serverlist = {}
         self.config_load_timestamp = None
         self.use_thread = 1
