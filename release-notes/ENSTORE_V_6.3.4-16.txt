@@ -1,0 +1,607 @@
+commit 118293174defb2ee7554a64030ad740842f21b43
+Merge: 5ae89e9 0050cb7
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Feb 10 16:13:55 2022 +0000
+
+    Merge branch 'production' of github.com:Enstore-org/enstore into ren-develop
+
+commit 5ae89e96a9d6aea09396359ca56e01af45101e18
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Fri Feb 4 15:13:24 2022 -0600
+
+    Added ENSTORE_V_6.3.4-15 release notes (#42)
+
+A	release-notes/ENSTORE_V_6.3.4-15.txt
+
+commit 0050cb79253058a295688d024ebb64870285800e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Feb 4 15:11:17 2022 -0600
+
+    Added ENSTORE_V_6.3.4-15 release notes
+
+A	release-notes/ENSTORE_V_6.3.4-15.txt
+
+commit 026e21718587d8c9064fa9f56a199d83520ec242
+Merge: b4ee1a6 0bde293
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Feb 4 15:08:41 2022 -0600
+
+    Merge branch 'production' into develop
+
+commit b4ee1a62819166aafdabfaf57d31d5fba2e2a5fd
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Wed Feb 2 15:23:07 2022 -0600
+
+    Release/6.3.4 15 (#41)
+    
+    * Added information on qpid minitoring
+    
+    * enstore rpm 6.3.4-15
+
+M	spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
+
+commit 0bde2932f34a47e8ec15828a91e2268de017266f
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Wed Feb 2 11:55:32 2022 -0600
+
+    To synchornize with master (#40)
+
+A	.github/docker/cc7-enstore/Dockerfile
+A	.github/docker/cc7-enstore/data/enstore.repo
+A	.github/docker/cc7-enstore/data/setup-enstore
+A	.github/workflows/pylint-enstore-py-docker.yml
+A	.github/workflows/pylint.yml
+M	doc/guides/small_files_operations_guide.odt
+M	doc/guides/small_files_operations_guide.pdf
+A	release-notes/ENSTORE_V_6.3.4-14.txt
+M	sbin/write_tabs.py
+M	src/dispatching_worker.py
+M	src/encp.py
+M	src/enstore_sfa_files_in_transition_cgi.py
+M	src/enstore_start.py
+M	src/library_manager_director_client.py
+M	src/media_changer.py
+M	src/media_changer_client.py
+M	src/migrate_chimera.py
+M	src/module_trace.py
+M	src/mover.py
+M	src/option.py
+M	src/ratekeeper.py
+A	src/tests/enstore-pytest-c-module.md
+A	src/tests/test_bfid_util.py
+A	src/tests/test_module_trace.py
+A	src/tests/test_movcmd_mc.py
+A	src/tests/test_volume_family.py
+M	src/udp_common.py
+M	src/volume_assert.py
+
+commit 559da9cec7ee27b81a0eb2ea3e37a21eb165567a
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Tue Feb 1 11:10:20 2022 -0600
+
+    Added information on qpid minitoring (#39)
+
+M	doc/guides/small_files_operations_guide.odt
+M	doc/guides/small_files_operations_guide.pdf
+
+commit 7e092416357ffdca003b0665d027c2dff7a14e07
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Tue Feb 1 11:02:38 2022 -0600
+
+    Mc new class (#38)
+    
+    * Make a new class for Spectra Logic tape library.
+    
+    In the current implementation the MTXN_MediaLoader class works for both IBM and
+    Spectra Logic tape libraries. It was noticed that the mount / dismount response
+    time skipped up noticeably for IBM tape library comparing to the previous
+    implementation of MTXN_MediaLoader class. This patch copies current MTXN_MediaLoader to MTXN_MediaLoaderSL and reverts MTXN_MediaLoader to its previous implementation.
+    Testing was done on production system and showed that mount / dismount response
+    time skipped down back to what is was before.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2534
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2530
+    
+    * Untabified and fixed indentaion where needed in all MTXN classes.
+    
+    * Changes per PR comments.
+    
+    * Fixed MTXN_CDB_MediaLoader.getVolState()
+
+commit 71813b3f7896ab251e96e5c39dc3ad054446cb40
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Fri Jan 21 16:43:27 2022 -0600
+
+    Mc new class (#36)
+    
+    * Make a new class for Spectra Logic tape library.
+    
+    In the current implementation the MTXN_MediaLoader class works for both IBM and
+    Spectra Logic tape libraries. It was noticed that the mount / dismount response
+    time skipped up noticeably for IBM tape library comparing to the previous
+    implementation of MTXN_MediaLoader class. This patch copies current MTXN_MediaLoader to MTXN_MediaLoaderSL and reverts MTXN_MediaLoader to its previous implementation.
+    Testing was done on production system and showed that mount / dismount response
+    time skipped down back to what is was before.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2534
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2530
+    
+    * Untabified and fixed indentaion where needed in all MTXN classes.
+    
+    * Changes per PR comments.
+    
+    * Fixed MTXN_CDB_MediaLoader.getVolState()
+
+commit 6f2ff5b67ff73872a9e68f2a68b0bdaa70cef9b9
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Fri Jan 21 16:26:40 2022 -0600
+
+    Make a new class for Spectra Logic tape library. (#17)
+    
+    * Make a new class for Spectra Logic tape library.
+    
+    In the current implementation the MTXN_MediaLoader class works for both IBM and
+    Spectra Logic tape libraries. It was noticed that the mount / dismount response
+    time skipped up noticeably for IBM tape library comparing to the previous
+    implementation of MTXN_MediaLoader class. This patch copies current MTXN_MediaLoader to MTXN_MediaLoaderSL and reverts MTXN_MediaLoader to its previous implementation.
+    Testing was done on production system and showed that mount / dismount response
+    time skipped down back to what is was before.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2534
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2530
+    
+    * Untabified and fixed indentaion where needed in all MTXN classes.
+    
+    * Changes per PR comments.
+    
+    * Fixed MTXN_CDB_MediaLoader.getVolState()
+
+M	src/media_changer.py
+M	src/media_changer_client.py
+
+commit 72e6cfdd87865edc29b181484433859a8f4fc8dc
+Merge: 9bf391c cfb64dd
+Author: Dennis D Box <dbox@fnal.gov>
+Date:   Fri Jan 21 11:11:55 2022 -0600
+
+    Merge pull request #33 from Enstore-org/renbauer_pytests
+    
+    Add pytests for some Enstore src modules
+
+commit cfb64ddc94f4e3a830621471c52a3d340a0ff178
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Jan 21 16:49:32 2022 +0000
+
+    Standardize on 4 space indents
+
+M	src/module_trace.py
+M	src/tests/test_module_trace.py
+M	src/tests/test_movcmd_mc.py
+
+commit c3efb70a5f33db51438d4b5af2c7b868d24fc360
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Jan 13 01:50:21 2022 +0000
+
+    Add docstrings for and implement tests for module_trace
+
+M	src/module_trace.py
+M	src/tests/test_module_trace.py
+
+commit 5b55529bada1ec18b6d92d480cacb77788f62173
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Jan 12 20:52:51 2022 +0000
+
+    Add pyfakefs to Docker cc7-enstore image
+
+M	.github/docker/cc7-enstore/Dockerfile
+M	src/module_trace.py
+
+commit 5588c3b0834b1c91af859d563b4805e91ef83133
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Jan 12 20:40:42 2022 +0000
+
+    Initial commit
+
+A	src/tests/test_module_trace.py
+
+commit f9c9e8b40194fdd69dcc832b93fc04460c8fb413
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Jan 12 20:38:58 2022 +0000
+
+    Switch from unittest to pytest style test definitions
+
+M	src/tests/test_movcmd_mc.py
+
+commit 5d739f643d2c2379607152f1c161748738bc2a0a
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 11 19:51:34 2022 +0000
+
+    Add comment to give tip on import failures
+
+M	src/tests/test_movcmd_mc.py
+
+commit c0da97a1aff2e0d6657be73eb8ea515626bc6e96
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 11 19:50:03 2022 +0000
+
+    Re-order imports so they're alphabetical
+
+M	src/tests/test_movcmd_mc.py
+
+commit d3e58230f483b2ad4c096ad5e0d25260f8bbaa0b
+Merge: 527842f 9bf391c
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 11 19:30:50 2022 +0000
+
+    Merge branch 'develop' of github.com:Enstore-org/enstore into renbauer_pytests
+
+commit 527842fdf74b2f1e8339f44c32922e3f63ed2e29
+Merge: a2d5467 eb63285
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 11 02:52:00 2022 +0000
+
+    Merge branch 'develop' of github.com:Enstore-org/enstore into renbauer_pytests
+
+commit a2d546787f22cf27735fd4d19f07ed3dd3590c94
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Jan 6 00:22:41 2022 +0000
+
+    Add tests for movcmd_mc module
+
+A	src/tests/test_movcmd_mc.py
+
+commit 34eb860da7ff0c1be63c91cdb88b6e6a380225f7
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Thu Oct 7 16:15:29 2021 -0500
+
+    Production (#9)
+    
+    * Add sender to log ticket for tcp / ip log client.
+    Otherwise log server may identify sender from the last udp message which is not always ftrom the same client.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2483
+    
+    * Library manager does not delete assigned volume if mover fails to connect to client.
+    
+    There are 2 changes. One fixes the stated problem.
+    The second change is to put mover request, coming from mover with bound volumes into postponed bound requests. If there is mover request processing thread running and serve postponed request in the current thread. Before this change the library manager was sending 'nowork' reply to mover in a hope that it would retry later and this retry would be processed ny library manager. This could and would result in expiration of dismount timeout at mover and unnecessary dismount of tape for which there was a potential request.
+    
+    * Added debug output.
+    
+    * Fix client behavior for dual stack host configurations.
+    
+    The previous implementation was allowing to reinit if application
+    was running on dual stack host and sending to IPV4 server.
+    This was noticed in encp application. The problem was that retires
+    were sent on differnt ports, which violates enstores communutaion protocol,
+    according to which retries must be sent on the same source port.
+    
+    * Removed wrong comments.
+    
+    * Commented code that may be needed for debugging.
+    
+    * Get information from movers, associated with Spectra Logic.
+    
+    These movers do not have 'mc_device' in configuration, just like TS4500 movers.
+    
+    * Improve security of message parsing. (#7)
+    
+    Use ast.literal_eval istead of eval.
+    
+    * ENSTORE_V_6.3.4-12 rpm (#8)
+    
+    * ENSTORE_V_6.3.4-14
+
+A	release-notes/ENSTORE_V_6.3.4-11.txt
+A	release-notes/ENSTORE_V_6.3.4-12.txt
+M	spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
+M	src/en_eval.py
+M	src/library_manager.py
+M	src/log_client.py
+M	src/media_changer.py
+M	src/ratekeeper.py
+M	src/rawUDP.py
+M	src/rawUDP_p.py
+M	src/udp_client.py
+M	src/udp_common.py
+M	src/udp_server.py
+
+commit fca951a7643a2894c6d219edf795fb84ac4ff3fa
+Merge: 7c72224 a6733a3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 31 15:17:20 2021 -0500
+
+    Merge branch 'release/6.3.4-11' into production
+
+commit 7c7222496d4f4e689f1301b1b4bbbe4d22ff9be8
+Merge: e1e7182 537e9ed
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Aug 6 11:09:37 2021 -0500
+
+    Merge branch 'release/6.3.4-10' into production
+
+commit e1e71825e7f751f58acb5cd547ca2efaa89df12d
+Merge: c626f34 8d4a0b2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri May 14 14:31:47 2021 -0500
+
+    Merge branch 'release/6.3.4-9' into production
+
+commit c626f3458cd4a5d6cda8b95d5c53cd665714102b
+Merge: 109be6d aee2f61
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Apr 26 12:36:09 2021 -0500
+
+    Merge branch 'release/5.3.4-8' into production
+
+commit 109be6d5441aabc9d51350a80e179babac9e22d0
+Merge: 119d061 2b3b7a8
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Feb 18 14:28:00 2021 -0600
+
+    Merge branch 'release/6.3.4-7' into production
+
+commit 119d0610439731a96c6c46f1f93a13bc72d2bbc7
+Merge: 628954c 6f02841
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Jan 7 09:55:47 2021 -0600
+
+    Merge branch 'release/6.3.4-6' into production
+
+commit 628954cf00e708bf6d892bc22fec09c392dc372f
+Merge: e9b61ae af86dd3
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Dec 17 14:37:41 2020 -0600
+
+    Merge branch 'release/6.3.4-5' into production
+
+commit e9b61aec153a049ee824efdcba28ebbd14e4ddfb
+Merge: f74929d dee657d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 27 10:13:13 2020 -0500
+
+    Merge branch 'release/6.3.4-4' into production
+
+commit f74929ddaf471ec70ed7d2140b835ec47be1d0ae
+Merge: a60b7bc 2172af0
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 18 12:47:05 2020 -0500
+
+    Merge branch 'release/6.3.4-3' into production
+
+commit a60b7bc42980fe4830ccb0490cdde6e948f5800f
+Merge: 75edff4 366dc50
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Apr 7 15:13:34 2020 -0500
+
+    Merge branch 'release/ENSTORE_V_6.3.4-2' into production
+
+commit 75edff42bde3702d2d989886844c59bc2eb5555e
+Merge: 8ba7414 5fa097b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Mar 12 11:43:17 2020 -0500
+
+    Merge branch 'release/6.3.4-1' into production
+
+commit 8ba7414c57586c77810284d48e51cb8511a046b7
+Merge: 6096dcd b1e0f6a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Feb 3 15:52:59 2020 -0600
+
+    Merge branch 'release/6.3.4-0' into production
+
+commit 6096dcdaa4818c6dbdecb2b77b2427b01ea8c355
+Merge: 5c18c14 3a39d11
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Nov 6 10:31:20 2019 -0600
+
+    Merge branch 'release/6.3.1-17' into production
+
+commit 5c18c1450ead41e40f98652da8f0d12434c314b7
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Tue Oct 1 15:49:39 2019 -0500
+
+    namespace: fix typo
+    
+    RB: http://srm/reviews/r/602/
+    
+    commit 01a22d1d870526f028553926ff7f36cb35eb959a
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Tue Oct 1 13:28:35 2019 -0500
+    
+        Interfaces.c does not get compiled on SL7 platform.
+    
+        n SL7 Compiler errors out with ././Interfaces.c:554:47: error: lvalue required as unary '&' operand
+                if(inet_ntop(arp_msg.arp_pa.sa_family, &(((struct sockaddr_in)addr_dummy).sin_addr),
+    
+        On SLF6 it compiles well.
+    
+        Also removed unused variable.
+    
+        http://srm.fnal.gov/reviews/r/601/
+        http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=2067
+
+M	modules/Interfaces.c
+M	src/namespace.py
+
+commit 37b4d18df2b38f32a54c4b86863ef803358c77c5
+Merge: d702875 55df8ef
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Sep 30 14:14:05 2019 -0500
+
+    Merge branch 'release/6.3.1-16' into production
+
+commit d7028753fb59f0944984f38a748aafed4c75835b
+Merge: fa7acd4 5cb673d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Aug 16 10:23:00 2019 -0500
+
+    Merge branch 'release/6.3.1-15' into production
+
+commit fa7acd4726723cbc95129df4b0b72be0ccd29a51
+Merge: c960261 9064a76
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 6 14:14:19 2019 -0500
+
+    Merge branch 'release/6.3.1-14' into production
+
+commit c960261b949bb9656868229ce023d445cbc47255
+Merge: 18cbc57 a1068bf
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Jul 19 12:58:50 2019 -0500
+
+    Merge branch 'release/6.3.1-13' into production
+
+commit 18cbc572e9cd25d56174e4ca772254169cf5a392
+Merge: e899a5f 4bef19e
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri May 10 10:00:29 2019 -0500
+
+    Merge branch 'release/6.3.1-11' into production
+
+commit e899a5fb9f39bd9c2c81d6ed54c4c41fadf9b29a
+Merge: 88fa570 a7fcfd9
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed May 1 16:37:09 2019 -0500
+
+    Merge branch 'release/6.3.1-10' into production
+
+commit 88fa5704bdb5c09bb2a37a841878c4d903cb2b3d
+Merge: 2764285 1370f7d
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Mar 20 11:05:55 2019 -0500
+
+    Merge branch 'release/6.3.1-5' into production
+
+commit 27642859198e2911eaa7541a64272f34f0c12fff
+Merge: c703e84 9b6c4cf
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Mar 20 10:53:37 2019 -0500
+
+    Merge branch 'release/6.3.1-4' into production
+
+commit c703e84508c680991b0c0f03b834b37b2c98c79e
+Merge: ea1efba 2d60454
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jan 28 12:53:53 2019 -0600
+
+    Merge branch 'release/6.3.1-1' into production
+
+commit ea1efba2ab522521eaa02ba1d02f7f7fa5423ca0
+Merge: de3cff7 3a83873
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Jul 16 16:08:14 2018 -0500
+
+    Merge branch 'release/6.2.0-0' into production
+
+commit de3cff79610ff43dbe2f4eee04c1a10c74834bd5
+Merge: 1ac21c8 5b4a769
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Apr 16 16:13:13 2018 -0500
+
+    Merge branch 'release/6.1.0-6' into production
+
+commit 1ac21c81b8e1aa6c1a2146088bc076fee43a45f5
+Merge: f51cf9f 3634078
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 3 14:14:34 2017 -0500
+
+    Merge branch 'release/6.1.0-5' into production
+
+commit f51cf9f323cf35666ccf74d66b8075f287aef176
+Merge: cf2be46 af4e3f2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Aug 29 10:02:02 2017 -0500
+
+    Merge branch 'release/6.1.0-4' into production
+
+commit cf2be46f5170e0a676ebf34deab1eedf302b532c
+Merge: fecad27 1b65171
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Aug 4 12:49:06 2017 -0500
+
+    Merge branch 'release/6.1.0-3' into production
+
+commit fecad27593ee98a097a77cb4b78cc46781065345
+Merge: 8591442 0a17c6c
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu May 4 14:06:17 2017 -0500
+
+    Merge branch 'release/6.1.0-2' into production
+
+commit 8591442882bee539e4766c8f5f5c3157edb61506
+Merge: a0dc7c5 f5c6292
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Mar 28 13:42:48 2017 -0500
+
+    Merge branch 'release/6.1.0-1' into production
+
+commit a0dc7c52fa49dec5479d21e5db1c704b9cfec35b
+Merge: 51e0ea0 9f98b41
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Dec 28 11:30:40 2016 -0600
+
+    Merge branch 'release/6.1.0-0' into production
+
+commit 51e0ea049ac1aee95905351d9bfd34aab1ec3d95
+Merge: 7707333 5b51beb
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Nov 1 11:15:33 2016 -0500
+
+    Merge branch 'release/6.0.0-5' into production
+
+commit 77073335cfcfca0a4eb942908b5cca9eefdbf418
+Merge: f3fa759 beb00d6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Oct 25 13:45:49 2016 -0500
+
+    Merge branch 'release/6.0.0-3' into production
+
+commit f3fa7597f28f0c65eb7a25b3f2e2e17adfdf6c83
+Merge: d330b6b e106a63
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Oct 3 11:01:42 2016 -0500
+
+    Merge branch 'release/6.0.0-2' into production
+
+commit d330b6ba332996e4fadbd5650407c14301cba9d2
+Merge: fdcb716 bfd33b2
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Fri Aug 26 11:35:29 2016 -0500
+
+    Merge branch 'release/6.0.0-1' into production
+
+commit fdcb7169c25690d53e13c98fd61964b9532c50c2
+Merge: cc05d62 e84d491
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Aug 3 14:00:54 2016 -0500
+
+    Merge branch 'release/6.0.0-0' into production
+
+commit cc05d62dd931d72d485fadbd6fa65eff405a526b
+Merge: 7c891ef af7ba35
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue May 10 13:25:10 2016 -0500
+
+    Merge branch 'release/5.1.3-0' into production
+
+commit 7c891ef77a02da0687be4fb6be4e97dbd9e2fb04
+Merge: e279d01 af9a27a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Feb 10 10:15:14 2016 -0600
+
+    Merge branch 'release/5.1.2.0' into production
+
+commit e279d0186ec438a955f8fe85d2798bd68d387d11
+Merge: 6f26b78 5f2ceec
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 9 16:10:08 2015 -0600
+
+    Merge branch 'release/5.1.1-1' into production
+
+commit 6f26b78364945b01e56b9a0c0c8aae0719e16f72
+Merge: 36d7043 2f6706b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 9 15:53:43 2015 -0600
+
+    Merge branch 'release/5.1.1-0' into production
