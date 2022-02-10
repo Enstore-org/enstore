@@ -16,7 +16,7 @@ import math
 import configuration_client
 import pg
 import enstore_constants
-import enstore_constants
+import enstore_files
 import histogram
 
 SELECT_STMT="select  to_char(date, 'YYYY-MM-DD HH:MM:SS'), total, should, not_yet, done from write_protect_summary order by date desc"

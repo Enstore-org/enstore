@@ -69,6 +69,7 @@ import scsi_mode_select
 import set_cache_status
 import log_client
 
+
 DEBUG_LOG = 11
 
 WRAPPER_ERROR = 'WRAPPER_ERROR'
@@ -990,8 +991,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         if attr != 'state':
             self.__dict__[attr] = val
             return
+        Trace.trace(10, "setattr: %s to %s" % (attr, val))
         try:
-            if val != getattr(self, 'state', None):
+            cur_val = getattr(self, 'state', None)
+            if val != cur_val:
                 self.__dict__['time_in_state'] = 0.0
                 self.__dict__['in_state_to_cnt'] = 0
                 self.__dict__['state_change_time'] = time.time()
@@ -1016,7 +1019,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             del(tb)
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
-        Trace.trace(10, "set state %s %s"%(state_name(val), self.__dict__['state_change_time'] ))
+        Trace.trace(10, "set state old: %s new: %s %s" % (cur_val, state_name(val), self.__dict__['state_change_time'] ))
 
 
     def dump(self, ticket):
@@ -5057,8 +5060,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                                  server_address=vc['address'], logc = self.logclient)
         except Exception, detail:
             exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "finish_transfer_setup failed:  %s %s %s"%
-                      (exc, msg, traceback.format_tb(tb)))
+            Trace.log(e_errors.ERROR, "finish_transfer_setup failed:  %s %s %s %s" %
+                      (exc, msg, detail, traceback.format_tb(tb)))
             self.transfer_failed(e_errors.NET_ERROR, msg, error_source=NETWORK)
             self.state = self.save_state
             return
@@ -5468,6 +5471,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._error = exc
         self._error_source = error_source
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR or exc == e_errors.POSITIONING_ERROR:
+            if exc == e_errors.READ_ERROR:
+                self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)
+            if exc == e_errors.WRITE_ERROR:
+                self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
             if (msg.find("FTT_") != -1):
                 # log low level diagnostics
                 self.watch_syslog()
@@ -5550,7 +5557,6 @@ n the drive"%(self.current_volume,))
                                                                                    self.failure_interval)
             ### network errors should not count toward rd_err, wr_err
             if self.mode == WRITE:
-                self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
                 # Heuristic: if tape is more than  remaining_factor*capacity full and we get a write error,
                 # mark it full
                 try:
@@ -5573,9 +5579,6 @@ n the drive"%(self.current_volume,))
                 except:
                     exc, msg, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "%s %s" % (exc, msg))
-            else:
-                if self.vcc:
-                    self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)
 
             self.transfers_failed = self.transfers_failed + 1
         encp_gone = exc in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK, e_errors.NET_ERROR)
@@ -6177,7 +6180,10 @@ n the drive"%(self.current_volume,))
 
             #self.listen_socket.listen(1)
             if (not self.method) or (self.method and self.method != 'read_next'):
+                Trace.trace(10, 'connect_client: listening')
                 self.listen_socket.listen(1)
+                Trace.trace(10, 'connect_client: listening  done')
+
                 # need a control connection setup
                 # otherwise: not because it must be left open
                 ticket['mover']['callback_addr'] = (host,port) #client expects this
@@ -6271,9 +6277,12 @@ n the drive"%(self.current_volume,))
                         return
 
                 #Check if the socket is open for reading and/or writing.
+                Trace.trace(10, 'connect_client: waiting on %s for %s' % (self.control_socket, self.connect_to*self.connect_retry))
+
                 r, w, ex = select.select([self.control_socket], [self.control_socket], [], self.connect_to*self.connect_retry)
 
                 if r or w:
+                    Trace.trace(10, 'connect_client: got connection')
                     #Get the socket error condition...
                     rtn = self.control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
                 else:
