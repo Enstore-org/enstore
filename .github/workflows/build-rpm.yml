@@ -1,4 +1,4 @@
-name: Pylint-Docker
+name: Build-RPM
 
 on: [workflow_dispatch]
 
