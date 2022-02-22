@@ -19,6 +19,6 @@ jobs:
        cat 6.3.4-15.out
     - name: upload enstore rpm as artifact
       uses: actions/upload-artifact@v2
-        with: 
-          name: enstore-rpm
-          path: ~/rpmbuild/RPMS/x86_64/enstore-*.rpm
+      with: 
+        name: enstore-rpm
+        path: ~/rpmbuild/RPMS/x86_64/enstore-*.rpm
