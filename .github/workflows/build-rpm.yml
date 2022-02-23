@@ -10,11 +10,11 @@ jobs:
     - uses: actions/checkout@v2
     - name: build enstore rpm
       run: |
-       mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
        tar czvf ~/enstore.tgz .
+       mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
+       cp spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec ~/rpmbuild/SPECS/
+       cp ~/enstore.tgz ~/rpmbuild/SOURCES/
        cd ~/rpmbuild/
-       cp ~/enstore.tgz SOURCES/
-       cp ~/enstore/spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec SPECS/
        rpmbuild -ba SPECS/enstore_RH7_python_2.7.16_with_start_on_boot.spec > 6.3.4-15.out 2>&1
        cat 6.3.4-15.out
     - name: upload enstore rpm as artifact
