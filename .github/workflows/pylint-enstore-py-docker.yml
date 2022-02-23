@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'modules/**'
 
 jobs:
   build:
