@@ -8,15 +8,19 @@ jobs:
     container: enstoredev/enstore-build:latest
     steps:
     - uses: actions/checkout@v2
-    - name: build enstore rpm
+    - name: create enstore tgz
+      run: tar czvf ~/enstore.tgz .
+    - name: prepare build filetree
       run: |
-       tar czvf ~/enstore.tgz .
+       ln -s "$(pwd)" ~/enstore
        mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
        cp spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec ~/rpmbuild/SPECS/
        cp ~/enstore.tgz ~/rpmbuild/SOURCES/
        cd ~/rpmbuild/
-       rpmbuild -ba SPECS/enstore_RH7_python_2.7.16_with_start_on_boot.spec > 6.3.4-15.out 2>&1
-       cat 6.3.4-15.out
+    - name: build enstore rpm
+      run: |
+       rpmbuild -ba SPECS/enstore_RH7_python_2.7.16_with_start_on_boot.spec # > 6.3.4-15.out 2>&1
+       # cat 6.3.4-15.out
     - name: upload enstore rpm as artifact
       uses: actions/upload-artifact@v2
       with: 
