@@ -2,12 +2,12 @@
 
 source ./rpm_version
 
-version_prefix="nonprod-"
+ERPMSuffix="-nonprod"
 
 while getopts ":p" opt; do
   case ${opt} in
     p) # set version prod
-      version_prefix=""
+      ERPMSuffix=""
       ;;
     \?) # Invalid option
       echo "Error: Invalid option"
@@ -15,13 +15,11 @@ while getopts ":p" opt; do
   esac
 done
 
-EVersion=${version_prefix}${EVersion}
-
 specfile=./spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
 
 cp $specfile /tmp/enstore_rpm.spec
 
-for var in EVersion ERelease ECommit; do
+for var in ERPMSuffix EVersion ERelease ECommit; do
   sed -i s/#$var#/${!var}/ /tmp/enstore_rpm.spec
 done
 

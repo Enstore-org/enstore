@@ -1,5 +1,5 @@
 Summary: Enstore: Mass Storage System
-Name: enstore
+Name: enstore#ERPMsuffix#
 Version: #EVersion#
 Release: #ERelease#.#ECommit#.el7
 License: GPL
