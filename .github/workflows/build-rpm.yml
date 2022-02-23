@@ -1,6 +1,9 @@
 name: Build-RPM
 
-on: workflow_dispatch
+on:
+  push:
+    paths: rpm_version
+  workflow_dispatch:
 
 jobs:
   build:
