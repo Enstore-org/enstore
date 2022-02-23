@@ -1,4 +1,21 @@
+#!/bin/bash
+
 source ./rpm_version
+
+version_prefix="nonprod-"
+
+while getopts ":p" opt; do
+  case ${opt} in
+    p) # set version prod
+      version_prefix=""
+      ;;
+    \?) # Invalid option
+      echo "Error: Invalid option"
+      exit;;
+  esac
+done
+
+EVersion=${version_prefix}${EVersion}
 
 specfile=./spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
 
