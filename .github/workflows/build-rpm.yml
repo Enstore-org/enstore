@@ -11,7 +11,7 @@ jobs:
     - name: build enstore rpm
       run: |
        mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
-       tar --exclude=enstore.tgz --exclude-vcs czvf enstore.tgz .
+       tar czv --exclude=enstore.tgz --exclude-vcs -f enstore.tgz .
        cd ~/rpmbuild/
        cp ~/enstore/enstore.tgz SOURCES/
        cp ~/enstore/spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec SPECS/
