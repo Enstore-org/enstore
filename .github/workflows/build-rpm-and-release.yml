@@ -40,4 +40,3 @@ jobs:
         asset_path: ~/rpmbuild/RPMS/x86_64/enstore-*.rpm
         asset_name: {{ env.RELEASE_TAG }}-rpm
         asset_content_type: application/zip
-
