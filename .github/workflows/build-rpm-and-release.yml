@@ -28,8 +28,8 @@ jobs:
       id: create_release
       uses: actions/create-release@v1
       with:
-        tag_name: {{ env.RELEASE_TAG }}
-        release_name: Release {{ env.RELEASE_TAG }}
+        tag_name: ${{ env.RELEASE_TAG }}
+        release_name: Release ${{ env.RELEASE_TAG }}
         draft: false
         prerelease: false
     - name: Upload Enstore RPM as Release Asset
