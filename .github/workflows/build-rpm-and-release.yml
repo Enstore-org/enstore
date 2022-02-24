@@ -40,6 +40,7 @@ jobs:
         prerelease: false
     - name: Upload Enstore RPM as Release Asset
       id: upload-release-asset
+      continue-on-error: true
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}  
@@ -51,7 +52,7 @@ jobs:
     # Hack to retry above step because it fails sometimes https://github.com/actions/upload-release-asset/issues/69
     - name: Upload Enstore RPM as Release Asset (Retry)
       id: upload-release-asset-retry
-      if: steps.upload-release-asset.outcome == 'failure'
+      if: steps.upload-release-asset.outcome=='failure'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}  
