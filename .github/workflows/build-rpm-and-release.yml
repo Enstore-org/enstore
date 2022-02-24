@@ -21,7 +21,7 @@ jobs:
       id: prepare_build
       run: |
        mkdir -p ~/rpmbuild/SPECS
-       source rpm_version
+       source ./rpm_version
        ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
        echo "::set-output name=release_name::enstore-nonprod-${EVersion}-${ERelease}.${ECommit}"
     - name: Build Enstore RPM
