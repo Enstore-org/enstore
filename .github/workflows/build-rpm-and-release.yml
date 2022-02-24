@@ -19,6 +19,7 @@ jobs:
        ln -s "$(pwd)" ~/enstore
        mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
        ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
+       echo "FULL_RELEASE_NAME: ${FULL_RELEASE_NAME}"
        echo "::set-output name=release_name::${FULL_RELEASE_NAME}"
        cp ~/enstore.tgz ~/rpmbuild/SOURCES/
     - name: Build Enstore RPM
