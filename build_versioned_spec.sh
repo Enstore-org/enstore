@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# source ./rpm_version
+source ./rpm_version
 
 if [ -z ${ERPMSuffix+x} ]; then
 
