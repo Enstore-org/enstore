@@ -14,7 +14,7 @@ jobs:
     - name: Create Enstore Tar
       run: tar czvf ~/enstore.tgz .
     - name: Set Nonprod Suffix if on Develop Branch
-      if: github.ref == "refs/heads/develop"
+      if: github.ref == 'refs/heads/develop'
       run: export ERPMSuffix=-nonprod
     - name: Prepare Build Filetree and ENV
       id: prepare_build
