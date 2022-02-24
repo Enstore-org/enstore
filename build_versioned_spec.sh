@@ -1,22 +1,25 @@
 #!/bin/bash
 
-source ./rpm_version
+# source ./rpm_version
 
-ERPMSuffix="-nonprod"
+if [ -z ${ERPMSuffix+x} ]; then
 
-while getopts ":p" opt; do
-  case ${opt} in
-    p) # set version prod
-      ERPMSuffix=""
-      ;;
-    \?) # Invalid option
-      echo "Error: Invalid option"
-      exit;;
-  esac
-done
+  ERPMSuffix="-nonprod"
 
-export ERPMSuffix=$ERPMSuffix
-export FULL_RELEASE_NAME="enstore${ERPMSuffix}-${EVersion}-${ERelease}.${ECommit}"
+  while getopts ":p" opt; do
+    case ${opt} in
+      p) # set version prod
+        ERPMSuffix=""
+        ;;
+      \?) # Invalid option
+        echo "Error: Invalid option"
+        exit;;
+    esac
+  done
+
+  export ERPMSuffix=$ERPMSuffix
+
+fi
 
 specfile=./spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
 
