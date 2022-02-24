@@ -13,6 +13,9 @@ jobs:
     - uses: actions/checkout@v2
     - name: Create Enstore Tar
       run: tar czvf ~/enstore.tgz .
+    - name: Set Nonprod Suffix if on Develop Branch
+      if: github.ref == "refs/heads/develop"
+      run: export ERPMSuffix=-nonprod
     - name: Prepare Build Filetree and ENV
       id: prepare_build
       run: |
@@ -20,7 +23,7 @@ jobs:
        mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
        ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
        echo "FULL_RELEASE_NAME: ${FULL_RELEASE_NAME}"
-       echo "::set-output name=release_name::${FULL_RELEASE_NAME}"
+       echo "::set-output name=release_name::enstore${ERPMSuffix}-${EVersion}-${ERelease}.${ECommit}"
        cp ~/enstore.tgz ~/rpmbuild/SOURCES/
     - name: Build Enstore RPM
       run: |
