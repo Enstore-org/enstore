@@ -15,6 +15,8 @@ while getopts ":p" opt; do
   esac
 done
 
+export FULL_RELEASE_TAG="enstore${ERPMSuffix}-${EVersion}-${ERelease}.${ECommit}"
+
 specfile=./spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
 
 cp $specfile /tmp/enstore_rpm.spec
