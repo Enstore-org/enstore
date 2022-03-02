@@ -117,7 +117,7 @@ case $node in
 	    ENSTORE_CONFIG_FILE=sam.conf
 	    qualifier=d0en
 	    ;;
-
+  # TODO(renbauer) I think gccen machines are all dmsen hosts now
   gccen*)   ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov,renbauer@fnal.gov
 	    ENSTORE_CONFIG_HOST=$gccen
 	    ENSTORE_CONFIG_FILE=gccen.conf
