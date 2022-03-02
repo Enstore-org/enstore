@@ -71,6 +71,8 @@ get_logname()
 ENSTORE_MAIL=enstore-auto@fnal.gov
 if [ `get_logname`x = 'dcache'x ]; then ENSTORE_MAIL=dcache-auto@fnal.gov; fi
 
+# TODO(renbauer): maintain this elsewhere or
+# check enstore-config instead of duplicating here
 case $node in
 
   stkenscan*)
@@ -116,16 +118,21 @@ case $node in
 	    qualifier=d0en
 	    ;;
 
-  gccen*)   ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov
+  gccen*)   ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov,renbauer@fnal.gov
 	    ENSTORE_CONFIG_HOST=$gccen
 	    ENSTORE_CONFIG_FILE=gccen.conf
 	    complain=0
 	    ;;
-  dmsen*)   ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov
+  dmsen*)   ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov,renbauer@fnal.gov
 	    ENSTORE_CONFIG_HOST=$dmsen
 	    ENSTORE_CONFIG_FILE=dmsen.conf
 	    complain=0
 	    ;;
+  enmvr045) ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov,renbauer@fnal.gov
+            ENSTORE_CONFIG_HOST=$dmsen
+            ENSTORE_CONFIG_FILE=dmsen.conf
+            complain=0
+            ;;
 
   *)    ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
