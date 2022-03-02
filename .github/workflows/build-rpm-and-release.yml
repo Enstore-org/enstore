@@ -53,6 +53,9 @@ jobs:
         asset_name: ${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
         asset_content_type: application/octet-stream
     # Hack to retry above step because it fails sometimes https://github.com/actions/upload-release-asset/issues/69
+    - name: Wait to Retry RPM Upload
+      if: steps.upload-release-asset.outcome=='failure'
+      run: sleep 5
     - name: Upload Enstore RPM as Release Asset (Retry)
       id: upload-release-asset-retry
       if: steps.upload-release-asset.outcome=='failure'
