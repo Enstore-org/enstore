@@ -1,0 +1,3 @@
+on: # pull to develop if path modified: src/... modules/...
+
+todo: # dump git history into patchnotes_NEXT (append), commit
