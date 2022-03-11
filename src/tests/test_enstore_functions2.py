@@ -74,6 +74,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
 
     def setUp(self):
         this_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(this_dir)
         next_dir = os.path.join(this_dir, 'fixtures')
         next_dir = os.path.join(next_dir, 'config')
         conf_file = os.path.join(next_dir, 'enstore.conf')
@@ -403,9 +404,10 @@ class TestEnstoreFunctions2(unittest.TestCase):
         self.assertEqual(rc, 7500)
 
     def test_default_file(self):
-        expected = '/pnfs/enstore/.(config)(flags)/enstore.conf'
+        expected = ['/pnfs/enstore/.(config)(flags)/enstore.conf',
+                    '/home/enstore/site_specific/config/' ]
         rc = default_file()
-        self.assertEqual(rc, expected)
+        self.assertTrue(rc in expected)
 
     def test_used_default_file(self):
         # there is coupling between default_file and
