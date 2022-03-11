@@ -411,9 +411,10 @@ class TestEnstoreFunctions2(unittest.TestCase):
         self.assertTrue(rc in expected)
 
     def test_used_default_file(self):
-        # there is coupling between default_file and
-        # used_default_file that looks wrong
-        os.environ['ENSTORE_CONFIG_FILE'] = self.config_file
+        # there is coupling between default_file() and
+        # used_default_file() that looks wrong. 
+        # see global used_default_config_file 
+        rc = default_file()
         rc = enstore_functions2.used_default_file()
         self.assertTrue(rc)
 
