@@ -371,6 +371,7 @@ def is_migrator(server):
 def is_media_changer(server):
     return is_this(server, enstore_constants.MEDIA_CHANGER)
 
+# not used anywhere
 def get_name(server):
     return string.split(server, ".")[0]
 
