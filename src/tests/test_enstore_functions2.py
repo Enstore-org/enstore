@@ -79,6 +79,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
         next_dir = os.path.join(next_dir, 'config')
         conf_file = os.path.join(next_dir, 'enstore.conf')
         os.environ['ENSTORE_CONF'] = conf_file
+        os.environ['ENSTORE_CONFIG_PORT'] = "%s" % enstore_constants.DEFAULT_CONF_PORT
         #os.environ['ENSTORE_CONFIG_FILE'] = conf_file
         self.config_file = conf_file
         self.td1 = tempfile.mkdtemp()
@@ -397,7 +398,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
 
     def test_used_default_port(self):
         rc = used_default_port()
-        self.assertTrue(rc)
+        self.assertFalse(rc)
 
     def test_default_port(self):
         rc = default_port()
@@ -412,6 +413,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
     def test_used_default_file(self):
         # there is coupling between default_file and
         # used_default_file that looks wrong
+        os.environ['ENSTORE_CONFIG_FILE'] = self.config_file
         rc = enstore_functions2.used_default_file()
         self.assertTrue(rc)
 
