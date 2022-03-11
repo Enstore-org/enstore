@@ -80,7 +80,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
         conf_file = os.path.join(next_dir, 'enstore.conf')
         os.environ['ENSTORE_CONF'] = conf_file
         os.environ['ENSTORE_CONFIG_PORT'] = "%s" % enstore_constants.DEFAULT_CONF_PORT
-        #os.environ['ENSTORE_CONFIG_FILE'] = conf_file
+        os.environ['ENSTORE_CONFIG_FILE'] = enstore_constants.DEFAULT_CONF_FILE
         self.config_file = conf_file
         self.td1 = tempfile.mkdtemp()
         self.tf1 = tempfile.NamedTemporaryFile(prefix='enstore_functions2_',
@@ -416,7 +416,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
         # see global used_default_config_file 
         rc = default_file()
         rc = enstore_functions2.used_default_file()
-        self.assertTrue(rc)
+        self.assertFalse(rc)
 
     def test_expand_path(self):
         input = 'fixtures/config'
