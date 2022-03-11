@@ -19,7 +19,7 @@ jobs:
        find . -name 'test_*.py' > pytests
        export num_files=$(wc -l pytests)
        echo "found $num_files"
-       for T in $(cat pytests); do echo running $T; python -m pytest $T; done
+       for T in $(cat pytests); do echo running $T; pytest --cov=. $T; done
     - name: analysing with pylint
       run: |
        source /data/setup-enstore
