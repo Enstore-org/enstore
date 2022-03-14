@@ -1,0 +1,81 @@
+name: Build RPM and Release
+
+on: 
+  push:
+    branches:
+      - develop
+    paths: 
+      - rpm_version
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: enstoredev/enstore-build:latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.head_ref }}
+        fetch-depth: 0
+    - name: Prepare Build Files
+      run: |
+       tar czvf ~/enstore.tgz .
+       ln -s "$(pwd)" ~/enstore
+       mkdir -p ~/rpmbuild/SOURCES
+       cp ~/enstore.tgz ~/rpmbuild/SOURCES/
+    - name: Apply RPM Version
+      id: prepare_build
+      run: |
+       mkdir -p ~/rpmbuild/SPECS
+       source ./rpm_version
+       ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
+       echo "::set-output name=release_name::enstore-nonprod-${EVersion}-${ERelease}.${ECommit}"
+    - name: Generate Release Notes
+      id: gen_rel_notes
+      run: |
+        git log $(git describe --tags --abbrev=0 --match='enstore-nonprod-[0-9]*')..HEAD -- src/** modules/** > release-notes/${{ steps.prepare_build.outputs.release_name }}.txt
+    - uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: Automated Release Notes
+        commit_user_name: GitHub Actions
+    - name: Build Enstore RPM
+      run: |
+       cd ~/rpmbuild/
+       rpmbuild -ba SPECS/enstore_rpm.spec
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        tag_name: ${{ steps.prepare_build.outputs.release_name }}
+        release_name: Release ${{ steps.prepare_build.outputs.release_name }}
+        body_path: release-notes/${{ steps.prepare_build.outputs.release_name }}.txt
+        draft: false
+        prerelease: false
+    - name: Upload Enstore RPM as Release Asset
+      id: upload-release-asset
+      continue-on-error: true
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}  
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /github/home/rpmbuild/RPMS/x86_64/${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
+        asset_name: ${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
+        asset_content_type: application/octet-stream
+    # Hack to retry above step because it fails sometimes https://github.com/actions/upload-release-asset/issues/69
+    - name: Wait to Retry RPM Upload
+      if: steps.upload-release-asset.outcome=='failure'
+      run: sleep 5
+    - name: Upload Enstore RPM as Release Asset (Retry)
+      id: upload-release-asset-retry
+      if: steps.upload-release-asset.outcome=='failure'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}  
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /github/home/rpmbuild/RPMS/x86_64/${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
+        asset_name: ${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
+        asset_content_type: application/octet-stream

@@ -6,6 +6,7 @@ import string
 import os
 import time
 import signal
+import subprocess
 import configuration_client
 import enstore_constants
 import e_errors
@@ -45,7 +46,8 @@ def get_remote_file(node, file, newfile):
     pid = os.fork()
     if pid == 0:
         # this is the child
-        rtn = os.system("enrcp %s:%s %s"%(node, file, newfile))
+        rtn = subprocess.call("enrcp %s:%s %s" % (node, file, newfile),
+                              shell=True)
         os._exit(rtn)
     else:
         # this is the parent, allow a total of 30 seconds for the child

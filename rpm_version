@@ -1,4 +1,6 @@
-EVersion="3.3.0"
-ERelease="0"
+EVersion=6.3.4
+ERelease=16
+ECommit=20
 export EVersion
 export ERelease
+export ECommit

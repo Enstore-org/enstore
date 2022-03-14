@@ -289,8 +289,9 @@ def get_remote_file(node, file, newfile):
     pid = os.fork()
     if pid == 0:
 	# this is the child
-	rtn = os.system("enrcp %s:%s %s"%(node, file, newfile))
-	os._exit(0)
+        rtn = subprocess.call("enrcp %s:%s %s" % (node, file, newfile),
+                              shell=True)
+        os._exit(rtn)
     else:
 	# this is the parent, allow a total of 30 seconds for the child
 	for i in [0, 1, 2, 3, 4, 5]:
@@ -370,6 +371,7 @@ def is_migrator(server):
 def is_media_changer(server):
     return is_this(server, enstore_constants.MEDIA_CHANGER)
 
+# not used anywhere
 def get_name(server):
     return string.split(server, ".")[0]
 
