@@ -14,6 +14,8 @@ jobs:
     container: enstoredev/enstore-build:latest
     steps:
     - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.head_ref }}
     - name: Prepare Build Files
       run: |
        tar czvf ~/enstore.tgz .
@@ -30,6 +32,7 @@ jobs:
     - name: Generate Release Notes
       id: gen_rel_notes
       run: |
+        cd ~/enstore
         git log $(git describe --tags --abbrev=0 --match='enstore-nonprod-[0-9]*')..HEAD -- src/** modules/** > release-notes/${{ steps.prepare_build.outputs.release_name }}.txt
     - uses: stefanzweifel/git-auto-commit-action@v4
       with:
