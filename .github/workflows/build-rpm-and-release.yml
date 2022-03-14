@@ -13,9 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     container: enstoredev/enstore-build:latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         ref: ${{ github.head_ref }}
+        fetch-depth: 0
     - name: Prepare Build Files
       run: |
        tar czvf ~/enstore.tgz .
