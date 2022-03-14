@@ -50,6 +50,7 @@ jobs:
       with:
         tag_name: ${{ steps.prepare_build.outputs.release_name }}
         release_name: Release ${{ steps.prepare_build.outputs.release_name }}
+        body_path: release-notes/${{ steps.prepare_build.outputs.release_name }}.txt
         draft: false
         prerelease: false
     - name: Upload Enstore RPM as Release Asset
