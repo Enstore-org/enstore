@@ -1,0 +1,24 @@
+#!/bin/bash
+
+usage() {
+    echo "$0, a quick and dirty mockup of enrcp to test return code handling."
+    echo "any number of arguments accepted.  "
+    echo "if 'exit_0' in arglist, exit with return code 0.  "
+    echo "if 'exit_1' in arglist, exit with return code 1.  "
+}
+
+
+[ "$1" = "" ] && usage
+[ "$1" = "-h" ] && usage
+
+for arg in "$@"; do
+    if [ "$arg" = "exit_0" ]; then
+        [ ! "$DEBUG" = "" ] && echo "$0 $@ ---> exiting status  0"
+        exit 0
+    fi
+    if [ "$arg" = "exit_1" ]; then
+        [ ! "$DEBUG" = "" ] && echo "$0 $@ ---> exiting status  1"
+        exit 1
+    fi
+done
+exit 1
