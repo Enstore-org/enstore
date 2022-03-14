@@ -9,7 +9,46 @@ from cleanUDP import *
 
 def test_Select():
     # This calls Python's select.select and gets some objects. It calls scrub() on each of them to clean them, which is a method defined on `cleanUDP` class, so I'm guessing there is an assumption that all the objects returned by select.select are `cleanUDP`s.
-    pass
+    # below is a slightly modified __main__() which exercises Select()
+    # and compares its behavior to select.select()
+ 
+    sout = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+    sout.bind(('localhost',33030))
+    # on linux, should see one retry from the following.
+
+    sout.sendto("all dogs have fleas", ('localhost', 33031))             
+    r, w, x = select.select([sout],[sout],[sout], 1.0)
+    if not x and not r and w:
+        print "expected select.select behavior on non-linux " \
+              "and post 2.4 linux kernel"
+        assert True
+    elif x and r and w:
+        print "expected select.select behavior on linux, " \
+              "pre 2.2 kernel"
+        assert False      
+    elif not x and r and w:
+        print "expected select.select behavior on linux, " \
+              "post 2.2 kernel"
+        assert False
+    else:
+        print "***unexpected behavior on _any_ platform"
+        assert False
+    r, w, x, remaining_time = Select([sout],[sout],[sout], 1.0)
+
+    if not r and not x :
+        print "expected behavior"
+        assert True
+    else :
+        print "***unexpected behavior"
+        assert False
+
+    sout.sendto("all dogs have fleas", ('localhost', 33031))
+    sin = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+    sin.bind(('localhost',33031))
+    sout.sendto("Expected behavior", ('localhost', 33031))
+    buf = sin.recvfrom(1000)
+    print buf
+    assert "Expected behavior" in buf
 
 
 def _test_no_ipv(socket_family, peer_addr):
