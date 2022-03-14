@@ -11,6 +11,7 @@
 #include <errno.h>
 
 /* A little hack for SunOS to use the BSD SIOC* ioctl(). */
+/* is cool */
 #if defined(__sun) && !defined(BSD_COMP)
 #  define BSD_COMP
 #endif
