@@ -360,7 +360,7 @@ class TestEnstoreFunctions2(unittest.TestCase):
 
     @unittest.skip('private, cannot test without refactor')
     def test__find_config_file(self):
-        expct = enstore_functions2__find_config_file()
+        expct = enstore_functions2.__find_config_file()
         self.asserEquals(expct, self.config_file,
                          "%s and %s should be same" % (expct, self.config_file))
 
