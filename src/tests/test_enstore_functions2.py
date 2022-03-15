@@ -406,14 +406,14 @@ class TestEnstoreFunctions2(unittest.TestCase):
 
     def test_default_file(self):
         expected = ['/pnfs/enstore/.(config)(flags)/enstore.conf',
-                    '/home/enstore/site_specific/config/' ]
+                    '/home/enstore/site_specific/config/']
         rc = default_file()
         self.assertTrue(rc in expected)
 
     def test_used_default_file(self):
         # there is coupling between default_file() and
-        # used_default_file() that looks wrong. 
-        # see global used_default_config_file 
+        # used_default_file() that looks wrong.
+        # see global used_default_config_file
         rc = default_file()
         rc = enstore_functions2.used_default_file()
         self.assertFalse(rc)
