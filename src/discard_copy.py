@@ -38,7 +38,8 @@ if __name__ == '__main__':
 	if sys.argv[1] == '--vol':
 		for i in sys.arg[2:]:
 			print "discarding %s ..."%(i),
-			res = swap_vol(i)
+			#res = swap_vol(i)
+			res = discard_vol(i)
 			if res:
 				print res, "... ERROR"
 			else:
