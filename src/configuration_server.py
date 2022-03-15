@@ -530,7 +530,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             event_relay = self.get_dict_entry('event_relay')
             event_relay_host = event_relay.get('host')
             event_relay_port = event_relay.get('port')
-        except Keyerror:
+        except KeyError:
             event_relay_host = None
             event_relay_port = None
         self.erc = event_relay_client.EventRelayClient(self,

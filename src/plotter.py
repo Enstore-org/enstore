@@ -383,10 +383,11 @@ def do_work(intf):
         config_dict = config_dict['dump']
     else:
         try:
+            # I am not sure fixing this code is wise
             configfile = os.environ.get('ENSTORE_CONFIG_FILE')
             print "Failed to connect to config server, using configuration file %s"%(configfile,)
             f = open(configfile,'r')
-            code = string.join(f.readlines(),'')
+            code = ''.join(f.readlines())
             configdict={}
             exec(code)
             config_dict=configdict

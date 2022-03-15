@@ -59,6 +59,7 @@ import event_relay_messages
 import callback
 import enstore_functions2
 import udp_common
+import aml2
 
 
 # The following are used by mtx
@@ -4818,7 +4819,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             self.status_valid = 1
             self.last_updated_db.value = int(time.time())
         else:
-            Trace.log(e_errors.ERROR, 'mtx status returned no result %s' % (result,))
+            Trace.log(e_errors.ERROR, 'mtx status returned no result %s' % (rc[0],))
         if errorString:
             rc = (e_errors.ERROR, errorString, '')
         else:
@@ -5047,6 +5048,14 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             res = enstore_functions2.shell_command('enrsh -n %s %s' % (self.cli_host, 'cat %s' % (cli_file),))
             if res[0]:
                 try:
+                    # the exec() below defines IBMCL* vars if they are defined in cli_file
+                    # what could go wrong?
+                    if 'IBMCLIHOST' not in vars():
+                        IBMCLIHOST = None
+                    if 'IBMCLIU' not in vars():
+                        IBMCLIU = None
+                    if 'IBMCLIPW' not in vars():
+                        IBMCLIPW = None
                     exec(res[0])
                     self.ibm_cli_host = IBMCLIHOST
                     self.ibm_cli_u = IBMCLIU
