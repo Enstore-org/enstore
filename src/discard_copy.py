@@ -17,7 +17,7 @@ def usage():
 def discard_vol(vol):
 	# check if all files are copy
 	q = "select bfid from file, volume where file.volume = volume.id and label = '%s' and deleted = 'n';"%(vol)
-	res = db.db.query(q).getresult()
+	res = dm.db.query(q).getresult()
 	for i in res:
 		bfid = res[i][0]
 		if not dm.is_copy(bfid):
@@ -38,7 +38,8 @@ if __name__ == '__main__':
 	if sys.argv[1] == '--vol':
 		for i in sys.arg[2:]:
 			print "discarding %s ..."%(i),
-			res = swap_vol(i)
+			#res = swap_vol(i)
+			res = discard_vol(i)
 			if res:
 				print res, "... ERROR"
 			else:
