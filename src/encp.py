@@ -2521,6 +2521,9 @@ def check_library(library, e):
         #                               "%s is ignoring requests." % lib)
         #if state == "pause":
         #    status_ticket['status'] = (e_errors.PAUSE,
+        if state == "noread" and e.check:
+            # ignore LM state
+            status_ticket['status'] = (e_errors.OK, None)
         #                               "%s is paused." % lib)
         if state == "noread" and is_read(e):
             status_ticket['status'] = (e_errors.NOREAD,
