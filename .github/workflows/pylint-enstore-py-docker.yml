@@ -15,11 +15,16 @@ jobs:
     - name: run unittests with pytest
       run: |
        source /data/setup-enstore
-       cd src
-       find . -name 'test_*.py' > pytests
-       export num_files=$(wc -l pytests)
-       echo "found $num_files"
-       for T in $(cat pytests); do echo running $T; python -m pytest $T; done
+       export PYTHONPATH=`pwd`:`pwd`/src:`pwd`/HTMLgen:`pwd`/PyGreSQL:$PYTHONPATH
+       coverage run -m pytest src/test
+       coverage report --omit '/opt/*','src/tests/*','__init__.py'
+       coverage html  --omit '/opt/*','src/tests/*','__init__.py'
+       tar cvzf htmcov.tar htmlcov
+    - name: Archive coverage report
+      uses: actions/upload-artifact@v2
+      with:
+        name: code-coverage-report
+        path: htmcov.tar
     - name: analysing with pylint
       run: |
        source /data/setup-enstore
