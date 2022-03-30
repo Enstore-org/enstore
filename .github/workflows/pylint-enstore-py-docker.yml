@@ -15,6 +15,7 @@ jobs:
     - name: run unittests with pytest
       run: |
        source /data/setup-enstore
+       cd enstore
        export PYTHONPATH=`pwd`:`pwd`/src:`pwd`/HTMLgen:`pwd`/PyGreSQL:$PYTHONPATH
        coverage run -m pytest src/test
        coverage report --omit '/opt/*','src/tests/*','__init__.py'
