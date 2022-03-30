@@ -1,5 +1,4 @@
 # empty test that just does imports to improve coverage report
-#
 import sys
 import mock
 sys.modules['pg'] = mock.MagicMock()
