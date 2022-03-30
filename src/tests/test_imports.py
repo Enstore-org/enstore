@@ -192,7 +192,7 @@ import log_server
 import log_start_event
 import log_trans_fail
 import m2
-#import make_ingest_rates_html_page
+import make_ingest_rates_html_page
 import make_migrated_as_duplicate
 import make_original_as_duplicate
 #import makec_files

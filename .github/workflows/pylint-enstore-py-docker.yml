@@ -20,7 +20,7 @@ jobs:
        coverage run -m pytest src/tests
        coverage report --omit '/opt/*','src/tests/*','__init__.py'
        coverage html  --omit '/opt/*','src/tests/*','__init__.py'
-       tar cvzf htmcov.tar htmlcov
+       tar cvzf htmlcov.tar htmlcov
     - name: Archive coverage report
       uses: actions/upload-artifact@v2
       with:
