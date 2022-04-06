@@ -149,9 +149,7 @@ def get_enstore_tmp_dir():
 
     #Use the temp. directory the config server had it.
     if rtn_dir != None:
-        print('rtn_dir not None!')
         return rtn_dir
-    print('rtn_dir None..')
 
     #Next, use 'tmp' under ENSTORE_DIR.
     tmp_dir = os.environ.get('ENSTORE_OUT',None)
@@ -165,3 +163,4 @@ def get_enstore_tmp_dir():
     except (OSError, KeyError):
         rtn_dir = "/tmp/enstore/"
 
+    return rtn_dir
