@@ -45,6 +45,6 @@
 # plots mount latency plots
 30 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mount_latencies $ENSTORE_DIR/src/plotter_main.py -l > /dev/null 2> /dev/null
 # plots mount/day per tape library
-30 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p library_mounts $ENSTORE_DIR/src/plotter_main.py -L > /dev/null 2> /dev/null
+30 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; cd /tmp; $ENSTORE_DIR/sbin/ecron -p library_mounts $ENSTORE_DIR/src/plotter_main.py -L > /dev/null 2> /dev/null
 # Small Files Aggregation Statistics
-35 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p sfa_stats $ENSTORE_DIR/src/plotter_main.py -S > /dev/null 2> /dev/null
+35 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; cd /tmp; $ENSTORE_DIR/sbin/ecron -p sfa_stats $ENSTORE_DIR/src/plotter_main.py -S > /dev/null 2> /dev/null
