@@ -10,6 +10,7 @@ sys.modules['ExtendedAttributes'] = mock.MagicMock()
 import enroute
 import Cache
 import Trace
+#commented imports trigger non-zero exit so dont 
 #import acc_daily_summary
 import accounting
 import accounting_client
