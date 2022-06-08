@@ -21,7 +21,7 @@ if [ -z ${ERPMSuffix+x} ]; then
 
 fi
 
-specfile=./spec/enstore_RH7_python_2.7.16_with_start_on_boot.spec
+specfile=./spec/enstore_auto.spec
 
 cp $specfile /tmp/enstore_rpm.spec
 
