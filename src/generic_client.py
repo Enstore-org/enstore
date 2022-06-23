@@ -48,11 +48,13 @@ class ClientError(Exception):
         self._string()
 
         #Put the argument list value together.
-        self.args = (self.error_message,)
+        #dbox 6/17/22 append does not work on a tuple
+        tmp_list = [self.error_message]
         if errno:
-            self.args.append(self.errno)
+            tmp_list.append(self.errno)
         if self.enstore_error:
-            self.args.append(enstore_error)
+            tmp_list.append(enstore_error)
+        self.args = tuple(tmp_list)
 
 
     def __str__(self):
@@ -93,10 +95,10 @@ class GenericClientInterface(option.Interface):
         self.dont_alarm = []
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
+    # dbox this class did not work as coded
+    # its a base class method that has never been called afaict 
     def client_options(self):
-        return (self.alive_options()  +
-                self.trace_options() +
-                self.help_options() )
+        return (self.alive_options, self.trace_options, self.help_options )
 
     def complete_server_name(self, server_name, server_type):
         if not server_name:
@@ -122,6 +124,7 @@ class GenericClient:
                  alarmc=None, rcv_timeout=DEFAULT_TIMEOUT,
                  rcv_tries=DEFAULT_TRIES, server_name=None):
 
+        #import pdb; pdb.set_trace()
         self.name = name    # Abbreviated client instance name
                             # try to make it capital letters
                             # not more than 8 characters long.
