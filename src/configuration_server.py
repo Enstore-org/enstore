@@ -892,9 +892,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 mc = self.get_dict_entry(ret)
                 if mc and mc.get('remote_media_changer'):
                     ret = mc.get('remote_media_changer')
-                    break
-                else:
-                    break
+                break
         ticket['media_changer'] = ret
 	self.reply_to_caller(ticket)
 
