@@ -530,7 +530,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             event_relay = self.get_dict_entry('event_relay')
             event_relay_host = event_relay.get('host')
             event_relay_port = event_relay.get('port')
-        except Keyerror:
+        except KeyError:
             event_relay_host = None
             event_relay_port = None
         self.erc = event_relay_client.EventRelayClient(self,
@@ -810,7 +810,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         except KeyError:
             ticket['status'] = (e_errors.KEYERROR,
                                 "Configuration Server: no such name")
-            
+
 	except:
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.UNKNOWN, str(((str(exc), str(msg)))))
@@ -881,7 +881,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         :arg ticket: request containing "get_media_changer" work
         """
         #__pychecker__ = "unusednames=ticket"
-        
+
         movers = self.get_movers_internal(ticket)
         ret = ''
         for m in movers:
