@@ -890,10 +890,9 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             if ret:
                 # handle TFF1-AB variety
                 mc = self.get_dict_entry(ret)
-                if mc.get('remote_media_changer'):
+                if mc and mc.get('remote_media_changer'):
                     ret = mc.get('remote_media_changer')
-                    if ret:
-                        break
+                    break
                 else:
                     break
         ticket['media_changer'] = ret
