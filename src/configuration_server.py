@@ -530,7 +530,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             event_relay = self.get_dict_entry('event_relay')
             event_relay_host = event_relay.get('host')
             event_relay_port = event_relay.get('port')
-        except KeyError:
+        except Keyerror:
             event_relay_host = None
             event_relay_port = None
         self.erc = event_relay_client.EventRelayClient(self,
@@ -881,14 +881,21 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         :arg ticket: request containing "get_media_changer" work
         """
         #__pychecker__ = "unusednames=ticket"
-
+        
         movers = self.get_movers_internal(ticket)
         ret = ''
         for m in movers:
             mv_name = m['mover']
             ret =  self.get_dict_entry(mv_name).get('media_changer','')
             if ret:
-                break
+                # handle TFF1-AB variety
+                mc = self.get_dict_entry(ret)
+                if mc.get('remote_media_changer'):
+                    ret = mc.get('remote_media_changer')
+                    if ret:
+                        break
+                else:
+                    break
         ticket['media_changer'] = ret
 	self.reply_to_caller(ticket)
 
