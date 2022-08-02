@@ -9045,7 +9045,7 @@ def create_instance(module_name, class_name, parameters):
     clazz = getattr(my_module, class_name)
     try:
         instance = clazz(parameters)
-    except TypeError e:
+    except TypeError as e:
         if not parameters:
             instance = clazz()
         else:
