@@ -390,11 +390,11 @@ class TestEnstoreFunctions2(unittest.TestCase):
 
     def test_used_default_host(self):
         rc = used_default_host()
-        self.assertTrue(rc)
+        self.assertFalse(rc)
 
     def test_default_host(self):
         rc = default_host()
-        self.assertEqual(rc, 'localhost')
+        self.assertEqual(rc, 'test')
 
     def test_used_default_port(self):
         rc = used_default_port()

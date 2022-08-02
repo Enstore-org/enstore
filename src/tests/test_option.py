@@ -96,21 +96,21 @@ DICT_LIST = [ TD0, TD1, TD2, TD3, TD4 ]
 
 
 @mock.patch('Trace.log')
-def test_log_using_default(self, mock_trace):
+def test_log_using_default(mock_trace):
     option.log_using_default('foo','bar')
     msg = "foo not set in environment or command line - reverting to bar"
     mock_trace.assert_called_with(e_errors.INFO, msg)
 
 
 @mock.patch('Trace.log')
-def test_check_for_config_defaults(self, mock_trace):
+def test_check_for_config_defaults(mock_trace):
     option.check_for_config_defaults()
     mock_trace.assert_called_with('ENSTORE_CONFIG_HOST', enstore_constants.DEFAULT_CONF_HOST)
     mock_trace.assert_called_with('ENSTORE_CONFIG_PORT', enstore_constants.DEFAULT_CONF_PORT)
 
-def test_list2(self):
+def test_list2():
     l = option.list2('foo')
-    self.assertEqual(l, ['foo'])
+    assertEqual(l, ['foo'])
 
 class TestInterface(unittest.TestCase):
 
