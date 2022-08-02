@@ -237,6 +237,7 @@ class Buffer:
         self.trailer_size = 0L
         self.file_size = 0L
         self.bytes_written = 0L
+        self.sanity_cookie = (self.sanity_bytes, self.sanity_crc)
 
         self.read_ok = threading.Event()
         self.write_ok = threading.Event()
