@@ -304,8 +304,10 @@ class TestBuffer(unittest.TestCase):
         # StringDriver has no 'write' method, use NullDriver
         # sd = string_driver.StringDriver('')
         nd = null_driver.NullDriver()
+        nd.open(mode=1)
         num = self.tb.stream_write(200, nd)
         self.assertEqual(num, 200)
+        nd.close()
 
     def test_eof_read(self):
         self.nd.open(mode=0)
