@@ -160,14 +160,14 @@ class TestGenericClient(unittest.TestCase):
     def test_alive(self):
 
         self._mocker.reset_mock()
-        expected =  "call({'new': 1, 'work': 'lookup', 'lookup': '%s'}, ('conf-stken.fnal.gov', 7500), 0, 0)" % self.name
+        expected =  "call({'new': 1, 'work': 'lookup', 'lookup': '%s'}, ('test', 7500), 0, 0)" % self.name
         self.gc.alive(self.name)
         rcvd = str(self._mocker.call_args)
         self.assertEqual(rcvd, expected, "test_alive 1  rcvd=%s expected=%s"%(rcvd,expected))
 
         self._mocker.reset_mock()
         a2 = self.gc.alive(enstore_constants.CONFIGURATION_SERVER)
-        expected = "call({'work': 'alive'}, ('conf-stken.fnal.gov', 7500), 0, 0)"
+        expected = "call({'work': 'alive'}, ('test', 7500), 0, 0)"
         rcvd = str(self._mocker.call_args)
         self.assertEqual(rcvd, expected, "test_alive 2  rcvd=%s expected=%s"%(rcvd,expected))
 

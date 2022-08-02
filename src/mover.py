@@ -9042,7 +9042,13 @@ def create_instance(module_name, class_name, parameters):
     import importlib
     my_module = importlib.import_module(module_name)
     clazz = getattr(my_module, class_name)
-    instance = clazz(parameters)
+    try:
+        instance = clazz(parameters)
+    except TypeError e:
+        if not parameters:
+            instance = clazz()
+        else:
+            raise e
     return instance
 
 if __name__ == '__main__':
