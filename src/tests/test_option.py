@@ -102,7 +102,7 @@ def test_log_using_default(mock_trace):
     mock_trace.assert_called_with(e_errors.INFO, msg)
 
 
-@mock.patch('Trace.log')
+@mock.patch('option.log_using_default')
 def test_check_for_config_defaults(mock_trace):
     option.check_for_config_defaults()
     mock_trace.assert_called_with('ENSTORE_CONFIG_HOST', enstore_constants.DEFAULT_CONF_HOST)
