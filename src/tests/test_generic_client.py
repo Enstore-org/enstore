@@ -23,7 +23,7 @@ import callback
 import hostaddr
 import mock
 import StringIO
-import fixtures.config.conf
+# import fixtures.config.conf
 
 class TestClientError(unittest.TestCase):
     def setUp(self):
@@ -95,8 +95,8 @@ class TestGenericClient(unittest.TestCase):
         self._mocker.reset_mock()
         self._mocker.return_value = {'status': ('ok', None), 'host': 'localhost', 'port': 7500, 'hostip': '127.0.0.1'}
         cnf3 = self.gc.get_server_configuration(self.name)
-        expected = "call({'new': 1, 'work': 'lookup', 'lookup': '%s'}, ('localhost', 7500), 0, 0)" % self.name
-        self.assertEqual(str(self._mocker.call_args), expected, " test_get_server_configuration error")
+        expected = "call({'new': 1, 'work': 'lookup', 'lookup': '%s'}, ('conf-stken.fnal.gov', 7500), 0, 0)" % self.name
+        self.assertEqual(str(self._mocker.call_args), expected)
         self.assertTrue(e_errors.is_ok(cnf3))
 
     def test_get_server_address(self):
@@ -158,14 +158,14 @@ class TestGenericClient(unittest.TestCase):
     def test_alive(self):
 
         self._mocker.reset_mock()
-        expected =  "call({'new': 1, 'work': 'lookup', 'lookup': '%s'}, ('localhost', 7500), 0, 0)" % self.name
+        expected =  "call({'new': 1, 'work': 'lookup', 'lookup': '%s'}, ('conf-stken.fnal.gov', 7500), 0, 0)" % self.name
         self.gc.alive(self.name)
         rcvd = str(self._mocker.call_args)
         self.assertEqual(rcvd, expected, "test_alive 1  rcvd=%s expected=%s"%(rcvd,expected))
 
         self._mocker.reset_mock()
         a2 = self.gc.alive(enstore_constants.CONFIGURATION_SERVER)
-        expected = "call({'work': 'alive'}, ('localhost', 7500), 0, 0)"
+        expected = "call({'work': 'alive'}, ('conf-stken.fnal.gov', 7500), 0, 0)"
         rcvd = str(self._mocker.call_args)
         self.assertEqual(rcvd, expected, "test_alive 2  rcvd=%s expected=%s"%(rcvd,expected))
 
