@@ -144,7 +144,7 @@ class TestMoverMisc(unittest.TestCase):
 
     def test_host_type(self):
         x = host_type()
-        self.assertEqual(0, host_type())
+        self.assertEqual(3, host_type())
 
     @unittest.skip('dont know how to fake tape device in /dev')
     def test_identify_mc_device(self):
@@ -301,8 +301,10 @@ class TestBuffer(unittest.TestCase):
             for y in range(0, 10):
                 buf = "%s%s%s" % (buf, x, y)
         self.tb.push(buf)
-        sd = string_driver.StringDriver('')
-        num = self.tb.stream_write(200, sd)
+        # StringDriver has no 'write' method, use NullDriver
+        # sd = string_driver.StringDriver('')
+        nd = null_driver.NullDriver()
+        num = self.tb.stream_write(200, nd)
         self.assertEqual(num, 200)
 
     def test_eof_read(self):
