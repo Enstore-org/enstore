@@ -109,8 +109,10 @@ class TestInterface(unittest.TestCase):
     @mock.patch('option.log_using_default')
     def test_check_for_config_defaults(self, mock_trace):
         option.check_for_config_defaults()
-        mock_trace.assert_called_with('ENSTORE_CONFIG_HOST', enstore_constants.DEFAULT_CONF_HOST)
-        mock_trace.assert_called_with('ENSTORE_CONFIG_PORT', enstore_constants.DEFAULT_CONF_PORT)
+        if not option._get_value('ENSTORE_CONFIG_HOST'):
+            mock_trace.assert_called_with('ENSTORE_CONFIG_HOST', enstore_constants.DEFAULT_CONF_HOST)
+        if not option._get_value('ENSTORE_CONFIG_PORT'):
+            mock_trace.assert_called_with('ENSTORE_CONFIG_PORT', enstore_constants.DEFAULT_CONF_PORT)
 
     def test_list2(self):
         l = option.list2('foo')
