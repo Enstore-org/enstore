@@ -59,6 +59,7 @@ CAP_T10000T2D=8400
 CAP_M8=9000    # LTO7 tape formatted for LTO8 drives, a.k.a. M8
 CAP_L8=11718   # standard LTO8 tape a.k.a. L8
 CAP_LTO8=11718 # LTO8 tape
+CAP_LTO9=18000 # LTO9 tape
 
 # tape rate in MB
 RATE_9840=10.5
@@ -73,6 +74,8 @@ RATE_T10000T2D=240.0
 RATE_M8=350.0
 RATE_L8=350.0
 RATE_LTO8=350.0
+RATE_L9=400.0
+RATE_LTO9=400.0
 
 EXTRA_LINKS = "extra_links"
 ENSTORE_PLOTS = "enstore_plots"
