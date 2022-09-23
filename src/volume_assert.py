@@ -245,6 +245,7 @@ def create_assert_list(check_requests, media_validate=None, start_from=None, ski
             ticket["wrapper"]['sanity_size'] = 0
             ticket["wrapper"]['mode'] = 0
             ticket['override_ro_mount'] = 1
+            ticket['override_notallowed'] = 1
             
             ticket['file_size'] = 0
             ticket['version'] = ''
