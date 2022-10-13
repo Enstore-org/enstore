@@ -1,0 +1,17 @@
+commit f14caad5780793b9a30564e539b57a0b3b3db53d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Sep 23 19:54:31 2022 +0000
+
+    Fix library_manager logic so 'override_notallowed' overrides only NOTALLOWED and not also NOACCESS
+    
+    Searching the source, it doesn't appear 'override_notallowed' is used by any process other than manual migration, so this change should be low risk.
+
+commit b00a8d7a5957072098849e3aa071b0b77ce83de5
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Sep 23 19:48:49 2022 +0000
+
+    Override NOTALLOWED inhibit in assert requests from volume_assert.
+    
+    This error is coming from https://github.com/Enstore-org/enstore/blob/develop/src/library_manager.py#L4015, which can be skipped by setting override_notallowed on the ticket.
+    
+    Note this will also cause volume_assert requests to work on NOACCESS volumes, which I believe is unintended. This will be resolved in a follow-up commit.
