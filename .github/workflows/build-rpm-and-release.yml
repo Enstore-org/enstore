@@ -30,6 +30,7 @@ jobs:
        source ./rpm_version
        ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
        echo "::set-output name=release_name::enstore-nonprod-${EVersion}-${ERelease}.${ECommit}"
+       echo "::set-output name=rpm_name::enstore-${EVersion}-${ERelease}.${ECommit}"
     - name: Generate Release Notes
       id: gen_rel_notes
       run: |
@@ -61,8 +62,8 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}  
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /github/home/rpmbuild/RPMS/x86_64/${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
-        asset_name: ${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
+        asset_path: /github/home/rpmbuild/RPMS/x86_64/${{ steps.prepare_build.outputs.rpm_name }}.el7.x86_64.rpm
+        asset_name: ${{ steps.prepare_build.outputs.rpm_name }}.el7.x86_64.rpm
         asset_content_type: application/octet-stream
     # Hack to retry above step because it fails sometimes https://github.com/actions/upload-release-asset/issues/69
     - name: Wait to Retry RPM Upload
@@ -76,6 +77,6 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}  
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /github/home/rpmbuild/RPMS/x86_64/${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
-        asset_name: ${{ steps.prepare_build.outputs.release_name }}.el7.x86_64.rpm
+        asset_path: /github/home/rpmbuild/RPMS/x86_64/${{ steps.prepare_build.outputs.rpm_name }}.el7.x86_64.rpm
+        asset_name: ${{ steps.prepare_build.outputs.rpm_name }}.el7.x86_64.rpm
         asset_content_type: application/octet-stream
