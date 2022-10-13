@@ -4,7 +4,10 @@ source ./rpm_version
 
 if [ -z ${ERPMSuffix+x} ]; then
 
-  ERPMSuffix="-nonprod"
+  # TODO: lots of Enstore related things check to see if 'enstore' is installed
+  # Changing the package name breaks this. For now, just name enstore-nonprod 'enstore'
+  # ERPMSuffix="-nonprod"
+  ERPMSuffix=""
 
   while getopts ":p" opt; do
     case ${opt} in
