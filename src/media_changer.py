@@ -59,7 +59,10 @@ import event_relay_messages
 import callback
 import enstore_functions2
 import udp_common
-import aml2
+# This import is broken, it is loaded conditionally
+# for a media changer type which no longer exists.
+# TODO: remove entirely
+# import aml2
 
 
 # The following are used by mtx
