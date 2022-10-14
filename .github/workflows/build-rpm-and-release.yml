@@ -31,7 +31,7 @@ jobs:
        ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
        echo "::set-output name=release_name::enstore-nonprod-${EVersion}-${ERelease}.${ECommit}"
        echo "::set-output name=rpm_name::enstore-${EVersion}-${ERelease}.${ECommit}"
-    - name: work around permission issue
+    - name: Work Around Dubious Ownership Permissions Issue
       run: git config --global --add safe.directory /__w/enstore/enstore
     - name: Generate Release Notes
       id: gen_rel_notes
