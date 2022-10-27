@@ -4002,7 +4002,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # use vc subticket
         v = ticket['vc']
 
-        if ( v['system_inhibit'][0] == e_errors.NOACCESS, or 
+        if ( v['system_inhibit'][0] == e_errors.NOACCESS or 
                 (not bool(ticket.get("override_notallowed", 0)) and
                  v['system_inhibit'][0] == e_errors.NOTALLOWED)):
             # tape cannot be accessed, report back to caller and do not
