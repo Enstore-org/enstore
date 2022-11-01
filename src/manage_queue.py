@@ -175,9 +175,9 @@ class SortedList:
         self.sorted_list = mpq.MPQ(comparison_function)
         self.last_aging_time = 0
         self.aging_quantum = aging_quantum
-        self.ids = []
-        self.of_names = []
-        self.keys = []
+        self.ids = set()
+        self.of_names = set()
+        self.keys = set()
         self.update_flag = by_pri # update either by priority or by location
         self.current_index = 0
         self.stop_rolling = 0 # flag for get_next. Stop if 1
@@ -273,12 +273,12 @@ class SortedList:
                         (request.pri, request.ticket))
             Trace.trace(TR+23,"SortedList.put: %s %s"%
                         (self.my_name, request))
-            self.ids.append(request.unique_id)
+            self.ids.add(request.unique_id)
 
             if output_file_name:
-                self.of_names.append(output_file_name)
+                self.of_names.add(output_file_name)
             if key and not key in self.keys:
-                self.keys.append(key)
+                self.keys.add(key)
             self.lock.acquire()
             try:
                 self.sorted_list.insort(request)
