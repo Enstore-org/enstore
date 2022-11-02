@@ -5,20 +5,22 @@ import mpq
 import sys
 import os
 
+
 class Req(object):
-    def __init__(self,size,priority):
-        self.size=size
-        self.priority=priority
+    def __init__(self, size, priority):
+        self.size = size
+        self.priority = priority
 
     def __repr__(self):
         return "<size=%s, priority=%s>" % (self.size, self.priority)
 
-def compare_priority(r1,r2):
+
+def compare_priority(r1, r2):
     return -cmp(r1.priority, r2.priority)
 
-def compare_size(r1,r2):
-    return cmp(r1.size,r2.size)
 
+def compare_size(r1, r2):
+    return cmp(r1.size, r2.size)
 
 
 class TestMPQ(unittest.TestCase):
@@ -34,7 +36,7 @@ class TestMPQ(unittest.TestCase):
         self.reqs.append(r3)
         self.reqs.append(r4)
         self.prio_mpq = mpq.MPQ(compare_priority)
-        self.size_mpq  = mpq.MPQ(compare_size)
+        self.size_mpq = mpq.MPQ(compare_size)
 
     def test___init__(self):
         self.assertTrue(isinstance(self.prio_mpq, mpq.MPQ))
@@ -60,32 +62,37 @@ class TestMPQ(unittest.TestCase):
         bndx = self.prio_mpq.bisect(req)
         self.assertEqual(bndx, 0)
         bndx = self.size_mpq.bisect(req)
-        self.assertEqual(bndx, len(self.size_mpq)-1)
+        self.assertEqual(bndx, len(self.size_mpq) - 1)
 
     def test_remove(self):
         self.perform_insort()
         req = Req(size=5, priority=5)
 
         # try removing something not in list
-        with mock.patch('sys.stdout', new = StringIO.StringIO()) as std_out:
+        with mock.patch('sys.stdout', new=StringIO.StringIO()) as std_out:
             self.prio_mpq.remove(req)
-            self.assertTrue('exceptions.ValueError' in std_out.getvalue(), std_out.getvalue())
+            self.assertTrue(
+                'exceptions.ValueError' in std_out.getvalue(),
+                std_out.getvalue())
 
         # try removing something that is in list
         itm = self.reqs[0]
         self.prio_mpq.remove(itm)
-        self.assertNotEqual(len(self.reqs), len(self.prio_mpq))   
-        
+        self.assertNotEqual(len(self.reqs), len(self.prio_mpq))
+
     def test___nonzero__(self):
         self.assertFalse(self.prio_mpq.__nonzero__())
         self.perform_insort()
         self.assertTrue(self.prio_mpq.__nonzero__())
 
     def test___repr__(self):
-        with mock.patch('sys.stdout', new = StringIO.StringIO()) as std_out:
+        with mock.patch('sys.stdout', new=StringIO.StringIO()) as std_out:
             self.perform_insort()
             print self.prio_mpq
-            self.assertTrue('<size=4, priority=4>' in std_out.getvalue(), std_out.getvalue())
+            self.assertTrue(
+                '<size=4, priority=4>' in std_out.getvalue(),
+                std_out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
