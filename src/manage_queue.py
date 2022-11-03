@@ -475,10 +475,13 @@ class SortedList:
                     self.current_index = max_index
                 if hasattr(self,'start_index') and self.start_index > max_index:
                     self.start_index = max_index
-                if record.unique_id in self.ids: self.ids.remove(record.unique_id)
-                if record.ofn in self.of_names: self.of_names.remove(record.ofn)
-                if key and key in self.keys:
-                    self.keys.remove(key)
+
+                # Remove record values from tracking sets if they are present
+                self.ids.discard(record.unique_id)
+                self.of_names.discard(record.ofn)
+                if key:
+                    self.keys.discard(key)
+
                 self.last_deleted = record
             except:
                 exc, detail, tb = sys.exc_info()
