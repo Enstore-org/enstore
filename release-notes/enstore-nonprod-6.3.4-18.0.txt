@@ -1,0 +1,25 @@
+commit a157fc1955a9c307e523b27bdcff9aea14ebb606
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Nov 3 16:21:40 2022 +0000
+
+    Add unlock_state before return in setup_transfer
+
+commit 8365dc56c9d2e4762edd1728713e97bad44cdda9
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Nov 2 18:32:49 2022 +0000
+
+    Update `if x in set: set.remove(x)` to `set.discard(x)`. This is functionally the same but avoids duplicate hash lookups.
+
+commit 1f1ebf70c1821de2862e3150ce28c1f7629a4c4b
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Nov 1 23:13:02 2022 +0000
+
+    Update manage_queue data structures to sets from lists. These are only used for presence checking which is much faster in sets.
+    
+    In testing (with only read calls), this change constitutes a speedup of about 2% for the LM.
+
+commit ae14baf0a8d0ba5a5e1870ef8ef503e6d416ad81
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Nov 1 16:59:50 2022 +0000
+
+    Delete unused run_in_thread methods
