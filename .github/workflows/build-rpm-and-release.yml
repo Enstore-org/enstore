@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - production
     paths: 
       - rpm_version
   workflow_dispatch:
