@@ -4522,6 +4522,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_library = ticket['vc'].get('library', None)
         if not self.current_library:
             self.transfer_failed(e_errors.EPROTO)
+            self.unlock_state()
             return
         self.setup_mode = mode
         if self.save_state not in (IDLE, HAVE_BOUND):
