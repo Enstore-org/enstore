@@ -31,7 +31,7 @@ jobs:
        source ./rpm_version
        ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
        RELEASE_TYPE="-nonprod"
-       if [ "${GITHUB_REF##*/}" -e "production" ]; then
+       if [ "${GITHUB_REF##*/}" = "production" ]; then
          RELEASE_TYPE=""
        fi
        echo "::set-output name=release_name::enstore${RELEASE_TYPE}-${EVersion}-${ERelease}.${ECommit}"
