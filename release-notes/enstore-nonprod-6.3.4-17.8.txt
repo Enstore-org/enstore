@@ -1,5 +1,124 @@
+commit 1f1ebf70c1821de2862e3150ce28c1f7629a4c4b
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Nov 1 23:13:02 2022 +0000
+
+    Update manage_queue data structures to sets from lists. These are only used for presence checking which is much faster in sets.
+    
+    In testing (with only read calls), this change constitutes a speedup of about 2% for the LM.
+
+commit ae14baf0a8d0ba5a5e1870ef8ef503e6d416ad81
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Nov 1 16:59:50 2022 +0000
+
+    Delete unused run_in_thread methods
+
 commit d9a67c7fc63dd91e2b1f878d7e94745adb9ab089
 Author: Ren Bauer <renbauer@fnal.gov>
 Date:   Thu Oct 27 17:05:03 2022 +0000
 
     Fix typo in if statement
+
+commit 8b321ab346b2ae005eb8f458e08a5b3509250cdb
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Oct 14 21:15:27 2022 +0000
+
+    Comment out broken import
+
+commit f14caad5780793b9a30564e539b57a0b3b3db53d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Sep 23 19:54:31 2022 +0000
+
+    Fix library_manager logic so 'override_notallowed' overrides only NOTALLOWED and not also NOACCESS
+    
+    Searching the source, it doesn't appear 'override_notallowed' is used by any process other than manual migration, so this change should be low risk.
+
+commit b00a8d7a5957072098849e3aa071b0b77ce83de5
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Sep 23 19:48:49 2022 +0000
+
+    Override NOTALLOWED inhibit in assert requests from volume_assert.
+    
+    This error is coming from https://github.com/Enstore-org/enstore/blob/develop/src/library_manager.py#L4015, which can be skipped by setting override_notallowed on the ticket.
+    
+    Note this will also cause volume_assert requests to work on NOACCESS volumes, which I believe is unintended. This will be resolved in a follow-up commit.
+
+commit 0ffc99d2d7cd16779fda59f43d622f5633b20c43
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Aug 18 14:05:05 2022 -0500
+
+    add LTO9 constants
+
+commit 22912f6af4a9d69df73885d6035ba50e75bbda56
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Aug 2 19:38:45 2022 +0000
+
+    Fix except syntax
+
+commit 8eefaf77349eb4b9e058e8026fb5838be2d7a358
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Aug 2 19:32:14 2022 +0000
+
+    Add sanity_crc to default mover.Buffer
+
+commit 124dd815cd4cac0e1f9d0b1b352155cead07e92d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Aug 2 19:25:57 2022 +0000
+
+    Update mover.create_instance to support classes with no construction params
+
+commit 094297c63f32cb5f19edaf21945ef56eedbadc3b
+Merge: d469d27db efe18e9cf
+Author: renbauer-fnal <89218226+renbauer-fnal@users.noreply.github.com>
+Date:   Thu Jul 28 11:59:41 2022 -0400
+
+    Merge pull request #90 from dbox-fnal/test_generic_client.py
+    
+    unit test for generic_client.py
+
+commit adc9758042aab72ccad3734f01dff3c6efc15024
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 17:18:32 2022 -0500
+
+    address Ren's comment`
+
+commit 19b93d73a81017729d75fe04b81fee09e4f64a87
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 17:15:15 2022 -0500
+
+    address Ren's comment
+
+commit 13a27acc24419a2b5bd00d35360fb03c9f81e106
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 14:27:39 2022 -0500
+
+    fix typo
+
+commit 53253525521cd6cc98a4e28882f900363d7d64a9
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 14:23:59 2022 -0500
+
+    Fix to resolve BZ2589
+
+commit efe18e9cf633f7ab0e813bda6f78d1302353cae2
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Thu Jun 23 15:19:31 2022 -0500
+
+    unit test for generic_client.py
+
+commit 2d637bdf88228374e8bf8a511b0053cba7b056a0
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 6 22:01:49 2022 +0000
+
+    Finish enstore_functions tests except run_in_thread
+
+commit 419ea06048bfcca914b742b946fad9e5ec8572ac
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Apr 5 22:12:59 2022 +0000
+
+    Start of enstore_functions tests
+
+commit 80ab21051db42daba74b694b298e22654707472a
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue May 3 12:22:49 2022 -0500
+
+    deleted RCS macro
