@@ -1,0 +1,545 @@
+commit b478f5ebf08d8d4c448a82497454acbf7bd93e82
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Nov 3 18:58:38 2022 +0000
+
+    Add comment for unintuitive disptacher failure case involving ejournal.py
+
+commit a157fc1955a9c307e523b27bdcff9aea14ebb606
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Nov 3 16:21:40 2022 +0000
+
+    Add unlock_state before return in setup_transfer
+
+commit 8365dc56c9d2e4762edd1728713e97bad44cdda9
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Nov 2 18:32:49 2022 +0000
+
+    Update `if x in set: set.remove(x)` to `set.discard(x)`. This is functionally the same but avoids duplicate hash lookups.
+
+commit 1f1ebf70c1821de2862e3150ce28c1f7629a4c4b
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Nov 1 23:13:02 2022 +0000
+
+    Update manage_queue data structures to sets from lists. These are only used for presence checking which is much faster in sets.
+    
+    In testing (with only read calls), this change constitutes a speedup of about 2% for the LM.
+
+commit ae14baf0a8d0ba5a5e1870ef8ef503e6d416ad81
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Nov 1 16:59:50 2022 +0000
+
+    Delete unused run_in_thread methods
+
+commit d9a67c7fc63dd91e2b1f878d7e94745adb9ab089
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Oct 27 17:05:03 2022 +0000
+
+    Fix typo in if statement
+
+commit 8b321ab346b2ae005eb8f458e08a5b3509250cdb
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Oct 14 21:15:27 2022 +0000
+
+    Comment out broken import
+
+commit f14caad5780793b9a30564e539b57a0b3b3db53d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Sep 23 19:54:31 2022 +0000
+
+    Fix library_manager logic so 'override_notallowed' overrides only NOTALLOWED and not also NOACCESS
+    
+    Searching the source, it doesn't appear 'override_notallowed' is used by any process other than manual migration, so this change should be low risk.
+
+commit b00a8d7a5957072098849e3aa071b0b77ce83de5
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Sep 23 19:48:49 2022 +0000
+
+    Override NOTALLOWED inhibit in assert requests from volume_assert.
+    
+    This error is coming from https://github.com/Enstore-org/enstore/blob/develop/src/library_manager.py#L4015, which can be skipped by setting override_notallowed on the ticket.
+    
+    Note this will also cause volume_assert requests to work on NOACCESS volumes, which I believe is unintended. This will be resolved in a follow-up commit.
+
+commit 0ffc99d2d7cd16779fda59f43d622f5633b20c43
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Aug 18 14:05:05 2022 -0500
+
+    add LTO9 constants
+
+commit 22912f6af4a9d69df73885d6035ba50e75bbda56
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Aug 2 19:38:45 2022 +0000
+
+    Fix except syntax
+
+commit 8eefaf77349eb4b9e058e8026fb5838be2d7a358
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Aug 2 19:32:14 2022 +0000
+
+    Add sanity_crc to default mover.Buffer
+
+commit 124dd815cd4cac0e1f9d0b1b352155cead07e92d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Aug 2 19:25:57 2022 +0000
+
+    Update mover.create_instance to support classes with no construction params
+
+commit 094297c63f32cb5f19edaf21945ef56eedbadc3b
+Merge: d469d27db efe18e9cf
+Author: renbauer-fnal <89218226+renbauer-fnal@users.noreply.github.com>
+Date:   Thu Jul 28 11:59:41 2022 -0400
+
+    Merge pull request #90 from dbox-fnal/test_generic_client.py
+    
+    unit test for generic_client.py
+
+commit adc9758042aab72ccad3734f01dff3c6efc15024
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 17:18:32 2022 -0500
+
+    address Ren's comment`
+
+commit 19b93d73a81017729d75fe04b81fee09e4f64a87
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 17:15:15 2022 -0500
+
+    address Ren's comment
+
+commit 13a27acc24419a2b5bd00d35360fb03c9f81e106
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 14:27:39 2022 -0500
+
+    fix typo
+
+commit 53253525521cd6cc98a4e28882f900363d7d64a9
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Jul 27 14:23:59 2022 -0500
+
+    Fix to resolve BZ2589
+
+commit efe18e9cf633f7ab0e813bda6f78d1302353cae2
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Thu Jun 23 15:19:31 2022 -0500
+
+    unit test for generic_client.py
+
+commit 2d637bdf88228374e8bf8a511b0053cba7b056a0
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 6 22:01:49 2022 +0000
+
+    Finish enstore_functions tests except run_in_thread
+
+commit 419ea06048bfcca914b742b946fad9e5ec8572ac
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Apr 5 22:12:59 2022 +0000
+
+    Start of enstore_functions tests
+
+commit 80ab21051db42daba74b694b298e22654707472a
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue May 3 12:22:49 2022 -0500
+
+    deleted RCS macro
+
+commit 2cfa0b0380ad61fab796ed36b388627eafe60142
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Mar 25 16:47:44 2022 -0500
+
+    fix logic
+
+commit cc1d163980cb6feeae6ac49488e41c96e47600c0
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Mar 25 13:03:56 2022 -0500
+
+    egnore "noread" LM state
+
+commit 24b54dee142cb334fccf4d14780528a925f98d28
+Merge: facc485f2 9abe53e5a
+Author: Dennis D Box <dbox@fnal.gov>
+Date:   Mon Mar 21 18:44:28 2022 -0500
+
+    Merge pull request #37 from Enstore-org/ren-pytests-2
+    
+    Clean UDP pytests
+
+commit 9abe53e5ae31c732ab198eae3e3fca40950fe165
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Mar 21 18:28:45 2022 -0500
+
+    autopep8ed the files changed in this branch
+
+commit a1add6425d86cdbefeba620035f9325ef8261e44
+Merge: 2603fc18e 2c8525baf
+Author: Dennis D Box <dbox@fnal.gov>
+Date:   Tue Mar 15 19:53:04 2022 -0500
+
+    Merge pull request #52 from Enstore-org/fix_undefined
+    
+    Fix undefined
+
+commit 5eb552280e2d485a352a48f011ddab6638f6e749
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Mar 14 19:46:17 2022 -0500
+
+    more undefined var error fixes
+
+commit 8799d7d27db2fae13553819de147fb10d1354163
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Mar 14 19:28:18 2022 -0500
+
+    fixed some undefined errors.
+
+commit ade3abec70d093e8af70a11e89455e78c01ee4fc
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Mar 14 18:03:26 2022 -0500
+
+    autopep8ed, unit tests worked fine
+
+commit 97dc764bf4fc8ffb27e8f440c90f441e3b550804
+Merge: 419671112 1736b2d59
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 14 22:42:20 2022 +0000
+
+    Merge branch 'develop' of github.com:Enstore-org/enstore into ren-pytests-2
+
+commit e4dcba2965efc1d1b9f700f8f83c974ef0d566cb
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 14 22:14:57 2022 +0000
+
+    Unchange Interfaces to check patchnotes
+
+commit 0624e3cbc3a326116e2f301ab50a127a0b86fc10
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 14 22:14:45 2022 +0000
+
+    Change Interfaces to test patchnotes
+
+commit 35f7742bb5bc90c24614f05172a82efba5192cb0
+Author: Dennis D Box <dbox@fnal.gov>
+Date:   Mon Mar 14 15:20:53 2022 -0500
+
+    Test enstore functions2 (#49)
+    
+    * correct return code for get_remote_files (always returned 0 before)
+    
+    * the new unit tests need these files to work
+    
+    * a unit test for enstore_functions2
+    
+    * some test tweaking so it runs better on github
+    
+    * more test tweaking
+    
+    * another try, runs fine on my local machine
+    
+    * will it run on github
+
+commit 5a9d3bf1eec65736897edad1371c2648c57096d2
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Feb 22 21:22:01 2022 +0000
+
+    Add new files for docker-build image and a workflow for building the RPM
+
+commit 4196711125701357822564599d89be2838f31385
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Jan 27 18:51:30 2022 +0000
+
+    Standardize on 4 spaces
+
+commit dfce7cfd2c3ebde7de6dd9d160350c448343f7d7
+Merge: a24fe75ec 71813b3f7
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Jan 24 15:10:55 2022 +0000
+
+    Merge branch 'develop' of github.com:Enstore-org/enstore into ren-pytests-2
+
+commit 6f2ff5b67ff73872a9e68f2a68b0bdaa70cef9b9
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Fri Jan 21 16:26:40 2022 -0600
+
+    Make a new class for Spectra Logic tape library. (#17)
+    
+    * Make a new class for Spectra Logic tape library.
+    
+    In the current implementation the MTXN_MediaLoader class works for both IBM and
+    Spectra Logic tape libraries. It was noticed that the mount / dismount response
+    time skipped up noticeably for IBM tape library comparing to the previous
+    implementation of MTXN_MediaLoader class. This patch copies current MTXN_MediaLoader to MTXN_MediaLoaderSL and reverts MTXN_MediaLoader to its previous implementation.
+    Testing was done on production system and showed that mount / dismount response
+    time skipped down back to what is was before.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2534
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2530
+    
+    * Untabified and fixed indentaion where needed in all MTXN classes.
+    
+    * Changes per PR comments.
+    
+    * Fixed MTXN_CDB_MediaLoader.getVolState()
+
+commit cfb64ddc94f4e3a830621471c52a3d340a0ff178
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Jan 21 16:49:32 2022 +0000
+
+    Standardize on 4 space indents
+
+commit 0deaba763c5b49423df87e44344997ac02549e9d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 18 23:10:09 2022 +0000
+
+    IPv6 comment
+
+commit 8eed5d9c7ae8b282a4202f5fb3675f03b85b168c
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 18 23:09:30 2022 +0000
+
+    Standardize indentation
+
+commit 27c5308729555fda66d181c974c446973940ce53
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 18 19:14:17 2022 +0000
+
+    Consistent max call ordering.
+
+commit 2e8fc19281f0961429dd406cf27cc8a5390af609
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 18 19:13:50 2022 +0000
+
+    Correctly return remaining timeout
+
+commit aba16b58be1468a20c80a7367da3c74776748be1
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 18 19:11:22 2022 +0000
+
+    Less repetitive timeout logic.
+
+commit 1ad6781ae41cb3ac066aef5321d618b4061490f3
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 18 19:07:09 2022 +0000
+
+    Fix timeout logic, so loop iteration times are not counted multiple times.
+
+commit c3efb70a5f33db51438d4b5af2c7b868d24fc360
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Jan 13 01:50:21 2022 +0000
+
+    Add docstrings for and implement tests for module_trace
+
+commit 5b55529bada1ec18b6d92d480cacb77788f62173
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Jan 12 20:52:51 2022 +0000
+
+    Add pyfakefs to Docker cc7-enstore image
+
+commit 8f822cf782672f1f5dbcdd27e7f4fafd44b50dce
+Merge: 28f8fbd68 f19525209
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Fri Dec 17 09:41:40 2021 -0600
+
+    Merge pull request #22 from ddbox/fix-undefined-vars
+    
+    Fix undefined vars
+
+commit 28f8fbd68f5adbccbfaaa17a945877f9519a3829
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Thu Dec 16 11:38:15 2021 -0600
+
+    Mover is not incrementing read write error counts. (#24)
+    
+    Fixes: "In some cases mover does not increment sum_rd_err and sum_wr_err."
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2525
+
+commit f19525209c11a05bf87556f5c5365fd4a3da7aae
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Dec 13 15:17:10 2021 -0600
+
+    pep8 suggestions for spaces around %
+
+commit 1bbf1f07c9ec5b0c9053ed2c58773931877ec733
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Fri Dec 10 11:33:25 2021 -0600
+
+    Fixes "mover stuck in SETUP". (#23)
+    
+    * Fixes "mover stuck in SETUP".
+    
+    For unknown reason sock.socket.bind((host, port)) in udp_common.__get_callback(host, port)
+    sometimes fails with errno.EINVAL:
+    04:35:34 gmv18024.fnal.gov 056043 root E L8G2_007MV  finish_transfer_setup
+    failed:  <class 'socket.error'>
+    Invalid argument: ('fe80::ae1f:6bff:fe41:7884%eth0', 0)
+    ['  File "/opt/enstore/sbin/mover", line 5065, in finish_transfer_setup\n
+        server_address=vc[\'address\'], logc = self.logclient)\n',
+    '  File "/opt/enstore/src/volume_clerk_client.py", line 255, in __init__\n
+        server_name = MY_SERVER)\n', '
+    File "/opt/enstore/src/info_client.py", line 317, in __init__\n
+    rcv_tries = rcv_tries)\n',
+    '  File "/opt/enstore/src/generic_client.py", line 198, in __init__\n
+        rcv_tries=rcv_tries)\n', '
+    File "/opt/enstore/src/alarm_client.py", line 72, in __init__\n
+    server_name = server_name)\n', '  File "/opt/enstore/src/generic_client.py",
+    line 129, in __init__\n    self.u = udp_client.UDPClient()\n',
+    '  File "/opt/enstore/src/udp_client.py", line 62, in __init__\n
+    self.reinit()\n', '  File "/opt/enstore/src/udp_client.py", line 70,
+     in reinit\n
+    host, port, socket = udp_common.get_default_callback(receiver_ip=receiver_ip)\n'
+    , '  File "/opt/enstore/src/udp_common.py", line 88, in get_default_callback\n
+        return __get_callback(host, use_port)\n',
+    '  File "/opt/enstore/src/udp_common.py", line 77, in __get_callback\n
+    raise socket.error, error_message\n'] Thread finish_transfer_setup_thread
+    
+        Note that the argument is 'fe80::ae1f:6bff:fe41:7884%eth0'
+    which is some IPV6 address, while the host agument is assiciated with
+    IPV4 address
+    
+        bz: https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2484
+
+commit 95e7d0d10242e475ae6de95d7e6aa2386054b104
+Merge: cc731c1de 3f2b7e7d6
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Nov 30 15:26:22 2021 -0600
+
+    Merge branch 'develop' into fix-undefined-vars
+
+commit d045323ab695369c7bccb2c978a3c1f1f18c92f5
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Wed Nov 24 08:37:46 2021 -0600
+
+    ratekeeper.py missing colon on if:
+
+commit 4ef18089d0aebced9c54efecf6ffe9d0f22713a5
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Tue Nov 23 13:56:52 2021 -0600
+
+    Mover type for TFinity movers was not defined. (#14)
+    
+    * Mover type for TFinity movers was not defined.
+    
+    This caused incorrect insert into drive_utilization and problems with utulization plots.
+    
+    * Update ratekeeper.py
+
+commit cc731c1deaf075beea741c514cee0930e0fe4f90
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Nov 23 11:24:48 2021 -0600
+
+    more definition cleanup
+
+commit 2903073d66a942d6c537b833f3477b7ae4fc468e
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Nov 23 11:04:51 2021 -0600
+
+    another undefined symbol fix
+
+commit 8e10ebaa64f009873cfa7efe94216bf41af46577
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Nov 23 10:50:05 2021 -0600
+
+    fix undefined warning
+
+commit a29dd4834efa3468008fcc5dedfae656fd03c981
+Author: Dennis D. Box <dbox@fnal.gov>
+Date:   Tue Nov 23 05:25:13 2021 +0000
+
+    fix typos giving undefined var errors
+
+commit 2154b8399cc97e46529174ccc4517a57f7e25e46
+Author: Dennis D. Box <dbox@fnal.gov>
+Date:   Tue Nov 23 05:25:04 2021 +0000
+
+    test if pylint disable comment works
+
+commit 9fcf827954f83222f4e98ad979a940b17f63cef4
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Nov 22 11:02:04 2021 -0600
+
+    commit 8a3d6b444a4f245d625dd0e570a1d051a9273f04 intoduced regression: (#19)
+    
+    https://github.com/Enstore-org/enstore/issues/18
+    
+    This patch addresses the issur
+
+commit 8a3d6b444a4f245d625dd0e570a1d051a9273f04
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Thu Nov 4 15:44:16 2021 -0500
+
+    Increase timeout for getting configuration information. (#15)
+    
+    Increase and optionally set configuration call timeout.
+    It was 10s, which is too low.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2531
+
+commit b337e1181b1e0a84385795471f6ff3eecf04bb4b
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Thu Oct 7 14:30:07 2021 -0500
+
+    Improve security of message parsing. (#7)
+    
+    Use ast.literal_eval istead of eval.
+
+commit 0254cc559d6136d1ccc7d9bb34287d8c53f3dced
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 16:24:49 2021 -0500
+
+    Get information from movers, associated with Spectra Logic.
+    
+    These movers do not have 'mc_device' in configuration, just like TS4500 movers.
+
+commit c2c51263aeb8ef79eca57fbc2fdd1b93d38293a1
+Merge: f86327b2d f264dce9f
+Author: Alexander Moibenko <41128752+moibenko@users.noreply.github.com>
+Date:   Wed Oct 6 13:33:52 2021 -0500
+
+    Merge pull request #5 from moibenko/udp_and_dual_ip_1
+    
+     Fix client behavior for dual stack host configurations.
+
+commit e7e284ab5145c5b71ae44092d4a0e4ddea01ab9f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 11:42:42 2021 -0500
+
+    Commented code that may be needed for debugging.
+
+commit 1db6ca78b7e0e9037caf10093e767c0886dda14a
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 10:33:50 2021 -0500
+
+    Removed wrong comments.
+
+commit f264dce9f1350d3aa154349f4d5e444a955ca5b6
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Oct 6 10:09:43 2021 -0500
+
+     Fix client behavior for dual stack host configurations.
+    
+    The previous implementation was allowing to reinit if application
+    was running on dual stack host and sending to IPV4 server.
+    This was noticed in encp application. The problem was that retires
+    were sent on differnt ports, which violates enstores communutaion protocol,
+    according to which retries must be sent on the same source port.
+
+commit e65d3003ddbb09b93856ffa5530615605e647b7f
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Sep 23 10:09:47 2021 -0500
+
+    Added debug output.
+
+commit f5f9b650f0be272a492a35e540314330a618321b
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Wed Sep 22 14:48:17 2021 -0500
+
+    Library manager does not delete assigned volume if mover fails to connect to client.
+    
+    There are 2 changes. One fixes the stated problem.
+    The second change is to put mover request, coming from mover with bound volumes into postponed bound requests. If there is mover request processing thread running and serve postponed request in the current thread. Before this change the library manager was sending 'nowork' reply to mover in a hope that it would retry later and this retry would be processed ny library manager. This could and would result in expiration of dismount timeout at mover and unnecessary dismount of tape for which there was a potential request.
+
+commit d216f1a9e9ce397e81992531eb26cdf0978851a5
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Sep 9 11:46:42 2021 -0500
+
+    Add sender to log ticket for tcp / ip log client.
+    Otherwise log server may identify sender from the last udp message which is not always ftrom the same client.
+    
+    https://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=2483
