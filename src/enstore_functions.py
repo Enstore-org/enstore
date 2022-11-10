@@ -124,16 +124,20 @@ def get_enstore_tmp_dir():
     #hostnames = socket.gethostbyname_ex(socket.gethostname())
     #hostnames = [hostnames[0]] + hostnames[1] + hostnames[2]
     hostnames = [hostname, [hostname.split('.')[0]], [hostinfo[0][4][0]]]
+    # Building set of hostnames which correspond to current machine
+    # Interfaces.interfacesGet() returns set of network interfaces
     for item in Interfaces.interfacesGet().values():
         # For nodes with multiple IP addresses, we need to check for all
         # of them.
         if item['ip'] == "127.0.0.1": #Ignore localhost.
             continue
+        # Get hostnames for each ip in set of network interfaces
         tmp_hostnames = socket.gethostbyaddr(item['ip'])
         tmp_hostnames = [tmp_hostnames[0]] + tmp_hostnames[1] + tmp_hostnames[2]
         for name in tmp_hostnames: #Keep the list unique.
             if name not in hostnames:
                 hostnames.append(name)
+    # Compare hostname from config to set of hostnames of this machine
     if config_hostname in hostnames:
         rtn_dir = get_from_config_file("temp_dir", "temp_dir", None)
     else:

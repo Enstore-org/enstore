@@ -1,0 +1,17 @@
+commit e4dcba2965efc1d1b9f700f8f83c974ef0d566cb
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 14 22:14:57 2022 +0000
+
+    Unchange Interfaces to check patchnotes
+
+commit 0624e3cbc3a326116e2f301ab50a127a0b86fc10
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 14 22:14:45 2022 +0000
+
+    Change Interfaces to test patchnotes
+
+commit 983feb966cb0c9e11dadcca3c59c4714e06e0a09
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 14 22:12:57 2022 +0000
+
+    Remove politeness from movcmd_mc tests. It was unnecessary and offputting.

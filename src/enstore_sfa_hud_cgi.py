@@ -13,6 +13,7 @@ import os
 import sys
 import string
 import time
+import errno
 import enstore_functions2
 import configuration_client
 import e_errors

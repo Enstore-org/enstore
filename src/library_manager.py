@@ -3458,34 +3458,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.encp_requests = Requests(self.encp_server, self)
 
 
-    # this is replaced by dispatching_worker.run_in_thread
-    def run_in_thread(self, thread_name, function, args=(), after_function=None):
-        thread = getattr(self, thread_name, None)
-        # there was a race condition seen whet thread said it exited and run in thread said it was running
-        # this is why retry
-        Trace.trace(5,"run_in_thread %s"%(thread,))
-
-        for wait in range(2):
-            if thread and thread.isAlive():
-                Trace.trace(5, "run_in_thread: thread %s is already running, waiting %s" % (thread_name, wait))
-                time.sleep(1)
-        if thread and thread.isAlive():
-            Trace.trace(5, "run_in_thread: thread %s is already running" % (thread_name,))
-            return 1
-        if after_function:
-            args = args + (after_function,)
-        Trace.trace(5, "run_in_thread: create thread: target %s name %s args %s" % (function, thread_name, args))
-        thread = threading.Thread(group=None, target=function,
-                                  name=thread_name, args=args, kwargs={})
-        setattr(self, thread_name, thread)
-        Trace.trace(5, "run_in_thread: starting thread %s"%(dir(thread,)))
-        try:
-            thread.start()
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
-        return 0
-
     def request_thread(self, function, ticket):
         t0 = time.time()
         apply(function, (ticket,))
@@ -4002,8 +3974,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # use vc subticket
         v = ticket['vc']
 
-        if ( not bool(ticket.get("override_notallowed", 0)) and
-            v['system_inhibit'][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED)):
+        if ( v['system_inhibit'][0] == e_errors.NOACCESS or 
+                (not bool(ticket.get("override_notallowed", 0)) and
+                 v['system_inhibit'][0] == e_errors.NOTALLOWED)):
             # tape cannot be accessed, report back to caller and do not
             # put ticket in the queue
             ticket["status"] = (v['system_inhibit'][0], None)

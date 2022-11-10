@@ -1,0 +1,1 @@
+for P in *.py; do echo $P; pyreverse -o png -k -A -S -my $P; mv classes.png $P.png; done

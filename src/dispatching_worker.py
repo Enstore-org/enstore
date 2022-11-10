@@ -316,69 +316,6 @@ class DispatchingWorker(udp_server.UDPServer):
         if after_function:
             after_function()
 
-    # run_in_thread():
-    # thread_name: A string containing the name of the thread to use, or None.
-    #              If thread_name is given, a limit of one is allowed.  If
-    #              None is given, then at most MAX_THREADS number of threads
-    #              are allowed.
-    # function: The function to run in the thread.  This is not the string
-    #           name of the function.
-    # args: Tuple of arguments.
-    # after_function:
-    #
-    # Note: Python threads can't be killed.  Thus, there is no time-to-live
-    #       aspect with threads like there is with processes.
-    def run_in_thread(self, thread_name, function, args=(), after_function=None):
-        """
-        Run function in a thread
-
-        :type thread_name: :obj:`str`
-        :arg thread_name: A string containing the name of the thread to use, or None.
-           If thread_name is given, a limit of one is allowed.  If
-           None is given, then at most MAX_THREADS number of threads
-           are allowed.
-
-        :type function: :obj:`callable`
-        :arg function: The function to run in the thread.
-        :type args: :obj:`tuple`
-        :arg args: arguments.
-        :type after_function: :obj:`callable`
-        :arg after_function: function to run after function completes
-        """
-        # see what threads are running
-        if thread_name:
-            threads = threading.enumerate()
-            for thread in threads:
-                if ((thread.getName() == thread_name) and thread.isAlive()):
-                    Trace.trace(5, "thread %s is already running" % (thread_name))
-                    #We've exceeded the number of thread_name threads, which
-                    # is one.  Running it in main thread.
-                    self.func_wrapper(function, args, after_function)
-                    return
-
-        #Impose a prossess wise limit on the number of threads.
-        thread_count = threading.activeCount()
-        if thread_count >= MAX_THREADS:
-            Trace.trace(5, "too many threads, %s, are already running" \
-                        % (thread_count,))
-            #We've exceeded the number of thread_name threads.
-            # Running it in main thread.
-            self.func_wrapper(function, args, after_function)
-            return
-
-        args = (function,)+args
-        if after_function:
-            args = args + (after_function,)
-        Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
-        thread = threading.Thread(group=None, target=self.func_wrapper,
-                                  name=thread_name, args=args, kwargs={})
-        Trace.trace(5, "starting thread %s"%(dir(thread,)))
-        try:
-            thread.start()
-        except:
-            exc, detail = sys.exc_info()[:2]
-            Trace.log(e_errors.ERROR, "error starting thread %s: %s" % (thread_name, detail))
-
     # run_in_process():
     # process_name: A string containing the name of the thread to use, or None.
     #              If thread_name is given, a limit of one is allowed.  If

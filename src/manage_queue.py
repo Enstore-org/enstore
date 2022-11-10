@@ -175,9 +175,9 @@ class SortedList:
         self.sorted_list = mpq.MPQ(comparison_function)
         self.last_aging_time = 0
         self.aging_quantum = aging_quantum
-        self.ids = []
-        self.of_names = []
-        self.keys = []
+        self.ids = set()
+        self.of_names = set()
+        self.keys = set()
         self.update_flag = by_pri # update either by priority or by location
         self.current_index = 0
         self.stop_rolling = 0 # flag for get_next. Stop if 1
@@ -273,12 +273,12 @@ class SortedList:
                         (request.pri, request.ticket))
             Trace.trace(TR+23,"SortedList.put: %s %s"%
                         (self.my_name, request))
-            self.ids.append(request.unique_id)
+            self.ids.add(request.unique_id)
 
             if output_file_name:
-                self.of_names.append(output_file_name)
+                self.of_names.add(output_file_name)
             if key and not key in self.keys:
-                self.keys.append(key)
+                self.keys.add(key)
             self.lock.acquire()
             try:
                 self.sorted_list.insort(request)
@@ -475,10 +475,13 @@ class SortedList:
                     self.current_index = max_index
                 if hasattr(self,'start_index') and self.start_index > max_index:
                     self.start_index = max_index
-                if record.unique_id in self.ids: self.ids.remove(record.unique_id)
-                if record.ofn in self.of_names: self.of_names.remove(record.ofn)
-                if key and key in self.keys:
-                    self.keys.remove(key)
+
+                # Remove record values from tracking sets if they are present
+                self.ids.discard(record.unique_id)
+                self.of_names.discard(record.ofn)
+                if key:
+                    self.keys.discard(key)
+
                 self.last_deleted = record
             except:
                 exc, detail, tb = sys.exc_info()

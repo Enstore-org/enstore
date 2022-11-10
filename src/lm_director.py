@@ -148,7 +148,7 @@ class LMD(dispatching_worker.DispatchingWorker,
         # create a copy of the original library
         try:
             result['original_library'] = result['vc']['library']
-        except KeyErrror:
+        except KeyError:
            result['status'] = (e_errors.MALFORMED, "No library key specified")  
            return result
         Trace.trace(10, "lmd_decision1 %s"%(result,))         

@@ -1,0 +1,26 @@
+commit a1add6425d86cdbefeba620035f9325ef8261e44
+Merge: 2603fc18e 2c8525baf
+Author: Dennis D Box <dbox@fnal.gov>
+Date:   Tue Mar 15 19:53:04 2022 -0500
+
+    Merge pull request #52 from Enstore-org/fix_undefined
+    
+    Fix undefined
+
+commit 5eb552280e2d485a352a48f011ddab6638f6e749
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Mar 14 19:46:17 2022 -0500
+
+    more undefined var error fixes
+
+commit 8799d7d27db2fae13553819de147fb10d1354163
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Mar 14 19:28:18 2022 -0500
+
+    fixed some undefined errors.
+
+commit ade3abec70d093e8af70a11e89455e78c01ee4fc
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Mar 14 18:03:26 2022 -0500
+
+    autopep8ed, unit tests worked fine

@@ -2516,15 +2516,14 @@ def check_library(library, e):
         if state == "locked":
             status_ticket['status'] = (e_errors.LOCKED,
                                        "%s is locked." % lib)
-        #if state == "ignore":
-        #    status_ticket['status'] = (e_errors.IGNORE,
-        #                               "%s is ignoring requests." % lib)
-        #if state == "pause":
-        #    status_ticket['status'] = (e_errors.PAUSE,
-        #                               "%s is paused." % lib)
+
         if state == "noread" and is_read(e):
-            status_ticket['status'] = (e_errors.NOREAD,
-                                    "%s is ignoring read requests." % lib)
+            if e.check:
+                # ignore LM state
+                status_ticket['status'] = (e_errors.OK, None)
+            else:
+                status_ticket['status'] = (e_errors.NOREAD,
+                                           "%s is ignoring read requests." % lib)
         if state == "nowrite" and is_write(e):
             status_ticket['status'] = (e_errors.NOWRITE,
                                     "%s is ignoring write requests." % lib)

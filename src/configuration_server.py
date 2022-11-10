@@ -530,7 +530,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             event_relay = self.get_dict_entry('event_relay')
             event_relay_host = event_relay.get('host')
             event_relay_port = event_relay.get('port')
-        except Keyerror:
+        except KeyError:
             event_relay_host = None
             event_relay_port = None
         self.erc = event_relay_client.EventRelayClient(self,
@@ -810,7 +810,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         except KeyError:
             ticket['status'] = (e_errors.KEYERROR,
                                 "Configuration Server: no such name")
-            
+
 	except:
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.UNKNOWN, str(((str(exc), str(msg)))))
@@ -888,6 +888,10 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             mv_name = m['mover']
             ret =  self.get_dict_entry(mv_name).get('media_changer','')
             if ret:
+                # handle TFF1-AB variety
+                mc = self.get_dict_entry(ret)
+                if mc and mc.get('remote_media_changer'):
+                    ret = mc.get('remote_media_changer')
                 break
         ticket['media_changer'] = ret
 	self.reply_to_caller(ticket)

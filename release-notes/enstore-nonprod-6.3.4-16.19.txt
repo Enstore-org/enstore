@@ -1,0 +1,5 @@
+commit cd05c0cea0b3fae1fd825f9924ca05ba73530c35
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 14 22:01:13 2022 +0000
+
+    Add politeness to test_movcmd_mc

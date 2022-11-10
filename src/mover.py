@@ -237,6 +237,7 @@ class Buffer:
         self.trailer_size = 0L
         self.file_size = 0L
         self.bytes_written = 0L
+        self.sanity_cookie = (self.sanity_bytes, self.sanity_crc)
 
         self.read_ok = threading.Event()
         self.write_ok = threading.Event()
@@ -4521,6 +4522,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_library = ticket['vc'].get('library', None)
         if not self.current_library:
             self.transfer_failed(e_errors.EPROTO)
+            self.unlock_state()
             return
         self.setup_mode = mode
         if self.save_state not in (IDLE, HAVE_BOUND):
@@ -9042,7 +9044,13 @@ def create_instance(module_name, class_name, parameters):
     import importlib
     my_module = importlib.import_module(module_name)
     clazz = getattr(my_module, class_name)
-    instance = clazz(parameters)
+    try:
+        instance = clazz(parameters)
+    except TypeError as e:
+        if not parameters:
+            instance = clazz()
+        else:
+            raise e
     return instance
 
 if __name__ == '__main__':

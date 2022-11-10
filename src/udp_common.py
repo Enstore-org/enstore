@@ -18,11 +18,13 @@ import cleanUDP
 import Interfaces
 import en_eval
 
+
 def __get_callback(host, port):
     hostinfo = None
     if host == '':
         # discover primary address family
         hostname = socket.gethostname()
+        # TODO: IPv6 (AF_INET6)?
         hostinfo = socket.getaddrinfo(hostname, socket.AF_INET)
         # hostinfo is the list of tuples
         # [(Address_Family, Socket_Type, Protocol, Cacnonical_Name, Addres), ....]
@@ -36,6 +38,7 @@ def __get_callback(host, port):
                 af_inet = True
             if e[0] == socket.AF_INET6:
                 af_inet6 = True
+        # prefer IPv6
         if af_inet6:
             address_family = socket.AF_INET6
         else:
@@ -50,7 +53,7 @@ def __get_callback(host, port):
         if msg.args[0] == errno.EADDRNOTAVAIL:
             error_message = "%s: %s" % (msg.args[1], host)
 
-            #If we get EADDRNOTAVAIL, we should check to see if the interfaces
+            # If we get EADDRNOTAVAIL, we should check to see if the interfaces
             # list returns information about the defualt IP.  If the
             # default IP is not currently configured then there is an
             # inconsistency between /etc/hosts and ifconfig.
@@ -65,46 +68,53 @@ def __get_callback(host, port):
         elif msg.args[0] in (errno.EADDRINUSE, errno.EINVAL):
             # We should include the address information since we know it
             # is currently in use by another process.
-	    # Sometimes socket.gethostname() returns IPV6 address for IPV4 host name, causing errno.EINVAL
-	    # Do not know why.
+            # Sometimes socket.gethostname() returns IPV6 address for IPV4 host name, causing errno.EINVAL
+            # Do not know why.
             error_message = "%s: %s" % (msg.args[1], (host, port))
         else:
             error_message = msg.args[1]
 
-        sys.stdout.write("MY %s %s %s %s %s \n" % (error_message, host, port, hostinfo, address_family))
+        sys.stdout.write("MY %s %s %s %s %s \n" %
+                         (error_message, host, port, hostinfo, address_family))
         # reraise exception
         raise socket.error, error_message
-    if   address_family == socket.AF_INET6:
+    if address_family == socket.AF_INET6:
         host, port, junk, junk = sock.socket.getsockname()
     else:
         host, port = sock.socket.getsockname()
     return host, port, sock
 
 # try to get a port from a range of possibilities
+
+
 def get_default_callback(use_port=0, receiver_ip=None):
     host = host_config.get_default_interface(receiver_ip)['ip']
     return __get_callback(host, use_port)
 
 # try to get a port from a range of possibilities
+
+
 def get_callback(use_host=None, use_port=0):
-    #if use_host not in [None,'']:
+    # if use_host not in [None,'']:
     if use_host not in [None]:
         host = use_host
     else:
         host = host_config.choose_interface()['ip']
     return __get_callback(host, use_port)
 
-### These function deal with encoding and decoding the raw bytes from
-### udp messages.
+# These function deal with encoding and decoding the raw bytes from
+# udp messages.
+
 
 def r_eval(message_to_decode):
     try:
-        #This uses the restricted eval.  The unstricted eval could have
+        # This uses the restricted eval.  The unstricted eval could have
         #  been used by doing: return eval(message_to_decode)
         rc = en_eval.en_eval(message_to_decode)
         return rc
     except:
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
 
 def r_repr(message_to_encode):
     # We could have done something like "return `message_to_encode`" too.
