@@ -31,7 +31,13 @@ class Journal:
 			self.journalfile = journalfile+".jou"
 		if mode == 0:
 			self.load()
+
+                # This opens './file.jou' by default, and will fail
+                # if `enstore start` is run in a directory where the
+                # user doesn't have write access, causing the dispatcher
+                # to retry for a while then die.
 		self.jfile = open(self.journalfile, "a")
+
 		self.count = 0
 		self.limit = limit
 

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - production
     paths: 
       - rpm_version
   workflow_dispatch:
@@ -29,14 +30,19 @@ jobs:
        mkdir -p ~/rpmbuild/SPECS
        source ./rpm_version
        ./build_versioned_spec.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
-       echo "::set-output name=release_name::enstore-nonprod-${EVersion}-${ERelease}.${ECommit}"
+       RELEASE_TYPE="-nonprod"
+       if [ "${GITHUB_REF##*/}" = "production" ]; then
+         RELEASE_TYPE=""
+       fi
+       echo "::set-output name=release_name::enstore${RELEASE_TYPE}-${EVersion}-${ERelease}.${ECommit}"
+       echo "::set-output name=release_prefix::enstore${RELEASE_TYPE}"
        echo "::set-output name=rpm_name::enstore-${EVersion}-${ERelease}.${ECommit}"
     - name: Work Around Dubious Ownership Permissions Issue
       run: git config --global --add safe.directory /__w/enstore/enstore
     - name: Generate Release Notes
       id: gen_rel_notes
       run: |
-        git log $(git describe --tags --abbrev=0 --match='enstore-nonprod-[0-9]*')..HEAD -- src/** modules/** ':!src/tests/**' > release-notes/${{ steps.prepare_build.outputs.release_name }}.txt
+        git log $(git describe --tags --abbrev=0 --match='${{ steps.prepare_build.outputs.release_prefix }}-[0-9]*')..HEAD -- src/** modules/** ':!src/tests/**' > release-notes/${{ steps.prepare_build.outputs.release_name }}.txt
     - uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: Automated Release Notes

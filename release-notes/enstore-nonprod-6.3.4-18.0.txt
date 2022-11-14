@@ -1,0 +1,5 @@
+commit b478f5ebf08d8d4c448a82497454acbf7bd93e82
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Nov 3 18:58:38 2022 +0000
+
+    Add comment for unintuitive disptacher failure case involving ejournal.py
