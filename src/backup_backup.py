@@ -114,7 +114,7 @@ def paranoid(system):
 	paranoid_db(system)
 	paranoid_pnfs(system)
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
 	print '====', sys.argv[0], 'starts at', time.ctime(time.time())
 

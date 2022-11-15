@@ -223,7 +223,7 @@ def do_work(intf):
 
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     # fill in interface
     intf = DispatcherClientInterface(user_mode=0)
 

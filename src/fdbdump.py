@@ -41,7 +41,7 @@ def formatedf(file):
 
 	return res
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	f = db.DbTable('file', '.', '/tmp', [], 0)
 	c = f.newCursor()
 	k, v = c.first()

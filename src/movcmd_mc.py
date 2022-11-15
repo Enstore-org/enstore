@@ -71,7 +71,7 @@ def mc_for_movers():
             mc[med] = [mover,]
     return mc
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     try:
         med_cha_match = sys.argv[1]

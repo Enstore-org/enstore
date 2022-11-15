@@ -568,7 +568,7 @@ class Server(volume_clerk.VolumeClerkInfoMethods,
             return
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
     Trace.init(string.upper(MY_NAME), "yes")
     intf = Interface()
     csc = (intf.config_host, intf.config_port)

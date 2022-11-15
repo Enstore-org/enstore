@@ -95,7 +95,7 @@ class LMDs(object):
     def stop(self):
         self.lmd_srv.stop()
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     conf_srv = (os.environ['ENSTORE_CONFIG_HOST'], int(os.environ['ENSTORE_CONFIG_PORT']))
 
     Trace.init(string.upper(MY_NAME))

@@ -62,7 +62,7 @@ def do_work(intf):
     html_file.close()
     os.rename(tmp_html_file, intf.html_file)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     intf = PlotPageInterface(user_mode=0)
 

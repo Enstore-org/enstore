@@ -1345,7 +1345,7 @@ class Histogram2D(Histogram1D):
         self.remove(pts_file_name)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     ntuple = Ntuple("gauss2D","gauss2D")
     h1=Histogram1D("try","try",100,0,10)
     h2=Histogram1D("try1","try1",100,0,10)

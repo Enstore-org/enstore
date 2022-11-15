@@ -197,6 +197,6 @@ def thread_is_running(thread_name):
         return False
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     do_work()
  

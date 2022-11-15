@@ -51,7 +51,7 @@ def send_message(address, message):
             print "%s %s"%(thread.getName(), detail)
         
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     if len(sys.argv) !=4:
         usage(sys.argv[0])
         sys.exit(1)

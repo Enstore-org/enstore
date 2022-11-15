@@ -1055,7 +1055,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 class PnfsAgentInterface(generic_server.GenericServerInterface):
         pass
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     # get the interface
     intf = PnfsAgentInterface()

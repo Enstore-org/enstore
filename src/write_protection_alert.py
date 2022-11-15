@@ -169,7 +169,7 @@ def do_work(file_name):
     #if inventory_rcp_dir:
     #    os.system("enrcp %s %s" % (FILE_NAME, inventory_rcp_dir,))
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     do_work(FILE_NAME)
 
 

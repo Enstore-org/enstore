@@ -287,7 +287,7 @@ class Ratemeter:
             else:
                 bytes_read = bytes_read + bytes
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     
     if len(sys.argv) > 1:
         event_relay_host = sys.argv[1]

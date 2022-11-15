@@ -25,7 +25,7 @@ install_dir = '/fnal/ups/prd/www_pages/enstore'
 #jpeg_output = os.path.join(install_dir, output_file+'.jpg')
 #jpeg_output_stamp = os.path.join(install_dir, output_file+'_stamp.jpg')
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
    # copy data from pnfs server
    config_host = enstore_functions2.default_host()
    config_port = enstore_functions2.default_port()

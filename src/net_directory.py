@@ -207,7 +207,7 @@ class NetDirectory:
 		else:
 			return self._check_host(node)
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	# Test and examples
 	allowed = ['cms*.fnal.gov', 'stk*.fnal.gov', 'cdf*.fnal.gov',
 		'd0*.fnal.gov', '131.225.84.10', '131.225.13.*',

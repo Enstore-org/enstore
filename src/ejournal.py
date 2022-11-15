@@ -128,7 +128,7 @@ class Journal:
             self.dict = {}
             self.count = 0
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	jou = Journal('test.jou')
 	for i in range(20000):
 		jou[`i`] = {'count': i}

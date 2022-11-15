@@ -205,7 +205,7 @@ class MigrationClient():
         self.qpid_client.stop()
         self.srv_thread.join()
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     migrator = sys.argv[1]
     
     import cache.en_logging.config_test_unit

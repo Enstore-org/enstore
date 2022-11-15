@@ -801,7 +801,7 @@ def vol_labels(vol_label, ticket={}, own_id=OWNER):
     return "%s%s%s"%(vol1, uvl1, uvl2)
 
 
-if __name__ == '__main__':            
+if __name__ == "__main__":   # pragma: no cover            
 
     ticket = {'routing_callback_addr': ('131.225.84.56', 38515),
               'unique_id': 'fndapr.fnal.gov-1022690350-0-15614',

@@ -80,7 +80,7 @@ def readlayer(fullname,layer,ferr):
         return (l,FAIL)
   
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     volume_list=generate_volume_list()
     for vol in volume_list:
         print vol

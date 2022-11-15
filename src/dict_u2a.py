@@ -51,7 +51,7 @@ def convert_dict_u2a(d):
     return nd
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     # dictionary in UTF format
     content={u'cache': {u'ns': {u'type': u'pnfs', u'mnt': u'/pnfs/fnal.gov', u'id': None}, u'arch': {u'type': u'enstore', u'id': None}, u'en': {u'node': u'common', u'fsfn': u'common:/data/cache/1592/3/000100000000000000003638', u'mount': u'/data/cache', u'path': u'/data/cache/1592/3', u'id': u'000100000000000000003638', u'name': u'000100000000000000003638'}}, u'file': {u'id': u'000100000000000000003638', u'name': u'/pnfs/fs/usr/data/moibenko/d2/LTO3/LTO3GS/d31.py', u'complete_crc': 2825635045, u'size': 6507}, u'enstore': {u'deleted': u'no', u'vc': {u'file_family_width': 20, u'storage_group': u'ANM', u'library': u'LTO3GS', u'file_family': u'FF1', u'wrapper': u'cpio_odc'}, u'location_cookie': u'/data/cache/1592/3/000100000000000000003638', u'bfid': u'GCMS132070650300000'}}
     print "Before conversion", content

@@ -1098,7 +1098,7 @@ def do_work(intf):
 
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     Trace.init(MY_NAME)
     Trace.trace( 6, 'pac called with args: %s'%(sys.argv,) )
 

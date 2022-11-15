@@ -68,7 +68,7 @@ def formatedv(vol):
 	
 	return res
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	vol = db.DbTable('volume', '.', '/tmp', [], 0)
 	c = vol.newCursor()
 	k, v = c.first()
