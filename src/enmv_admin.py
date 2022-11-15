@@ -13,6 +13,6 @@ def do_work():
     if intf:
 	enmv.do_work(intf)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     do_work()

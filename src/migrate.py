@@ -9563,7 +9563,7 @@ def do_work(intf):
 	sys.exit(bool(exit_status))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
 	Trace.init(MIGRATION_NAME)
         Trace.do_message(0)

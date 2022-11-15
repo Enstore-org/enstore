@@ -525,7 +525,7 @@ def thread_is_running(thread_name):
     else:
         return False
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     Trace.init(string.upper(MY_NAME))
 
     # get the interface

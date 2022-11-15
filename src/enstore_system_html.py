@@ -276,7 +276,7 @@ def do_work(intf):
         os.makedirs(html_dir)
     main_web_page.write_html_page_to_directory(html_dir)
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     intf_of_html = EnstoreSystemHtmlInterface(user_mode=0)
 

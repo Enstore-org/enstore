@@ -831,7 +831,7 @@ def do_work(intf):
             print "Caught system interrupt.  Exiting."
             sys.exit(1)
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     
     intf_of_monitor_client = MonitorServerClientInterface(user_mode=0)
     

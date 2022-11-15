@@ -72,7 +72,7 @@ class StethoscopeInterface(generic_client.GenericClientInterface):
 	return (self.help_options, self.stethoscope_options)
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     intf = StethoscopeInterface(user_mode=0)
 

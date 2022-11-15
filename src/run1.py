@@ -103,7 +103,7 @@ class DiskDriver:
     def write(self,buffer):
         return self._file_.write(buffer)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     import getopt
     import Devcodes
     import FTT				# needed for FTT.error

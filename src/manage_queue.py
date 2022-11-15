@@ -2854,7 +2854,7 @@ def usage(prog_name):  # pragma: no cover
     print "5 - unit test for threading resynchronization problem:  bugzilla ticket 992 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=975)"
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":   # pragma: no cover
     import os
     if len(sys.argv) == 2:
         if int(sys.argv[1]) == 0:

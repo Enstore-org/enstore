@@ -76,7 +76,7 @@ class MDRStaged(MDReply):
     def __init__(self, orig_msg = None, content = None ):
         MDReply.__init__(self, type=mt.MDR_STAGED, orig_msg = orig_msg, content=content)
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     l = ["a","b"]
     
     # Commands:

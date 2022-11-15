@@ -21,7 +21,7 @@ class ArchiveStatus:
     ARCHIVED="ARCHIVED"
     FAILED="FAILED"
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     print CacheStatus.CREATED
     print ArchiveStatus.ARCHIVED
 

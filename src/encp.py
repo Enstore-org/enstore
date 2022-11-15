@@ -12337,5 +12337,5 @@ def start(mode, do_work=do_work, main=main, Interface=EncpInterface):
         # do_work() should never happen.
         return 2
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
     delete_at_exit.quit(start(0))  #0 means admin
