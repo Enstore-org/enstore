@@ -1,5 +1,0 @@
-commit c598475709532e0137abfa9f47caf37a15a2abf4
-Author: Ren Bauer <renbauer@fnal.gov>
-Date:   Wed Nov 16 19:42:07 2022 +0000
-
-    Fix unsupported set logic
