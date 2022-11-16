@@ -1050,10 +1050,10 @@ class Atomic_Request_Queue:
 
     def get_tags(self):
         """
-        See what keys has tags list.
+        See what keys has tags set.
         Needed for fair share distribution.
 
-        :rtype: :obj:`list`
+        :rtype: :obj:`set`
         """
         return self.tags.keys
 
@@ -1431,10 +1431,10 @@ class Request_Queue:
 
     def get_tags(self):
         """
-        See what keys has tags list.
+        See what keys has tags set.
         Needed for fair share distribution.
 
-        :rtype: :obj:`list`
+        :rtype: :obj:`set`
         """
         return self.admin_queue.tags.keys+self.regular_queue.tags.keys
 
