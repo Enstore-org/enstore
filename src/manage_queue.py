@@ -1353,7 +1353,7 @@ class Atomic_Request_Queue:
         """
 
         print "NAME", self.queue_name
-        if self.tags.keys == []:
+        if len(self.tags.keys) == 0:
           print "EMPTY"
           return
         print "TAGS"
@@ -1436,7 +1436,7 @@ class Request_Queue:
 
         :rtype: :obj:`list`
         """
-        return self.admin_queue.tags.keys+self.regular_queue.tags.keys
+        return self.admin_queue.tags.keys.union(self.regular_queue.tags.keys)
 
     def get_sg(self, tag):
         """
