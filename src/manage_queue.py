@@ -1434,7 +1434,7 @@ class Request_Queue:
         See what keys has tags list.
         Needed for fair share distribution.
 
-        :rtype: :obj:`list`
+        :rtype: :obj:`set`
         """
         return self.admin_queue.tags.keys.union(self.regular_queue.tags.keys)
 
