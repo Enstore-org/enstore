@@ -1436,7 +1436,7 @@ class Request_Queue:
 
         :rtype: :obj:`set`
         """
-        return self.admin_queue.tags.keys+self.regular_queue.tags.keys
+        return self.admin_queue.tags.keys.union(self.regular_queue.tags.keys)
 
     def get_sg(self, tag):
         """
