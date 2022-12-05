@@ -342,19 +342,19 @@ class TestAtomic_Request_Queue(unittest.TestCase):
         self.r_list.append(rq)
         rq, stat = self.arq.put(
             new_id(), mk_ticket(
-                cid(), work='write_to_hsm'))
+                cid(), work='write_to_hsm', storage_group='storage_group_1'))
         self.r_list.append(rq)
         rq, stat = self.arq.put(
             new_id(), mk_ticket(
-                cid(), work='read_from_hsm'))
+                cid(), work='read_from_hsm', external_label='123', storage_group='123'))
         self.r_list.append(rq)
         rq, stat = self.arq.put(
             new_id(), mk_ticket(
-                cid(), work='read_from_hsm'))
+                cid(), work='read_from_hsm', external_label='456', storage_group='456'))
         self.r_list.append(rq)
         rq, stat = self.arq.put(
             new_id(), mk_ticket(
-                cid(), work='read_from_hsm'))
+                cid(), work='read_from_hsm', external_label='456', storage_group='456'))
         self.r_list.append(rq)
 
     def test___init__(self):
@@ -362,9 +362,7 @@ class TestAtomic_Request_Queue(unittest.TestCase):
         # self.arq.wprint()
 
     def test_update(self):
-        keylist = self.arq.tags.keys
-        for k in self.arq.ref.keys():
-            keylist.append(k)
+        keylist = self.arq.tags.keys.union(self.arq.ref.keys())
         # leaving the debug stuff in here for now
         # to remind me that there may be a bunch of unneeded
         # inserts and deletes in update()
@@ -383,19 +381,8 @@ class TestAtomic_Request_Queue(unittest.TestCase):
     def test_get_sg(self):
         tags = self.arq.get_tags()
         for tag in tags:
-            #print "tag=%s" % tag
-            #import pdb; pdb.set_trace()
-            #sg = self.arq.get_sg(kt)
-            #self.assertEqual(sg, self.arq.tags[kt])
-            # bug in get_sg() throws exception
-            # here is correct (I think!) algorithm
-            if tag in self.arq.write_queue.queue:
-                sg = self.arq.write_queue.queue[tag]['opt'].get().sg
-            elif tag in self.arq.read_queue.queue:
-                sg = self.arq.read_queue.queue[tag]['opt'].get().sg
-            else:
-                sg = None
-            #print "tag:%s storage_group:%s" % (tag,sg)
+            sg = self.arq.get_sg(tag)
+            self.assertTrue(sg in tag)
 
     def test_put_test_find(self):
         rq, stat = self.arq.put(
