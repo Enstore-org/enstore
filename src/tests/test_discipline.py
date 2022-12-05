@@ -15,8 +15,11 @@ class TestRestrictor(unittest.TestCase):
 
     def setUp(self):
         self.csc = configuration_client.ConfigurationClient()
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+        fixture_dir = os.path.join(this_dir, 'fixtures')
+        init_file = os.path.join(fixture_dir, 'csc.prod.dump')
 
-        with open('fixtures/csc.prod.dump','r') as fd:
+        with open(init_file,'r') as fd:
             data = fd.read()
         
         self.full_dict = ast.literal_eval(data)
@@ -58,7 +61,7 @@ class TestRestrictor(unittest.TestCase):
 
 
     def test_match_found(self):
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         ret = self.res.match_found(self.ticket)
         print "ret=",ret
 
