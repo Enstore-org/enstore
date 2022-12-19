@@ -1057,6 +1057,7 @@ class Atomic_Request_Queue:
         """
         return self.tags.keys
 
+
     def get_sg(self, tag):
         """
         Get storage group specified by tag
@@ -1065,7 +1066,16 @@ class Atomic_Request_Queue:
         :arg tag: tag
         :rtype: :obj:`str` - storage group
         """
-        return self.tags[tag]
+        # old implementation throws exception
+        # return self.tags[tag]
+        if tag in self.write_queue.queue:
+            sg = self.write_queue.queue[tag]['opt'].get().sg
+        elif tag in self.read_queue.queue:
+            sg = self.read_queue.queue[tag]['opt'].get().sg
+        else:
+            sg = None
+        return sg
+
 
     def put(self, priority, ticket):
         """
@@ -1436,7 +1446,7 @@ class Request_Queue:
 
         :rtype: :obj:`set`
         """
-        return self.admin_queue.tags.keys+self.regular_queue.tags.keys
+        return self.admin_queue.tags.keys.union(self.regular_queue.tags.keys)
 
     def get_sg(self, tag):
         """
