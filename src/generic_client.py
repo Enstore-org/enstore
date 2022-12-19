@@ -25,6 +25,7 @@ import enstore_functions2
 import callback
 import hostaddr
 
+# Receive defaults
 DEFAULT_TIMEOUT = 0
 DEFAULT_TRIES = 0
 
@@ -81,6 +82,8 @@ class ClientError(Exception):
 
 
 class GenericClientInterface(option.Interface):
+    """Interface that adds local vars for logging, printing, and alarming, as
+    well as some accessor functions for client information."""
 
     def __init__(self, args=sys.argv, user_mode=1):
         self.dump = 0
@@ -119,10 +122,36 @@ class GenericClientInterface(option.Interface):
         return server_name
 
 class GenericClient:
+    """Generic Client class. For use with a particular target server. Includes
+    functions for sending tickets to the server, and accessing basic server
+    information such as configuration, server name, and status"""
 
     def __init__(self, csc, name, server_address=None, flags=0, logc=None,
                  alarmc=None, rcv_timeout=DEFAULT_TIMEOUT,
                  rcv_tries=DEFAULT_TRIES, server_name=None):
+        """Sets up server information
+        Parameters
+        ----------
+        csc: Tuple or configuration_client.ConfigurationClient
+            Configuration server information (Tuple) or client
+        name: string, name of server. e.g. 'configuration' or 'ratekeeper'
+        server_address: string, optional
+            Server IP
+        flags: int, optional
+            Server client flags
+        logc: LoggerClient, optional
+        alarmc: AlarmClient, optional
+        rcv_timeout: int, optional
+            Receive timeout in ms
+        rcv_tries: int, optional
+            Max receive retries
+        server_name: string, optional
+            Human-readable server name
+
+        Returns
+        -------
+        None
+        """
 
         #import pdb; pdb.set_trace()
         self.name = name    # Abbreviated client instance name
@@ -198,6 +227,7 @@ class GenericClient:
                                                        self.log_name,
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                        rcv_timeout=rcv_timeout,
+                                                       server_name (optional): 
                                                        rcv_tries=rcv_tries)
 
     def _is_csc(self):
@@ -217,8 +247,22 @@ class GenericClient:
             return self.csc
 
     def get_server_configuration(self, my_server, rcv_timeout=0, tries=0):
-        #If the server config ticket requested is the configuration server
-        # or the monitor server, do something different.
+        """Get config information of server supplied as parameter using csc.
+
+        If the server config ticket requested is the configuration server
+            or the monitor server, do something different.
+
+        Parameters
+        ----------
+        my_server: string
+            Name of server configuration requested
+        rcv_timeout: int, optional
+        tries: int, optional
+
+        Returns
+        -------
+        Ticket: server configuration details
+        """
         if my_server == enstore_constants.CONFIGURATION_SERVER or \
            self._is_csc():
             host = enstore_functions2.default_host()
@@ -240,6 +284,19 @@ class GenericClient:
         return ticket
 
     def get_server_address(self, my_server, rcv_timeout=0, tries=0):
+        """Get address of server supplied as parameter.
+
+        Parameters
+        ----------
+        my_server: string
+            Name of server configuration requested
+        rcv_timeout: int, optional
+        tries: int, optional
+
+        Returns
+        -------
+        Tuple: (server_ip: str, server_port: int)
+        """
         if my_server == None:
             #If the server name is invalid, don't bother continuing.
             return None
@@ -279,12 +336,26 @@ class GenericClient:
 
         return server_address
 
-    #The long_reply value should be one of three values.
-    #None: for the default behavior of looking at the short response
-    #      to determine if the long answer should be tried.
-    #1   : to always do the long answer response
-    #0   : to never to the long answer response
     def send(self, ticket, rcv_timeout=0, tries=0, long_reply = None):
+        """Get address of server supplied as parameter.
+
+        Parameters
+        ----------
+        ticket: dict
+            Details of work item to send to server
+        rcv_timeout: int, optional
+        tries: int, optional
+        long_reply: int, optional
+            Value should be one of three values:
+            None: for the default behavior of looking at the short response
+                  to determine if the long answer should be tried.
+            1   : to always do the long answer response
+            0   : to never to the long answer response
+
+        Returns
+        -------
+        Object: TCP Response Object
+        """
 	try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
         except (KeyboardInterrupt, SystemExit):
@@ -353,12 +424,12 @@ class GenericClient:
 
         return x
 
-    # return the name used for this client/server #XXX what is this nonsense? cgw
     def get_name(self, name):
+        """Return the name used for this client/server."""
         return name
 
-    # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
+        """Check on alive status of supplied server."""
         #Get the address information from config server.
         csc = self._get_csc()
         try:
@@ -403,6 +474,21 @@ class GenericClient:
 
 
     def trace_levels(self, server, work, levels):
+        """Send work request to supplied server with specified ..levels
+
+        Parameters
+        ----------
+        server: str
+            Target server name for work request
+        work: str
+            Target function of work request
+        levels: int
+            Debug level to exercise during work request
+
+        Returns
+        -------
+        Object: TCP Response Object
+        """
         csc = self._get_csc()
         try:
             t = csc.get(server)
@@ -435,6 +521,7 @@ class GenericClient:
 
 
     def handle_generic_commands(self, server, intf):
+        """Forward commands to supplied server with default levels."""
         ret = None
         if intf.alive:
             ret = self.alive(server, intf.alive_rcv_timeout,intf.alive_retries)
@@ -453,8 +540,8 @@ class GenericClient:
         return ret
 
 
-    # examine the final ticket to check for any errors
     def check_ticket(self, ticket):
+        """Examine the final ticket to check for any errors."""
         if not 'status' in ticket.keys(): return None
         if ticket['status'][0] == e_errors.OK:
             Trace.trace(14, repr(ticket))
@@ -466,12 +553,12 @@ class GenericClient:
             sys.exit(1)
         return None
 
-    # tell the server to spill its guts
     def dump(self, rcv_timeout=0, tries=0):
+        """Tell the server to spill its guts."""
         x = self.send({'work':'dump'}, rcv_timeout, tries)
         return x
 
-    # tell the server to 'go away' in a polite manner.
     def quit(self, rcv_timeout=0, tries=0):
+        """Tell the server to 'go away' in a polite manner."""
         x = self.send({'work':'quit'}, rcv_timeout, tries)
         return x
