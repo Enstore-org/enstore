@@ -300,7 +300,7 @@ class GenericClient:
 
         Returns
         -------
-        Tuple: (server_ip: str, server_port: int)
+        Tuple (server_ip: str, server_port: int) or None
         """
         if my_server == None:
             # If the server name is invalid, don't bother continuing.

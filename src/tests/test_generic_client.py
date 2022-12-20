@@ -28,7 +28,7 @@ import StringIO
 class TestClientError(unittest.TestCase):
     def setUp(self):
         self.cerr = generic_client.ClientError('something is wrong')
-	self.cerr2 = generic_client.ClientError('something else is wrong', 3)
+        self.cerr2 = generic_client.ClientError('something else is wrong', 3)
         self.cerr3 = generic_client.ClientError('some other thing  is wrong', 5, e_errors.WRONGPARAMETER)
 
     def test___init__(self):
@@ -83,6 +83,8 @@ class TestGenericClient(unittest.TestCase):
 
     def test__is_csc(self):
         self.assertEqual(0, self.gc._is_csc())
+        csc_gc = generic_client.GenericClient(self.csc, enstore_constants.CONFIGURATION_CLIENT)
+        self.assertEqual(1, csc_gc._is_csc())
 
     def test__get_csc(self):
         self.assertTrue(isinstance(self.gc._get_csc(), configuration_client.ConfigurationClient))
