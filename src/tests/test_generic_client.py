@@ -127,7 +127,7 @@ class TestGenericClient(unittest.TestCase):
         self._mocker.side_effect = KeyboardInterrupt('wait! no!')
         try:
             rslt  = self.gc.send(ticket)
-            assertTrue(False)
+            self.assertTrue(False)
         except KeyboardInterrupt:
             pass
 
@@ -195,7 +195,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'dont_print', 'levels': 3}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 2 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
      
         self._mocker.reset_mock()
         intf.dont_print = 0
@@ -204,7 +204,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'do_log', 'levels': 4}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 3 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
      
         self._mocker.reset_mock()
         intf.do_log = 0
@@ -213,7 +213,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'dont_log', 'levels': 1}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 4 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
 
         self._mocker.reset_mock()
         intf.dont_log = 0
@@ -222,7 +222,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'do_alarm', 'levels': 999}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 5 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
 
         self._mocker.reset_mock()
         intf.do_alarm = 0
@@ -231,7 +231,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'dont_alarm', 'levels': 333}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 5 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
 
     def test_check_ticket(self):
         exit_addr = sys.exit
