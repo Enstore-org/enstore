@@ -83,7 +83,12 @@ class ClientError(Exception):
 
 class GenericClientInterface(option.Interface):
     """Interface that adds local vars for logging, printing, and alarming, as
-    well as some accessor functions for client information."""
+    well as some accessor functions for client information.
+
+    Inherited by 35 'Interface' classes. These functions really don't do much,
+    so this is mostly to give class variables and a pass-through for
+    option.Interface
+    """
 
     def __init__(self, args=sys.argv, user_mode=1):
         self.dump = 0
