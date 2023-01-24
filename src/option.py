@@ -86,7 +86,6 @@ import sys
 import string
 import pprint
 import getopt
-# import fcntl
 import types
 
 # enstore imports
@@ -603,34 +602,6 @@ valid_option_list = [
 ]
 
 ############################################################################
-"""
-used_default_config_host = 0
-used_default_config_port = 0
-
-def getenv(var, default=None):
-    val = os.environ.get(var)
-    if val is None:
-        used_default = 1
-        val = default
-    else:
-        used_default = 0
-    return val, used_default
-
-def default_host():
-    val, used_default = getenv('ENSTORE_CONFIG_HOST', default=DEFAULT_HOST)
-    if used_default:
-        global used_default_config_host
-        used_default_config_host = 1
-    return val
-
-def default_port():
-    val, used_default = getenv('ENSTORE_CONFIG_PORT', default=DEFAULT_PORT)
-    val = int(val)
-    if used_default:
-        global used_default_config_port
-        used_default_config_port = 1
-    return val
-"""
 
 
 def log_using_default(var, default):
