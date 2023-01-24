@@ -3,7 +3,6 @@
 import time
 import string
 import os
-
 # enstore imports
 import enstore_functions2
 import enstore_constants
@@ -67,23 +66,23 @@ class GenericAlarm:
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.alarm_info = {}
         self.patrol = 0
-        self.num_times_raised = 1L
+        self.num_times_raised = 1
         self.ticket_generated = None
 
-    def set_ticket(self, condition, type):
+    def set_ticket(self, condition, atype):
         """Set the ticket condition and type
         
         Sets the ticket condition and type.
         
         Args:
             condition (str): Ticket condition (required)
-            type (str): Ticket type (required)
+            atype (str): Ticket type (required)
         
         Returns:
             None
         """
         self.condition = condition
-        self.type = type
+        self.type = atype
 
     def split_severity(self, sev):
         """Split severity into severity and number of times raised
@@ -103,7 +102,7 @@ class GenericAlarm:
         if len(l) == 2:
             tmp = string.replace(l[1], '(', '')
             tmp = string.replace(tmp, ')', '')
-            num_times_raised = long(tmp)
+            num_times_raised = int(tmp)
         else:
             num_times_raised = 1
         return sev, num_times_raised
@@ -155,9 +154,11 @@ class GenericAlarm:
             # quotes
             l_message = "%s" % (long_message,)
             l_message = string.replace(l_message, '"', '')
-
-            print '$ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s' % (system_name, condition, short_message, l_message, submitter, user, password, category, aType, item)
-            os.system('. /usr/local/etc/setups.sh;setup enstore; $ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s' % (system_name, condition, short_message, l_message, submitter, user, password, category, aType, item))
+            cmd ='$ENSTORE_DIR/sbin/generate_ticket ' 
+            cmd_args = '%s "%s" "%s" "%s" %s %s %s %s "%s" %s' % (system_name, condition, short_message, l_message, submitter, user, password, category, aType, item)
+            cmd += cmd_args
+            print "%s" % cmd
+            os.system('. /usr/local/etc/setups.sh;setup enstore; %s' % (cmd,))
             self.ticket_generated = "YES"
 
     def seen_again(self):
@@ -253,7 +254,7 @@ class GenericAlarm:
             self.severity == severity and
             self.source == source and
             self.condition == condition and
-                self.type == remedy_type):
+            self.type == remedy_type):
             # now that all that is done we can compare the dictionary to see
             # if it is the same.  we need to ignore any r_a keywords first.
             alarm_info_t = alarm_info
@@ -324,6 +325,7 @@ class AsciiAlarm(GenericAlarm):
         GenericAlarm.__init__(self)
 
         # if the alarm file has junk in it. protect against that
+
         try:
             [self.id, self.host, self.pid, self.uid, sev,
              self.source, self.root_error, self.alarm_info] = en_eval(text)
@@ -445,3 +447,7 @@ class LogFileAlarm(GenericAlarm):
                         else:
                             # there was no match
                             self.severity = e_errors.ALARM
+
+if __name__ == "__main__" :
+    print "unit tests are in enstore/src/tests/test_alarm.py"
+    sys.exit(0)
