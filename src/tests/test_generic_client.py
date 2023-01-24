@@ -125,7 +125,7 @@ class TestGenericClient(unittest.TestCase):
         self._mocker.side_effect = KeyboardInterrupt('wait! no!')
         try:
             rslt  = self.gc.send(ticket)
-            assertTrue(False)
+            self.assertTrue(False)
         except KeyboardInterrupt:
             pass
 
