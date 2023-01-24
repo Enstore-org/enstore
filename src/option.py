@@ -19,8 +19,8 @@ The preceding will do the same thing as the full dictionary example:
         }
     }
 
-To set two values, one saying the option was specifed as a boolean and another
-to hold the actuall value (a filename for example): option.py --opt <filename>
+To set two values, one saying the option was specified as a boolean and another
+to hold the actual value (a filename for example): option.py --opt <filename>
     example_options = {
        'opt':{HELP_STRING:"some string text"}
               DEFAULT_NAME:'opt',
@@ -218,7 +218,7 @@ DONT_ALARM = "dont-alarm"
 DONT_LOG = "dont-log"
 DONT_PRINT = "dont-print"
 DONT_SHOW = "dont-show"  # entv
-DOWN = "down"  # pnfs, inqusitor, mover
+DOWN = "down"  # pnfs, inquisitor, mover
 DUMP = "dump"  # pnfs, alarm, inquisitor, mover
 DUPLICATE = "duplicate"  # pnfs
 DUPLICATED = "duplicated"  # volume
@@ -1094,7 +1094,7 @@ class Interface:
         temp = ""
         for opt in self.options.keys():
             short_opt = self.options[opt].get(SHORT_OPTION, None)
-            # If their is a (valid) short option.
+            # If there is a (valid) short option.
             if short_opt and len(short_opt) == 1:
                 # If the user does not have permission to execute such an option
                 # skip over it.
@@ -1233,7 +1233,7 @@ class Interface:
             if value:
                 self.set_value(long_opt, value)
 
-            # If the option has an optional value and it is present then
+            # If the option has an optional value, and it is present then
             # find the value (albeit the hard way), set the value and then
             # remove the value from the list of previously unprocessed
             # arguments (self.args).
