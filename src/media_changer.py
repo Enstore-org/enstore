@@ -7661,6 +7661,8 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         self.max_work = 7
         generic_server.GenericServerInterface.__init__(self)
 
+    parameters = ["media_changer"]
+
     media_options = {
         option.LOG: {option.HELP_STRING: "",
                      option.VALUE_USAGE: option.REQUIRED,
@@ -7683,7 +7685,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         option.Interface.parse_options(self)
         # bomb out if we don't have a media_changer
         if len(self.args) < 1:
-            self.missing_parameter(self.parameters())
+            self.missing_parameter(self.parameters)
             self.print_help()
             sys.exit(1)
         else:
