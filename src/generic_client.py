@@ -201,6 +201,12 @@ class GenericClient:
                                                        rcv_timeout=rcv_timeout,
                                                        rcv_tries=rcv_tries)
 
+    def apply_config_properties_to_intf(self, intf):
+        # type: (option.Interface) -> None
+        config_dict = self.csc.get(self.name)
+        if 'properties' in config_dict:
+            intf.set_properties_from_dict(config_dict['properties'])
+
     def _is_csc(self):
         # If the server requested is the configuration server,
         # do something different.
