@@ -687,7 +687,7 @@ class Interface:
 
     def set_properties_from_dict(self, properties):
         for property_name, value in properties.items():
-            if hasattr(self, property_name):
+            if hasattr(self, property_name) and getattr(self, property_name) is None:
                 setattr(self, property_name, value)
             else:
                 Trace.log(e_errors.WARNING,
