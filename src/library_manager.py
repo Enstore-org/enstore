@@ -5444,7 +5444,6 @@ def do_work():
 
     # get a library manager
     lm = LibraryManager(intf.name, (intf.config_host, intf.config_port))
-    lm.apply_config_properties(intf)
     lm.handle_generic_commands(intf)
 
     Trace.init(lm.log_name, lm.keys.get('include_thread_name', 'yes'))

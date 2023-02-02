@@ -438,6 +438,7 @@ class GenericClient:
         return x
 
     def handle_generic_commands(self, server, intf):
+        self.apply_config_properties_to_intf(intf)
         ret = None
         if intf.alive:
             ret = self.alive(server, intf.alive_rcv_timeout, intf.alive_retries)
