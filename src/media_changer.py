@@ -7710,6 +7710,8 @@ if __name__ == "__main__":
         sys.exit(1)
     if 'max_work' in keys:
         intf.max_work = int(keys['max_work'])
+    if 'properties' in keys:
+        intf.set_properties_from_dict(keys['properties'])
 
     import __main__
 

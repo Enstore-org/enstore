@@ -601,6 +601,7 @@ valid_option_list = [
     XATTR, XATTRCHMOD, XATTRCHOWN, XATTRRM, XATTRS, XREF,
 ]
 
+
 ############################################################################
 
 
@@ -643,6 +644,7 @@ class Interface:
         else:
             self.user_level = USER
 
+        self.name = "Unknown Interface"
         self.argv = args
         self.options = {}
         self.help = 0
@@ -682,6 +684,15 @@ class Interface:
             self.print_usage()
 
     ############################################################################
+
+    def set_properties_from_dict(self, properties):
+        for property_name, value in properties.items():
+            if hasattr(self, property_name):
+                setattr(self, property_name, value)
+            else:
+                Trace.log(e_errors.WARNING,
+                          "Trying to set property %s on %s from property dict: property does not exist" %
+                          (property_name, self.name))
 
     parameters = []  # Don't put this in __init__().  It would clobber values.
 
@@ -833,7 +844,7 @@ class Interface:
                         temp_fill = 0
 
                     temp = ("%s" % (last_line,)) + " " * temp_fill + \
-                        text_string[index:new_index]
+                           text_string[index:new_index]
                     lines_of_text.append(temp)
                 else:  # use new line
                     lines_of_text.append(" " * filler_length +
@@ -1402,6 +1413,7 @@ class Interface:
                 return rtn
 
         return None
+
     ############################################################################
     # These options remove leading "-" or "--" as appropriate from opt
     # and return.
