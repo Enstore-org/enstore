@@ -204,8 +204,15 @@ class GenericClient:
     def apply_config_properties_to_intf(self, intf):
         # type: (option.Interface) -> None
         config_dict = self.csc.get(self.name)
-        if 'properties' in config_dict:
-            intf.set_properties_from_dict(config_dict['properties'])
+        my_config_dict = {}
+        if self.name in config_dict:
+            my_config_dict = config_dict[self.name]
+        else:
+            Trace.log(e_errors.INFO,
+                      "My client name ('%s') not found in config dict while attempting " \
+                      "to apply config properties to Interface" % self.name)
+        if 'properties' in my_config_dict:
+            intf.set_properties_from_dict(my_config_dict['properties'])
 
     def _is_csc(self):
         # If the server requested is the configuration server,
