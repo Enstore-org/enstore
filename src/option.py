@@ -1362,9 +1362,16 @@ class Interface:
         if not len(self.some_args) > 1:
             return None
 
-        # Get a copy of the command line with values specified with equal
-        # signs separated.
-        self.split_on_equals(self.some_args)
+        # Since, it looks for things based on string.find() placing
+        # the "--" or "-" before the value of argument is ok to
+        # handle the substring problem that argument has the "--"
+        # and "-" removed.
+        if self.is_long_option(argument):
+            compare_opt = "--" + argument
+        elif self.is_short_option(argument):
+            compare_opt = "-" + argument
+        else:
+            compare_opt = argument
 
         # Get the next option after the option passed in.
         for some_arg in self.some_args:
@@ -1372,20 +1379,6 @@ class Interface:
             # those that are options.  Also, use only things up to the first
             # "=" if present.
             compare_arg = some_arg.split("=")[0].replace("_", "-")
-            if not self.is_long_option(compare_arg):
-                # only use this old string for unknown options (aka values).
-                compare_arg = some_arg
-
-            # Since, it looks for things based on string.find() placing
-            # the "--" or "-" before the value of argument is ok to
-            # handle the substring problem that argument has the "--"
-            # and "-" removed.
-            if self.is_long_option(argument):
-                compare_opt = "--" + argument
-            elif self.is_short_option(argument):
-                compare_opt = "-" + argument
-            else:
-                compare_opt = argument
 
             # Look for the current argument in the list.
             # compare_opt is the current index to find
