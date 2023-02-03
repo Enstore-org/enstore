@@ -103,7 +103,7 @@ DICT_LIST = [ TD0, TD1, TD2, TD3, TD4 ]
 class TestInterface(unittest.TestCase):
 
     def setUp(self):
-        self.intf = option.Interface()
+        self.intf = option.Interface(args=['enstore', 'test'])
 
     @mock.patch('Trace.log')
     def test_log_using_default(self, mock_trace):
@@ -233,9 +233,9 @@ class TestInterface(unittest.TestCase):
     def test_next_argument(self):
         n = self.intf.next_argument('help')
         self.assertEqual(n,None)
-        self.intf.some_args = [ 1, 2, 3, 4]
-        n = self.intf.next_argument('help')
-        self.assertNotEqual(n,None)
+        self.intf.some_args = ['arg1=1', 'arg2=2', '3', 't']
+        self.assertEqual(self.intf.next_argument('arg1'), 'arg2=2')
+        self.assertEqual(self.intf.next_argument('3'), 't')
 
     def test_trim_option(self):
         out = self.intf.trim_option('h')
