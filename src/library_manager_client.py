@@ -624,7 +624,7 @@ def do_work(intf):
 
     lmc.check_ticket(ticket)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     Trace.init("LIBM_CLI")
     Trace.trace(6,"lmc called with args "+repr(sys.argv))
 

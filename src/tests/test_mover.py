@@ -576,5 +576,5 @@ class TestBuffer(unittest.TestCase):
 #        pass
 #    def test_status(self):
 #        pass
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

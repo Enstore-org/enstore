@@ -510,7 +510,7 @@ def do_work(intf):
     iqc.check_ticket(ticket)
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     Trace.init(MY_NAME)
     Trace.trace(6,"iqc called with args "+repr(sys.argv))
 

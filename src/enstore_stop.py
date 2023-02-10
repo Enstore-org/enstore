@@ -656,7 +656,7 @@ def do_work(intf):
     if intf.should_stop(enstore_constants.CONFIGURATION_SERVER):
         check_server(csc, enstore_constants.CONFIGURATION_SERVER)
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
     intf = EnstoreStopInterface(user_mode=0)
 

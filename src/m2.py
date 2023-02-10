@@ -150,7 +150,7 @@ def usage():
 # m2.py dump device [path [snedto notify comment]]
 #
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 	argc = len(sys.argv)
 	if argc < 2:
 		usage()

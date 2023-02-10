@@ -330,7 +330,7 @@ def do_work(intf):
 
     movc.check_ticket(ticket)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     Trace.init("MOVER_CLI")
     Trace.trace(6,"movc called with args "+repr(sys.argv))
 

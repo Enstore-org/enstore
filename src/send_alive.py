@@ -19,7 +19,7 @@ def do_work(intf):
         erc.send_one_heartbeat(intf.name)
         erc.sock.close()
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     # fill in interface
     intf = SendAliveInterface()
 

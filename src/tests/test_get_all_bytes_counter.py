@@ -56,5 +56,5 @@ class TestGetAllBytesCounter(unittest.TestCase):
         self.assertEqual(expect, rc, msg % (addr, expect, rc))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

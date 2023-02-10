@@ -85,7 +85,7 @@ class EspionInterface(generic_client.GenericClientInterface):
 	return (self.help_options, self.espion_options)
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     # check if we were asked to send a dump message to the event relay
     intf = EspionInterface(user_mode=0)

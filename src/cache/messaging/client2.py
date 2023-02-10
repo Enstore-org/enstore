@@ -128,7 +128,7 @@ class EnQpidClient:
         return getattr(self,name)
 
         
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     
     def set_logging():
         lh = logging.StreamHandler()

@@ -382,7 +382,7 @@ migrate.log_copied = log_copied_duplication
 migrate.log_uncopied = log_uncopied_duplication
 migrate.search_order = search_order_duplication
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
     	Trace.init(migrate.MIGRATION_NAME)
         Trace.do_message(0)

@@ -142,7 +142,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		dispatching_worker.DispatchingWorker.quit(self, ticket)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	Trace.init(string.upper(MY_NAME))
 	intf = Interface()
 	csc = (intf.config_host, intf.config_port)

@@ -4,7 +4,7 @@ import sys
 import accounting_client
 import enstore_functions2
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
 	if len(sys.argv) < 3:
 		# quit with error yet quiet

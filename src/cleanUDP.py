@@ -258,7 +258,7 @@ class cleanUDP:
         Trace.log(e_errors.ERROR, etext)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     sout = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
     sout.bind(('localhost', 303030))
     # on linux, should see one retry from the following.

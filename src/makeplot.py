@@ -225,7 +225,7 @@ def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename,
 ##########################################################################
 ##########################################################################
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     if "--help" in sys.argv:
         print_usage()
         sys.exit(1)

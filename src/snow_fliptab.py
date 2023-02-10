@@ -23,6 +23,6 @@ def submit_ticket(**kwargs):
                                  Comments=kwargs.get("Comments", COMMENTS),)
     return ticket
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     result = submit_ticket()
     print(result)

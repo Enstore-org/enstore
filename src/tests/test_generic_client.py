@@ -260,5 +260,5 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'quit'}, None, 0, 0)"
         self.assertEqual(str(self._mocker.call_args), expected, "test_quit error")
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

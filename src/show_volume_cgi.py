@@ -103,7 +103,7 @@ def print_volume_content(ticket,list):
     print '</pre>'
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     form   = cgi.FieldStorage()
     volume = form.getvalue("volume", "unknown")
     intf   =   info_client.InfoClientInterface(user_mode=0)

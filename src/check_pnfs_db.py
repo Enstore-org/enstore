@@ -280,7 +280,7 @@ def usage():
     print "usage %s --library=<library> [VOL1 VOL2 ...]"%(sys.argv[0],)
 
 # Main()
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     try:
         options, args = getopt.getopt(sys.argv[1:],'',['library=',])
     except getopt.GetoptError:

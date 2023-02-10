@@ -1554,7 +1554,7 @@ def inventory_dirs():
     return inventory_dir, inventory_rcp_dir, inventory_cache_dir
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     #Don't bother with initialization if they only want help
     if "--help" in sys.argv:
         inventory_usage()

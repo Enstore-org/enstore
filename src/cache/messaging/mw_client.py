@@ -132,7 +132,7 @@ class MWRConfirmation(MWReply):
     def __init__(self, orig_msg = None, **kwargs):
         MWReply.__init__(self, type=mt.MWR_CONFIRMATION, orig_msg = orig_msg, **kwargs)
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     l = ["a","b","c","d"]
     l2= ["x","y"]
     
