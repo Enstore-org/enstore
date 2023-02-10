@@ -512,7 +512,7 @@ def _get_error(obj):
         obj (str, tuple, dict): Response object (required)
 
     Returns:
-        str: Error message
+        str: Error message 
     """
     if type(obj) == types.StringType:
         error = obj
@@ -533,7 +533,7 @@ def is_ok(e):
     Return true if the status is the same as e_errors.OK, false otherwise.
 
     Args:
-        e (int): Error code
+        e (str, tuple, dict): Error to check (required)
 
     Returns:
         bool: True if the status is the same as e_errors.OK, false otherwise.
@@ -548,13 +548,11 @@ def is_ok(e):
 
 
 def is_timedout(e):
-    """Return true if the status is in error but not in non_retriable or raise_alarm
+    """Return true if the status is same as e_errors.TIMEDOUT, false otherwise
 
-    Return true if the status is in error but not in non_retriable or raise_alarm
-    status.  Return false otherwise.
 
     Args:
-        e (str): Error message (required)
+        e (str, tuple, dict): Error to check (required)
 
     Returns:
         int: 1 if timed out, 0 otherwise
@@ -576,7 +574,7 @@ def is_retriable(e):
     Checks the error code to see if it is retriable.
 
     Args:
-        e (str): Error code
+        e (str, tuple, dict): Error to check (required)
 
     Returns:
         int: 1 if the error is retriable, 0 otherwise
@@ -601,8 +599,8 @@ def is_non_retriable(e):
 
     Checks if the value is retriable, and returns 0 if it is, otherwise 1.
 
-    Args:
-        e (str): Value to check (required)
+    Args
+        e (str, tuple, dict): Error to check (required)
 
     Returns:
         int: 1 if the value is not retriable, otherwise 0
@@ -626,7 +624,7 @@ def is_alarmable(e):
     Checks if the error is in the list of errors that should raise an alarm.
 
     Args:
-        e (str): Error message
+        e (str, tuple, dict): Error to check (required)
 
     Returns:
         int: 1 if the error is alarmable, otherwise 0
@@ -643,13 +641,13 @@ def is_alarmable(e):
 
 
 def is_emailable(e):
-    """Return 1 if the error is RETRY or RESUBMITTING, otherwise 0
+    """Check if error should generate an email alarm message
 
     Args:
-        e (str): Error string
+        e (str, tuple, dict): Error to check (required)
 
     Returns:
-        int: 1 if the error is RETRY or RESUBMITTING, otherwise 0
+        int: 1 if the error is in email_alarm_errors, otherwise 0
     """
     error = _get_error(e)
 
@@ -661,13 +659,13 @@ def is_emailable(e):
 
 
 def is_resendable(e):
-    """Return 1 if the error is resendable, otherwise 0
+    """Return 1 if the error in RETRY,RESUBMITTING, otherwise 0
 
     Args:
-        e (str): Error message
+        e (str, tuple, dict): Error to check (required)
 
     Returns:
-        int: 1 if the error is resendable, otherwise 0
+        int: 1 if the error in RETRY,RESUBMITTING, otherwise 0
     """
     error = _get_error(e)
 
@@ -684,8 +682,8 @@ def is_media(e):
     """Determine if an error is a media error
 
     Args:
-        e (int): Error code
 
+        e (str, tuple, dict): Error to check (required)
     Returns:
         int: 1 if media error, 0 otherwise
     """

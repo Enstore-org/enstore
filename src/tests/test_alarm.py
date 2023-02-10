@@ -7,6 +7,8 @@ try:
 except ImportError:
     import fixtures.mock_imports
 from alarm import *
+
+
 class TestGenericAlarm(unittest.TestCase):
     def setUp(self):
         self.al = GenericAlarm()
@@ -58,12 +60,28 @@ class TestGenericAlarm(unittest.TestCase):
         condition = self.al.condition
         alarm_info = self.al.alarm_info.copy()
         remedy_type = self.al.type
-        self.assertEqual(MATCH, self.al.compare(host, severity, root_error, source,
-                                                alarm_info, condition, remedy_type))
+        self.assertEqual(
+            MATCH,
+            self.al.compare(
+                host,
+                severity,
+                root_error,
+                source,
+                alarm_info,
+                condition,
+                remedy_type))
 
         self.al.alarm_info['foo'] = 'bar'
-        self.assertEqual(NO_MATCH, self.al.compare(host, severity, root_error, source,
-                                                   alarm_info, condition, remedy_type))
+        self.assertEqual(
+            NO_MATCH,
+            self.al.compare(
+                host,
+                severity,
+                root_error,
+                source,
+                alarm_info,
+                condition,
+                remedy_type))
 
 
 class TestAlarm(unittest.TestCase):
