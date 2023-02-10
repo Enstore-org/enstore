@@ -760,7 +760,7 @@ def setup_interface(dest, interface_ip):
     #Since the routing table just changed, the cached version needs updating.
     update_cached_routes()
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
     #pprint.pprint(connections())
     pprint.pprint(check_load_balance())

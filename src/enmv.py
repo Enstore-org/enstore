@@ -659,7 +659,7 @@ def do_work(intf):
         delete_at_exit.quit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
     delete_at_exit.setup_signal_handling()
 
     enmv_intf = EnmvInterface(sys.argv, 0) # zero means admin

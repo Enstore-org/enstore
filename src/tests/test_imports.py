@@ -306,6 +306,6 @@ import www_server
 #import yank
 import unittest
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()
 

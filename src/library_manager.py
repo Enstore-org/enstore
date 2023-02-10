@@ -5437,7 +5437,7 @@ def do_work():
 
     Trace.alarm(e_errors.ALARM,"Library Manager %sfinished (impossible)"%(intf.name,))
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     do_work()
 

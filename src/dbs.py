@@ -462,7 +462,7 @@ class Interface(option.Interface):
 	def charopts(self):
 		return ["cd"]
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     # take care of common command line arguments
 

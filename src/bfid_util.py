@@ -228,7 +228,7 @@ class BfidGenerator:
         finally:
             self.__lock.release()
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     generator = BfidGenerator("CMS")
     bfid = generator.create()
     print bfid, str(bfid), bfid[:10]

@@ -78,7 +78,7 @@ PB = TB * 1024.0
 UNITS = "TiB"
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     # get the 3 counter files and merge them into one
     # since we are not running on an enstore node, we will assume the web

@@ -1617,7 +1617,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
             self.name = self.args[0]
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     Trace.init("MEDCHANGER")
     Trace.trace(6, "media changer called with args: %s"%(sys.argv,) )
 
