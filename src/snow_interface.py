@@ -150,7 +150,7 @@ def submit_ticket(**kwargs):
     return snow.create_incident(**kwargs)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     try:
         intf = SnowInterface()
         ticket = intf.create_incident(CiName=socket.gethostname().split(".")[0],

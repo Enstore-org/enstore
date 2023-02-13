@@ -4562,7 +4562,7 @@ class Display(Tkinter.Canvas):
 
 #########################################################################
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     if len(sys.argv)>1:
         title = sys.argv[1]
     else:

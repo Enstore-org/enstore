@@ -20,7 +20,7 @@ def work(total_bytes, vq_output_file, vq_output_file2):
 					 total_bytes["active"]))
 	output_file.close()
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     config_dict=configuration_client.get_config_dict()
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))

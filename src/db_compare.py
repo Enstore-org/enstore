@@ -84,7 +84,7 @@ def db_compare(db1, dbHome1, db2, dbHome2):
 	d2.close()
 	return error
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
 	l = len(sys.argv)
 

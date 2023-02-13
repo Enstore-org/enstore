@@ -405,7 +405,7 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
     def valid_dictionaries(self):
         return (self.help_options,self.trace_options)
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     Trace.init(MY_NAME)
 
     if len(sys.argv) == 2:

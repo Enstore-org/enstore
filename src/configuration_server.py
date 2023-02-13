@@ -1107,7 +1107,7 @@ def enable_trace_at_start(levels):
         Trace.print_levels[level]=1
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     Trace.init(MY_NAME)
     # uncomment the line below to enable trace output at start
     #enable_trace_at_start(range(1,100))

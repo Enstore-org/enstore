@@ -24,7 +24,7 @@ def usage(cmd):
           "          [-b | --total-bytes-per-day]\n" \
           "          [web_dir]\n" % (cmd,)
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     try:
         short_args = "htb"
         long_args = ["help", "--tapes-burn-rate"]

@@ -205,7 +205,7 @@ class Relay:
                     except:
 			self.ev_print("    ERROR: unknown")
 			self.handle_error(addr, msg)
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
     R = Relay()
     #R._do_print({'levels':range(5, 400)})
     R.mainloop()

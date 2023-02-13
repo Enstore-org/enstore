@@ -76,5 +76,5 @@ class QPIDConfigurator:
                 rc.start()
                 rc.stop()
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     qpid_conf = QPIDConfigurator()

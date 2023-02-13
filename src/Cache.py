@@ -58,7 +58,7 @@ class Cache:
         return self.cache.__repr__()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     cache = Cache(3)
     cache.put("a",1)
     cache.put("b",1)

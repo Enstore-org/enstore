@@ -773,7 +773,7 @@ class VolumeDB(DbTable):
             data[k]=s.get(k,0)
         return data
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
     v=VolumeDB(host='localhost',
                port=9999,
                user="enstore",

@@ -68,7 +68,7 @@ def update_slots(csc, mcc):
         if acc_db:
             acc_db.close()
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
                                                     enstore_functions2.default_port()))
     mcs = csc.get_media_changers2(timeout = 3, retry = 10)

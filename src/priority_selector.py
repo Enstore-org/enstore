@@ -130,7 +130,7 @@ class PriSelector:
         return cur_pri, cur_adm_pri
 
     
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     import configuration_client
     def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
                 string.atoi(os.environ['ENSTORE_CONFIG_PORT']))

@@ -4437,5 +4437,5 @@ def do_work(*args, **kwargs):
     else:
         scanner().run()
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
     do_work()

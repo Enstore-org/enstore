@@ -749,7 +749,7 @@ def do_work(intf):
 
     logc.check_ticket(ticket)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
     # fill in interface
     intf = LoggerClientInterface(user_mode=0)
 

@@ -30,7 +30,7 @@ def discard_vol(vol):
 			return "failed to mark %s deleted"%(bfid)
 	return
 	
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	if len(sys.argv) < 2:
 		usage()
 		sys.exit()

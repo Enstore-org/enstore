@@ -53,5 +53,5 @@ class TestBfidGenerator(unittest.TestCase):
         self.assertTrue(is_bfid(bfid))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

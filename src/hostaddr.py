@@ -432,7 +432,7 @@ def interface_name(ip):
     return ifinfo.get(ip)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     lh = '127.0.0.1'  #lh = LocalHost
 
     print gethostinfo()

@@ -12,7 +12,7 @@ fc_queue = "%s; {create: always}"%('t_fc_queue',)
 pe_queue = "%s; {create: always}"%('t_pe_queue',)
 TO_send = 1
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     def set_logging():
         lh = logging.StreamHandler()

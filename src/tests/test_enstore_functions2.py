@@ -537,5 +537,5 @@ class TestEnstoreFunctions2(unittest.TestCase):
         self.assertTrue(rc3 > rc2, "rc3=%s rc2=%s" % (rc3, rc2))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

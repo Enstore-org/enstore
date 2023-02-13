@@ -6,7 +6,7 @@ import restore
 import sys
 import time
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
 	intf = restore.Interface()
 	dbHome, jouHome, bckHost, bckHome = restore.getHomes(intf)

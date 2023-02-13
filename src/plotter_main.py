@@ -58,7 +58,7 @@ def usage(cmd):
     print "\t -S [--sfa-stats]       : plot Small Files Aggregation Statistics"
     print "\t -h [--help]            : show this message"
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     try:
         short_args = "hmrudDHspfFWeqtibMlLS"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
