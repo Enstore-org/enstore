@@ -11,10 +11,10 @@ import sys
 import time
 import string
 import os
-#import exceptions
-#import tempfile
+# import exceptions
+# import tempfile
 import types
-#import pwd
+# import pwd
 import signal
 import stat
 import re
@@ -27,7 +27,6 @@ import subprocess
 # enstore_constants should be the only enstore import in this module!
 import enstore_constants
 import Interfaces
-
 
 ###########################################################################
 # conversion function for permissions
@@ -82,12 +81,12 @@ def _get_rwx(pmode, read_bit, write_bit, execute_bit):
         ls_mode = ls_mode + "w"
     else:
         ls_mode = ls_mode + "-"
-    # Handle the specifed execute bit... there are some special cases.
+    # Handle the specified execute bit... there are some special cases.
     if (pmode & execute_bit) and (execute_bit == stat.S_IXUSR) and \
-       (pmode & stat.S_ISUID):
+            (pmode & stat.S_ISUID):
         ls_mode = ls_mode + "s"
     elif (pmode & execute_bit) and (execute_bit == stat.S_IXGRP) and \
-         (pmode & stat.S_ISGID):
+            (pmode & stat.S_ISGID):
         ls_mode = ls_mode + "s"
     elif pmode & execute_bit:
         ls_mode = ls_mode + "x"
@@ -96,7 +95,8 @@ def _get_rwx(pmode, read_bit, write_bit, execute_bit):
 
     return ls_mode
 
-# Convert the permission bits returned from os.stat() into the human readable
+
+# Convert the permission bits returned from os.stat() into the human-readable
 # format of the ls(1) command.
 
 
@@ -125,13 +125,14 @@ def _get_bits(pmode, read_bit, write_bit, execute_bit):
         mode = mode | execute_bit
     return mode
 
-# Convert the numeric (ie. "0777") chmod permisssions into the permission bits
+
+# Convert the numeric (i.e. "0777") chmod permissions into the permission bits
 # returned from os.stat().
 
 
 def numeric_to_bits(numeric_mode):
     # Make sure that the correct type was passed in.
-    if type(numeric_mode) != type("") and type(numeric_mode) != type(1):
+    if isinstance(numeric_mode, type("")) and not isinstance(numeric_mode, type(1)):
         raise TypeError("Expected octal string or integer instead of %s." %
                         (type(numeric_mode),))
 
@@ -156,12 +157,12 @@ def numeric_to_bits(numeric_mode):
     return sbits | ubits | gbits | obits
 
 
-# Convert the symbolic (ie. "u+wr") chmod permissions into the permission bits
+# Convert the symbolic (i.e. "u+wr") chmod permissions into the permission bits
 # returned from os.stat().
 def symbolic_to_bits(symbolic_mode, st_mode=0):
     # Make sure that the correct type was passed in.
-    if type(symbolic_mode) != type(""):
-        raise TypeError("Expected string, recieved %s instead." %
+    if not isinstance(symbolic_mode, type("")):
+        raise TypeError("Expected string, received %s instead." %
                         (type(symbolic_mode),))
 
     # Split the string to support the [ugoa][+-=][rwxs] way.
@@ -182,7 +183,6 @@ def symbolic_to_bits(symbolic_mode, st_mode=0):
     if (user_mod + type_mod + mode_mod) != str(symbolic_mode):
         raise ValueError("%s: Invalid permission field" %
                          (os.strerror(errno.EINVAL),))
-        return 1
 
     # Translate the all - "a" - possible user entry with ugo.
     user_mod = string.replace(user_mod, "a", "ugo")
@@ -229,6 +229,7 @@ def symbolic_to_bits(symbolic_mode, st_mode=0):
 
     return set_mode
 
+
 ###########################################################################
 ##
 ###########################################################################
@@ -243,9 +244,9 @@ def symbolic_to_bits(symbolic_mode, st_mode=0):
 # return a string version of a list
 
 
-def print_list(aList, sep=" "):
+def print_list(a_list, sep=" "):
     the_str = ""
-    for item in aList:
+    for item in a_list:
         the_str = "%s%s%s" % (the_str, item, sep)
     else:
         # remove the last separator
@@ -263,7 +264,7 @@ def get_migrator_status_filename():
 
 def override_to_status(override):
     # translate the override value to a real status
-    if type(override) == types.ListType:
+    if isinstance(override, types.ListType):
         # this is the new format
         override = override[0]
     index = enstore_constants.SAAG_STATUS.index(override)
@@ -272,7 +273,7 @@ def override_to_status(override):
 
 def get_days_ago(date, days_ago):
     # return the date that is days_ago before date
-    seconds_ago = float(days_ago*86400)
+    seconds_ago = float(days_ago * 86400)
     return date - seconds_ago
 
 
@@ -280,8 +281,8 @@ def ping(node):
     # ping the node to see if it is up.
     times_to_ping = 4
     # the timeout parameter does not work on d0ensrv2.
-    #timeout = 5
-    #cmd = "ping -c %s -w %s %s"%(times_to_ping, timeout, node)
+    # timeout = 5
+    # cmd = "ping -c %s -w %s %s"%(times_to_ping, timeout, node)
     cmd = "ping -c %s %s" % (times_to_ping, node)
     p = os.popen(cmd, 'r').readlines()
     for line in p:
@@ -298,19 +299,19 @@ def ping(node):
         return enstore_constants.IS_DEAD
 
 
-def get_remote_file(node, file, newfile):
+def get_remote_file(node, remote_file, newfile):
     __pychecker__ = "unusednames=i"
 
     # we have to make sure that the rcp does not hang in case the remote node is goofy
     pid = os.fork()
     if pid == 0:
         # this is the child
-        rtn = subprocess.call("enrcp %s:%s %s" % (node, file, newfile),
+        rtn = subprocess.call("enrcp %s:%s %s" % (node, remote_file, newfile),
                               shell=True)
         os._exit(rtn)
     else:
         # this is the parent, allow a total of 30 seconds for the child
-        for i in [0, 1, 2, 3, 4, 5]:
+        for _ in [0, 1, 2, 3, 4, 5]:
             rtn = os.waitpid(pid, os.WNOHANG)
             if rtn[0] == pid:
                 # pick out the top 8 bits as the return code
@@ -329,58 +330,62 @@ YEARFMT = "%Y-%b-%d"
 TIMEFMT = "%H:%M:%S"
 
 
-def format_time(theTime, sep=" "):
-    return time.strftime("%s%s%s" % (YEARFMT, sep, TIMEFMT), time.localtime(theTime))
+def format_time(the_time, sep=" "):
+    return time.strftime("%s%s%s" % (YEARFMT, sep, TIMEFMT), time.localtime(the_time))
 
 
 PLOTYEARFMT = "%Y-%m-%d"
 
 
-def format_plot_time(theTime):
-    return time.strftime("%s" % (PLOTYEARFMT,), time.localtime(theTime))
+def format_plot_time(the_time):
+    return time.strftime("%s" % (PLOTYEARFMT,), time.localtime(the_time))
 
 
-def unformat_time(strTime, sep=" "):
-    time_t = time.strptime(strTime, "%s%s%s" % (YEARFMT, sep, TIMEFMT))
+def unformat_time(str_time, sep=" "):
+    time_t = time.strptime(str_time, "%s%s%s" % (YEARFMT, sep, TIMEFMT))
     return time.mktime(time_t)
+
 
 # return the directory
 
 
-def get_dir(str):
-    if os.path.isdir(str):
-        return str
+def get_dir(f_str):
+    if os.path.isdir(f_str):
+        return f_str
     else:
         # strip off the last set of chars after the last /
-        file_spec = os.path.split(str)
+        file_spec = os.path.split(f_str)
         return file_spec[0]
+
 
 # strip off anything before the '/'
 
 
-def strip_file_dir(str):
-    ind = string.rfind(str, "/")
+def strip_file_dir(f_str):
+    ind = string.rfind(f_str, "/")
     if not ind == -1:
-        str2 = str[(ind+1):]
+        str2 = f_str[(ind + 1):]
     else:
-        str2 = str
+        str2 = f_str
     return str2
+
 
 # remove the string .fnal.gov if it is in the input string
 
 
-def strip_node(str):
-    if type(str) == types.StringType:
-        return string.replace(str, ".fnal.gov", "")
+def strip_node(h_str):
+    if isinstance(h_str, types.StringType):
+        return string.replace(h_str, ".fnal.gov", "")
     else:
-        return str
+        return h_str
 
 
 def is_this(server, suffix):
     stype = string.split(server, ".")
-    if stype[len(stype)-1] == suffix:
+    if stype[len(stype) - 1] == suffix:
         return 1
     return 0
+
 
 # return true if the passed server name ends in "library_manager"
 
@@ -388,11 +393,13 @@ def is_this(server, suffix):
 def is_library_manager(server):
     return is_this(server, enstore_constants.LIBRARY_MANAGER)
 
+
 # return true if the passed server name ends in "udp_proxy_server"
 
 
 def is_udp_proxy_server(server):
     return is_this(server, enstore_constants.UDP_PROXY_SERVER)
+
 
 # return true if the passed server name ends in "mover"
 
@@ -400,17 +407,20 @@ def is_udp_proxy_server(server):
 def is_mover(server):
     return is_this(server, enstore_constants.MOVER)
 
+
 # return true if the passed server name ends in "migrator"
 
 
 def is_migrator(server):
     return is_this(server, enstore_constants.MIGRATOR)
 
+
 # return true if the passed server name ends in "media_changer"
 
 
 def is_media_changer(server):
     return is_this(server, enstore_constants.MEDIA_CHANGER)
+
 
 # not used anywhere
 
@@ -419,12 +429,13 @@ def get_name(server):
     return string.split(server, ".")[0]
 
 
-def get_bpd_subdir(dir):
-    new_dir = "%s/%s" % (dir, enstore_constants.BPD_SUBDIR)
+def get_bpd_subdir(f_dir):
+    new_dir = "%s/%s" % (f_dir, enstore_constants.BPD_SUBDIR)
     if not os.path.exists(new_dir):
         # doesn't exist, use the old one
-        new_dir = dir
+        new_dir = f_dir
     return new_dir
+
 
 # return true if the passed server name is one of the following -
 #   file_clerk, volume_clerk, alarm_server, inquisitor, log_server, config
@@ -437,16 +448,17 @@ def is_generic_server(server):
     return 0
 
 
-def get_status(dict):
-    status = dict.get('status', None)
-    if status is None or type(status) != type(()):
+def get_status(s_dict):
+    status = s_dict.get('status', None)
+    if status is None or not isinstance(status, type(())):
         return None
     else:
         return status[0]
 
+
 # execute shell command
 # replaces popen2.popen3
-# diffrerence: popen2.popen3 returns file objects
+# difference: popen2.popen3 returns file objects
 # subprocess.Popen returns stdout and stderror as a single lines
 # to make a list of lines do the following with returned
 # result:
@@ -463,12 +475,13 @@ def shell_command(command):
                                stderr=subprocess.PIPE,
                                shell=True,
                                close_fds=True)
-    if pipeObj == None:
+    if pipeObj is None:
         return None
     # get stdout and stderr
     result = pipeObj.communicate()
-    del(pipeObj)
+    del pipeObj
     return result
+
 
 # same as shell command, but
 # returns
@@ -484,15 +497,16 @@ def shell_command2(command):
                                stderr=subprocess.PIPE,
                                shell=True,
                                close_fds=True)
-    if pipeObj == None:
+    if pipeObj is None:
         return None
     # get stdout and stderr
     result = pipeObj.communicate()
     rc = [pipeObj.returncode]
-    del(pipeObj)
+    del pipeObj
     for r in result:
         rc.append(r)
     return tuple(rc)
+
 
 ###########################################################################
 ##
@@ -506,6 +520,7 @@ def __get_wormhole(lname):
     #                     " or ENSTORE_CONFIG_FILE")
 
     # Read in the /etc/mtab file.
+    mtab_data = []
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
         try:
             fp = open(mtab_file, "r")
@@ -519,7 +534,7 @@ def __get_wormhole(lname):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     else:
         # Should this raise an error?
-        mtab_data = []
+        pass
 
     list_of_enstore_files = []
     for line in mtab_data:
@@ -540,7 +555,7 @@ def __get_wormhole(lname):
     for filename in list_of_enstore_files:
         result = __read_enstore_conf(filename, lname)
         if result and result not in remember_en_data:
-            # We need to keep track of how many different systems we find.
+            # We need to keep track of how many systems we find.
             remember_en_data.append(result)
 
     if len(remember_en_data) == 1:
@@ -552,13 +567,14 @@ def __get_wormhole(lname):
 
     return None
 
+
 # Copied find_config_file() from host_config.py.
 
 
 def __find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
     if config_host:
-        filename = '/etc/'+config_host+'.enstore.conf'
+        filename = '/etc/' + config_host + '.enstore.conf'
         if not os.path.exists(filename):
             filename = '/etc/enstore.conf'
     else:
@@ -634,13 +650,15 @@ def __read_enstore_conf(filename, line_target):
 
     return None
 
-#DEFAULT_HOST = 'localhost'
-#DEFAULT_PORT = 7500
+
+# DEFAULT_HOST = 'localhost'
+# DEFAULT_PORT = 7500
 
 
 used_default_config_host = None
 used_default_config_port = None
 used_default_config_file = None
+
 
 # First look for the ENSTORE_CONFIG_HOST/PORT/FILE values in environmental
 # variables.  Failing that try looking for a ~/.enstorerc file.  If that
@@ -663,8 +681,6 @@ def _get_value(requested_val, default_val):
             else:
                 return default_val, True
 
-    return None, False  # Impossible to get here.
-
 
 def default_value(requested_val):
     return _get_value(requested_val, None)[0]
@@ -672,10 +688,10 @@ def default_value(requested_val):
 
 def used_default_host():
     global used_default_config_host
-    if used_default_config_host == None:
+    if used_default_config_host is None:
         # If we haven't called default_host() yet, we need to call _get_env()
         # directly to return the correct info.
-        unsued, used_default_config_host = _get_value(
+        _, used_default_config_host = _get_value(
             "ENSTORE_CONFIG_HOST", enstore_constants.DEFAULT_CONF_HOST)
         return used_default_config_host
     else:
@@ -694,10 +710,10 @@ def default_host():
 
 def used_default_port():
     global used_default_config_port
-    if used_default_config_port == None:
+    if used_default_config_port is None:
         # If we haven't called default_port() yet, we need to call _get_env()
         # directly to return the correct info.
-        unsued, used_default_config_port = _get_value(
+        _, used_default_config_port = _get_value(
             "ENSTORE_CONFIG_PORT", enstore_constants.DEFAULT_CONF_PORT)
         return used_default_config_port
     else:
@@ -716,10 +732,10 @@ def default_port():
 
 def used_default_file():
     global used_default_config_file
-    if used_default_config_file == None:
+    if used_default_config_file is None:
         # If we haven't called default_FILE() yet, we need to call _get_env()
         # directly to return the correct info.
-        unsued, used_default_config_file = _get_value(
+        _, used_default_config_file = _get_value(
             "ENSTORE_CONFIG_FILE", enstore_constants.DEFAULT_CONF_FILE)
         return used_default_config_file
     else:
@@ -735,6 +751,7 @@ def default_file():
         "ENSTORE_CONFIG_FILE", enstore_constants.DEFAULT_CONF_FILE)
     return rtn_val
 
+
 ###########################################################################
 ##
 ###########################################################################
@@ -747,7 +764,7 @@ def expand_path(filename):
     if filepath[0] != "/":
         # It would be nice to just do the following:
         #   fullfilepath = os.path.abspath(filepath)
-        # But it has been found that when the current workng directory
+        # But it has been found that when the current working directory
         # is in PNFS, that on rare occasions a different path is returned
         # from os.getcwd().  Specifically, paths with .(access)() as
         # path components replace their normal directory name.
@@ -772,18 +789,19 @@ def expand_path(filename):
 
     return fullfilepath
 
+
 # generate the full path name to the file
 
 
 def fullpath(filename):
     if not filename:
         return None, None, None, None
-    elif type(filename) != types.StringType:
+    elif not isinstance(filename, types.StringType):
         return None, None, None, None
 
-    # Detemine if a host and port have been specifed on the command line.
+    # Determine if a host and port have been specified on the command line.
     host_and_port = re.search("^[a-z0-9.]*:[0-9]*/", filename)
-    if host_and_port != None:
+    if host_and_port is not None:
         filename = filename[len(host_and_port.group()):]
 
     try_count = 0
@@ -791,7 +809,7 @@ def fullpath(filename):
         try:
             machine = socket.getfqdn(socket.gethostname())
             break
-        except (socket.error), msg:
+        except socket.error as msg:
             # One known way to get here is to run out of file
             # descriptors.  I'm sure there are others.
             this_errno = msg.args[0]
@@ -823,19 +841,20 @@ def fullpath(filename):
 
     return machine, filepath, dirname, basename
 
+
 # generate the full path name to the file
-# If no_split is true, the last two paramaters for directory and basename
+# If no_split is true, the last two parameters for directory and basename
 # are returned as None, to avoid calling stat() (via os.path.isdir()).
 
 
 def fullpath2(filename, no_split=None):
     if not filename:
         return None, None, None, None, None, None
-    elif type(filename) != types.StringType:
+    elif not isinstance(filename, types.StringType):
         return None, None, None, None, None, None
 
     # Split off a protocol.
-    #en_protocol = re.search("^[a-zA-Z-0-9]+://", filename)
+    # en_protocol = re.search("^[a-zA-Z-0-9]+://", filename)
     # if en_protocol:
     #    protocol = en_protocol.group()[:-3]
     #
@@ -843,9 +862,9 @@ def fullpath2(filename, no_split=None):
     # else:
     protocol = ""
 
-    # Detemine if a host and port have been specifed on the command line.
+    # Determine if a host and port have been specified on the command line.
     host_and_port = re.search("^[a-z0-9.]*:[0-9]*/", filename)
-    if host_and_port != None:
+    if host_and_port is not None:
         hostname = host_and_port.group().split(":")[0]
         try:
             portnumber = int(host_and_port.group()[:-1].split(":")[1])
@@ -869,7 +888,7 @@ def fullpath2(filename, no_split=None):
         try:
             machine = socket.getfqdn(hostname)
             break
-        except (socket.error), msg:
+        except socket.error as msg:
             this_errno = msg.args[0]
             if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
                 try_count = try_count + 1
@@ -902,17 +921,19 @@ def fullpath2(filename, no_split=None):
 
     return protocol, machine, portnumber, filepath, dirname, basename
 
+
 ###########################################################################
 ##
 ###########################################################################
 
 
 # global cache to avoid looking up the same ip address over and over for the
-# machine it is running on when starting or stoping multiple Enstore servers.
+# machine it is running on when starting or stopping multiple Enstore servers.
 # See function this_host().  Starting a servers worth of Enstore server
 # processes shouldn't take that long; not long enough to need to worry
 # about the hostname and ip address list changing.
 host_names_and_ips = None
+
 
 # Return all IP address and hostnames for this node/host/machine.
 
@@ -920,9 +941,9 @@ host_names_and_ips = None
 def this_host():
     global host_names_and_ips  # global cache variable
 
-    if host_names_and_ips == None:
+    if host_names_and_ips is None:
         try:
-            #rtn = socket.gethostbyname_ex(socket.getfqdn())
+            # rtn = socket.gethostbyname_ex(socket.getfqdn())
             hostname = socket.getfqdn()
             rtn = socket.getaddrinfo(hostname, None)
         except (socket.error, socket.herror, socket.gaierror), msg:
@@ -934,7 +955,7 @@ def this_host():
             except IOError:
                 pass
             sys.exit(1)
-        rtn_formated = [hostname, hostname.split('.')[0], rtn[0][4][0]]
+        rtn_formatted = [hostname, hostname.split('.')[0], rtn[0][4][0]]
 
         interfaces_list = Interfaces.interfacesGet()
         for interface in interfaces_list.keys():
@@ -952,11 +973,11 @@ def this_host():
                 except IOError:
                     pass
                 sys.exit(1)
-            rc_formated = [rc[0]] + rc[1] + rc[2]
+            rc_formatted = [rc[0]] + rc[1] + rc[2]
 
-            rtn_formated = rtn_formated + rc_formated
+            rtn_formatted = rtn_formatted + rc_formatted
 
-        host_names_and_ips = rtn_formated
+        host_names_and_ips = rtn_formatted
 
     return host_names_and_ips
 
@@ -966,6 +987,7 @@ def is_on_host(host):
         return 1
 
     return 0
+
 
 ###########################################################################
 # Here are some migration related functions that check for certain
@@ -1032,6 +1054,7 @@ def is_duplication_file_family(ff):
 
     return False
 
+
 # This one tests for the file family being either for migration or duplication.
 
 
@@ -1042,16 +1065,18 @@ def is_migration_related_file_family(ff):
 
     return is_duplication_file_family(ff)
 
+
 ###########################################################################
 # Function, convert_version(), and helper functions to convert an encp
-# version string into compoenent parts for >, < and == comparision.
+# version string into component parts for >, < and == comparison.
 ###########################################################################
 
 
-#  This one splits a string using spaces and punctuation as seperators.
+#  This one splits a string using spaces and punctuation as separators.
 re_split_components = re.compile("[a-zA-Z0-9]+")
 #   This one splits groups of letters and numbers.
 re_split_version = re.compile("[a-zA-Z]+|[0-9]+")
+
 
 # If the value is all digits, convert the string to an int.
 # Don't consider list types internally.
@@ -1063,17 +1088,18 @@ def __int_convert(value):
     else:
         return value  # Leave everything else alone.
 
+
 # Return the version broken up into groups of letters and numbers.
 # "v3_10_1a" becomes [['v', 3], [10], [1, 'a']]
 # The python <, > and = operators can be used to compare two return values.
 
 
 def convert_version(version):
-    # Use regular experssion to break the version string into its
-    # component parts, then seperate each component part into letter and
+    # Use regular expression to break the version string into its
+    # component parts, then separate each component part into letter and
     # number parts.  Digits are converted to integers for correct
-    # comparisions; use the fact that there are only two levels deep
-    # possible after the second regular expression return to skip uncecessary
+    # comparisons; use the fact that there are only two levels deep
+    # possible after the second regular expression return to skip unnecessary
     # checks.
     return [map(__int_convert, item) for item in map(re_split_version.findall,
                                                      re_split_components.findall(version))]
