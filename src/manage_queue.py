@@ -1129,7 +1129,6 @@ class Atomic_Request_Queue:
         :arg tag: tag
         :rtype: :obj:`str` - storage group
         """
-        # old implementation throws exception
         # return self.tags[tag]
         if tag in self.write_queue.queue:
             sg = self.write_queue.queue[tag]['opt'].get().sg
@@ -1138,7 +1137,6 @@ class Atomic_Request_Queue:
         else:
             sg = None
         return sg
-
 
     def put(self, priority, ticket):
         """
@@ -1548,6 +1546,7 @@ class Request_Queue:
 
         :rtype: :obj:`set`
         """
+
         return self.admin_queue.tags.keys.union(self.regular_queue.tags.keys)
 
     def get_sg(self, tag):
