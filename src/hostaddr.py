@@ -258,15 +258,20 @@ def update_domains(csc_or_dict):
 
 #Return None if no matching rule is explicity found.  Return True if this
 # is a valid address and False if it is not.
+host_name = None
+localhost_addresses = {}
 def _allow(addr):
-    try:
-        host_name = socket.getfqdn()
-    except Exception as e:
-        Trace.log(e_errors.ERROR, '_allow: getfqdn failed: %s'%(e,))
-        return 0
+    if not host_name:
+        try:
+            host_name = socket.getfqdn()
+        except Exception as e:
+            Trace.log(e_errors.ERROR, '_allow: getfqdn failed: %s'%(e,))
+            return 0
     # always allow requests from local host
     try:
-        if host_name == socket.gethostbyaddr(addr)[0]:
+        if not localhost_addresses.has_key(addr):
+            localhost_addresses[addr] = (host_name == socket.gethostbyaddr(addr)[0])
+        if localhost_addresses[addr]:
             return 1
     except Exception as e:
         Trace.log(e_errors.ERROR, '_allow: gethostbyaddr failed for %s: %s'%(addr, e,))
