@@ -84,11 +84,11 @@ TD4  = {
                                      }]
         }
 
-PROPERTIES_DICT = {'properties': {
+PROPERTIES_DICT = {
     'user_level': 1,  # overwrite ignored
     'no_exist': 1,  # doesn't exist, ignored
     'set_me': 1,  # added in test
-}}
+}
 
 TYPE_OPTION_LIST = [  option.INTEGER, option.LONG, 
                       option.FLOAT, option.RANGE, 
@@ -120,13 +120,13 @@ class TestInterface(unittest.TestCase):
         if not enstore_functions2._get_value('ENSTORE_CONFIG_PORT', enstore_constants.DEFAULT_CONF_PORT):
             mock_trace.assert_called_with('ENSTORE_CONFIG_PORT', enstore_constants.DEFAULT_CONF_PORT)
 
-    def test_set_properties_from_dict(self, properties):
-        intf.set_me = None
-        user_level = intf.user_level
-        intf.set_properties_from_dict(properties)
-        self.assertEqual(intf.set_me, 1)
-        self.assertEqual(intf.user_level, user_level)
-        self.assertFalse(intf.hassattr('no_exist'))
+    def test_set_properties_from_dict(self):
+        self.intf.set_me = None
+        user_level = self.intf.user_level
+        self.intf.set_properties_from_dict(PROPERTIES_DICT)
+        self.assertEqual(self.intf.set_me, 1)
+        self.assertEqual(self.intf.user_level, user_level)
+        self.assertFalse(hasattr(self.intf, 'no_exist'))
 
     def test_list2(self):
         l = option.list2('foo')
