@@ -705,7 +705,7 @@ class RatekeeperInterface(generic_server.GenericServerInterface):
         return (self.help_options,)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     intf = RatekeeperInterface()
 
     rk = Ratekeeper((intf.config_host, intf.config_port))

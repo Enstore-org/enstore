@@ -425,7 +425,7 @@ def do_work2(intf):
 #  END OF NEW WAY
 #########################################################################
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     intf = PlotPageInterface(user_mode=0)
 

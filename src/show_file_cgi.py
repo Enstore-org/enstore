@@ -43,7 +43,7 @@ def print_file_summary(ticket):
     print "</pre>"
     
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     form   = cgi.FieldStorage()
     bfid='GCMS121122382500000'
     bfid = form.getvalue("bfid", "unknown")

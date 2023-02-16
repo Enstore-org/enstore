@@ -91,7 +91,7 @@ class MWs(object):
         self.srv.stop()
         self.trace.debug("server stopped in stop()")
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     # Test Unit
     import cache.en_logging.config_test_unit
 

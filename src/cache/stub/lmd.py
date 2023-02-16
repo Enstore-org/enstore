@@ -214,7 +214,7 @@ class LMD():
         self.qpid_client.stop()
         self.qpid_proc.join()
         
-if __name__ == "__main__":    
+if __name__ == "__main__":   # pragma: no cover    
     # test unit
     # instantiate LMD server
     queue_in = "udp_relay_test"

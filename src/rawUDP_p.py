@@ -409,7 +409,7 @@ def create_server(port):
     raw_requests.init_socket(server_socket)
     return raw_requests
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     srv = create_server(7700)
     srv.receiver()

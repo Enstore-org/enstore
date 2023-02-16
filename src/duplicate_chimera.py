@@ -398,7 +398,7 @@ migrate_chimera.log_copied = log_copied_duplication
 migrate_chimera.log_uncopied = log_uncopied_duplication
 migrate_chimera.search_order = search_order_duplication
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 
         Trace.init(migrate_chimera.MIGRATION_NAME)
         Trace.do_message(0)

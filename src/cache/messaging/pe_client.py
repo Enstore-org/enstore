@@ -240,7 +240,7 @@ def evt_cache_staged_t(ticket):
 # Test
 #======================================================================
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     t = {"k":"v"}
 
     # Events:

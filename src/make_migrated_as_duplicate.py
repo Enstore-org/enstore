@@ -15,7 +15,7 @@ def usage():
 	print "where <vol> ... are the list of new volumes to which"
 	print "                the files have been migrated"
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	if len(sys.argv) < 2:
 		usage()
 		sys.exit(0)

@@ -562,5 +562,5 @@ def thread_is_running(thread_name):
         Trace.trace(10, "not running")
         return False
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     do_work()

@@ -353,7 +353,7 @@ def main(reset_on_error=0, check_null=0):
 def usage():
     print "Usage %s [-h] [--check-null] [--reset-on-error]"%(sys.argv[0],)
     
-if __name__=='__main__':
+if __name__=="__main__":   # pragma: no cover
     reset_on_error = 0
     check_null = 0
     opts, args = getopt.getopt(sys.argv[1:], "h", ["check-null","reset-on-error"])

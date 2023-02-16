@@ -607,7 +607,7 @@ class UDPClient:
                 pass
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
 
     status = 0
     def send_test(msg, address, udp_c):

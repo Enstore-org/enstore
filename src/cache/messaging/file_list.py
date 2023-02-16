@@ -116,7 +116,7 @@ class FileListWithCRC(FileList):
         else:
             raise e_errors.EnstoreError(None, "item must be FileListItemWithCRC", e_errors.WRONGPARAMETER)
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     l =  FileList()
     i = FileListItem(bfid = "CDMS0001", nsid = "0DAF0001", path = "/diska/aaa/f1", libraries= ["lib1", "lib2"])
     l.append(i)
