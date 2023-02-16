@@ -19,7 +19,7 @@ class Server(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     srv = Server()
     srv.serve_forever()
 

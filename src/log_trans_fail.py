@@ -183,7 +183,7 @@ def logname(t):
 
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     now = time.time()
     today =  time.asctime(time.localtime(now))[0:10]
     if len(sys.argv) > 1:

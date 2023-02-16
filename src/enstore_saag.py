@@ -137,7 +137,7 @@ def do_work(intf):
     es_file.close()
     es_file.install()
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     intf = SaagInterface(user_mode=0)
 

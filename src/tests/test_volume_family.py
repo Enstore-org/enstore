@@ -52,5 +52,5 @@ class Test_volume_family(unittest.TestCase):
         self.assertFalse(volume_family.match_volume_families(vf, self.vol2))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

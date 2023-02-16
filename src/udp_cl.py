@@ -13,7 +13,7 @@ class Client:
         self.udpc = udp_client.UDPClient()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     cl = Client()
     host = sys.argv[1]
     port = int(sys.argv[2])

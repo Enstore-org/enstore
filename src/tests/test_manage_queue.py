@@ -541,5 +541,5 @@ class TestRequest_Queue(unittest.TestCase):
         self.assertTrue('REGULAR QUEUE' in s)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

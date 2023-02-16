@@ -28,7 +28,7 @@ import StringIO
 class TestClientError(unittest.TestCase):
     def setUp(self):
         self.cerr = generic_client.ClientError('something is wrong')
-	self.cerr2 = generic_client.ClientError('something else is wrong', 3)
+        self.cerr2 = generic_client.ClientError('something else is wrong', 3)
         self.cerr3 = generic_client.ClientError('some other thing  is wrong', 5, e_errors.WRONGPARAMETER)
 
     def test___init__(self):
@@ -83,6 +83,8 @@ class TestGenericClient(unittest.TestCase):
 
     def test__is_csc(self):
         self.assertEqual(0, self.gc._is_csc())
+        csc_gc = generic_client.GenericClient(self.csc, enstore_constants.CONFIGURATION_CLIENT)
+        self.assertEqual(1, csc_gc._is_csc())
 
     def test__get_csc(self):
         self.assertTrue(isinstance(self.gc._get_csc(), configuration_client.ConfigurationClient))
@@ -125,7 +127,7 @@ class TestGenericClient(unittest.TestCase):
         self._mocker.side_effect = KeyboardInterrupt('wait! no!')
         try:
             rslt  = self.gc.send(ticket)
-            assertTrue(False)
+            self.assertTrue(False)
         except KeyboardInterrupt:
             pass
 
@@ -193,7 +195,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'dont_print', 'levels': 3}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 2 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
      
         self._mocker.reset_mock()
         intf.dont_print = 0
@@ -202,7 +204,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'do_log', 'levels': 4}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 3 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
      
         self._mocker.reset_mock()
         intf.do_log = 0
@@ -211,7 +213,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'dont_log', 'levels': 1}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 4 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
 
         self._mocker.reset_mock()
         intf.dont_log = 0
@@ -220,7 +222,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'do_alarm', 'levels': 999}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 5 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
 
         self._mocker.reset_mock()
         intf.do_alarm = 0
@@ -229,7 +231,7 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'dont_alarm', 'levels': 333}"
         rcvd = str(self._mocker.call_args)
         err_msg = 'test_handle_generic_commands 5 expected=%s rcvd=%s' % (expected, rcvd)
-        self.assertTrue(expected in  rcvd, err_msg)
+        self.assertTrue(expected in rcvd, err_msg)
 
     def test_check_ticket(self):
         exit_addr = sys.exit
@@ -260,5 +262,5 @@ class TestGenericClient(unittest.TestCase):
         expected = "call({'work': 'quit'}, None, 0, 0)"
         self.assertEqual(str(self._mocker.call_args), expected, "test_quit error")
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

@@ -776,6 +776,10 @@ def do_work(intf):
                          (proxy_server_name,))
     sys.exit(0)
 
+<<<<<<< HEAD
+=======
+if __name__ == "__main__":   # pragma: no cover
+>>>>>>> 8cc065df1063f952fa0f3cf1f4c7ff8e69751f47
 
 if __name__ == '__main__':
     intf = EnstoreStartInterface(user_mode=0)

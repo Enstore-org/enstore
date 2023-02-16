@@ -1116,7 +1116,7 @@ def get_config_dict(timeout=5, retry=2):
     return config_dict
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     Trace.init(MY_NAME)
 
     # fill in interface

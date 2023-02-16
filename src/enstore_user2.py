@@ -25,6 +25,6 @@ def do_work():
 	en = enstore.Enstore(intf)
 	en.do_work()
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     do_work()

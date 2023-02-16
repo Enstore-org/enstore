@@ -340,7 +340,7 @@ def do_work(intf):
 
     sys.exit(exit_status)
     
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     intf_of_eos = EnstoreOverallStatusInterface(sys.argv, 0) # zero means admin
 

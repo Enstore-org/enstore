@@ -184,7 +184,7 @@ def main(intf):
 		make_recent_file(sg, intf.duration, database,
 				 out_dir, temp_dir)
 
-if __name__ == '__main__':
+if __name__ == "__main__":   # pragma: no cover
 	#Get inforation from the Enstore servers.
 	rfl_intf = RecentFilesOnTapeInterface()
 

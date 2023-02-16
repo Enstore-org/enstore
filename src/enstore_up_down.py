@@ -912,7 +912,7 @@ def do_work(intf):
     rtn, summary_d = do_real_work()
     return (rtn)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":   # pragma: no cover
 
     # fill in interface
     intf = UpDownInterface(user_mode=0)

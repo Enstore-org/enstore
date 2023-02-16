@@ -206,7 +206,7 @@ class UDP2amq(UDPServer):
         # @todo: do we need to set extra delay to allow replies to be processed by remote server?
         self.qpid_proc.join()
         
-if __name__ == "__main__":    
+if __name__ == "__main__":   # pragma: no cover    
     import cache.en_logging.config_test_unit
     
     #cache.en_logging.config_test_unit.set_logging_console()

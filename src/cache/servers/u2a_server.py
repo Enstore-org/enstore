@@ -146,7 +146,7 @@ class U2As(object):
         return value
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     conf_srv = (os.environ['ENSTORE_CONFIG_HOST'], int(os.environ['ENSTORE_CONFIG_PORT']))
 
     Trace.init(string.upper(MY_NAME))

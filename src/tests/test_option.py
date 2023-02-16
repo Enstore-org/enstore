@@ -350,5 +350,5 @@ class TestInterface(unittest.TestCase):
                 print "test_set_from_dictionary end of info:"
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

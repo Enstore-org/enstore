@@ -343,7 +343,7 @@ class RawUDP:
         else:
             self.d_o = None
         
-if __name__ == "__main__":
+if __name__ == "__main__":   # pragma: no cover
     rs = RawUDP(7700)
     
     rs.receiver()

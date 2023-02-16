@@ -262,7 +262,7 @@ def do_work(intf):
 
 
 
-if __name__=="__main__":
+if __name__=="__main__":   # pragma: no cover
     intf = BackupInterface(user_mode=0)
 
     sys.exit(do_work(intf))
