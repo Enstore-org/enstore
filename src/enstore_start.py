@@ -57,7 +57,7 @@ SEND_TM = 1
 host_names_and_ips = None
 
 # Make sudo global so it only has to be determined once.
-sudo = ""
+sudo = None
 
 
 def get_csc():
@@ -646,6 +646,7 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
 
 
 def do_work(intf):
+    global sudo
     Trace.init(MY_NAME)
 
     # If the log server is already running, send log messages there.
@@ -680,10 +681,11 @@ def do_work(intf):
         sys.exit(1)
 
     # The movers and migrators need to run as root, check for sudo.
-    if os.system("sudo -V > /dev/null 2> /dev/null"):  # if true sudo not found.
-        sudo = str("")
-    else:
-        sudo = str("sudo")  # found
+    if sudo is None:
+        if os.system("sudo -V > /dev/null 2> /dev/null"):  # if true sudo not found.
+            sudo = str("")
+        else:
+            sudo = str("sudo")  # found
 
     # Start the event relay.
     if intf.should_start(enstore_constants.EVENT_RELAY):
