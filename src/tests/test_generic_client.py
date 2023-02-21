@@ -175,12 +175,11 @@ class TestGenericClient(unittest.TestCase):
 
 
     def test_handle_generic_commands(self):
-
         intf = generic_client.GenericClientInterface()
         ret = self.gc.handle_generic_commands(self.name, intf)
         self.assertIsNone(ret)
-        self._mocker.reset_mock()
 
+        self._mocker.reset_mock()
         intf.do_print = 3
         self.gc.handle_generic_commands(self.name, intf)
         expected = "call({'work': 'do_print', 'levels': 3}"
