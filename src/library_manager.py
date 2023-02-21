@@ -2781,10 +2781,13 @@ class LibraryManagerMethods:
             method = rq.ticket.get('method', None)
             if method and method != "read_tape_start":
                 # size has a meaning only for general rq
-                fsize = fsize + self.min_file_size
+==== BASE ====
+                fsize = fsize+self.min_file_size
 
-            start_t = time.time()
-            ret = self.is_vol_available(rq.work, external_label,
+
+            start_t=time.time()
+            ret = self.is_vol_available(rq.work,  external_label,
+==== BASE ====
                                         rq.ticket['vc']['volume_family'],
                                         fsize,
                                         rq.ticket['vc']['address'],
@@ -3770,9 +3773,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return
 
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
-            ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width'])  # ff width must be an integer
+==== BASE ====
+            ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
 
-        fsize = ticket['wrapper'].get('size_bytes', 0L)
+
+        fsize = ticket['wrapper'].get('size_bytes',0L)
+==== BASE ====
         if fsize > self.max_file_size:
             ticket['status'] = (e_errors.USERERROR,
                                 "file size %s more than max. %s" % (fsize, self.max_file_size))

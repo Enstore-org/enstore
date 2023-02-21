@@ -158,19 +158,18 @@ class GenericClient:
         -------
         None
         """
-
-        #import pdb; pdb.set_trace()
-        self.name = name    # Abbreviated client instance name
-                            # try to make it capital letters
-                            # not more than 8 characters long.
+        # import pdb; pdb.set_trace()
+        self.name = name  # Abbreviated client instance name
+        # try to make it capital letters
+        # not more than 8 characters long.
         if not flags & enstore_constants.NO_UDP and not self.__dict__.get('u', 0):
             self.u = udp_client.UDPClient()
 
-            if name == enstore_constants.CONFIGURATION_CLIENT:  #self.__dict__.get('is_config', 0):
-                # this is the configuration client, we don't need this other stuff
-                #self.csc = self
-                csc = self
-                #return
+        if name == enstore_constants.CONFIGURATION_CLIENT:  # self.__dict__.get('is_config', 0):
+            # this is the configuration client, we don't need this other stuff
+            # self.csc = self
+            csc = self
+            # return
 
         # get the configuration client
         if not flags & enstore_constants.NO_CSC:
