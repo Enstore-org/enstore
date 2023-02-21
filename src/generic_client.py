@@ -208,15 +208,6 @@ class GenericClient:
             self.server_address = None
             self.server_name = None
 
-        # get the log client
-        if logc:
-            # we were given one, use it
-            self.logc = logc
-        else:
-==== BASE ====
-            self.server_address = None
-            self.server_name = None
-
 	# get the log client
 	if logc:
 	    # we were given one, use it
@@ -225,7 +216,6 @@ class GenericClient:
 	    if not flags & enstore_constants.NO_LOG:
 		import log_client
 		self.logc = log_client.LoggerClient(self._get_csc(),
-==== BASE ====
                                                     self.log_name,
                                                     flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                     rcv_timeout=rcv_timeout,
@@ -396,10 +386,10 @@ class GenericClient:
             else:
                 x = {'status': (e_errors.NET_ERROR,
                                 "%s: %s" % (self.server_name, str(msg)))}
-        except TypeError, detail:
+        except TypeError as detail:
              x = {'status' : (e_errors.UNKNOWN,
                                  "%s: %s" % (self.server_name, str(detail)))}
-        except ValueError, detail:
+        except ValueError as detail:
             x = {'status': (e_errors.UNKNOWN,
                             "%s: %s" % (self.server_name, str(detail)))}
 
