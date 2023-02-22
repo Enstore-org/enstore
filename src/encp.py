@@ -458,7 +458,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11o"
+    version_string = "v3_11r"
     encp_file = globals().get('__file__', "")
     if encp_file:
         version_string = version_string + " $Revision$ "+ os.path.basename(encp_file)
@@ -11597,7 +11597,7 @@ class EncpInterface(option.Interface):
                                option.VALUE_USAGE:option.REQUIRED,
                                option.VALUE_TYPE:option.STRING,
                                option.VALUE_NAME:"output_storage_group",
-                               option.USER_LEVEL:option.ADMIN,},
+                               option.USER_LEVEL:option.USER2,},
         option.THREADED:{option.HELP_STRING:
                          "Multithread the actual data transfer.",
                          option.DEFAULT_TYPE:option.INTEGER,
