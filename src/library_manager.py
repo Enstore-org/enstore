@@ -2783,8 +2783,8 @@ class LibraryManagerMethods:
                 # size has a meaning only for general rq
                 fsize = fsize + self.min_file_size
 
-            start_t=time.time()
-            ret = self.is_vol_available(rq.work,  external_label,
+            start_t = time.time()
+            ret = self.is_vol_available(rq.work, external_label,
                                         rq.ticket['vc']['volume_family'],
                                         fsize,
                                         rq.ticket['vc']['address'],

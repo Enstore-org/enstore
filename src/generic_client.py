@@ -390,8 +390,8 @@ class GenericClient:
              x = {'status' : (e_errors.UNKNOWN,
                                  "%s: %s" % (self.server_name, str(detail)))}
         except ValueError as detail:
-            x = {'status' : (e_errors.UNKNOWN,
-                             "%s: %s" % (self.server_name, str(detail)))}
+             x = {'status' : (e_errors.UNKNOWN,
+                                 "%s: %s" % (self.server_name, str(detail)))}
 
         # If the short answer says that the real answer is too long, continue
         # with obtaining the information over TCP.
