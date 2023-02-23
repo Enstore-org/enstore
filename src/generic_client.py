@@ -175,47 +175,47 @@ class GenericClient:
         if not flags & enstore_constants.NO_CSC:
             import configuration_client
 
-            if csc:
-                if type(csc) == type(()):
-                    self.csc = configuration_client.ConfigurationClient(csc)
-                else:
-                    # it is not a tuple of address and port, so we assume that
-                    # it is a configuration client object
-                    self.csc = csc
+        if csc:
+            if type(csc) == type(()):
+                self.csc = configuration_client.ConfigurationClient(csc)
             else:
-                # it is None or 0 (the default value from i.e. log_client)
-                self.csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
-                                                                     enstore_functions2.default_port()))
+                # it is not a tuple of address and port, so we assume that
+                # it is a configuration client object
+                self.csc = csc
+        else:
+            # it is None or 0 (the default value from i.e. log_client)
+            self.csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
+                                                                enstore_functions2.default_port()))
 
-        # Try to find the logname for this object in the config dict.  use
-        # the lowercase version of the name as the server key.  if this
-        # object is not defined in the config dict, then just use the
-        # passed in name.
-        # This must be done after the self.csc is set.  Client's don't care,
-        # but this prevents servers from crashing.
-        self.log_name = self.get_name(name)
-        if server_address:
-            self.server_address = server_address
-            if server_name:
+            # Try to find the logname for this object in the config dict.  use
+            # the lowercase version of the name as the server key.  if this
+            # object is not defined in the config dict, then just use the
+            # passed in name.
+            # This must be done after the self.csc is set.  Client's don't care,
+            # but this prevents servers from crashing.
+            self.log_name = self.get_name(name)
+            if server_address:
+                self.server_address = server_address
+                if server_name:
+                    self.server_name = server_name
+                else:
+                    self.server_name = "server at %s" % (server_address,)
+            elif server_name:
+                self.server_address = self.get_server_address(
+                    server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
                 self.server_name = server_name
             else:
-                self.server_name = "server at %s" % (server_address,)
-        elif server_name:
-            self.server_address = self.get_server_address(
-                server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
-            self.server_name = server_name
-        else:
-            self.server_address = None
-            self.server_name = None
+                self.server_address = None
+                self.server_name = None
 
-	# get the log client
-	if logc:
-	    # we were given one, use it
-	    self.logc = logc
-	else:
-	    if not flags & enstore_constants.NO_LOG:
-		import log_client
-		self.logc = log_client.LoggerClient(self._get_csc(),
+        # get the log client
+        if logc:
+            # we were given one, use it
+            self.logc = logc
+        else:
+            if not flags & enstore_constants.NO_LOG:
+                import log_client
+                self.logc = log_client.LoggerClient(self._get_csc(),
                                                     self.log_name,
                                                     flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                     rcv_timeout=rcv_timeout,
@@ -384,14 +384,14 @@ class GenericClient:
             if hasattr(msg, "errno") and msg.errno and msg.errno == errno.ETIMEDOUT:
                 x = {'status': (e_errors.TIMEDOUT, self.server_name)}
             else:
-                x = {'status': (e_errors.NET_ERROR,
-                                "%s: %s" % (self.server_name, str(msg)))}
+                x = {'status' : (e_errors.NET_ERROR,
+                                 "%s: %s" % (self.server_name, str(msg)))}
         except TypeError as detail:
              x = {'status' : (e_errors.UNKNOWN,
                                  "%s: %s" % (self.server_name, str(detail)))}
         except ValueError as detail:
-            x = {'status': (e_errors.UNKNOWN,
-                            "%s: %s" % (self.server_name, str(detail)))}
+            x = {'status' : (e_errors.UNKNOWN,
+                             "%s: %s" % (self.server_name, str(detail)))}
 
         # If the short answer says that the real answer is too long, continue
         # with obtaining the information over TCP.
@@ -424,6 +424,8 @@ class GenericClient:
                 x = {'status' : (e_errors.UNKNOWN,
                                  "%s: %s" % (self.server_name, str(detail)))}
 
+
+
             if e_errors.is_ok(x):
                 # Read the data.
                 try:
@@ -454,12 +456,12 @@ class GenericClient:
                 return {'status': (e_errors.TIMEDOUT,
                                    enstore_constants.CONFIGURATION_SERVER)}
             else:
-                return {'status': (e_errors.BROKEN, str(msg))}
+                return {'status' : (e_errors.BROKEN, str(msg))}
         # I don't know why `except errno.errorcode[int]` should work. In this
         # case ETIMEDOUT errors are OSErrors, which have an accessible errno.
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
-                return {'status': (e_errors.TIMEDOUT,
+                return {'status' : (e_errors.TIMEDOUT,
                                     enstore_constants.CONFIGURATION_SERVER)}
             else:
                 raise e
@@ -479,8 +481,8 @@ class GenericClient:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status': (e_errors.TIMEDOUT, server)}
             else:
-                return {'status': (e_errors.BROKEN, str(msg))}
-        except KeyError, detail:
+                return {'status' : (e_errors.BROKEN, str(msg))}
+        except KeyError as detail:
             try:
                 sys.stderr.write("Unknown server %s (no key %s)\n" % (server, detail))
                 sys.stderr.flush()
@@ -490,7 +492,7 @@ class GenericClient:
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
                 Trace.trace(14,"alive - ERROR, alive timed out")
-                x = {'status': (e_errors.TIMEDOUT, server)}
+                x = {'status' : (e_errors.TIMEDOUT, server)}
             else:
                 raise e
         return x
@@ -519,10 +521,10 @@ class GenericClient:
                 return {'status': (e_errors.TIMEDOUT,
                                    enstore_constants.CONFIGURATION_SERVER)}
             else:
-                return {'status': (e_errors.BROKEN, str(msg))}
+                return {'status' : (e_errors.BROKEN, str(msg))}
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
-                return {'status': (e_errors.TIMEDOUT, None)}
+                return {'status' : (e_errors.TIMEDOUT, None)}
             else:
                 raise e
         try:
@@ -542,7 +544,7 @@ class GenericClient:
             sys.exit(1)
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
-                x = {'status': (e_errors.TIMEDOUT, self.server_name)}
+                x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
             else:
                 raise e
         return x

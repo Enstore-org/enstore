@@ -2781,8 +2781,7 @@ class LibraryManagerMethods:
             method = rq.ticket.get('method', None)
             if method and method != "read_tape_start":
                 # size has a meaning only for general rq
-                fsize = fsize+self.min_file_size
-
+                fsize = fsize + self.min_file_size
 
             start_t=time.time()
             ret = self.is_vol_available(rq.work,  external_label,
@@ -3771,10 +3770,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return
 
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
-            ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
+            ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width'])  # ff width must be an integer
 
-
-        fsize = ticket['wrapper'].get('size_bytes',0L)
+        fsize = ticket['wrapper'].get('size_bytes', 0L)
         if fsize > self.max_file_size:
             ticket['status'] = (e_errors.USERERROR,
                                 "file size %s more than max. %s" % (fsize, self.max_file_size))
@@ -5502,6 +5500,7 @@ def do_work():
         time.sleep(10)
 
     Trace.alarm(e_errors.ALARM, "Library Manager %sfinished (impossible)" % (intf.name,))
+
 
 if __name__ == "__main__":   # pragma: no cover
     do_work()

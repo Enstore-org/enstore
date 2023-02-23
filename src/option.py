@@ -601,7 +601,6 @@ valid_option_list = [
     XATTR, XATTRCHMOD, XATTRCHOWN, XATTRRM, XATTRS, XREF,
 ]
 
-
 ############################################################################
 
 
@@ -850,7 +849,7 @@ class Interface:
                         temp_fill = 0
 
                     temp = ("%s" % (last_line,)) + " " * temp_fill + \
-                           text_string[index:new_index]
+                       text_string[index:new_index]
                     lines_of_text.append(temp)
                 else:  # use new line
                     lines_of_text.append(" " * filler_length +
