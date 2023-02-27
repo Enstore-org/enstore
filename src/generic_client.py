@@ -161,6 +161,7 @@ class GenericClient:
         # import pdb; pdb.set_trace()
         self.name = name  # Abbreviated client instance name
         self.server_address = server_address
+        self.server_name = server_name
         # try to make it capital letters
         # not more than 8 characters long.
         if not flags & enstore_constants.NO_UDP and not self.__dict__.get('u', 0):
