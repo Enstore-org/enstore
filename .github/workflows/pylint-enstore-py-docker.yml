@@ -18,8 +18,8 @@ jobs:
        cd /__w/enstore/enstore
        export PYTHONPATH=`pwd`:`pwd`/src:`pwd`/HTMLgen:`pwd`/PyGreSQL:$PYTHONPATH
        coverage run -m pytest src/tests || printf "some unit test  exited code $?\n\n"
-       coverage report --omit '/opt/*','src/tests/*','*/__init__.py'
-       coverage html  --omit '/opt/*','src/tests/*','*/__init__.py'
+       coverage report --omit 'HTMgen/*','DBUtils/*','config-file*','/opt/*','src/tests/*','*/__init__.py'
+       coverage html  --omit 'HTMgen/*','DBUtils/*','config-file*','/opt/*','src/tests/*','*/__init__.py'
        tar cvzf htmlcov.tar htmlcov
     - name: Archive coverage report
       uses: actions/upload-artifact@v2
