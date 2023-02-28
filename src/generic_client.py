@@ -162,6 +162,7 @@ class GenericClient:
         self.name = name  # Abbreviated client instance name
         self.server_address = server_address
         self.server_name = server_name
+        self.log_name = log_name
         # try to make it capital letters
         # not more than 8 characters long.
         if not flags & enstore_constants.NO_UDP and not self.__dict__.get('u', 0):
@@ -229,6 +230,8 @@ class GenericClient:
         else:
             if not flags & enstore_constants.NO_ALARM:
                 import alarm_client
+                if not self.log_name:
+                    self.log_name = '/dev/stderr'
                 self.alarmc = alarm_client.AlarmClient(self._get_csc(),
                                                        self.log_name,
                                                        flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
