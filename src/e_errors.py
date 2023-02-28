@@ -682,8 +682,8 @@ def is_media(e):
     """Determine if an error is a media error
 
     Args:
-
         e (str, tuple, dict): Error to check (required)
+
     Returns:
         int: 1 if media error, 0 otherwise
     """
