@@ -8,9 +8,6 @@ except ImportError:
     import fixtures.mock_imports
 from alarm import *
 
-"""
-Test alarm.py
-"""
 
 class TestGenericAlarm(unittest.TestCase):
     def setUp(self):
