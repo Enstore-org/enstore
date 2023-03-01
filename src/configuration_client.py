@@ -905,7 +905,7 @@ def print_configuration(config_dict, intf_arg, prefix=""):
             print "%s:%s" % (key, flat_dict[key])
 
 
-def do_work(intf_arg):
+def do_work(intf_arg): # pragma: no cover
     csc = ConfigurationClient((intf_arg.config_host, intf_arg.config_port))
     csc.csc = csc
     result = csc.handle_generic_commands(MY_SERVER, intf_arg)
