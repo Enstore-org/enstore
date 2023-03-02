@@ -18,10 +18,6 @@ import Trace
 import hostaddr
 import socket
 
-socket.getaddrinfo = mock.MagicMock()
-socket.getaddrinfo.return_value = [(2, 1, 6, '', ('131.225.105.239', 0)), (2, 2, 17, '', ('131.225.105.239', 0)), (2, 3, 0, '', ('131.225.105.239', 0))]
-socket.getfqdn = mock.MagicMock()
-socket.getfqdn.return_value = 'www.fnal.gov'
 
 class TestHostaddr(unittest.TestCase):
 
@@ -29,6 +25,16 @@ class TestHostaddr(unittest.TestCase):
         this_dir = os.path.dirname(os.path.abspath(__file__))
         fixture_dir = os.path.join(this_dir, 'fixtures')
         self.ifconfig_command  = os.path.join(fixture_dir, 'ifconfig')
+        self.save_getaddrinfo = socket.getaddrinfo 
+        self.save_getfqdn = socket.getfqdn
+        socket.getaddrinfo = mock.MagicMock()
+        socket.getaddrinfo.return_value = [(2, 1, 6, '', ('131.225.105.239', 0)), (2, 2, 17, '', ('131.225.105.239', 0)), (2, 3, 0, '', ('131.225.105.239', 0))]
+        socket.getfqdn = mock.MagicMock()
+        socket.getfqdn.return_value = 'www.fnal.gov'
+
+    def tearDown(self):
+        socket.getaddrinfo = self.save_getaddrinfo
+        socket.getfqdn = self.save_getfqdn
 
     def test_is_ip(self):
             self.assertEqual(hostaddr.is_ip("www.fnal.gov"), 0)
