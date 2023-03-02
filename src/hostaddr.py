@@ -24,9 +24,9 @@ import e_errors
 
 #Return true if the string is an ipv4 dotted-decimal address.
 def is_ip(ip):
-    """Check if a string is an IP address
+    """Check if a string is an IP4 address
     
-    Checks if a string is an IP address.
+    Checks if a string is an IP4 address.
     
     Args:
         ip (str): IP address (required)
