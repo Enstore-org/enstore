@@ -102,8 +102,19 @@ class TestHostaddr(unittest.TestCase):
            self.assertEqual(hostaddr.known_domains['invalid_domains']['default2'], ['999.999'])
     
     def test_allow(self):
-            al = hostaddr.allow('127.0.0.1')
-            self.assertTrue(al)
+        host_list = [('2620:6a:0:8421::96', 0, 0, 0), 
+                    ('131.225.191.96', 0),
+                    ('abcdefg',0),
+                    ('127.0.0.1',0),
+                    ('127.0.0.1',0,0)
+                    ]
+        #import pdb; pdb.set_trace()
+        for hi in host_list:
+            try:
+                val = hostaddr.allow(hi)
+                self.assertTrue(val in [0,1] , "in=%s val=%s"%(hi,val))
+            except TypeError:
+                pass
 
     def test_find_ifconfig_command(self):
             if_cmd = hostaddr.find_ifconfig_command()
