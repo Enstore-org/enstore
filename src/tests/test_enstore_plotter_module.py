@@ -45,22 +45,14 @@ class TestEnstorePlotterModule(unittest.TestCase):
         self.assertFalse(os.path.exists(src))
         os.remove(dst)
 
-def test_roundtime(self):
-    t1 = 1677875595.160911
-    self.assertEqual(self.epm.roundtime(t1), 1677875595.0)
-    self.assertEqual(self.epm.roundtime(t1,'floor'), 1677798000.0)
-    self.assertEqual(self.epm.roundtime(t1,'ceil'), 1677884399.0)
-
-    self.assertEqual(self.epm.roundtime(1000000000), 1000000000)
-    self.assertEqual(self.epm.roundtime(1000000001), 1000000000)
-    self.assertEqual(self.epm.roundtime(1000000002), 1000000000)
-    self.assertEqual(self.epm.roundtime(1000000009), 1000000000)
-    self.assertEqual(self.epm.roundtime(1000000010), 1000000010)
-    self.assertEqual(self.epm.roundtime(1000000019), 1000000010)
-    self.assertEqual(self.epm.roundtime(1000000020), 1000000020)
-    self.assertEqual(self.epm.roundtime(1000000021), 1000000020)
-    self.assertEqual(self.epm.roundtime(1000000021,'ceil'), 1000000020)
-    self.assertEqual(self.epm.roundtime(1000000021,'floor'), 1000000020)
+    def test_roundtime(self):
+        t1 = 1677875595.160911
+        self.assertEqual(enstore_plotter_module.roundtime(t1), 1677875595.0)
+        self.assertEqual(enstore_plotter_module.roundtime(t1,'floor'), 1677798000.0)
+        self.assertEqual(enstore_plotter_module.roundtime(t1,'ceil'), 1677884399.0)
+    
+        self.assertEqual(enstore_plotter_module.roundtime(1000000000), 1000000000.0)
+        self.assertEqual(enstore_plotter_module.roundtime(1000000001), 1000000001.0)
 
 if __name__ == "__main__":
     unittest.main()
