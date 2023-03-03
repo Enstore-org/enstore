@@ -15,27 +15,68 @@ import time
 #import enstore_plotter_framework
 
 class EnstorePlotterModule:
+    """Base class for all Enstore plotter modules."""
     def __init__(self,name,isActive=True):
         self.name=name
         self.is_active=isActive
         self.parameters = {}
+    
     def isActive(self):
         return self.is_active
+    
     def setActive(self,isActive=True):
         self.is_active=isActive
+    
     def book(self,frame):
         print "Booking ",self.name
+    
     def fill(self,frame):
         print "Filling ",self.name
+    
     def plot(self):
         print "Plotting ",self.name
+    
     def install(self):
         print "Installing:",self.name
+
     def add_parameter(self,par_name,par_value):
+        """ Add a parameter to the modules parameter dictionary.  
+        If the parameter already exists, it will be overwritten.
+
+        Args:
+            par_name(str): The name of the parameter.
+            par_value(any): The value of the parameter.
+        Returns:
+            None
+        """
         self.parameters[par_name]=par_value
+
     def get_parameter(self,name):
+        """ get a parameter from the modules parameter dictionary.
+        
+        Args:
+            name(str): The name of the parameter.
+        Returns:
+            The value of the parameter or None if the parameter does not exist.
+        """
         return self.parameters.get(name)
+
     def move(self, src, dst):
+        """ Move a file from src to dst.  If dst is a directory, move the file
+        into the directory.  If dst is a file, overwrite it.  If dst is a
+        directory and the file already exists, append a number to the file
+        name.  If the file already exists and the number is 999, raise an
+        exception.  
+        
+        Args:
+            src(str): The source file.
+            dst(str): The destination file or directory.
+        Returnns:
+            None
+        Raises:
+            OSError: If the destination file already exists and the number is
+                     999.
+        """
         #Open the input and output files.
         src_fd = os.open(src, os.O_RDONLY)
         try:
@@ -62,8 +103,13 @@ def roundtime(seconds, rounding=None):
     """
     Round the provided time and return it.
 
-    `seconds`: time in seconds.
-    `rounding`: None, 'floor' or 'ceil'.
+    Args:
+        seconds: time in seconds.
+        rounding: None, 'floor' or 'ceil'.
+    Returns:
+        time in seconds with indicated rounding applied .
+        'floor' rounds down to the nearest day.
+        'ceil' rounds up to the nearest day.
     """
 
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(seconds)
