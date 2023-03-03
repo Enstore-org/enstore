@@ -22,21 +22,27 @@ class EnstorePlotterModule:
         self.parameters = {}
     
     def isActive(self):
+        """implemented by subclasses"""
         return self.is_active
     
     def setActive(self,isActive=True):
+        """implemented by subclasses"""
         self.is_active=isActive
     
     def book(self,frame):
+        """implemented by subclasses"""
         print "Booking ",self.name
     
     def fill(self,frame):
+        """implemented by subclasses"""
         print "Filling ",self.name
     
     def plot(self):
+        """implemented by subclasses"""
         print "Plotting ",self.name
     
     def install(self):
+        """implemented by subclasses"""
         print "Installing:",self.name
 
     def add_parameter(self,par_name,par_value):
