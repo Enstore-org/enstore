@@ -76,7 +76,7 @@ class TestNullDriver(unittest.TestCase):
         # test write with bad file descriptor, returning -1
         self.ndr.open(mode=1)
         self.ndr.fd = -1
-        self.assertEaual(self.ndr.write(s.buf,0,10), -1)
+        self.assertEqual(self.ndr.write(s.buf,0,10), -1)
 
         # test write to driver open for reading
         with self.assertRaises(ValueError):
