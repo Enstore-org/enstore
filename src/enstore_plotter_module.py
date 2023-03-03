@@ -12,7 +12,6 @@ import errno
 import time
 
 # enstore imports
-#import enstore_plotter_framework
 
 class EnstorePlotterModule:
     """Base class for all Enstore plotter modules."""
