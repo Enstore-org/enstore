@@ -4278,9 +4278,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
     # function or multiple tapes that have the same label in the
     # library.
     def locate_volume(self, vol, ignore_addresses=None):
-        Trace.trace(ACTION_LOG_LEVEL, ' looking for volume %s status_valid %s' % (vol, self.status_valid))
         if ignore_addresses is None:
             ignore_addresses = []
+        Trace.trace(ACTION_LOG_LEVEL, ' looking for volume %s status_valid %s' % (vol, self.status_valid))
         if self.status_valid == 0:
             a, b = return_by(self.status_local, (), self.status_timeout)
             if a == -1:
