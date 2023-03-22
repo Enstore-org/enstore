@@ -643,6 +643,7 @@ class Interface:
         else:
             self.user_level = USER
 
+        self.name = "Unknown Interface"
         self.argv = args
         self.options = {}
         self.help = 0
@@ -682,6 +683,21 @@ class Interface:
             self.print_usage()
 
     ############################################################################
+
+    def set_properties_from_dict(self, properties):
+        for property_name, value in properties.items():
+            if hasattr(self, property_name):
+                current_property_value = getattr(self, property_name)
+                if current_property_value is None:
+                    setattr(self, property_name, value)
+                elif current_property_value != value:
+                    Trace.log(e_errors.INFO, "Attempt to set property %s on %s to %s from properties dict:"
+                                             "%s is already %s - will not overwrite." %
+                              (property_name, self.name, value, property_name, current_property_value))
+            else:
+                Trace.log(e_errors.WARNING,
+                          "Trying to set property %s on %s from properties dict: property does not exist" %
+                          (property_name, self.name))
 
     parameters = []  # Don't put this in __init__().  It would clobber values.
 
@@ -1395,6 +1411,7 @@ class Interface:
                 return rtn
 
         return None
+
     ############################################################################
     # These options remove leading "-" or "--" as appropriate from opt
     # and return.

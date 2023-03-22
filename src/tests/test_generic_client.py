@@ -25,6 +25,11 @@ import mock
 import StringIO
 # import fixtures.config.conf
 
+CLIENT_NAME = 'test.generic.client'
+
+def NewGCI():
+    return generic_client.GenericClientInterface(['enstore', CLIENT_NAME] )
+
 class TestClientError(unittest.TestCase):
     def setUp(self):
         self.cerr = generic_client.ClientError('something is wrong')
@@ -75,7 +80,7 @@ class TestGenericClient(unittest.TestCase):
         udp_client.UDPClient.send = self._mocker
         self.csc = configuration_client.ConfigurationClient()
         self.flags = 0 | enstore_constants.NO_LOG | enstore_constants.NO_ALARM
-        self.name = 'test.generic.client'
+        self.name = CLIENT_NAME
         self.gc = generic_client.GenericClient(self.csc, self.name, flags=self.flags)
 
     def test___init__(self):
@@ -116,6 +121,22 @@ class TestGenericClient(unittest.TestCase):
         self.assertEqual(a,'127.0.0.1')
         self.assertEqual(b,7500)
 
+
+    @mock.patch('configuration_client.ConfigurationClient.get')
+    def test_apply_config_properties_to_intf(self, mock_csc_get):
+        intf = NewGCI()
+        intf.my_prop = None
+        property_dict = {
+            'properties': {
+                'my_prop': 1,
+            }
+        }
+        mock_csc_get.return_value = {'WRONG_NAME': property_dict}
+        self.gc.apply_config_properties_to_intf(intf)
+        self.assertIsNone(intf.my_prop)
+        mock_csc_get.return_value = {self.gc.name: property_dict}
+        self.gc.apply_config_properties_to_intf(intf)
+        self.assertEqual(intf.my_prop, 1)
     
     def test_send(self):
         ticket  =  {'new': 1, 'work': 'lookup', 'lookup': self.name }
@@ -175,7 +196,7 @@ class TestGenericClient(unittest.TestCase):
 
 
     def test_handle_generic_commands(self):
-        intf = generic_client.GenericClientInterface()
+        intf = NewGCI()
         ret = self.gc.handle_generic_commands(self.name, intf)
         self.assertIsNone(ret)
 

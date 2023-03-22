@@ -234,6 +234,19 @@ class GenericClient:
                                                        rcv_timeout=rcv_timeout,
                                                        rcv_tries=rcv_tries)
 
+    def apply_config_properties_to_intf(self, intf):
+        # type: (option.Interface) -> None
+        config_dict = self.csc.get(self.name)
+        my_config_dict = {}
+        if self.name in config_dict:
+            my_config_dict = config_dict[self.name]
+        else:
+            Trace.log(e_errors.INFO,
+                      "My client name ('%s') not found in config dict while attempting " \
+                      "to apply config properties to Interface" % self.name)
+        if 'properties' in my_config_dict:
+            intf.set_properties_from_dict(my_config_dict['properties'])
+
     def _is_csc(self):
         # If the server requested is the configuration server,
         # do something different.
@@ -444,7 +457,7 @@ class GenericClient:
                                    enstore_constants.CONFIGURATION_SERVER)}
             else:
                 return {'status' : (e_errors.BROKEN, str(msg))}
-        # I don't know why `except errno.errocode[int]` should work. In this
+        # I don't know why `except errno.errorcode[int]` should work. In this
         # case ETIMEDOUT errors are OSErrors, which have an accessible errno.
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
@@ -538,6 +551,7 @@ class GenericClient:
 
     def handle_generic_commands(self, server, intf):
         """Forward commands to supplied server with default levels."""
+        self.apply_config_properties_to_intf(intf)
         ret = None
         if intf.alive:
             ret = self.alive(server, intf.alive_rcv_timeout, intf.alive_retries)
