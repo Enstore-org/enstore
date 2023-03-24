@@ -104,7 +104,7 @@ class GenericClientInterface(option.Interface):
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
     # dbox this class did not work as coded
-    # its a base class method that has never been called afaict 
+    # its a base class method that has never been called afaict
     def client_options(self):
         return (self.alive_options, self.trace_options, self.help_options)
 
@@ -158,7 +158,7 @@ class GenericClient:
         -------
         None
         """
-        # import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         self.name = name  # Abbreviated client instance name
         # try to make it capital letters
         # not more than 8 characters long.
@@ -175,38 +175,38 @@ class GenericClient:
         if not flags & enstore_constants.NO_CSC:
             import configuration_client
 
-        if csc:
-            if type(csc) == type(()):
-                self.csc = configuration_client.ConfigurationClient(csc)
-            else:
-                # it is not a tuple of address and port, so we assume that
-                # it is a configuration client object
-                self.csc = csc
-        else:
-            # it is None or 0 (the default value from i.e. log_client)
-            self.csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
-                                                                enstore_functions2.default_port()))
-
-            # Try to find the logname for this object in the config dict.  use
-            # the lowercase version of the name as the server key.  if this
-            # object is not defined in the config dict, then just use the
-            # passed in name.
-            # This must be done after the self.csc is set.  Client's don't care,
-            # but this prevents servers from crashing.
-            self.log_name = self.get_name(name)
-            if server_address:
-                self.server_address = server_address
-                if server_name:
-                    self.server_name = server_name
+            if csc:
+                if type(csc) == type(()):
+                    self.csc = configuration_client.ConfigurationClient(csc)
                 else:
-                    self.server_name = "server at %s" % (server_address,)
-            elif server_name:
-                self.server_address = self.get_server_address(
-                    server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
+                    # it is not a tuple of address and port, so we assume that
+                    # it is a configuration client object
+                    self.csc = csc
+            else:
+                # it is None or 0 (the default value from i.e. log_client)
+                self.csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
+                                                                    enstore_functions2.default_port()))
+    
+        # Try to find the logname for this object in the config dict.  use
+        # the lowercase version of the name as the server key.  if this
+        # object is not defined in the config dict, then just use the
+        # passed in name.
+        # This must be done after the self.csc is set.  Client's don't care,
+        # but this prevents servers from crashing.
+        self.log_name = self.get_name(name)
+        if server_address:
+            self.server_address = server_address
+            if server_name:
                 self.server_name = server_name
             else:
-                self.server_address = None
-                self.server_name = None
+                self.server_name = "server at %s" % (server_address,)
+        elif server_name:
+            self.server_address = self.get_server_address(
+                server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
+            self.server_name = server_name
+        else:
+            self.server_address = None
+            self.server_name = None
 
         # get the log client
         if logc:
@@ -340,7 +340,7 @@ class GenericClient:
 
         return server_address
 
-    def send(self, ticket, rcv_timeout=0, tries=0, long_reply = None):
+    def send(self, ticket, rcv_timeout=0, tries=0, long_reply=None):
         """Get address of server supplied as parameter.
 
         Parameters
@@ -365,20 +365,20 @@ class GenericClient:
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (socket.gaierror, socket.herror) as msg:
-            x = {'status' : (e_errors.NET_ERROR,
-                                 "%s: %s" % (self.server_name, str(msg)))}
+            x = {'status': (e_errors.NET_ERROR,
+                            "%s: %s" % (self.server_name, str(msg)))}
         except (socket.error, select.error, e_errors.EnstoreError) as msg:
             if hasattr(msg, "errno") and msg.errno and msg.errno == errno.ETIMEDOUT:
                 x = {'status': (e_errors.TIMEDOUT, self.server_name)}
             else:
-                x = {'status' : (e_errors.NET_ERROR,
-                                 "%s: %s" % (self.server_name, str(msg)))}
+                x = {'status': (e_errors.NET_ERROR,
+                                "%s: %s" % (self.server_name, str(msg)))}
         except TypeError as detail:
-             x = {'status' : (e_errors.UNKNOWN,
-                                 "%s: %s" % (self.server_name, str(detail)))}
+            x = {'status': (e_errors.UNKNOWN,
+                            "%s: %s" % (self.server_name, str(detail)))}
         except ValueError as detail:
-             x = {'status' : (e_errors.UNKNOWN,
-                                 "%s: %s" % (self.server_name, str(detail)))}
+            x = {'status': (e_errors.UNKNOWN,
+                            "%s: %s" % (self.server_name, str(detail)))}
 
         # If the short answer says that the real answer is too long, continue
         # with obtaining the information over TCP.
@@ -408,10 +408,8 @@ class GenericClient:
                 x['status'] = (e_errors.NET_ERROR, message)
 
             except ValueError as detail:
-                x = {'status' : (e_errors.UNKNOWN,
-                                 "%s: %s" % (self.server_name, str(detail)))}
-
-
+                x = {'status': (e_errors.UNKNOWN,
+                                "%s: %s" % (self.server_name, str(detail)))}
 
             if e_errors.is_ok(x):
                 # Read the data.
@@ -443,13 +441,13 @@ class GenericClient:
                 return {'status': (e_errors.TIMEDOUT,
                                    enstore_constants.CONFIGURATION_SERVER)}
             else:
-                return {'status' : (e_errors.BROKEN, str(msg))}
+                return {'status': (e_errors.BROKEN, str(msg))}
         # I don't know why `except errno.errocode[int]` should work. In this
         # case ETIMEDOUT errors are OSErrors, which have an accessible errno.
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
-                return {'status' : (e_errors.TIMEDOUT,
-                                    enstore_constants.CONFIGURATION_SERVER)}
+                return {'status': (e_errors.TIMEDOUT,
+                                   enstore_constants.CONFIGURATION_SERVER)}
             else:
                 raise e
 
@@ -468,7 +466,7 @@ class GenericClient:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status': (e_errors.TIMEDOUT, server)}
             else:
-                return {'status' : (e_errors.BROKEN, str(msg))}
+                return {'status': (e_errors.BROKEN, str(msg))}
         except KeyError as detail:
             try:
                 sys.stderr.write("Unknown server %s (no key %s)\n" % (server, detail))
@@ -478,8 +476,8 @@ class GenericClient:
             os._exit(1)
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
-                Trace.trace(14,"alive - ERROR, alive timed out")
-                x = {'status' : (e_errors.TIMEDOUT, server)}
+                Trace.trace(14, "alive - ERROR, alive timed out")
+                x = {'status': (e_errors.TIMEDOUT, server)}
             else:
                 raise e
         return x
@@ -508,15 +506,15 @@ class GenericClient:
                 return {'status': (e_errors.TIMEDOUT,
                                    enstore_constants.CONFIGURATION_SERVER)}
             else:
-                return {'status' : (e_errors.BROKEN, str(msg))}
+                return {'status': (e_errors.BROKEN, str(msg))}
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
-                return {'status' : (e_errors.TIMEDOUT, None)}
+                return {'status': (e_errors.TIMEDOUT, None)}
             else:
                 raise e
         try:
             x = self.u.send({'work': work,
-                             'levels':levels}, (t['hostip'], t['port']))
+                             'levels': levels}, (t['hostip'], t['port']))
         except (socket.error, select.error, e_errors.EnstoreError) as msg:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status': (e_errors.TIMEDOUT, self.server_name)}
@@ -531,7 +529,7 @@ class GenericClient:
             sys.exit(1)
         except OSError as e:
             if e.errno == errno.errorcode[errno.ETIMEDOUT]:
-                x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
+                x = {'status': (e_errors.TIMEDOUT, self.server_name)}
             else:
                 raise e
         return x
@@ -555,7 +553,6 @@ class GenericClient:
             ret = self.trace_levels(server, 'dont_alarm', intf.dont_alarm)
         return ret
 
-
     def check_ticket(self, ticket):
         """Examine the final ticket to check for any errors."""
         if not 'status' in ticket.keys(): return None
@@ -571,10 +568,10 @@ class GenericClient:
 
     def dump(self, rcv_timeout=0, tries=0):
         """Tell the server to spill its guts."""
-        x = self.send({'work':'dump'}, rcv_timeout, tries)
+        x = self.send({'work': 'dump'}, rcv_timeout, tries)
         return x
 
     def quit(self, rcv_timeout=0, tries=0):
         """Tell the server to 'go away' in a polite manner."""
-        x = self.send({'work':'quit'}, rcv_timeout, tries)
+        x = self.send({'work': 'quit'}, rcv_timeout, tries)
         return x
