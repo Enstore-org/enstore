@@ -46,7 +46,8 @@ PROTOCOL = "PROTO001"  # must be 8 characters to be used in place of old message
 
 def hex8(x):
     """
-    Converts numeric argument to 8 byte hex string
+    Converts numeric argument to 8 byte hex string.
+    Not intended for external use.
 
     Args:
         x (int): Number to convert to hex
@@ -65,7 +66,8 @@ def hex8(x):
 
 def get_socket_read_queue_length(sock):
     """
-    Send FIONREAD on the socket to get the number of bytes to read
+    Send FIONREAD on the socket to get the number of bytes to read.
+    Not intended for external use.
 
     Args:
         sock (Socket): Socket to read queue length of
@@ -99,7 +101,8 @@ def get_socket_read_queue_length(sock):
 # works on Linux.  All other OSes get a socket exception with errno EOPNOTSUPP.
 def get_unacked_packet_count(sock):
     """
-    Number of un-ACKed packets. UNIX ONLY: Other OSes see EOPNOTSUPP
+    Number of un-ACKed packets. UNIX ONLY: Other OSes see EOPNOTSUPP.
+    Not intended for external use.
 
     Args:
         sock (Socket): Socket to check for un-ACKed packets
@@ -138,7 +141,8 @@ def get_unacked_packet_count(sock):
 
 def __get_socket_state(fd):
     """
-    Return socket state of supplied FD
+    Return socket state of supplied FD.
+    Not intended for external use.
 
     Args:
         fd (Socket): File Descriptor to read state
@@ -194,7 +198,8 @@ def __get_socket_state(fd):
 
 def log_socket_state(sock):
     """
-    Dump as much of the socket state as can be determined to stderr
+    Dump as much of the socket state as can be determined to stderr.
+    Not intended for external use.
 
     Args:
         sock (Socket): Socket to have its state dumped to stderr
@@ -272,7 +277,7 @@ def log_socket_state(sock):
 def get_callback(ip=None):
     """
     Get an unused tcp port for control communication. Defaults to config
-    server host.
+    server host. Called frequently in codebase.
 
     Args:
         ip (bytearray or str or unicode or None): IP address to connect to
@@ -296,11 +301,13 @@ def get_callback(ip=None):
 
 def connect_to_callback(ip_addr, interface_ip=None, timeout=30):
     """
+    Create a connected socket, blocking socket to target IP.
+    Not intended for external use. Called once in generic_client.
 
     Args:
         ip_addr (bytearray or str or unicode): Socket destination ip
-        interface_ip (bytearray or str or unicode): Particular source IP to use
-            if source is multihomed
+        interface_ip (bytearray or str or unicode, default:None): Particular
+            source IP to use if source is multihomed
         timeout (int, default:30): Timeout for checking socket status, in secs
 
     Returns:
@@ -401,7 +408,9 @@ def connect_to_callback(ip_addr, interface_ip=None, timeout=30):
 # Normally, this should return the number of bytes written/sent.  However,
 # it will return the empty string for error conditions.
 def timeout_send(sock, msg, timeout=15 * 60):
-    """Send message on socket with a timeout (default 15 min)
+    """
+    Send message on socket with a timeout (default 15 min).
+    Not intended for external use.
 
     Args:
         sock (Socket): Socket on which to send the message
@@ -452,9 +461,10 @@ def timeout_send(sock, msg, timeout=15 * 60):
 def _send_raw(sock, message, message_length, timeout):
     """
     Send data on a socket, continuing where left off if not all data is sent
-        successfully. Retry until all data is sent or 0 bytes are written by
-        send request. Return failure if too much or too little data is sent
-        successfully, return success otherwise.
+    successfully. Retry until all data is sent or 0 bytes are written by send
+    request. Return failure if too much or too little data is sent
+    successfully, return success otherwise.
+    Not intended for external use.
 
     Args:
         sock (Socket): Socket on which to send data
@@ -495,6 +505,7 @@ def write_raw(sock, msg, timeout=15 * 60):
         3. Uses _send_raw to send "signature" of message (ENSTOR + a salt)
         4. Re-implements _send_raw to send msg
         5. Uses _send_raw to send Adler32 checksum of message
+    Not intended for external use.
 
     Args:
         sock (Socket or int): Socket, FD or pipe FD on which to send message
@@ -589,9 +600,9 @@ write_tcp_raw = write_raw
 # send a message over the network which is a Python object
 def write_tcp_obj(sock, obj, timeout=15 * 60):
     """
-    Serialize an object via repr() and send over a socket. Generally deprecated
-    in favor of write_tcp_obj_new, which uses cPickle.dumps(). Still called
-    from several places in the codebase.
+    Serialize an object via repr() and send over a socket.
+    Deprecated in favor of write_tcp_obj_new, which uses cPickle.dumps(). Still
+    called from several places in the codebase.
 
     Args:
         sock (Socket or int): Socket or FD to send object over
@@ -624,8 +635,8 @@ def write_tcp_obj(sock, obj, timeout=15 * 60):
 # send a message over the network which is a Python object
 def write_tcp_obj_new(sock, obj, timeout=15 * 60):
     """
-    Serialize an object via cPickle.dumps() and send over a socket. Called from
-    a few places in the codebase.
+    Serialize an object via cPickle.dumps() and send over a socket.
+    Called from a few places in the codebase.
 
     Args:
         sock (Socket or int): Socket or FD to send object over
@@ -656,8 +667,8 @@ def write_tcp_obj_new(sock, obj, timeout=15 * 60):
 # send a message to a co-process which is a Python object
 def write_obj(fd, obj, timeout=15 * 60, verbose=True):
     """
-    Serialize an object via cPickle.dumps() and send over an fd. Called only
-    from migrate binaries.
+    Serialize an object via cPickle.dumps() and send over an fd.
+    Called only from migrate binaries.
 
     Args:
         fd (int): FD to send object over
@@ -690,6 +701,7 @@ def write_obj(fd, obj, timeout=15 * 60, verbose=True):
 def timeout_recv(sock, nbytes, timeout=15 * 60):
     """
     Receive bytes from a socket or FD.
+    Not intended for external use.
 
     Args:
         sock (Socket or int): Socket or FD on which to receive bytes
@@ -756,6 +768,7 @@ def timeout_recv(sock, nbytes, timeout=15 * 60):
 def read_raw(fd, timeout=15 * 60):
     """
     Read message off an FD, determining byte length based on first byte received.
+    Not intended for external use.
 
     Args:
         fd (int): File Descriptor to receive from
@@ -836,8 +849,8 @@ read_tcp_raw = read_raw
 def read_tcp_obj(sock, timeout=15 * 60):
     """
     Receive a serialized python object from a socket or FD. Attempts to
-    deserialize object via cPickle.loads(). Called sparsely throughout
-    codebase.
+    deserialize object via cPickle.loads().
+    Called sparsely throughout codebase.
 
     Args:
         sock (Socket or int): Socket or FD to receive from
@@ -881,8 +894,8 @@ def read_tcp_obj(sock, timeout=15 * 60):
 def read_tcp_obj_new(sock, timeout=15 * 60, exit_on_no_socket=False):
     """
     Receive a serialized python object from a socket or FD. Attempts to
-    deserialize object via cPickle.loads(). Called sparsely throughout
-    codebase.
+    deserialize object via cPickle.loads().
+    Called sparsely throughout codebase.
 
     Args:
         sock (Socket or int): Socket or FD to receive from
@@ -920,7 +933,8 @@ def read_tcp_obj_new(sock, timeout=15 * 60, exit_on_no_socket=False):
 # receive a message from a co-process which is a Python object
 def read_obj(fd, timeout=15 * 60, verbose=True):
     """
-    Receive object from an FD. Called only from migrate scripts.
+    Receive object from an FD.
+    Called only from migrate scripts.
 
     Args:
         fd (int): FD to recv object on
