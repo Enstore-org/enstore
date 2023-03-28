@@ -391,12 +391,12 @@ class EnstoreError(Exception):
     raise errors in the enstore code.
     """
 
-    def __init__(self, e_errno, e_message, e_type, e_ticket={}):
+    def __init__(self, e_errno, e_message, e_type, e_ticket=None):
         """
         Initialize the exception.
 
         Args:
-            e_errno (int): Error number (optional)
+            e_errno (int or None): Error number (optional)
             e_message (str): Error message (optional)
             e_type (str): Error type (optional)
             e_ticket (dict): Error ticket (optional)
@@ -407,6 +407,8 @@ class EnstoreError(Exception):
         Exception.__init__(self)
 
         # Handle the errno (if a valid one passed in).
+        if e_ticket is None:
+            e_ticket = {}
         if e_errno in errno.errorcode.keys():
             self.errno = e_errno
         else:
