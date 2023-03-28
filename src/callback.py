@@ -67,7 +67,7 @@ def hex8(x):
 def get_socket_read_queue_length(sock):
     """
     Send FIONREAD on the socket to get the number of bytes to read.
-    Not intended for external use.
+    Not intended for external use. Called in a couple of binaries.
 
     Args:
         sock (Socket): Socket to read queue length of
@@ -280,7 +280,8 @@ def get_callback(ip=None):
     server host. Called frequently in codebase.
 
     Args:
-        ip (bytearray or str or unicode or None): IP address to connect to
+        ip (bytearray or str or unicode or None, default:None):
+            callback destination IP address
 
     Returns:
         tuple (str, int, Socket): host, port, initialized TCP socket
