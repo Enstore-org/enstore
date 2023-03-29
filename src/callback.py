@@ -145,7 +145,7 @@ def __get_socket_state(fd):
     Not intended for external use.
 
     Args:
-        fd (Socket): File Descriptor to read state
+        fd (int): File Descriptor to read state
 
     Returns:
         String or NONE: Socket state according to tcp socket table
@@ -185,7 +185,7 @@ def __get_socket_state(fd):
                     break
 
             return tcp_states.get(int(state, 16), "UNKNOWN")
-        except (socket.error, ValueError, IOError, OSError), msg:
+        except (socket.error, ValueError, IOError, OSError) as msg:
             # We need to catch IOError or OSError incase the open of
             # /proc/net/tcp fails.  On 9-10-2007, an encp gave a traceback
             # opening /proc/net/tcp because of "No such file or directory".
