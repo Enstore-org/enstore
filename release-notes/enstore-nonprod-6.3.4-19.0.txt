@@ -1,0 +1,445 @@
+commit 30a32483547c849f6731438ec8c7f2415b3aa5c2
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Mar 6 13:47:23 2023 -0500
+
+    Handle None default argument consistently
+
+commit 0e7292dc4adc19dbe5cd37103fb2c74333e162e7
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Mar 3 13:31:41 2023 -0500
+
+    Fix mutable ignore_addresses default
+
+commit f2d80b6f0d49cf7b0f27803dbe082d1c43125c3d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Mar 1 13:41:53 2023 -0500
+
+    Undo indentation diffs
+
+commit e8e434e4100f8d33d596689a03bbd24649230b18
+Merge: 70c341e49 9e9786fc4
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Mar 1 13:38:03 2023 -0500
+
+    Merge branch 'develop' of github.com:Enstore-org/enstore into issue/destination_inaccessible
+
+commit 70c341e49a162f160492bdd65efaebe272573a77
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Mar 1 13:34:15 2023 -0500
+
+    Retry failed dismounts with new destination slots
+    
+    locate_volume now takes a new argument which allows callers to exclude
+    slots from result set. This allows mtx_dismount to retry while excluding
+    previously failed addresses from its search for EMPTY slots.
+    
+    Combined with the addition of `Media magazine not accessible` as a
+    retriable error, this resolves failures from attempting to dismount
+    into inaccessible slots.
+
+commit 23d0c90e8d231f41dbad1c8ee88ba63d75158637
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Feb 28 18:28:58 2023 -0600
+
+    reverting changes in develop branch
+
+commit 5897f770d60885e1a2705a198f12952817bf8a06
+Merge: ef08cf24f 6188ece01
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Feb 28 18:09:51 2023 -0600
+
+    Merge branch 'develop' of https://github.com/Enstore-org/enstore into new_develop
+
+commit 5540d21e3d8fe774d259c2da958023401e03cff8
+Merge: 82522850d 68c996c19
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Feb 28 13:42:50 2023 -0600
+
+    Merge branch 'docstrings' of https://github.com/dbox-fnal/enstore into dbox-fnal-docstrings
+    merging an approved pull request
+
+commit ef08cf24f6f913dc2f36e76fe7718f6f822e3434
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Feb 28 13:19:42 2023 -0600
+
+    make sure log_name attribute exists, part II
+
+commit 68c996c19ae631572da6735406f15b305bc5d1d7
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Feb 28 13:14:03 2023 -0600
+
+    fix newline
+
+commit 3c03e478cc16a175c0530cb0f57478b663b0e32f
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Feb 28 13:05:39 2023 -0600
+
+    make sure log_name is an attribute
+
+commit 5f7e63edcd3e37c0f89f6953d442aafa8b6df0ec
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Feb 27 17:43:06 2023 -0600
+
+    omit do_work from coverage report
+
+commit 2336b1e098505f998a5a602b1a92e9a27a98596c
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Feb 27 17:41:19 2023 -0600
+
+    make sure server_name attribute exists
+
+commit b45f99d52b3e0823d3a4d4098e49f9ba6798e0f7
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Feb 27 17:31:06 2023 -0600
+
+    make sure server_address attribute exists
+
+commit 82522850d20369aa5ba2069af46f54f20bed5cbe
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Feb 22 13:50:18 2023 -0600
+
+    encp: make storage_group USER2 level option (so it will be used by dCache) (#116)
+    
+    and bump encp version number
+    
+    Motivation:
+    to migrate SFA files we need storage_group option available to encp used ]
+    by dCache (USER2 level option)
+
+commit de6a58c74becb63213bae555d472fe86d01fe7ed
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Feb 21 12:23:45 2023 -0500
+
+    Use global sudo
+
+commit 0bb7dfd08f35a0023059416353cce5b8c4fa7c06
+Merge: ab11c42d7 8cc065df1
+Author: renbauer-fnal <renbauer@fnal.gov>
+Date:   Thu Feb 16 13:14:54 2023 -0500
+
+    Merge branch 'develop' into cleanup/startup_args
+
+commit 158ef2b2fbaf96bb38e6841b2ec5b46c2ad1f8ed
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Nov 15 10:50:49 2022 -0600
+
+    added coverage directive to ignore name == "__main__" blocks
+
+commit 2ef6477d9da9ea6f2c2c871a9d3295f8af2c66f5
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Nov 14 21:14:01 2022 -0600
+
+    prettified using autopep8
+
+commit fbdab782b82776d757daaf20a47bf99a50c829f1
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Nov 14 21:11:23 2022 -0600
+
+    * Request_Queue::get_tags() needed change after internals changed from List to Set
+    * Atomic_Request_Queue::get_sg() fix thrown exception revealed by unit test
+    * prettified using autopep8
+
+commit 1259e93dd1c84b9b88d406a768800e793853e12b
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Nov 14 21:04:14 2022 -0600
+
+    autpep8-ed
+
+commit e02eb365f5c98a0e4cf1e8b4764aa21055896402
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Dec 20 19:30:37 2022 +0000
+
+    Small unit test tweaks
+
+commit 742463a02649ac205149d4bca254561a1ebc7452
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Dec 20 18:07:08 2022 +0000
+
+    More class comment for GenericClientInterface
+
+commit f0aaa4ffd4c2f365ef5d7d0eb4da0c4eb4499d0e
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Dec 20 17:41:38 2022 +0000
+
+    Syntax updates to make linter happy
+
+commit bd95335ffa0216f6b6659eb49604ba31512f564e
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Dec 19 20:34:01 2022 +0000
+
+    Function docstrings for generic_client.py
+
+commit e91c6f5891af4cfbd4043e55eed1ba9197e9bc49
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Nov 16 20:46:03 2022 +0000
+
+    Cache localhost checks for _allow
+
+commit 9a593f80311bf85107716d55ded56af9298fce9a
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Feb 3 17:40:42 2023 +0000
+
+    Make next_argument work.. sometimes?
+
+commit c71f1df4efeed48459f49d78e09b6ae8784a745c
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Feb 2 15:48:21 2023 -0500
+
+    Standardize indentation
+
+commit e7b040437cd28a5d3377a270a61dd140f52f37b3
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Feb 2 15:43:38 2023 -0500
+
+    Standardize indentation
+
+commit dab114be311bc6313848862805527c586d848efe
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Jan 30 16:57:47 2023 -0500
+
+    Fix option.py usage
+
+commit f6b865f596785377573c84c44b753fb406f9a802
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Jan 30 16:52:14 2023 -0500
+
+    Syntax, spelling, variable declaration
+
+commit 5243fb63223df9194d29358373a7d2e7cf11a497
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Jan 27 16:42:51 2023 -0500
+
+    Syntax, spelling, basic fixes
+    
+    - first 5500 lines
+
+commit 487da4c4d2b841c5147d77f8763e4c9bb63e8d59
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 24 13:56:28 2023 -0500
+
+    Minor typo fixes
+
+commit b8f8a0cfc9fbe114cdf796873e9c900ebc2f7e4b
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 24 13:00:27 2023 -0500
+
+    Delete commented out code impersonating a docstring
+
+commit a4c322bfc72e47a7ac9517b00e899ce3590bdcbc
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Jan 23 20:05:16 2023 -0500
+
+    Make next_argument do something. Other syntax fixes
+
+commit 569a5dae2abdb46d47ed53fb79489453b73abb7f
+Merge: 56cf2f568 d4a476217
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Feb 16 12:10:59 2023 -0500
+
+    Merge branch 'develop' of github.com:Enstore-org/enstore into code_study/generic_client
+
+commit da2de674684a208efa9987aab2d746f748f74b82
+Merge: 5c032e0bc 0b5c05384
+Author: renbauer-fnal <renbauer@fnal.gov>
+Date:   Mon Feb 13 12:18:58 2023 -0500
+
+    Merge branch 'develop' into code_study/option
+
+commit 4ba88d0567e205031eefd56c1d0627def2d196bf
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Fri Feb 10 15:15:33 2023 -0600
+
+    removed trailing whitespaces
+
+commit 6171995053167f04f76dc8698d46dd1df9bd8646
+Merge: cbed26a67 0b5c05384
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Fri Feb 10 15:09:59 2023 -0600
+
+    Merge branch 'develop' into docstrings
+
+commit cbed26a679def2df6d3a9097de4580690cb87939
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Fri Feb 10 15:00:06 2023 -0600
+
+    more aggressive reformatting of test_e_errors and test_alarm
+
+commit 0b5c0538492c4bc680cbbe5813144eb5a9f72870
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 10 13:34:15 2023 -0500
+
+    Syntax and function docstrings
+
+commit a38a5a285702d6696b20f3a094cc569ae47dc57e
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Feb 3 17:40:42 2023 +0000
+
+    Make next_argument work.. sometimes?
+
+commit 206bc34b7d12367ab6ddc4a826e589945d239a56
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Feb 2 14:26:26 2023 -0500
+
+    Some reformatting to improve readability
+
+commit a12920dfb1786c2b6c2618df99fc1897753bd1f9
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Jan 30 16:57:47 2023 -0500
+
+    Fix option.py usage
+
+commit 2d971efa41787e41ba2f19bf0f81a7a4facc89fd
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Jan 30 16:52:14 2023 -0500
+
+    Syntax, spelling, variable declaration
+
+commit cc031e944cf22928e2b5a559ff3ab09f49d8d154
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Jan 27 16:42:51 2023 -0500
+
+    Syntax, spelling, basic fixes
+    
+    - first 5500 lines
+
+commit 715364a4a5fd6bcc8dd5b370e3a52c60caf14e06
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jan 24 15:45:48 2023 -0600
+
+    minor linting
+
+commit 5f08e8092893560bd77514c316483d40d9df39a8
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 24 13:56:28 2023 -0500
+
+    Minor typo fixes
+
+commit ae404f60c7620566ac5cf42366d88899045d3cd2
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 24 13:00:27 2023 -0500
+
+    Delete commented out code impersonating a docstring
+
+commit ad7fdeaaedbdf3079aef97b1686169f8b0f6d5e7
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Jan 23 20:05:16 2023 -0500
+
+    Make next_argument do something. Other syntax fixes
+
+commit 514c6cd57cdb97d420ef93c1e51cb129d85068b0
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jan 23 17:32:46 2023 -0600
+
+    whitespace
+
+commit 1ec11596148a7cda9f8b1763c1507cbc5679c6d3
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Fri Jan 20 15:05:47 2023 -0600
+
+    docstrings, replaced tabs w spaces
+
+commit c059340a43c306830ac74001fefbf7ebeece3377
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Fri Jan 20 15:05:17 2023 -0600
+
+    docstrings
+
+commit 32a85a22e433b8ec7c43c6768918b4622388634f
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Jan 10 13:34:15 2023 -0500
+
+    Syntax and function docstrings
+
+commit 2c2d7adf9b9fd4281b4c6a3fd70588b44108fd9c
+Merge: d304628b8 00618085b
+Author: Dennis D Box <dennis@xnet.com>
+Date:   Tue Dec 20 17:25:23 2022 -0600
+
+    Merge branch 'develop' into coverage_tweaks
+
+commit 313e6d8114faca8bb1e908753cb1fee4afe2bb7f
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Dec 20 19:30:37 2022 +0000
+
+    Small unit test tweaks
+
+commit 3112502899d9e83e063bf2aa48d9db5a1170c97f
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Dec 20 18:07:08 2022 +0000
+
+    More class comment for GenericClientInterface
+
+commit 0b58658da8bf78ab3c1d278aeadc60cbea98f54d
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue Dec 20 17:41:38 2022 +0000
+
+    Syntax updates to make linter happy
+
+commit ab7a9408f2c60079ca76139b3f59160df60c8258
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Dec 19 20:34:01 2022 +0000
+
+    Function docstrings for generic_client.py
+
+commit 67402de68a7fb3beba6b0e699d1abb5020b6e6be
+Merge: c46695987 e3088fcd1
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Mon Dec 19 18:55:06 2022 +0000
+
+    Merge branch 'develop' of github.com:Enstore-org/enstore into code_study/generic_client
+
+commit 375140743b52ffa61638cb4833e3ac2b94861da4
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Dec 5 14:07:42 2022 -0600
+
+    fix for Atomic_Request_Queue::get_sg
+
+commit f54fc2d9e6439425e419e00dd1761c85b69620a7
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Dec 5 12:32:31 2022 -0600
+
+    changed rtype in doc but forgot to change logic
+
+commit c46695987656bf9dfd4083923dcdd3123a6b4b85
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Nov 16 20:46:03 2022 +0000
+
+    Cache localhost checks for _allow
+
+commit 7962a984f84acc1941dc2eddb07ac853c891adef
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Nov 16 20:44:24 2022 +0000
+
+    Fix return type doc for get_tags
+
+commit d304628b844fa1a5b28760348e052e1e76b288fc
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Nov 15 10:50:49 2022 -0600
+
+    added coverage directive to ignore name == "__main__" blocks
+
+commit 275efa69fd0d9eb645fd011172a6ba025595717f
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Nov 14 21:14:01 2022 -0600
+
+    prettified using autopep8
+
+commit ecd10ce83141a9810bad7706089dcd627f3ee7bd
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Nov 14 21:11:23 2022 -0600
+
+    * Request_Queue::get_tags() needed change after internals changed from List to Set
+    * Atomic_Request_Queue::get_sg() fix thrown exception revealed by unit test
+    * prettified using autopep8
+
+commit 5bf866e28f7e75e8a00575342e0716dba29f016b
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Nov 14 21:04:14 2022 -0600
+
+    autpep8-ed
+
+commit b478f5ebf08d8d4c448a82497454acbf7bd93e82
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Thu Nov 3 18:58:38 2022 +0000
+
+    Add comment for unintuitive disptacher failure case involving ejournal.py

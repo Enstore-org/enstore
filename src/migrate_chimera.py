@@ -2267,7 +2267,7 @@ def __is_volume_allowed(volume_info):
         raise TypeError("expected volume information; got %s instead" \
                         % (type(volume_info),))
 
-    not_allowed_list = ("NOTALLOWED", )
+    not_allowed_list = ("NOACCESS", )
 
     if volume_info['system_inhibit'][0] in not_allowed_list:
         return False
@@ -5402,6 +5402,9 @@ def read_file(my_task, read_job, encp, intf):
                     "--ignore-fair-share",
                     "--bypass-filesystem-max-filesize-check",
                     "--override-notallowed"]
+
+    argv += encp_options
+
     if debug:
         argv += ["--verbose","4"]
 
@@ -5411,7 +5414,6 @@ def read_file(my_task, read_job, encp, intf):
     # always use "--get-bfid BFID"
     use_path = ["--get-bfid",src_file_record['bfid']]
 
-    argv += encp_options
     if intf.priority:
         argv += ["--priority",str(intf.priority)]
     else:

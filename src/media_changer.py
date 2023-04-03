@@ -3924,8 +3924,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                         update_db = True
                     else:
                         if 'mtx: Request Sense: Additional Sense Code = 3B' in ret_val[3]:
-                            if 'mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3]:
-                                # Medium Destination Element Full
+                            if ('mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3] or
+                                    'mtx: Request Sense: Additional Sense Qualifier = 11' in ret_val[3]):
+                                # Medium Destination Element Full or Media magazine not accessible
                                 if self.retry_count == 0:  # retry one more time
                                     self.retry_count = 1
                                 update_db = False
@@ -4025,6 +4026,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                 retry = self.do_retry(rc, returned_by_mtx_mount=False)
                 if retry:
                     # rc[0] == -1 - timeout
+
                     Trace.log(e_errors.INFO, 'retrying insert %s %s' % (imp_el, stor_el))
                     time.sleep(1)
                 else:
@@ -4176,12 +4178,12 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
     # Find a free slot and unmount the tape from the drive.
     def mtx_dismount(self, volume, drive, _=None, __=None):
-
         rc = (e_errors.OK, e_errors.OK, [], '', '')
         self.retry_count = 1
         if self.mount_retries > 1:
             self.retry_count = self.mount_retries
         retry = True
+        failed_dismount_addresses = []
         while retry:
             try:
                 dr = self.locate_drive(drive)  # index in self.drives
@@ -4205,7 +4207,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             if self.is_empty(dr):  # no need to dismount
                 return e_errors.OK, 0, None, "", ""
 
-            s, ignore = self.locate_volume(EMPTY)
+            s, ignore = self.locate_volume(EMPTY, failed_dismount_addresses)
 
             if -1 == s:
                 Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
@@ -4224,7 +4226,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive,
                                       '...dismounting'))
 
-            s, ignore = self.locate_volume(EMPTY)
+            s, ignore = self.locate_volume(EMPTY, failed_dismount_addresses)
             if -1 == s:
                 Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
                 return ('ERROR', e_errors.ERROR, [], '',
@@ -4257,6 +4259,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                     stor_el['volume'] = EMPTY
                 retry = self.do_retry(rc, returned_by_mtx_mount=False)
                 if retry:
+                    failed_dismount_addresses.append(self.slots[s]['address'])
                     Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s' % (self.drives[dr], stor_el))
                     time.sleep(1)
                 else:
@@ -4274,7 +4277,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
     # numbers are not negative one then there is either a bug in this
     # function or multiple tapes that have the same label in the
     # library.
-    def locate_volume(self, vol):
+    def locate_volume(self, vol, ignore_addresses=None):
+        if ignore_addresses is None:
+            ignore_addresses = []
         Trace.trace(ACTION_LOG_LEVEL, ' looking for volume %s status_valid %s' % (vol, self.status_valid))
         if self.status_valid == 0:
             a, b = return_by(self.status_local, (), self.status_timeout)
@@ -4338,6 +4343,9 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                             # we do not want to dismount into IMPORT/EXPORT storage element under normal
                             # conditions
                             continue
+                    if s['address'] in ignore_addresses:
+                        # We do not want to return addresses we've been asked to ignore.
+                        continue
                     found = True
                     break
             except KeyError as e:
@@ -5565,8 +5573,9 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
                         update_db = True
                     else:
                         if 'mtx: Request Sense: Additional Sense Code = 3B' in ret_val[3]:
-                            if 'mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3]:
-                                # Medium Destination Element Full
+                            if ('mtx: Request Sense: Additional Sense Qualifier = 0D' in ret_val[3] or
+                                    'mtx: Request Sense: Additional Sense Qualifier = 11' in ret_val[3]):
+                                # Medium Destination Element Full or Media magazine not accessible
                                 if self.retry_count == 0:  # retry one more time
                                     self.retry_count = 1
                                 update_db = False
@@ -5833,6 +5842,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
         if self.mount_retries > 1:
             self.retry_count = self.mount_retries
         retry = True
+        failed_dismount_addresses = []
         while retry:
             try:
                 dr = self.locate_drive(drive)  # index in self.drives
@@ -5859,7 +5869,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
             if self.is_empty(dr):  # no need to dismount
                 return e_errors.OK, 0, None, "", ""
 
-            s, ignore = self.locate_volume(EMPTY)
+            s, ignore = self.locate_volume(EMPTY, failed_dismount_addresses)
 
             if -1 == s:
                 Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
@@ -5880,7 +5890,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
 
             Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', drive, '...dismounting'))
 
-            s, ignore = self.locate_volume(EMPTY)
+            s, ignore = self.locate_volume(EMPTY, failed_dismount_addresses)
             if -1 == s:
                 Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
                 return 'ERROR', e_errors.ERROR, [], '', 'mtx unload: No free slots'
@@ -5912,6 +5922,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
                     stor_el['volume'] = EMPTY
                 retry = self.do_retry(rc, returned_by_mtx_mount=False)
                 if retry:
+                    failed_dismount_addresses.append(self.slots[s]['address'])
                     Trace.log(e_errors.INFO, 'retrying mtx_dismount %s %s' % (self.drives[dr], stor_el))
                     time.sleep(1)
                 else:
@@ -5929,7 +5940,9 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
     # numbers are not negative one then there is either a bug in this
     # function or multiple tapes that have the same label in the
     # library.
-    def locate_volume(self, vol):
+    def locate_volume(self, vol, ignore_addresses=None):
+        if ignore_addresses is None:
+            ignore_addresses = []
         Trace.trace(ACTION_LOG_LEVEL, ' looking for volume %s status_valid %s' % (vol, self.status_valid))
         if self.status_valid == 0:
             a, b = return_by(self.status_local, (), self.status_timeout)
@@ -5973,6 +5986,9 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
                         if 'IMPORT/EXPORT' in s['location']:
                             # We do not want to dismount into IMPORT/EXPORT storage element under normal conditions.
                             continue
+                    if s['address'] in ignore_addresses:
+                        # We do not want to return addresses we've been asked to ignore.
+                        continue
                     found = True
                     break
             except KeyError as e:
