@@ -171,8 +171,7 @@ class Requests:
         # request is a "(idn,number,ticket)"
         request, client_address = self.get()
         Trace.trace(self.trace_level, "Requests: do_one_request:get returned %s %s" % (request, client_address))
-        Trace.trace(self.trace_level,
-                    "Requests: do_one_request:interval functions %s" % (self.worker.interval_funcs.items()))
+        Trace.trace(self.trace_level, "Requests: do_one_request:interval functions %s" % (self.worker.interval_funcs.items()))
         if request is None:  # Invalid request sent in
             return
 
@@ -217,9 +216,7 @@ class Requests:
             now = time.time()
             for func, time_data in self.worker.interval_funcs.items():
                 interval, last_called, one_shot = time_data
-                Trace.trace(self.trace_level,
-                            "Requests: do_one_request: func %s interval %s now-last_called %s one_shot %s" % (
-                            func, interval, now - last_called, one_shot))
+                Trace.trace(self.trace_level, "Requests: do_one_request: func %s interval %s now-last_called %s one_shot %s" % (func, interval, now - last_called, one_shot))
                 if now - last_called > interval:
                     if one_shot:
                         del self.worker.interval_funcs[func]
@@ -230,14 +227,14 @@ class Requests:
 
             self.worker.collect_children()
             count = count + 1
-            # if count > 100:
+            #if count > 100:
             if count > 20:
                 self.worker.purge_stale_entries()
                 count = 0
 
         if self.worker.is_child:
             Trace.trace(self.trace_level, "serve_forever, child process exiting")
-            os._exit(0)  ## in case the child process doesn't explicitly exit
+            os._exit(0)  # in case the child process doesn't explicitly exit
         else:
             Trace.trace(self.trace_level, "serve_forever, shouldn't get here")
 
@@ -297,7 +294,7 @@ class Requests:
             if self.lm_server.use_threads:
                 thread_name = ticket['mover']
                 Trace.trace(self.trace_level, "Requests:process_request:thread starting %s" % (thread_name,))
-                # self.lm_server.run_in_thread(thread_name, self.lm_server.request_thread, args = (function, ticket)) # leave here as the alternative, but slower
+                #self.lm_server.run_in_thread(thread_name, self.lm_server.request_thread, args = (function, ticket)) # leave here as the alternative, but slower
 
                 thread = threading.Thread(group=None,
                                           target=self.lm_server.request_thread,
@@ -334,8 +331,7 @@ class Requests:
             function(ticket)
             t2 = time.time()
             self.worker.done_cleanup(ticket)
-            Trace.trace(self.trace_level, "Request:process_request: function %s time %s %s %s" % (
-            function_name, t2 - t, t2 - t1, t11 - t1))
+            Trace.trace(self.trace_level, "Request:process_request: function %s time %s %s %s" % (function_name, t2 - t, t2 - t1, t11 - t1))
 
 
 ##############################################################
@@ -370,12 +366,12 @@ class SG_VF:
         :rtype: :obj:`int` 0 - success, 1- failure
         """
         rc = 0
-        # if not (mover and volume and sg and vf): return
+        #if not (mover and volume and sg and vf): return
         Trace.trace(self.trace_level, "SG:delete mover %s, volume %s, sg %s, vf %s" % (mover, volume, sg, vf))
         if self.sg.has_key(sg) and (mover, volume) in self.sg[sg]:
             self.sg[sg].remove((mover, volume))
             if len(self.sg[sg]) == 0:
-                del (self.sg[sg])
+                del(self.sg[sg])
         else:
             Trace.log(DEBUG_LOG, 'can not remove from sg %s %s' % (mover, volume))
             Trace.log(DEBUG_LOG, 'SG: %s' % (self.sg,))
@@ -383,7 +379,7 @@ class SG_VF:
         if self.vf.has_key(vf) and (mover, volume) in self.vf[vf]:
             self.vf[vf].remove((mover, volume))
             if len(self.vf[vf]) == 0:
-                del (self.vf[vf])
+                del(self.vf[vf])
         else:
             rc = -1
         return rc
@@ -410,7 +406,7 @@ class SG_VF:
         if m and v:
             self.sg[key].remove((m, v))
             if len(self.sg[key]) == 0:
-                del (self.sg[key])
+                del(self.sg[key])
         else:
             Trace.log(DEBUG_LOG, 'delete_mover can not remove from sg %s %s' % (m, v))
             Trace.log(DEBUG_LOG, 'delete_mover SG: %s' % (self.sg,))
@@ -428,7 +424,7 @@ class SG_VF:
         if m and v:
             self.vf[key].remove((m, v))
             if len(self.vf[key]) == 0:
-                del (self.vf[key])
+                del(self.vf[key])
         else:
             rc = -1
             Trace.log(DEBUG_LOG, 'delete_mover can not remove from vf %s %s' % (m, v))
@@ -449,7 +445,7 @@ class SG_VF:
         :arg vf: volume family associated with active mover
         """
         self.delete_mover(mover)
-        # self.delete(mover, volume, sg, vf) # delete entry to update content
+        #self.delete(mover, volume, sg, vf) # delete entry to update content
         if not self.sg.has_key(sg):
             self.sg[sg] = []
         if not self.vf.has_key(vf):
@@ -463,8 +459,9 @@ class SG_VF:
     def __repr__(self):
         return "<storage groups %s volume_families %s >" % (self.sg, self.vf)
 
-
 ##############################################################
+
+
 class AtMovers:
     """
     Active movers
@@ -529,7 +526,7 @@ class AtMovers:
                 return
             else:
                 self._lock.acquire()
-                del (self.dont_update[mover])
+                del(self.dont_update[mover])
                 self._lock.release()
 
         storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
@@ -587,8 +584,8 @@ class AtMovers:
                 # when mticket['external_label'] is None
                 # the following fixes this
                 vol_family = self.at_movers[mover]['volume_family']
-            # vol_family = self.at_movers[mover]['volume_family']
-            # self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family)
+            #vol_family = self.at_movers[mover]['volume_family']
+            #self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family)
             storage_group = volume_family.extract_storage_group(vol_family)
             rc = self.sg_vf.delete(mover, label, storage_group, vol_family)
             Trace.trace(self.trace_level, "AtMovers delete. sg_vf.delete returned %s" % (rc,))
@@ -599,7 +596,7 @@ class AtMovers:
                 rc = self.sg_vf.delete_mover(mover)
 
             self._lock.acquire()
-            del (self.at_movers[mover])
+            del(self.at_movers[mover])
             self._lock.release()
         Trace.trace(self.trace_level + 1, "AtMovers delete: at_movers: %s" % (self.at_movers,))
         Trace.trace(self.trace_level, "AtMovers delete: sg_vf: %s" % (self.sg_vf,))
@@ -621,7 +618,7 @@ class AtMovers:
                 for mover in self.at_movers.keys():
                     Trace.trace(self.trace_level + 2, "Check mover %s now %s" % (self.at_movers[mover], now))
                     if int(now) - int(self.at_movers[mover]['updated']) > 600:
-                        # Trace.alarm(e_errors.ALARM,
+                        #Trace.alarm(e_errors.ALARM,
                         #            "The mover %s has not updated its state for %s minutes, will remove it from at_movers list"%
                         #            (mover, int((now - self.at_movers[mover]['updated'])/60)))
                         Trace.log(e_errors.ERROR,
@@ -636,13 +633,11 @@ class AtMovers:
                         operation = self.at_movers[mover].get('operation', 'unknown')
                         current_location = self.at_movers[mover].get('current_location', '')
                         if time_in_state > self.max_time_in_other:
-                            if state not in ['IDLE', 'ACTIVE', 'OFFLINE', 'HAVE_BOUND', 'SEEK', 'MOUNT_WAIT',
-                                             'DISMOUNT_WAIT']:
+                            if state not in ['IDLE', 'ACTIVE', 'OFFLINE', 'HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 add_to_list = 1
                             if (state == 'SETUP' and self.at_movers[mover].get('current_volume')):
                                 add_to_list = 0  # volume is mounted, trying to connect to client
-                            if time_in_state > self.max_time_in_active and state in ['ACTIVE', 'SEEK', 'MOUNT_WAIT',
-                                                                                     'DISMOUNT_WAIT']:
+                            if time_in_state > self.max_time_in_active and state in ['ACTIVE', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 if (state == 'ACTIVE' and operation == 'ASSERT'):
                                     add_to_list = 0
                                 else:
@@ -715,8 +710,7 @@ class AtMovers:
 
         if self.sg_vf.sg.has_key(storage_group):
             sg = self.sg_vf.sg[storage_group]
-        else:
-            sg = []
+        else: sg = []
         return sg
 
     def get_active_movers(self):
@@ -753,7 +747,8 @@ class AtMovers:
         for key in self.at_movers.keys():
             if ((external_label == self.at_movers[key]['external_label']) and
                     (key != mover)):
-                Trace.trace(self.trace_level + 4, "volume %s is active. Mover=%s" % \
+
+                Trace.trace(self.trace_level + 4, "volume %s is active. Mover=%s" %\
                             (external_label, key))
                 rc = 1
                 break
@@ -780,7 +775,8 @@ class AtMovers:
         for key in self.at_movers.keys():
             if ((external_label == self.at_movers[key]['external_label']) and
                     (key != mover)):
-                Trace.trace(self.trace_level + 4, "volume state %s. Mover=%s" % \
+
+                Trace.trace(self.trace_level + 4, "volume state %s. Mover=%s" %\
                             (self.at_movers[key]["state"], key))
                 rc = self.at_movers[key]["state"]
                 break
@@ -891,14 +887,14 @@ class PostponedRequests:
 
             for sg in remove_these:
                 if self.sg_list.has_key(sg):
-                    del (self.sg_list[sg])
+                    del(self.sg_list[sg])
             # get sg for the least counter
             sg = l[0][1]
             return self.rq_list[sg], sg
         return None, None
 
     def update(self, sg, deficiency=0):
-        if self.rq_list.has_key(sg): del (self.rq_list[sg])
+        if self.rq_list.has_key(sg): del(self.rq_list[sg])
         if self.sg_list.has_key(sg):
             self.sg_list[sg] = self.sg_list[sg] + deficiency
             if self.sg_list[sg] < 0:
@@ -1040,6 +1036,7 @@ class LibraryManagerMethods:
     ########################################
     # Built in networking methods
     ########################################
+
     def del_udp_client(self, udp_client):
         __pychecker__ = "unusednames=server"
         if not udp_client: return
@@ -1097,11 +1094,11 @@ class LibraryManagerMethods:
             except socket.error, detail:
                 Trace.log(e_errors.ERROR, "%s %s" %
                           (detail, ticket['callback_addr']))
-                # We have seen that on IRIX, when the connection succeds, we
+                #We have seen that on IRIX, when the connection succeds, we
                 # get an ISCONN error.
                 if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
                     pass
-                # The TCP handshake is in progress.
+                #The TCP handshake is in progress.
                 elif detail[0] == errno.EINPROGRESS:
                     pass
                 else:
@@ -1244,7 +1241,7 @@ class LibraryManagerMethods:
         work_at_movers = []
         for w in self.work_at_movers.list:
             work_at_movers.append((w["fc"]["external_label"], w.get('mover', None), w['unique_id']))
-            # Trace.trace(self.trace_level+1,'get_work_at_movers. ticket info: %s %s'%(w["fc"]["external_label"],  w.get('mover',None)))
+            #Trace.trace(self.trace_level+1,'get_work_at_movers. ticket info: %s %s'%(w["fc"]["external_label"],  w.get('mover',None)))
             if w["fc"]["external_label"] == external_label:
                 if w.has_key('mover') and w['mover'] == mover:
                     rc = w
@@ -1335,6 +1332,7 @@ class LibraryManagerMethods:
     # for a specified volume family
     # to be used for slection of volume for
     # write request
+
     def busy_volumes(self, volume_family_name):
         """
         Get list and count of busy volumes
@@ -1353,7 +1351,7 @@ class LibraryManagerMethods:
             Trace.trace(self.trace_level + 1, 'busy_volumes: %s %s' % (w["vc"], w["fc"]))
             if w["vc"]["volume_family"] == volume_family_name:
                 if w["fc"]["external_label"] in vol_veto_list:
-                    continue  # already processed
+                    continue       # already processed
                 else:
                     vol_veto_list.append(w["fc"]["external_label"])
                     permissions = w["vc"].get("system_inhibit", None)
@@ -1494,8 +1492,7 @@ class LibraryManagerMethods:
             ret = e_errors.NOSPACE
         return ret
 
-    def is_vol_available(self, work, label, family=None, size=0, vol_server_address=None, mover=None,
-                         override_notallowed=False):
+    def is_vol_available(self, work, label, family=None, size=0, vol_server_address=None, mover=None, override_notallowed=False):
         """
         Copy of volume clerk method adapted for working with records.
         Also checks if volume is available for a given mover, used for admind priority preempting request
@@ -1521,7 +1518,7 @@ class LibraryManagerMethods:
             suspect_v, suspect_mv = self.is_mover_suspect(mover, label)
             if suspect_mv:
                 msg = "mover %s is suspect for %s. Cannot assign a %s work" % \
-                      (mover, label, work)
+                    (mover, label, work)
                 Trace.log(e_errors.INFO, "%s" % (msg,))
                 return {'status': (e_errors.ERROR, msg)}
 
@@ -1539,7 +1536,7 @@ class LibraryManagerMethods:
                     # if system_inhibit is NOT in one of the following
                     # states it is NOT available for reading
                     if record['system_inhibit'][0] != 'none' and \
-                            override_notallowed == True and record['system_inhibit'][0] != 'NOTALLOWED':
+                       override_notallowed == True and record['system_inhibit'][0] != 'NOTALLOWED':
                         ret_stat = (record['system_inhibit'][0], None)
                     elif not enstore_functions2.is_readable_state(
                             record['system_inhibit'][1]):
@@ -1573,7 +1570,7 @@ class LibraryManagerMethods:
                         Trace.trace(self.trace_level + 2, "is_vol_available: family %s, record %s" %
                                     (family, record['volume_family']))
 
-                        # XXX deal with 2-tuple vs 3-tuple...
+                        #XXX deal with 2-tuple vs 3-tuple...
                         if (volume_family.match_volume_families(family, record['volume_family']) or
                                 ff == 'ephemeral'):
                             ret = self.is_volume_full_no_rec(record, size)
@@ -1582,8 +1579,7 @@ class LibraryManagerMethods:
                                 ret_stat = (e_errors.OK, None)
                             else:
                                 ret_stat = (ret, None)
-                        else:
-                            ret_stat = (e_errors.NOACCESS, None)
+                        else: ret_stat = (e_errors.NOACCESS, None)
                 else:
                     ret_stat = (e_errors.UNKNOWN, None)
                 Trace.trace(self.trace_level + 2, "is_vol_available: ret2 %s" % (ret_stat,))
@@ -1591,10 +1587,8 @@ class LibraryManagerMethods:
             return rticket
         else:
             self.set_vcc(vol_server_address)
-            Trace.trace(self.trace_level + 2,
-                        'is_vol_available work %s label %s family %s size %s' % (work, label, family, size))
-            rticket = self.vcc.is_vol_available(work, label, family, size, timeout=self.volume_clerk_to,
-                                                retry=self.volume_clerk_retry)
+            Trace.trace(self.trace_level + 2, 'is_vol_available work %s label %s family %s size %s' % (work, label, family, size))
+            rticket = self.vcc.is_vol_available(work, label, family, size, timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
             if override_notallowed and rticket["status"][0] == "NOTALLOWED":
                 rticket["status"] = (e_errors.OK, None)
 
@@ -1620,7 +1614,7 @@ class LibraryManagerMethods:
             vol_info = {}
             vol_info.update(requestor)  # return information from mover
             if "address" in vol_info:
-                del (vol_info['address'])
+                del(vol_info['address'])
             vol_info['system_inhibit'] = vol_info['volume_status'][0]
             vol_info['user_inhibit'] = vol_info['volume_status'][1]
         elif not external_label:
@@ -1670,15 +1664,15 @@ class LibraryManagerMethods:
         required_bytes = max(long(size * SAFETY_FACTOR), MIN_LEFT)
         for vol_rec in self.write_volumes:
             if ((library == vol_rec['library']) and
-                    (required_bytes < vol_rec['remaining_bytes']) and
-                    (volume_family == vol_rec['volume_family']) and
+                (required_bytes < vol_rec['remaining_bytes']) and
+                (volume_family == vol_rec['volume_family']) and
                     (not (vol_rec['external_label'] in veto_list))):
                 return vol_rec
         else:
             start_t = time.time()
             v = self.vcc.next_write_volume(library, size, volume_family, veto_list, first_found, mover,
                                            timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
-            Trace.trace(self.trace_level + 2, "vcc.next_write_volume, time in state %s" % (time.time() - start_t,))
+            Trace.trace(self.trace_level + 2, "vcc.next_write_volume, time in state %s" % (time.time() - start_t, ))
             if v['status'][0] == e_errors.TIMEDOUT:
                 Trace.alarm(e_errors.INFO, "volume clerk problem next_write_volume: TIMEDOUT")
             if v['status'][0] == e_errors.OK and v['external_label']:
@@ -1778,6 +1772,7 @@ class LibraryManagerMethods:
 
     ## check if there are any additional restrictions
     ## from discipline
+
     def client_host_busy(self, w):
         """
         Check if there are any additional restrictions
@@ -1794,8 +1789,7 @@ class LibraryManagerMethods:
             w["status"] = (e_errors.OK, None)
             if fun == 'restrict_host_access':
                 host_from_ticket = self.get_host_name_from_ticket(w)
-                Trace.trace(self.trace_level + 3,
-                            'client_host_busy: %s %s' % (host_from_ticket, w['wrapper']['machine'][1]))
+                Trace.trace(self.trace_level + 3, 'client_host_busy: %s %s' % (host_from_ticket, w['wrapper']['machine'][1]))
 
                 args.append(host_from_ticket)
                 ret = apply(getattr(self, fun), args)
@@ -1930,10 +1924,9 @@ class LibraryManagerMethods:
         mover_type = requestor.get('mover_type', None)
         if mover_type and mover_type == 'DiskMover':
             if kwargs.has_key('active_volumes'):
-                del (kwargs['active_volumes'])  # multiple disk movers can access the same active volume
+                del(kwargs['active_volumes'])  # multiple disk movers can access the same active volume
         request = method(*args, **kwargs)
-        Trace.trace(self.trace_level + 3,
-                    "_get_request: method %s args %s kwargs %s request %s" % (method.__name__, args, kwargs, request,))
+        Trace.trace(self.trace_level + 3, "_get_request: method %s args %s kwargs %s request %s" % (method.__name__, args, kwargs, request,))
         if not mover_type or mover_type != 'DiskMover':
             # return request right away
             # only DiskMover requests need further processing inside of
@@ -2067,13 +2060,12 @@ class LibraryManagerMethods:
 
         self.write_volumes = []
         self.write_vf_list = {}
-        self.tmp_rq = None  # need this to temporarily store selected request
+        self.tmp_rq = None   # need this to temporarily store selected request
         # initialize postponed requests list
         if self.postponed_requests.list_expired():
             Trace.trace(self.trace_level, "postponed list expired")
             self.postponed_requests = PostponedRequests(self.postponed_requests_time)
-        else:
-            self.postponed_requests.init_rq_list()
+        else: self.postponed_requests.init_rq_list()
         self.postponed_rq = 0
         self.pending_work.start_cycle()
 
@@ -2154,7 +2146,7 @@ class LibraryManagerMethods:
             start_t = time.time()
             tags = self.pending_work.get_tags()
             Trace.trace(self.trace_level + 4, "fair_share:tags: %s" % (tags,))
-            Trace.trace(100, "fair_share:TAGS TIME %s" % (time.time() - start_t,))
+            Trace.trace(100, "fair_share:TAGS TIME %s" % (time.time() - start_t, ))
             start_t = time.time()
             Trace.trace(self.trace_level + 4, 'fair_share:postponed rqs %s' % (self.postponed_requests))
             if len(tags) > 1:
@@ -2166,7 +2158,7 @@ class LibraryManagerMethods:
                             self.checked_keys.append(key)
                             if key != check_key:
                                 Trace.trace(self.trace_level + 4, "fair_share: key %s" % (key,))
-                                Trace.trace(100, "fair_share:keys TIME %s" % (time.time() - start_t,))
+                                Trace.trace(100, "fair_share:keys TIME %s" % (time.time() - start_t, ))
                                 return key
 
         return None
@@ -2214,7 +2206,7 @@ class LibraryManagerMethods:
         if host_busy:
             self.continue_scan = 1
             sg, key_to_check = self.request_key(rq)
-            # return None, None
+            #return None, None
             return None, key_to_check
 
         # Check the presence of current_location field
@@ -2248,16 +2240,14 @@ class LibraryManagerMethods:
             self.postponed_requests.put(rq)
         Trace.trace(self.trace_level + 4, 'process_read_request:postponed rqs %s' % (self.postponed_requests))
         if self.tmp_rq:
-            # tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
-            # tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
-            if sg_limit != 0:  # replace tmp_rq if rq SG limit is not 0
+            #tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
+            #tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
+            if sg_limit != 0:     # replace tmp_rq if rq SG limit is not 0
                 # replace tmp_rq based on priority
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
-        else:
-            self.tmp_rq = rq
-        Trace.trace(self.trace_level + 4,
-                    'process_read_request:tmp_rq %s rq %s key %s' % (self.tmp_rq, rq, key_to_check))
+        else: self.tmp_rq = rq
+        Trace.trace(self.trace_level + 4, 'process_read_request:tmp_rq %s rq %s key %s' % (self.tmp_rq, rq, key_to_check))
         if self.process_for_bound_vol and (rq.ticket["fc"]["external_label"] == self.process_for_bound_vol):
             # do not continue scan if we have a bound volume.
             self.continue_scan = 0
@@ -2286,18 +2276,17 @@ class LibraryManagerMethods:
         Trace.trace(self.trace_level + 4, "process_write_request: %s" % (rq,))
         key_to_check = self.fair_share(rq)  # check this volume label or FF
         Trace.trace(self.trace_level + 4, "process_write_request: exceeded rqs %s" % (self.sg_exceeded,))
-        Trace.trace(self.trace_level + 4,
-                    "process_write_request: key %s process for bound %s" % (key_to_check, self.process_for_bound_vol))
+        Trace.trace(self.trace_level + 4, "process_write_request: key %s process for bound %s" % (key_to_check, self.process_for_bound_vol))
         if key_to_check:
             self.continue_scan = 1
             if self.process_for_bound_vol and (key_to_check != self.process_for_bound_vol):
                 Trace.trace(self.trace_level + 4, "process_write_request: got here")
-                # return rq, key_to_check
+                #return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if self.mover_type(requestor) != 'DiskMover':
             if not self.write_vf_list.has_key(vol_family):
                 vol_veto_list, wr_en = self.busy_volumes(vol_family)
-                Trace.trace(self.trace_level + 4, "process_write_request: vol veto list:%s, width:%d ff width %s" % \
+                Trace.trace(self.trace_level + 4, "process_write_request: vol veto list:%s, width:%d ff width %s" %\
                             (vol_veto_list, wr_en, rq.ticket["vc"]["file_family_width"]))
                 self.write_vf_list[vol_family] = {'vol_veto_list': vol_veto_list, 'wr_en': wr_en}
             else:
@@ -2349,13 +2338,13 @@ class LibraryManagerMethods:
                     self.continue_scan = 0  # do not continue scan for bound volume
                 else:
                     self.continue_scan = 1
-                # return rq, key_to_check
+                #return rq, key_to_check
                 return None, key_to_check
             else:
                 ## check if there are any discipline restrictions
                 host_busy = None
                 if self.process_for_bound_vol:
-                    # current_volume_info = self.current_volume_info
+                    #current_volume_info = self.current_volume_info
                     host_busy = self.client_host_busy_for_mounted(self.process_for_bound_vol,
                                                                   self.current_volume_info['volume_family'],
                                                                   request.ticket)
@@ -2371,28 +2360,23 @@ class LibraryManagerMethods:
                     # and if yes skip request so that it will be picked by bound mover
                     # this is done to aviod a single stream bouncing between different tapes
                     # if FF width is more than 1
-                    Trace.trace(self.trace_level + 4,
-                                'process_write_request: veto %s, wr_en %s' % (vol_veto_list, wr_en))
+                    Trace.trace(self.trace_level + 4, 'process_write_request: veto %s, wr_en %s' % (vol_veto_list, wr_en))
                     movers = self.volumes_at_movers.get_active_movers()
                     found_mover = 0
                     Trace.trace(self.trace_level + 4, 'process_write_request: movers %s' % (movers,))
                     for mover in movers:
-                        Trace.trace(self.trace_level + 40, "process_write_request: mover %s state %s time %s" % (
-                        mover['mover'], mover['state'], mover['time_in_state']))
+                        Trace.trace(self.trace_level + 40, "process_write_request: mover %s state %s time %s" % (mover['mover'], mover['state'], mover['time_in_state']))
                         if mover['state'] == 'HAVE_BOUND' and mover['external_label'] in vol_veto_list:
                             found_mover = 1
                             break
                     if found_mover:
                         # if the number of write requests for a given file family more than the
                         # file family width then let it go.
-                        Trace.trace(self.trace_level + 40,
-                                    "process_write_request: pending work families %s" % (self.pending_work.families,))
+                        Trace.trace(self.trace_level + 40, "process_write_request: pending work families %s" % (self.pending_work.families,))
                         if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
-                                (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"][
-                                    "file_family_width"]):
-                            # len(matching_movers) == 1:
-                            Trace.trace(self.trace_level + 40,
-                                        "process_write_request: will let this request go to idle mover")
+                           (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]):
+                           #len(matching_movers) == 1:
+                            Trace.trace(self.trace_level + 40, "process_write_request: will let this request go to idle mover")
                         else:
                             # check if file will fit to the volume at mover
                             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
@@ -2400,18 +2384,15 @@ class LibraryManagerMethods:
                                                         rq.ticket['vc']['volume_family'],
                                                         fsize, rq.ticket['vc']['address'],
                                                         mover=requestor.get('mover'))
-                            Trace.trace(self.trace_level + 40,
-                                        "process_write_request: check_write_volume returned %s" % (ret,))
+                            Trace.trace(self.trace_level + 40, "process_write_request: check_write_volume returned %s" % (ret,))
                             if (rq.work == "write_to_hsm" and
-                                    (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
-                                     ret['status'][0] == e_errors.NOSPACE or
-                                     ret['status'][0] == 'full' or
-                                     ret['status'][0] == 'readonly')):
-                                Trace.trace(self.trace_level + 40,
-                                            "process_write_request: will let this request go to idle mover")
+                                (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
+                                 ret['status'][0] == e_errors.NOSPACE or
+                                 ret['status'][0] == 'full' or
+                                 ret['status'][0] == 'readonly')):
+                                Trace.trace(self.trace_level + 40, "process_write_request: will let this request go to idle mover")
                             else:
-                                Trace.trace(self.trace_level + 40,
-                                            'process_write_request: will wait with this request go to %s' %
+                                Trace.trace(self.trace_level + 40, 'process_write_request: will wait with this request go to %s' %
                                             (mover,))
                                 self.continue_scan = 1
                                 return rq, key_to_check  # this request might go to the mover
@@ -2453,7 +2434,7 @@ class LibraryManagerMethods:
                                        first_found=0,
                                        mover=requestor)
 
-            Trace.trace(100, "process_write_request: next_write_volume, time in state %s" % (time.time() - start_t,))
+            Trace.trace(100, "process_write_request: next_write_volume, time in state %s" % (time.time() - start_t, ))
             Trace.trace(self.trace_level + 4, "process_write_request: next write volume returned %s" % (v,))
 
             # volume clerk returned error
@@ -2468,7 +2449,7 @@ class LibraryManagerMethods:
 
                 if v["status"][0] == e_errors.NOVOLUME or v["status"][0] == e_errors.QUOTAEXCEEDED:
                     if not self.process_for_bound_vol:
-                        # if wr_en > rq.ticket["vc"]["file_family_width"]:
+                        #if wr_en > rq.ticket["vc"]["file_family_width"]:
 
                         # if volume veto list is not empty then work can be done later after
                         # the tape is available again
@@ -2480,7 +2461,7 @@ class LibraryManagerMethods:
                         rq = None
                 else:
                     rq.ticket["status"] = v["status"]
-                    # rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
+                    #rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
                 self.continue_scan = 1
                 return rq, key_to_check
             else:
@@ -2510,12 +2491,11 @@ class LibraryManagerMethods:
             sg_limit = self.get_sg_limit(rq_sg)
             self.postponed_requests.put(rq)
         if self.tmp_rq:
-            if sg_limit != 0:  # replace tmp_rq if rq SG limit is not 0
+            if sg_limit != 0:     # replace tmp_rq if rq SG limit is not 0
                 # replace tmp_rq based on priority
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
-        else:
-            self.tmp_rq = rq
+        else: self.tmp_rq = rq
         if self.sg_exceeded and self.process_for_bound_vol:
             rq = None
             self.continue_scan = 0
@@ -2525,6 +2505,7 @@ class LibraryManagerMethods:
         return rq, key_to_check
 
     # is there any work for any volume?
+
     def next_work_any_volume(self, requestor):
         """
         Is there any work for any volume?
@@ -2543,7 +2524,7 @@ class LibraryManagerMethods:
         active_vols = self.volumes_at_movers.active_volumes()
 
         # look in pending work queue for reading or writing work
-        # rq=self.pending_work.get(active_volumes=active_vols)
+        #rq=self.pending_work.get(active_volumes=active_vols)
         rq = self._get_request(requestor, self.pending_work.get, active_volumes=active_vols)
         Trace.trace(self.trace_level + 10, "next_work_any_volume: RQ: %s" % (rq,))
         while rq:
@@ -2553,7 +2534,7 @@ class LibraryManagerMethods:
             if rq.ticket.has_key('reject_reason'):
                 try:
                     rej_reason = rq.ticket['reject_reason'][0]
-                    del (rq.ticket['reject_reason'])
+                    del(rq.ticket['reject_reason'])
                 except KeyError:
                     exc, msg, tb = sys.exc_info()
                     Trace.handle_error(exc, msg, tb)
@@ -2562,43 +2543,37 @@ class LibraryManagerMethods:
 
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
-                Trace.trace(self.trace_level + 41, "next_work_any_volume: process_read_request returned %s %s %s" % (
-                rq, key, self.continue_scan))
+                Trace.trace(self.trace_level + 41, "next_work_any_volume: process_read_request returned %s %s %s" % (rq, key, self.continue_scan))
 
                 if self.continue_scan:
                     if key:
-                        # rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
-                        rq = self._get_request(requestor, self.pending_work.get, key, next=1,
-                                               active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        #rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        rq = self._get_request(requestor, self.pending_work.get, key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
                         # if there are no more requests for a given volume
                         # rq will be None, but we do not want to stop here
                         if rq:
                             # continue check with current volume
                             continue
-                    # rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
-                    rq = self._get_request(requestor, self.pending_work.get, next=1, active_volumes=active_vols,
-                                           disabled_hosts=self.disabled_hosts)  # get next request
+                    #rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
+                    rq = self._get_request(requestor, self.pending_work.get, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)  # get next request
                     Trace.trace(self.trace_level + 41, "next_work_any_volume: new rq %s" % (rq,))
 
                     continue
                 break
             elif rq.work == "write_to_hsm":
                 rq, key = self.process_write_request(rq, requestor)
-                Trace.trace(self.trace_level + 10, "next_work_any_volume: process_write_request returned %s %s %s" % (
-                rq, key, self.continue_scan))
+                Trace.trace(self.trace_level + 10, "next_work_any_volume: process_write_request returned %s %s %s" % (rq, key, self.continue_scan))
                 if self.continue_scan:
                     if key:
-                        # rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
-                        rq = self._get_request(requestor, self.pending_work.get, key, next=1,
-                                               active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        #rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        rq = self._get_request(requestor, self.pending_work.get, key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
                         # if there are no more requests for a given volume family
                         # rq will be None, but we do not want to stop here
                         if rq:
                             # continue check with current volume
                             continue
-                    # rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
-                    rq = self._get_request(requestor, self.pending_work.get, next=1, active_volumes=active_vols,
-                                           disabled_hosts=self.disabled_hosts)  # get next request
+                    #rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
+                    rq = self._get_request(requestor, self.pending_work.get, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)  # get next request
                     Trace.trace(self.trace_level + 41, "next_work_any_volume: new rq %s" % (rq,))
                     continue
                 break
@@ -2609,9 +2584,8 @@ class LibraryManagerMethods:
                           "next_work_any_volume assertion error in next_work_any_volume %s" % (rq.ticket,))
                 raise AssertionError
             Trace.trace(self.trace_level + 41, "next_work_any_volume: continue")
-            # rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
-            rq = self._get_request(requestor, self.pending_work.get, next=1, active_volumes=active_vols,
-                                   disabled_hosts=self.disabled_hosts)
+            #rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+            rq = self._get_request(requestor, self.pending_work.get, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
 
         if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'PURSUING'):
             saved_rq = rq
@@ -2624,13 +2598,11 @@ class LibraryManagerMethods:
                 # check postponed request
                 if rq.work == "read_from_hsm":
                     rq, key = self.process_read_request(rq, requestor)
-                    Trace.trace(self.trace_level + 10,
-                                "next_work_any_volume: process_read_request for postponed returned %s %s" %
+                    Trace.trace(self.trace_level + 10, "next_work_any_volume: process_read_request for postponed returned %s %s" %
                                 (rq, key))
                 elif rq.work == "write_to_hsm":
                     rq, key = self.process_write_request(rq, requestor)
-                    Trace.trace(self.trace_level + 10,
-                                "next_work_any_volume: process_write_request for postponed returned %s %s" %
+                    Trace.trace(self.trace_level + 10, "next_work_any_volume: process_write_request for postponed returned %s %s" %
                                 (rq, key))
             else:
                 if saved_rq:
@@ -2669,8 +2641,7 @@ class LibraryManagerMethods:
                                                     w['vc']['address'],
                                                     mover=requestor.get('mover'),
                                                     override_notallowed=bool(w.get("override_notallowed", 0)))
-                        Trace.trace(100, "next_work_any_volume: vcc.is_vol_available, time in state %s" % (
-                        time.time() - start_t,))
+                        Trace.trace(100, "next_work_any_volume: vcc.is_vol_available, time in state %s" % (time.time() - start_t, ))
 
                     except KeyError, msg:
                         ret = w
@@ -2685,9 +2656,8 @@ class LibraryManagerMethods:
                                         (self.name, e_errors.BROKEN))
                             self.lm_lock = e_errors.BROKEN
                         return None, (e_errors.NOWORK, None)
-                    Trace.trace(self.trace_level + 10,
-                                "next_work_any_volume: work can not be done at this volume %s" % (ret,))
-                    # w['status'] = ret['status']
+                    Trace.trace(self.trace_level + 10, "next_work_any_volume: work can not be done at this volume %s" % (ret,))
+                    #w['status'] = ret['status']
                     if not (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
                             ret['status'][0] == 'full' or
                             ret['status'][0] == e_errors.MEDIA_IN_ANOTHER_DEVICE):
@@ -2700,8 +2670,8 @@ class LibraryManagerMethods:
                     return (None, (e_errors.NOWORK, None))
             else:
                 if (w['work'] == 'write_to_hsm' and
-                        (w['status'][0] == e_errors.VOL_SET_TO_FULL or
-                         w['status'][0] == 'full')):
+                    (w['status'][0] == e_errors.VOL_SET_TO_FULL or
+                     w['status'][0] == 'full')):
                     return None, (e_errors.NOWORK, None)
             return (rq, rq.ticket['status'])
         return (None, (e_errors.NOWORK, None))
@@ -2761,8 +2731,7 @@ class LibraryManagerMethods:
                 # check if tape is already mounted somewhere
                 if label in vol_veto_list:
                     rq.ticket["reject_reason"] = ("VOLS_IN_WORK", "")
-                    Trace.trace(self.trace_level + 11,
-                                "check_write_request: request for volume %s rejected %s Mounted somwhere else" %
+                    Trace.trace(self.trace_level + 11, "check_write_request: request for volume %s rejected %s Mounted somwhere else" %
                                 (external_label, rq.ticket["reject_reason"]))
                     rq.ticket['status'] = ("VOLS_IN_WORK", None)
                     return rq, rq.ticket['status']
@@ -2770,7 +2739,7 @@ class LibraryManagerMethods:
             Trace.trace(self.trace_level + 11, "check_write_request %s %s" % (external_label, rq.ticket))
             if wr_en >= rq.ticket["vc"]["file_family_width"]:
                 if (not external_label in vol_veto_list) and (wr_en > rq.ticket["vc"]["file_family_width"]):
-                    # if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its limit
+                    #if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its limit
                     rq.ticket["reject_reason"] = ("VOLS_IN_WORK", "")
                     Trace.trace(self.trace_level + 11, "check_write_request: request for volume %s rejected %s" %
                                 (external_label, rq.ticket["reject_reason"]))
@@ -2789,7 +2758,7 @@ class LibraryManagerMethods:
                                         fsize,
                                         rq.ticket['vc']['address'],
                                         mover=requestor.get('mover'))
-            Trace.trace(100, "check_write_request: vcc.is_vol_avail, time in state %s" % (time.time() - start_t,))
+            Trace.trace(100, "check_write_request: vcc.is_vol_avail, time in state %s" % (time.time() - start_t, ))
         # this work can be done on this volume
         if ret['status'][0] == e_errors.OK:
             rq.ticket['vc']['external_label'] = external_label
@@ -2808,8 +2777,8 @@ class LibraryManagerMethods:
             # if work is write_to_hsm and volume has just been set to full
             # return this status for the immediate dismount
             if (rq.work == "write_to_hsm" and
-                    (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
-                     ret['status'][0] == 'full')):
+                (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
+                 ret['status'][0] == 'full')):
                 return None, ret['status']
         return rq, ret['status']
 
@@ -2837,7 +2806,7 @@ class LibraryManagerMethods:
                                         rq.ticket['vc']['volume_family'],
                                         fsize, rq.ticket['vc']['address'],
                                         mover=requestor.get('mover'))
-            Trace.trace(100, "vcc.is_vol_avail, time in state %s" % (time.time() - start_t,))
+            Trace.trace(100, "vcc.is_vol_avail, time in state %s" % (time.time() - start_t, ))
         Trace.trace(self.trace_level + 12, "check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
             if ret['status'][0] == e_errors.BROKEN:
@@ -2900,8 +2869,7 @@ class LibraryManagerMethods:
             return None, (e_errors.NOWORK, None)
         try:
             if self.current_volume_info['system_inhibit'][0] == e_errors.NOACCESS:
-                Trace.log(e_errors.ERROR,
-                          "Volume %s is unavailable: %s" % (external_label, self.current_volume_info['system_inhibit']))
+                Trace.log(e_errors.ERROR, "Volume %s is unavailable: %s" % (external_label, self.current_volume_info['system_inhibit']))
                 return None, (e_errors.NOWORK, None)
         except KeyError:
             exc, msg, tb = sys.exc_info()
@@ -2940,10 +2908,10 @@ class LibraryManagerMethods:
         # op was read, we look at admin reads first
         # (via "key_for_admin_priority") and writes
         # second. vice versa for last op write
-        # rq = self.pending_work.get_admin_request(key=key_for_admin_priority)
+        #rq = self.pending_work.get_admin_request(key=key_for_admin_priority)
         rq = self._get_request(requestor, self.pending_work.get_admin_request, key=key_for_admin_priority)
         if not rq:
-            # rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority)
+            #rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority)
             rq = self._get_request(requestor, self.pending_work.get_admin_request, key=alt_key_for_admin_priority)
         checked_request = None
         would_preempt = False  # no preemption of low pri requests by default
@@ -2961,7 +2929,7 @@ class LibraryManagerMethods:
                     # completed request had a regular proirity
                     # but the mounted tape can not be preempted by HIPRI request
                     # because there are idle movers tah could pick up HIPRI request
-                    # rq = self.pending_work.get_admin_request(next=1,
+                    #rq = self.pending_work.get_admin_request(next=1,
                     rq = self._get_request(requestor, self.pending_work.get_admin_request, next=1,
                                            disabled_hosts=self.disabled_hosts)  # get next request
                     continue
@@ -3005,19 +2973,17 @@ class LibraryManagerMethods:
                                     break
                             if found_mover:
                                 if mover != requestor['mover']:
-                                    Trace.trace(self.trace_level + 42,
-                                                'next_work_this_volume: will wait with this request to go to %s %s' %
+                                    Trace.trace(self.trace_level + 42, 'next_work_this_volume: will wait with this request to go to %s %s' %
                                                 (mover['mover'], mover['external_label']))
 
-                                    # rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts) # get next request
-                                    rq = self._get_request(requestor, self.pending_work.get_admin_request, next=1,
-                                                           disabled_hosts=self.disabled_hosts)  # get next request
+                                    #rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts) # get next request
+                                    rq = self._get_request(requestor, self.pending_work.get_admin_request, next=1, disabled_hosts=self.disabled_hosts)  # get next request
                                     continue
 
             Trace.trace(self.trace_level + 10, "next_work_this_volume: next admin rq %s" % (rq,))
 
             if rq.ticket.has_key('reject_reason'):
-                del (rq.ticket['reject_reason'])
+                del(rq.ticket['reject_reason'])
 
             if rq.work == 'read_from_hsm':
                 rq, key = self.process_read_request(rq, requestor)
@@ -3028,15 +2994,14 @@ class LibraryManagerMethods:
                         if rq.ticket['fc']['external_label'] == external_label:
                             checked_request = rq
                             break
-                    # rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
+                    #rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
                     rq = self._get_request(requestor, self.pending_work.get_admin_request, key=key_for_admin_priority,
                                            next=1,
                                            disabled_hosts=self.disabled_hosts)  # get next request
                     if not rq:
                         # try alternative key
-                        # rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
-                        rq = self._get_request(requestor, self.pending_work.get_admin_request,
-                                               key=alt_key_for_admin_priority,
+                        #rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
+                        rq = self._get_request(requestor, self.pending_work.get_admin_request, key=alt_key_for_admin_priority,
                                                next=1,
                                                disabled_hosts=self.disabled_hosts)
                     Trace.trace(self.trace_level + 10, "next_work_this_volume: continue with %s" % (rq,))
@@ -3056,15 +3021,14 @@ class LibraryManagerMethods:
                         if rq and status[0] == e_errors.OK:
                             checked_request = rq
                             break
-                    # rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
+                    #rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
                     rq = self._get_request(requestor, self.pending_work.get_admin_request, key=key_for_admin_priority,
                                            next=1,
                                            disabled_hosts=self.disabled_hosts)  # get next request
                     if not rq:
                         # try alternative key
-                        # rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
-                        rq = self._get_request(requestor, self.pending_work.get_admin_request,
-                                               key=alt_key_for_admin_priority,
+                        #rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
+                        rq = self._get_request(requestor, self.pending_work.get_admin_request, key=alt_key_for_admin_priority,
                                                next=1,
                                                disabled_hosts=self.disabled_hosts)
                     Trace.trace(self.trace_level + 10, "next_work_this_volume: continue with %s" % (rq,))
@@ -3113,7 +3077,7 @@ class LibraryManagerMethods:
             start_t = time.time()
             rq, status = self.schedule(requestor)
             Trace.trace(self.trace_level + 10, "next_work_this_volume: SCHEDULE RETURNED %s %s" % (rq, status))
-            Trace.trace(100, "next_work_this_volume: SCHEDULE, time in state %s" % (time.time() - start_t,))
+            Trace.trace(100, "next_work_this_volume: SCHEDULE, time in state %s" % (time.time() - start_t, ))
             if rq and rq.ticket['encp']['curpri'] > 0:
                 # preempt current low priority request
                 # by request with normal priority
@@ -3128,14 +3092,13 @@ class LibraryManagerMethods:
                 # see if there is another work for this volume family
                 # disable retrival of HiPri requests as they were
                 # already treated above
-                # rq = self.pending_work.get(vol_family, use_admin_queue=0)
+                #rq = self.pending_work.get(vol_family, use_admin_queue=0)
                 rq = self._get_request(requestor, self.pending_work.get, vol_family, use_admin_queue=0)
                 Trace.trace(self.trace_level + 10, "next_work_this_volume: use volume family %s rq %s" %
                             (vol_family, rq))
                 if not rq:
-                    # rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
-                    rq = self._get_request(requestor, self.pending_work.get, external_label, current_location,
-                                           use_admin_queue=0)
+                    #rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                    rq = self._get_request(requestor, self.pending_work.get, external_label, current_location, use_admin_queue=0)
                     Trace.trace(self.trace_level + 10, "next_work_this_volume: use label %s rq %s" %
                                 (external_label, rq))
 
@@ -3143,13 +3106,12 @@ class LibraryManagerMethods:
                 # see if there is another work for this volume
                 # disable retrival of HiPri requests as they were
                 # already treated above
-                # rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
-                rq = self._get_request(requestor, self.pending_work.get, external_label, current_location,
-                                       use_admin_queue=0)
+                #rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                rq = self._get_request(requestor, self.pending_work.get, external_label, current_location, use_admin_queue=0)
                 Trace.trace(self.trace_level + 10, "next_work_this_volume: use label %s rq %s" %
                             (external_label, rq))
                 if not rq:
-                    # rq = self.pending_work.get(vol_family, use_admin_queue=0)
+                    #rq = self.pending_work.get(vol_family, use_admin_queue=0)
                     rq = self._get_request(requestor, self.pending_work.get, vol_family, use_admin_queue=0)
                     Trace.trace(self.trace_level + 10, "next_work_this_volume: use volume family %s rq %s" %
                                 (vol_family, rq))
@@ -3169,7 +3131,7 @@ class LibraryManagerMethods:
                     rq = None
                     break
                 if rq.ticket.has_key('reject_reason'):
-                    del (rq.ticket['reject_reason'])
+                    del(rq.ticket['reject_reason'])
 
                 if rq:
                     Trace.trace(self.trace_level + 10, "next_work_this_volume: s2 rq %s" % (rq.ticket,))
@@ -3185,28 +3147,21 @@ class LibraryManagerMethods:
                                 break
                             if last_work == "READ":
                                 # volume is readonly: get only read requests
-                                # rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
-                                rq = self._get_request(requestor, self.pending_work.get, external_label, next=1,
-                                                       use_admin_queue=0,
-                                                       disabled_hosts=self.disabled_hosts)  # get next request
+                                #rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq = self._get_request(requestor, self.pending_work.get, external_label, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)  # get next request
                                 if not rq:
                                     # see if there is a write work for the current volume
                                     # volume family
-                                    # rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
-                                    rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1,
-                                                           use_admin_queue=0, disabled_hosts=self.disabled_hosts)
+                                    #rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
+                                    rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
                             else:
-                                # rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
-                                rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1,
-                                                       use_admin_queue=0,
-                                                       disabled_hosts=self.disabled_hosts)  # get next request
+                                #rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)  # get next request
                             continue
                         break
                     elif rq.work == 'write_to_hsm':
                         rq, key = self.process_write_request(rq, requestor, last_work=last_work)
-                        Trace.trace(self.trace_level + 10,
-                                    "next_work_this_volume:process_write_request returned %s continue_scan %s " % (
-                                    (rq, key), self.continue_scan))
+                        Trace.trace(self.trace_level + 10, "next_work_this_volume:process_write_request returned %s continue_scan %s " % ((rq, key), self.continue_scan))
                         if self.continue_scan:
                             if rq:
                                 if checked_request and checked_request.unique_id == rq.unique_id:
@@ -3214,30 +3169,22 @@ class LibraryManagerMethods:
                                 else:
                                     rq, status = self.check_write_request(external_label, rq, requestor)
                                 if rq and status[0] == e_errors.OK:
-                                    Trace.trace(self.trace_level + 10,
-                                                "next_work_this_volume: exc_limit_rq 2 %s" % (rq,))
+                                    Trace.trace(self.trace_level + 10, "next_work_this_volume: exc_limit_rq 2 %s" % (rq,))
                                     exc_limit_rq = rq
                                     checked_request = rq
                                     break
-                            Trace.trace(self.trace_level + 10,
-                                        "next_work_this_volume: current_volume_info %s" % (self.current_volume_info,))
+                            Trace.trace(self.trace_level + 10, "next_work_this_volume: current_volume_info %s" % (self.current_volume_info,))
                             if last_work == "WRITE":
-                                # rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
-                                rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1,
-                                                       use_admin_queue=0,
-                                                       disabled_hosts=self.disabled_hosts)  # get next request
+                                #rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)  # get next request
                                 if not rq:
                                     # see if there is a read work for the current volume
                                     # volume family
-                                    # rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
-                                    rq = self._get_request(requestor, self.pending_work.get, external_label, next=1,
-                                                           use_admin_queue=0,
-                                                           disabled_hosts=self.disabled_hosts)  # get next request
+                                    #rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                    rq = self._get_request(requestor, self.pending_work.get, external_label, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)  # get next request
                             else:
-                                # rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
-                                rq = self._get_request(requestor, self.pending_work.get, external_label, next=1,
-                                                       use_admin_queue=0,
-                                                       disabled_hosts=self.disabled_hosts)  # get next request
+                                #rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq = self._get_request(requestor, self.pending_work.get, external_label, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)  # get next request
 
                             continue
                         break
@@ -3264,9 +3211,8 @@ class LibraryManagerMethods:
                         return rq, status
                     if not rq: break
                     Trace.trace(self.trace_level + 10, "next_work_this_volume: got here")
-                    # rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
-                    rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1, use_admin_queue=0,
-                                           disabled_hosts=self.disabled_hosts)
+                    #rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
+                    rq = self._get_request(requestor, self.pending_work.get, vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
             # return read work
             if rq:
                 Trace.trace(self.trace_level + 10, "next_work_this_volume: s4 rq %s" % (rq.ticket,))
@@ -3302,11 +3248,10 @@ class LibraryManagerMethods:
                               (vol['external_label'],))
                     self.suspect_volumes.remove(vol)
 
-        Trace.trace(self.trace_level + 11, "is_volume_suspect: external label %s suspect_volumes.list: %s" % (
-        external_label, self.suspect_volumes.list))
+        Trace.trace(self.trace_level + 11, "is_volume_suspect: external label %s suspect_volumes.list: %s" % (external_label, self.suspect_volumes.list))
         for vol in self.suspect_volumes.list:
             if external_label == vol['external_label']:
-                Trace.trace(self.trace_level + 11, "is_volume_suspect: returning %s" % (vol,))
+                Trace.trace(self.trace_level + 11, "is_volume_suspect: returning %s" % (vol, ))
                 return vol
         Trace.trace(self.trace_level + 11, "is_volume_suspect: returning None")
         return None
@@ -3353,8 +3298,7 @@ class LibraryManagerMethods:
         """
 
         # update list of suspected volumes
-        Trace.trace(self.trace_level + 11,
-                    "update_suspect_vol_list: SUSPECT VOLUME LIST BEFORE %s" % (self.suspect_volumes.list,))
+        Trace.trace(self.trace_level + 11, "update_suspect_vol_list: SUSPECT VOLUME LIST BEFORE %s" % (self.suspect_volumes.list,))
         if not external_label: return None
         vol_found = 0
         for vol in self.suspect_volumes.list:
@@ -3378,8 +3322,7 @@ class LibraryManagerMethods:
                 Trace.alarm(e_errors.WARNING, e_errors.ABOVE_THRESHOLD,
                             {"volumes": "Number of suspect volumes is above threshold"})
 
-        Trace.trace(self.trace_level + 11,
-                    "update_suspect_vol_list: SUSPECT VOLUME LIST AFTER %s" % (self.suspect_volumes,))
+        Trace.trace(self.trace_level + 11, "update_suspect_vol_list: SUSPECT VOLUME LIST AFTER %s" % (self.suspect_volumes,))
         return vol
     ############################################
     # End request processing methods
@@ -3432,15 +3375,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         min_file_size = self.keys.get('min_file_size', 0L)
         # maximal file size
         self.max_file_size = self.keys.get('max_file_size', 2 * GB - 2 * KB)
-        self.max_suspect_movers = self.keys.get('max_suspect_movers',
-                                                3)  # maximal number of movers in the suspect volume list
-        self.max_suspect_volumes = self.keys.get('max_suspect_volumes',
-                                                 100)  # maximal number of suspected volumes for alarm generation
-        self.blank_error_increment = self.keys.get('blank_error_increment',
-                                                   5)  # this + max_suspect_movers shuold not be more than total number of movers
+        self.max_suspect_movers = self.keys.get('max_suspect_movers', 3)  # maximal number of movers in the suspect volume list
+        self.max_suspect_volumes = self.keys.get('max_suspect_volumes', 100)  # maximal number of suspected volumes for alarm generation
+        self.blank_error_increment = self.keys.get('blank_error_increment', 5)  # this + max_suspect_movers shuold not be more than total number of movers
         self.use_raw = self.keys.get('use_raw_input', None)
         self.time_started = time.time()
-        self.startup_flag = 1  # this flag means that LM is in the startup state
+        self.startup_flag = 1   # this flag means that LM is in the startup state
         self.my_trace_level = 11
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
@@ -3550,6 +3490,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         return rc
 
     # check startup flag
+
     def is_starting(self):
         if self.startup_flag:
             if time.time() - self.time_started > self.startup_delay:
@@ -3561,6 +3502,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         return os.path.join(d, "%s_lock" % (self.name,))
 
     # get lock from a lock file or from keys['lock'] if present.
+
     def get_lock(self):
         lock_state = None
         try:
@@ -3584,8 +3526,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # nowrite -- locked for write requests
             # noread -- locked for read requests
 
-            if self.keys['lock'] in (
-            e_errors.LOCKED, e_errors.UNLOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.NOREAD):
+            if self.keys['lock'] in (e_errors.LOCKED, e_errors.UNLOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.NOREAD):
                 return self.keys['lock']
         return None
 
@@ -3660,8 +3601,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         if not error_detected and ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             try:
-                ticket['vc']['file_family_width'] = int(
-                    ticket['vc']['file_family_width'])  # ff width must be an integer
+                ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width'])  # ff width must be an integer
             except:
                 # there was a traceback: ValueError: invalid literal for int() with base 10: 'test'
                 # several times
@@ -3684,8 +3624,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # do not check version
                 pass
             else:
-                error_detected = self.restrict_version_access(ticket['vc']['storage_group'], self.legal_encp_version,
-                                                              ticket)
+                error_detected = self.restrict_version_access(ticket['vc']['storage_group'], self.legal_encp_version, ticket)
 
         if not error_detected:
             # check if request is alredy in the queue
@@ -3715,9 +3654,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                ticket["vc"]["volume_family"],
                                ticket["wrapper"]["uname"]))
 
-                # Trace.trace(self.my_trace_level+100, "call back %s pending callback %s"%(ticket["callback_addr"], rq.callback))
-                Trace.trace(self.my_trace_level + 100,
-                            "%s: request is already in the queue %s" % (work, ticket["unique_id"],))
+                #Trace.trace(self.my_trace_level+100, "call back %s pending callback %s"%(ticket["callback_addr"], rq.callback))
+                Trace.trace(self.my_trace_level + 100, "%s: request is already in the queue %s" % (work, ticket["unique_id"],))
                 error_detected = True
         if error_detected:
             # it has been observerd that in multithreaded environment
@@ -3748,8 +3686,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if ticket.has_key('copy'):
             if ticket['fc'].has_key('original_bfid'):
                 if ticket.has_key('vc') and ticket['vc'].has_key('original_file_family'):
-                    ticket['vc']['file_family'] = "%s_%s_%s" % (
-                    ticket['vc']['original_file_family'], 'copy', int(ticket['copy']))
+                    ticket['vc']['file_family'] = "%s_%s_%s" % (ticket['vc']['original_file_family'], 'copy', int(ticket['copy']))
                 else:
                     ticket['status'] = (e_errors.MALFORMED,
                                         "ticket does not have a key for copy %s" % ('original_file_family',))
@@ -3785,11 +3722,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING, 'input ticket has key mover in it %s' % (ticket,))
-            del (ticket['mover'])
+            del(ticket['mover'])
         if ticket['vc'].has_key('external_label'):
-            del (ticket['vc']['external_label'])
+            del(ticket['vc']['external_label'])
         if ticket['fc'].has_key('external_label'):
-            del (ticket['fc']['external_label'])
+            del(ticket['fc']['external_label'])
 
         # verify data transfer request here after some entries in incoming
         # ticket were modified
@@ -3804,7 +3741,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         host = ticket['wrapper']['machine'][1]
         work = 'write'
         ff = ticket['vc']['file_family']
-        # if self.lm_lock == 'locked' or self.lm_lock == e_errors.IGNORE:
+        #if self.lm_lock == 'locked' or self.lm_lock == e_errors.IGNORE:
 
         if self.lm_lock in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.BROKEN):
             if self.lm_lock in (e_errors.LOCKED, e_errors.NOWRITE):
@@ -3850,24 +3787,23 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         Trace.trace(self.my_trace_level + 100, "write_to_hsm:match returned %s %s %s %s" % (rc, fun, args, action))
         if fun == 'restrict_host_access' and action != e_errors.REJECT:
-            action = None  # do nothing here
+            action = None   # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
             if fun == 'restrict_version_access':
-                # replace last argument with ticket
-                # args.remove({})
+                #replace last argument with ticket
+                #args.remove({})
                 # for some reason discipline has begun to return a complete ticket as a
                 # last argument on 05/10/2002 after update
                 # that's why I excplicitely remove a 3rd argument
-                del (args[2])
+                del(args[2])
                 args.append(ticket)
             elif fun == 'restrict_host_access':
                 host_from_ticket = self.get_host_name_from_ticket(ticket)
                 args.append(host_from_ticket)
 
             ret = apply(getattr(self, fun), args)
-            if ret and (
-                    action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.REJECT)):
+            if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.REJECT)):
                 _format = "access restricted for %s : library=%s family=%s requester:%s "
                 Trace.log(e_errors.INFO, _format % (ticket["wrapper"]["fullname"],
                                                     ticket["vc"]["library"],
@@ -3968,7 +3904,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING, 'input ticket has key mover in it %s' % (ticket,))
-            del (ticket['mover'])
+            del(ticket['mover'])
         # data for Trace.notify
         host = ticket['wrapper']['machine'][1]
         work = 'read'
@@ -3990,16 +3926,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rc, fun, args, action = self.restrictor.match_found(ticket)
         Trace.trace(self.my_trace_level + 100, "read_from_hsm: match returned %s %s %s %s" % (rc, fun, args, action))
         if fun == 'restrict_host_access' and action != e_errors.REJECT:
-            action = None  # do nothing here
+            action = None    # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
             if fun == 'restrict_version_access':
-                # replace last argument with ticket
-                # args.remove({})
+                #replace last argument with ticket
+                #args.remove({})
                 # for some reason discipline has begun to return a complete ticket as a
                 # last argument on 05/10/2002 after update
                 # that's why I excplicitely remove a 3rd argument
-                del (args[2])
+                del(args[2])
                 args.append(ticket)
             elif fun == 'restrict_host_access':
                 host_from_ticket = self.get_host_name_from_ticket(ticket)
@@ -4044,7 +3980,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.notify("client %s %s %s %s" % (host, work, vol, 'rejected'))
             return
 
-        # if not ticket.has_key('lm'):
+        #if not ticket.has_key('lm'):
         if self.keys.has_key('mover_port'):
             ticket['lm'] = {'address': (self.keys['hostip'], self.keys['mover_port'])}
         else:
@@ -4065,7 +4001,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['encp']['basepri'], ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
             log_add_to_pending_queue(ticket['vc'])
             if ('media_type' in ticket['vc']
-                    and ticket['vc']['media_type'] == 'disk'
+                and ticket['vc']['media_type'] == 'disk'
                     and ticket['fc']['package_id']):
                 # replace external_label to allow processing of HAVE_BOUND disk mover requests
                 ticket['fc']['external_label'] = ticket['fc']['package_id']
@@ -4136,8 +4072,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     finally:
                         postponed_bound_rq = self.postponed_bound_requests.get()
                         if postponed_bound_rq:
-                            Trace.log(e_errors.INFO,
-                                      'Starting postponed mover_bound_volume request %s' % (postponed_bound_rq,))
+                            Trace.log(e_errors.INFO, 'Starting postponed mover_bound_volume request %s' % (postponed_bound_rq,))
                             try:
                                 self._mover_bound_volume(postponed_bound_rq)
                             except:
@@ -4181,8 +4116,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mover in self.volumes_at_movers.at_movers:
                 # how idle mover can be in the active list?
                 # continue checking. This check requires synchronization between LM and mover machines.
-                Trace.trace(11, "_mover_idle: time_started %s current_time %s" % (
-                self.volumes_at_movers.at_movers[mover]['time_started'], mticket['current_time']))
+                Trace.trace(11, "_mover_idle: time_started %s current_time %s" % (self.volumes_at_movers.at_movers[mover]['time_started'], mticket['current_time']))
                 if self.volumes_at_movers.at_movers[mover]['time_started'] >= mticket['current_time']:
                     # idle request was issued before the request became active
                     # ignore this request, but send something to mover.
@@ -4217,10 +4151,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         found = 0
         Trace.trace(self.my_trace_level + 1, "mover_idle: work_at_movers: %s" % (self.work_at_movers.list,))
         for wt in self.work_at_movers.list:
-            Trace.trace(self.my_trace_level,
-                        "mover_idle:work_at_movers: mover %s id %s" % (wt['mover'], wt['unique_id']))
+            Trace.trace(self.my_trace_level, "mover_idle:work_at_movers: mover %s id %s" % (wt['mover'], wt['unique_id']))
             if wt['mover'] == self.requestor['mover']:
-                found = 1  # must do this. Construct. for...else will not
+                found = 1     # must do this. Construct. for...else will not
                 # do better
                 break
         if found:
@@ -4235,14 +4168,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     mover_rq_unique_id = string.join(s1[:-1], "-")
                 s1 = work_at_mover_unique_id.split("-")
                 work_at_mover_unique_id = string.join(s1[:-1], "-")
-                Trace.trace(self.my_trace_level,
-                            "mover_idle: m_id %s w_id %s" % (mover_rq_unique_id, work_at_mover_unique_id))
+                Trace.trace(self.my_trace_level, "mover_idle: m_id %s w_id %s" % (mover_rq_unique_id, work_at_mover_unique_id))
             # check if it is a backed up request
             if ((mover_rq_unique_id and mover_rq_unique_id != work_at_mover_unique_id) and
                     (mticket["time_in_state"] < 60)):  # allow 60 s for possible communication re-tries
                 Trace.trace(self.my_trace_level + 1, "mover_idle: found backed up mover %s" % (mticket['mover'],))
-                Trace.trace(self.my_trace_level + 1, "mover_idle: mover_rq_unique_id %s work_at_mover_unique_id %s" % (
-                mover_rq_unique_id, work_at_mover_unique_id))
+                Trace.trace(self.my_trace_level + 1, "mover_idle: mover_rq_unique_id %s work_at_mover_unique_id %s" % (mover_rq_unique_id, work_at_mover_unique_id))
                 self.reply_to_caller(nowork)  # AM!!!!!
                 return
 
@@ -4253,7 +4184,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         start_t = time.time()
         rq, status = self.schedule(mticket)
         Trace.trace(self.my_trace_level, "mover_idle: SCHEDULE RETURNED %s %s" % (rq, status))
-        Trace.trace(100, "mover_idle: SHEDULE, time in state %s" % (time.time() - start_t,))
+        Trace.trace(100, "mover_idle: SHEDULE, time in state %s" % (time.time() - start_t, ))
 
         # no work means we're done
         if status[0] == e_errors.NOWORK:
@@ -4267,13 +4198,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     if external_label:
                         if not self.volumes_at_movers.is_vol_busy(
                                 external_label):
-                            # Add some items to the dictionary.
+                            #Add some items to the dictionary.
                             self.volume_assert_list[i]['mover'] = \
                                 mticket['mover']
-                            # Update the dequeued time.
+                            #Update the dequeued time.
                             self.volume_assert_list[i]['times']['lm_dequeued'] = \
                                 time.time()
-                            # Add the volume and mover to the list of currently
+                            #Add the volume and mover to the list of currently
                             # busy volumes and movers.
                             self.work_at_movers.append(
                                 self.volume_assert_list[i])
@@ -4281,18 +4212,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             # remove this mover from idle_movers list
                             self.remove_idle_mover(mticket["mover"])
 
-                            # Record this action in log file.
+                            #Record this action in log file.
                             Trace.log(e_errors.INFO,
                                       "IDLE:sending %s to mover" %
                                       (self.volume_assert_list[i],))
 
-                            # Tell the mover it has something to do.
+                            #Tell the mover it has something to do.
                             # it has been observerd that in multithreaded environment
                             # ticket["r_a"] somehow gets modified
                             # so to be safe restore  ticket["r_a"] just before sending
                             self.volume_assert_list[i]["r_a"] = saved_reply_address
                             self.reply_to_caller(self.volume_assert_list[i])
-                            # Remove the job from the list of volumes to check.
+                            #Remove the job from the list of volumes to check.
                             del self.volume_assert_list[i]
                             break
                         else:
@@ -4315,16 +4246,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # for write requests
             if not w["vc"].has_key("external_label"):
                 w["vc"]["external_label"] = None
-                # w["vc"]["wrapper"] = "null"
+                #w["vc"]["wrapper"] = "null"
 
         # reply now to avoid deadlocks
         _format = "%s work on vol=%s mover=%s requester:%s"
-        Trace.log(e_errors.INFO, _format % \
+        Trace.log(e_errors.INFO, _format %\
                   (w["work"],
                    w["fc"]["external_label"],
                    mticket["mover"],
                    w["wrapper"]["uname"]))
-        if w.has_key('reject_reason'): del (w['reject_reason'])
+        if w.has_key('reject_reason'): del(w['reject_reason'])
         self.pending_work.delete(rq)
         w['times']['lm_dequeued'] = time.time()
         # set the correct volume family for write request
@@ -4385,9 +4316,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.work_at_movers.append(w)
         else:
             Trace.trace(self.my_trace_level, "mover_idle: work is already in work_at_movers")
-        # work = string.split(w['work'],'_')[0]
+        #work = string.split(w['work'],'_')[0]
         Trace.log(e_errors.INFO, "IDLE:sending %s to mover" % (w,))
-        # Thread safe
+        #Thread safe
         w['r_a'] = saved_reply_address
         # remove this mover from idle_movers list
         self.remove_idle_mover(mticket["mover"])
@@ -4421,8 +4352,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         Trace.trace(self.my_trace_level + 1, "mover_idle: Mover Ticket %s" % (mticket,))
         self.volumes_at_movers.put(mticket)
-        Trace.trace(self.my_trace_level + 1, "mover_idle:IDLE:postponed%s %s" % (
-        self.postponed_requests.sg_list, self.postponed_requests.rq_list))
+        Trace.trace(self.my_trace_level + 1, "mover_idle:IDLE:postponed%s %s" % (self.postponed_requests.sg_list, self.postponed_requests.rq_list))
         if self.postponed_rq:
             self.postponed_requests.update(self.postponed_sg, 1)
 
@@ -4535,8 +4465,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 finally:
                     postponed_bound_rq = self.postponed_bound_requests.get()
                     if postponed_bound_rq:
-                        Trace.log(e_errors.INFO,
-                                  'Starting postponed mover_bound_volume request %s' % (postponed_bound_rq,))
+                        Trace.log(e_errors.INFO, 'Starting postponed mover_bound_volume request %s' % (postponed_bound_rq,))
                         try:
                             self._mover_bound_volume(postponed_bound_rq)
                         except:
@@ -4585,8 +4514,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # This code requires a new key in the mover ticket
         if mticket.has_key("current_time"):
             mover = mticket['mover']
-            Trace.trace(self.my_trace_level,
-                        "_mover_bound_volume: active movers %s" % (self.volumes_at_movers.at_movers,))
+            Trace.trace(self.my_trace_level, "_mover_bound_volume: active movers %s" % (self.volumes_at_movers.at_movers,))
             if mover in self.volumes_at_movers.at_movers:
                 # continue checking. This check requires synchronization between LM and mover machines.
                 if self.volumes_at_movers.at_movers[mover]['time_started'] >= mticket['current_time']:
@@ -4599,8 +4527,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     self.reply_to_caller(blank_reply)
                     return
 
-        if (not mticket['volume_family'] or (
-                "Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1])):
+        if (not mticket['volume_family'] or ("Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1])):
             # Mover restarted with bound volume and it has not
             # all the volume info (volume_family is None).
             # Or mover did not return a "good" status for this volume
@@ -4624,7 +4551,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     self.reply_to_caller(nowork)
                     return
 
-        # transfer_deficiency = mticket.get('transfer_deficiency', 1)
+        #transfer_deficiency = mticket.get('transfer_deficiency', 1)
         sg = volume_family.extract_storage_group(mticket['volume_family'])
         self.postponed_requests.update(sg, 1)
 
@@ -4651,16 +4578,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             return
                     except KeyError:
                         exc, msg, tb = sys.exc_info()
-                        Trace.log(e_errors.ERROR,
-                                  "Unexpected KeyError processing %s" % (self.volumes_at_movers.at_movers,))
+                        Trace.log(e_errors.ERROR, "Unexpected KeyError processing %s" % (self.volumes_at_movers.at_movers,))
                         Trace.handle_error(exc, msg, tb)
                         self.reply_to_caller(nowork)
                         return
 
-                Trace.trace(self.my_trace_level + 1,
-                            "_mover_bound_volume: found backed up mover %s " % (mticket['mover'],))
-                Trace.trace(self.my_trace_level + 1,
-                            "_mover_bound_volume %s %s" % (mticket['unique_id'], w['unique_id']))
+                Trace.trace(self.my_trace_level + 1, "_mover_bound_volume: found backed up mover %s " % (mticket['mover'], ))
+                Trace.trace(self.my_trace_level + 1, "_mover_bound_volume %s %s" % (mticket['unique_id'], w['unique_id']))
                 self.reply_to_caller(nowork)  # AM !!!!!!!
                 return
             Trace.trace(self.my_trace_level + 1, "_mover_bound_volume: removing %s  from the queue" % (w,))
@@ -4676,16 +4600,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.volumes_at_movers.put(mticket)
 
         if self.lm_lock in (e_errors.PAUSE, e_errors.BROKEN, e_errors.MOVERLOCKED):
-            Trace.trace(self.my_trace_level + 1,
-                        "_mover_bound_volume: LM state is %s no mover request processing" % (self.lm_lock,))
+            Trace.trace(self.my_trace_level + 1, "_mover_bound_volume: LM state is %s no mover request processing" % (self.lm_lock,))
             self.reply_to_caller(nowork)
             return
         # see if this volume will do for any other work pending
         rq, status = self.next_work_this_volume(mticket['external_label'], mticket['volume_family'],
                                                 last_work, mticket,
                                                 mticket['current_location'], priority=current_priority)
-        Trace.trace(self.my_trace_level + 1,
-                    "_mover_bound_volume: next_work_this_volume returned: %s %s" % (rq, status))
+        Trace.trace(self.my_trace_level + 1, "_mover_bound_volume: next_work_this_volume returned: %s %s" % (rq, status))
         if status[0] == e_errors.OK:
             w = rq.ticket
             if self.mover_type(mticket) == 'DiskMover':
@@ -4693,7 +4615,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # for write requests
                 if not w["vc"].has_key("external_label"):
                     w["vc"]["external_label"] = None
-                    # w["vc"]["wrapper"] = "null"
+                    #w["vc"]["wrapper"] = "null"
 
             _format = "%s next work on vol=%s mover=%s requester:%s"
             try:
@@ -4706,7 +4628,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 self.reply_to_caller(nowork)
                 return
             w['times']['lm_dequeued'] = time.time()
-            if w.has_key('reject_reason'): del (w['reject_reason'])
+            if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO, "HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s" %
                       (w['work'], w['wrapper']['pnfsFilename'], mticket['mover'],
                        mticket['address'], w['encp']['delayed_dismount']))
@@ -4725,7 +4647,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                         vol_info["external_label"] = w["vc"]["external_label"]
                     w['vc'].update(vol_info)
             log_add_to_wam_queue(w['vc'])
-            # self.work_at_movers.append(w)
+            #self.work_at_movers.append(w)
             Trace.trace(self.my_trace_level + 1, "mover_bound_volume: appending to work_at_movers %s" % (w,))
             if not w in self.work_at_movers.list:
                 self.work_at_movers.append(w)
@@ -4800,8 +4722,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 s0 = [vol_stat[0][0], status[0]]
                 s1 = vol_stat[1]
                 mticket['volume_status'] = (s0, s1)
-                Trace.trace(self.my_trace_level,
-                            "mover_bound_volume: update at_movers %s" % (mticket['volume_status'],))
+                Trace.trace(self.my_trace_level, "mover_bound_volume: update at_movers %s" % (mticket['volume_status'],))
                 self.volumes_at_movers.put(mticket)
                 ret_ticket = {'work': 'update_volume_info',
                               'external_label': mticket['external_label']
@@ -4855,10 +4776,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             self.work_at_movers.remove(w)
         if ((mticket['state'] == mover_constants.OFFLINE) or  # mover finished request and went offline
-                (((mticket['status'][0] == e_errors.ENCP_GONE) or
-                  (mticket['status'][0] == e_errors.ENCP_STUCK) or
-                  (mticket['status'][0] == e_errors.DISMOUNTFAILED)) and  # preempted volume dismount failed
-                 mticket['state'] != 'HAVE_BOUND')):
+            (((mticket['status'][0] == e_errors.ENCP_GONE) or
+              (mticket['status'][0] == e_errors.ENCP_STUCK) or
+              (mticket['status'][0] == e_errors.DISMOUNTFAILED)) and  # preempted volume dismount failed
+             mticket['state'] != 'HAVE_BOUND')):
             rc = self.volumes_at_movers.delete(mticket)
             Trace.trace(self.my_trace_level, "mover_error: volumes_at_movers.delete returned %s" % (rc,))
             if mticket['status'][0] == e_errors.DISMOUNTFAILED:
@@ -4876,8 +4797,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             # (see volumes_at_movers.delete).
                             # Try to delete mover from the at_movers list.
                             rc = self.volumes_at_movers.sg_vf.delete_mover(mticket['mover'])
-                            Trace.trace(self.my_trace_level,
-                                        "mover_error: volumes_at_movers.sg_vf.delete_mover returned %s" % (rc,))
+                            Trace.trace(self.my_trace_level, "mover_error: volumes_at_movers.sg_vf.delete_mover returned %s" % (rc,))
                 # put back the actual mover, tape combination
                 self.volumes_at_movers.put(mticket)
             return
@@ -4887,10 +4807,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # because later it may be different
             d = mticket['returned_work']
             if d['work'] == 'write_to_hsm':
-                if d['fc'].has_key('external_label'): del (d['fc']['external_label'])
-                if d['vc'].has_key('external_label'): del (d['vc']['external_label'])
+                if d['fc'].has_key('external_label'): del(d['fc']['external_label'])
+                if d['vc'].has_key('external_label'): del(d['vc']['external_label'])
 
-            del (mticket['returned_work']['mover'])
+            del(mticket['returned_work']['mover'])
             Trace.trace(self.my_trace_level, "mover_error: put returned work back to pending queue %s" %
                         (mticket['returned_work'],))
             rq, status = self.pending_work.put(mticket['returned_work'])
@@ -4910,19 +4830,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if vol_status and vol_status[0][0] == 'none':
                 vol = self.update_suspect_vol_list(mticket['external_label'],
                                                    mticket['mover'])
-                Trace.log(e_errors.INFO,
-                          "mover_error updated suspect volume list for %s" % (mticket['external_label'],))
+                Trace.log(e_errors.INFO, "mover_error updated suspect volume list for %s" % (mticket['external_label'],))
                 if vol:
                     # need a special processing for FTT_EBLANK. For 9940A tape drives
                     # it is mainly a firmware bug, but we need to make tape to not
                     # go NOACCESS in such a case.
                     ftt_eblank_error = (mticket['status'][0] == e_errors.READ_ERROR
                                         and mticket['status'][1] and
-                                        ((mticket['status'][1] == 'FTT_EBLANK') or mticket['status'][
-                                            1] == 'FTT_SUCCESS'))
+                                        ((mticket['status'][1] == 'FTT_EBLANK') or mticket['status'][1] == 'FTT_SUCCESS'))
                     if ((len(vol['movers']) >= self.max_suspect_movers and not ftt_eblank_error) or
-                            (len(vol[
-                                     'movers']) >= self.max_suspect_movers + self.blank_error_increment and ftt_eblank_error)):
+                            (len(vol['movers']) >= self.max_suspect_movers + self.blank_error_increment and ftt_eblank_error)):
 
                         if w:
                             w['status'] = (e_errors.NOACCESS, None)
@@ -4933,20 +4850,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                 # mover starting, no volume info
                                 return
                             self.set_vcc(mticket['volume_clerk'])
-                            # self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                            #self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                             #                                                 server_address=mticket['volume_clerk'])
                         else:
                             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-                        self.vcc.set_system_noaccess(mticket['external_label'], timeout=self.volume_clerk_to,
-                                                     retry=self.volume_clerk_retry)
+                        self.vcc.set_system_noaccess(mticket['external_label'], timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
                         Trace.alarm(e_errors.ERROR,
                                     "Mover error (%s) caused volume %s to go NOACCESS" % (mticket['mover'],
                                                                                           mticket['external_label']))
                         # set volume as read only
-                        # v = self.vcc.set_system_readonly(w['fc']['external_label'], timeout=5, retry=2)
+                        #v = self.vcc.set_system_readonly(w['fc']['external_label'], timeout=5, retry=2)
                         label = mticket['external_label']
 
-                        # remove entry from suspect volume list
+                        #remove entry from suspect volume list
                         self.suspect_volumes.remove(vol)
                         Trace.trace(self.my_trace_level, "mover_error: removed from suspect volume list %s" % (vol,))
 
@@ -5057,7 +4973,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             dispatching_worker.run_in_thread('GetWorks_Sorted', self.__getworks_sorted, args=(ticket,))
 
-    # body of get_asserts to run either in thread or as a function call
+   #body of get_asserts to run either in thread or as a function call
+
     def __get_asserts(self, ticket):
         rc = 0
         rticket = ticket.copy()
@@ -5119,8 +5036,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         :arg ticket: enstore library manager client request containig ticket['work'] = 'get_suspect_volumes'
         """
 
-        # ticket["status"] = (e_errors.OK, None)
-        # self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        #ticket["status"] = (e_errors.OK, None)
+        #self.reply_to_caller(ticket) # reply now to avoid deadlocks
 
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
@@ -5190,16 +5107,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         """
 
         if ticket.has_key('state'):
-            if ticket['state'] in (
-            e_errors.LOCKED, e_errors.IGNORE, e_errors.UNLOCKED, e_errors.PAUSE, e_errors.NOREAD, e_errors.NOWRITE,
-            e_errors.MOVERLOCKED):
+            if ticket['state'] in (e_errors.LOCKED, e_errors.IGNORE, e_errors.UNLOCKED, e_errors.PAUSE, e_errors.NOREAD, e_errors.NOWRITE, e_errors.MOVERLOCKED):
                 lock = ticket['state']
                 if ticket['state'] == e_errors.UNLOCKED:
                     # use the default state if present
 
                     if ((self.keys.has_key('lock')) and
-                            (self.keys['lock'] in (e_errors.LOCKED, e_errors.UNLOCKED, e_errors.IGNORE, e_errors.PAUSE,
-                                                   e_errors.NOWRITE, e_errors.NOREAD, e_errors.MOVERLOCKED))):
+                        (self.keys['lock'] in (e_errors.LOCKED, e_errors.UNLOCKED, e_errors.IGNORE, e_errors.PAUSE,
+                                               e_errors.NOWRITE, e_errors.NOREAD, e_errors.MOVERLOCKED))):
                         lock = self.keys['lock']
 
                 self.lm_lock = lock
@@ -5316,7 +5231,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         found = 0
         for wt in self.work_at_movers.list:
             if wt['mover'] == mover['mover']:
-                found = 1  # must do this. Construct. for...else will not
+                found = 1     # must do this. Construct. for...else will not
                 # do better
                 break
 
@@ -5330,6 +5245,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
 
     # get storage groups
+
     def storage_groups(self, ticket):
         ticket['storage_groups'] = []
         ticket['storage_groups'] = self.sg_limits
@@ -5447,8 +5363,8 @@ def do_work():
     lm.handle_generic_commands(intf)
 
     Trace.init(lm.log_name, lm.keys.get('include_thread_name', 'yes'))
-    # lm._do_print({'levels':range(5, 400)}) # no manage_queue
-    # lm._do_print({'levels':range(5, 500)}) # manage_queue
+    #lm._do_print({'levels':range(5, 400)}) # no manage_queue
+    #lm._do_print({'levels':range(5, 500)}) # manage_queue
 
     while True:
         try:
@@ -5458,7 +5374,7 @@ def do_work():
                 pass
             else:
                 Trace.log(e_errors.INFO, "Library Manager %s (re)starting %s" % (intf.name, t_n))
-                # lm.run_in_thread(t_n, lm.check)
+                #lm.run_in_thread(t_n, lm.check)
                 dispatching_worker.run_in_thread(t_n, lm.check)
 
             if hasattr(lm, 'mover_server'):
@@ -5468,7 +5384,7 @@ def do_work():
                     pass
                 else:
                     Trace.log(e_errors.INFO, "Library Manager %s (re)starting %s" % (intf.name, t_n))
-                    # lm.run_in_thread(t_n, lm.mover_requests.serve_forever)
+                    #lm.run_in_thread(t_n, lm.mover_requests.serve_forever)
                     dispatching_worker.run_in_thread(t_n, lm.mover_requests.serve_forever)
 
             # pull client (not mover and not encp) request from client_requests and process it
@@ -5477,7 +5393,7 @@ def do_work():
                 pass
             else:
                 Trace.log(e_errors.INFO, "Library Manager %s (re)starting %s" % (intf.name, t_n))
-                # lm.run_in_thread(t_n, lm.client_requests.serve_forever)
+                #lm.run_in_thread(t_n, lm.client_requests.serve_forever)
                 dispatching_worker.run_in_thread(t_n, lm.client_requests.serve_forever)
 
             if hasattr(lm, 'encp_server'):
@@ -5489,7 +5405,7 @@ def do_work():
                     Trace.log(e_errors.INFO, "Library Manager %s (re)starting %s" % (intf.name, t_n))
                     dispatching_worker.run_in_thread(t_n, lm.encp_requests.serve_forever)
 
-            # lm.serve_forever()
+            #lm.serve_forever()
 
         except SystemExit, exit_code:
             sys.exit(exit_code)
@@ -5503,8 +5419,9 @@ def do_work():
 
 
 if __name__ == "__main__":   # pragma: no cover
+
     do_work()
 
-    # import profile
-    # profile.run('do_work', '/home/enstore/tmp/enstore/profile')
-    # do_work()
+    #import profile
+    #profile.run('do_work', '/home/enstore/tmp/enstore/profile')
+    #do_work()
