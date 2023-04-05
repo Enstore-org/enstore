@@ -4302,11 +4302,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                         res = enstore_functions2.shell_command('enrsh -n %s %s ' % (self.cli_host, cmd,))
                         if not res:
                             Trace.log(e_errors.ERROR, 'viewDataCartridges: IBM CLI returned %s' % (res[1],))
-                        else:
-                            f = open(fn, 'w')
-                            f.write(res[0])
-                            f.close()
-                            Trace.log(e_errors.INFO, 'viewDataCartridges result is in %s' % (fn,))
+                    else:
+                        f = open(fn, 'w')
+                        f.write(res[0])
+                        f.close()
+                        Trace.log(e_errors.INFO, 'viewDataCartridges result is in %s' % (fn,))
                     return -1, -1
             self.status_valid = 1
         found = False
