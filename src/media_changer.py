@@ -4558,7 +4558,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         __pychecker__ = "no-argsused"
         Trace.log(ACTION_LOG_LEVEL, 'getVolstate: %s' % (ticket,))
         retry_count = 2
-        slot = -1
+        slot = None  # Always set in loop
         while retry_count > 0:
             ticket['status'] = e_errors.OK
             slot, drive = self.locate_volume(ticket['external_label'])
@@ -4595,7 +4595,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
     def getDriveState(self, ticket):
         retry_count = 2
-        rc = None # Always set in loop
+        rc = None  # Always set in loop
         while retry_count > 0:
             ticket['status'] = e_errors.OK
             try:
