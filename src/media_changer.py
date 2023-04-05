@@ -3324,7 +3324,7 @@ def get_mtx_status(device):
                 os.kill(pid, signal.SIGKILL)
                 time.sleep(2)
                 os.waitpid(pid, os.WNOHANG)
-    except OSError, detail:
+    except OSError as detail:
         os.close(c2pread)
         if detail[0] != errno.ECHILD:
             e, e_msg, e_tb = sys.exc_info()
