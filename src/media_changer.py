@@ -1900,6 +1900,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                                        stderr=subprocess.STDOUT,
                                        shell=False)
             ticket['status'] = (e_errors.OK, 0, None)
+        # Note: This was previously just `except`. OSError should catch all
+        # socket errors which I think is the only thing we'd see here.
         except OSError:
             lv_proc = subprocess.Popen('true')
             ticket['status'] = (e_errors.OSERROR, 0, str(sys.exc_info()[1]))
