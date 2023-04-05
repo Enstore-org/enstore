@@ -1626,12 +1626,10 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         status = 0
         look = 0
-        while look < size:  # 1st part of response is STK copyright information
+        while look in range(0,size):  # 1st part of response is STK copyright information
             if string.find(response[look], cmd_lookfor, 0) == 0:
                 break
-            else:
-                look += 1
-        if look == size:
+        if look == size: # FIXME: Never true!
             status = -4
             look = 0
         else:
