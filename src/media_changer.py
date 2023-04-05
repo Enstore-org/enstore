@@ -2272,6 +2272,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                 Trace.log(e_errors.ERROR,
                           "Error calling write_tcp_obj. Callback addr. %s"
                           % (ticket['callback_addr'],))
+        # Note: This was previously just `except`. OSError should catch all
+        # socket errors which I think is the only thing we'd see here.
         except OSError:
             Trace.handle_error()
             Trace.log(e_errors.ERROR,
