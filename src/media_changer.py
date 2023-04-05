@@ -4595,7 +4595,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
     def getDriveState(self, ticket):
         retry_count = 2
-        rc = []
+        rc = None # Always set in loop
         while retry_count > 0:
             ticket['status'] = e_errors.OK
             try:
