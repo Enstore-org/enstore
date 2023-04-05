@@ -1,12 +1,20 @@
-import unittest
 import callback
+import fcntl
 import mocker
+import os
+import pytest_socket
+import socket
+import unittest
+
+import Trace
 
 
 class TestCallback(unittest.TestCase):
 
     def setUp(self):
-        pass
+        # Make sure we don't get actual sockets
+        # This allows us to mock less
+        pytest_socket.disable_socket()
 
     def test___init__(self):
         pass
@@ -37,8 +45,8 @@ class TestCallback(unittest.TestCase):
         # Test fcntl.FIONREAD not set but known OS
         fcntl.FIONREAD = None
         uname_mock = mocker.patch("os.uname")
-        for os, op_code in known_op_codes.values():
-            uname_mock.return_value = [os]
+        for os_name, op_code in known_op_codes.values():
+            uname_mock.return_value = [os_name]
             fcntl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == op_code else None
             self.assertTrue(get_socket_read_queue_length(mock_socket), 4)
 
@@ -89,6 +97,53 @@ class TestCallback(unittest.TestCase):
             os_mock.fstat.side_effect = error()
             self.assertIsNone(__get_socket_state(mocker.Mock()))
 
+    def test_log_socket_State(self):
+        # Not that much to do here, this function just logs socket state
+        # It has no return statements and raises no errors
+        mock_sock = mocker.Mock(spec=socket.socket)
+        mocker.patch('socket', mock_sock)
+        mock_trace = mocker.Mock()
+        mock.patch(Trace, mock_trace)
+
+        # Test success even if socket throws errors
+        mock_sock.getsockopt.side_effect = socket.error()
+        mock_sock.getpeername.side_effect = socket.error()
+
+        log_socket_state(sock)
+
+        # Make sure it logs something: state and/or socket errors
+        mock_trace.log.assert_called()
+
+    def test_get_callback(self):
+        default_sock_ip = "0.0.0.0"
+        arg_sock_ip = "1.1.1.1"
+
+        mock_sock = mocker.Mock(spec=socket.socket)
+        mocker.patch('socket', mock_sock)
+
+        magic_mock_sock = mocker.MagicMock()
+        mock_sock.socket.return_value = magic_mock_sock
+
+        mock_config = mocker.Mock()
+        mock_config.get.return_value = default_sock_ip
+
+        mock_host_config = mocker.Mock()
+        mockpatch(host_config, mock_host_config)
+        mock_host_config.get_config.return_value = mock_config
+
+        h, _, s = get_callback()
+        assertEqual(h, default_sock_ip)
+        magic_mock_sock.assert_called_once('bind', (default_sock_ip, 0))
+        assertEqual(s, magic_mock_sock)
+
+        h, _, s = get_callback(arg_sock_ip)
+        assertEqual(h, arg_sock_ip)
+        magic_mock_sock.assert_called_once('bind', (arg_sock_ip, 0))
+        assertEqual(s, magic_mock_sock)
+
+
+    def test_connect_to_callback(self):
+        pass
 
 if __name__ == "__main__":
     unittest.main()
