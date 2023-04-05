@@ -3739,6 +3739,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                     Trace.log(79, "select error in receive_reply(): %s" %
                               (str(e),))
                     if e.args[0] in [errno.EINTR]:
+                        r = []
                         # The process was interrupted by a signal; we need
                         # to keep it going.
                         active = time.time() - start
@@ -5282,6 +5283,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
                           (str(e),))
 
                 if e.args[0] in [errno.EINTR]:
+                    r = []
                     # The process was interrupted by a signal; we need
                     # to keep it going.
                     continue
