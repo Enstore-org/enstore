@@ -4541,7 +4541,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             self.last_updated_db.value = int(time.time())
         else:
             Trace.log(e_errors.ERROR, 'mtx status returned no result %s' % (rc[0],))
-        if error_string:
+        if error_string:  # error_string is not set anywhere..
             rc = (e_errors.ERROR, error_string, '')
         else:
             rc = (e_errors.OK, '', '')
@@ -6100,7 +6100,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
         else:
             self.slots = self.manager.list()
             self.drives = self.manager.list()
-        errorString = ''
+        error_string = ''
         lines = rc[3]
         if lines:
             index = 0
@@ -6168,8 +6168,8 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
             self.last_updated_db.value = int(time.time())
         else:
             Trace.log(e_errors.ERROR, 'mtx status returned no result %s' % (rc,))
-        if errorString:
-            rc = (e_errors.ERROR, errorString, '')
+        if error_string:  # error_string is not set anywhere..
+            rc = (e_errors.ERROR, error_string, '')
         else:
             rc = (e_errors.OK, '', '')
         return rc
