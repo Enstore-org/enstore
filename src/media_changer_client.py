@@ -635,10 +635,10 @@ def do_work(intf):
             print ticket['volume_list']
             return
         if e_errors.is_ok(ticket) and ticket.get("volume_list", None):
-            print "%17s %10s %20s %20s" % ("volume", "type", "state", "location")
             if type(ticket['volume_list']) is str:
                 print ticket['volume_list']
             else:
+                print "%17s %10s %20s %20s" % ("volume", "type", "state", "location")
                 for volume in ticket['volume_list']:
                         print "%17s %10s %20s %20s" % (
                         volume['volume'], 
