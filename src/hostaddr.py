@@ -265,6 +265,7 @@ GL_localhost_addresses = {}
 def _allow(addr):
     global GL_host_name
     global GL_localhost_addresses
+    global GL_known_domains
     if not GL_host_name:
         try:
             GL_host_name = socket.getfqdn()
@@ -280,8 +281,8 @@ def _allow(addr):
     except Exception as e:
         Trace.log(e_errors.ERROR, '_allow: gethostbyaddr failed for %s: %s'%(addr, e,))
         return 0
-    valid_domains_dict = known_domains.get('valid_domains', {})
-    invalid_domains_dict = known_domains.get('invalid_domains', {})
+    valid_domains_dict = GL_known_domains.get('valid_domains', {})
+    invalid_domains_dict = GL_known_domains.get('invalid_domains', {})
 
     try:
         host_info = socket.getaddrinfo(addr, None)
@@ -381,7 +382,7 @@ def allow(addr):
         Trace.trace(19, "allow: not allowing 5 %s" % (addr,))
         return 0
     #Call the helper _allow() function that test the address against what is
-    # in known_domains.
+    # in GL_known_domains.
     result = _allow(addr)
     return result
 
