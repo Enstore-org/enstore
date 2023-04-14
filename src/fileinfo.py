@@ -66,7 +66,7 @@ def file_info(path):
 
 	return {'file_info':fi, 'volume_info': vi}
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	if len(sys.argv) < 2:
 		print 'None'
 		sys.exit(0)

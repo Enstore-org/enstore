@@ -159,7 +159,7 @@ def aml2_do_work(intf):
     lp_file.close()
     os.rename(tmp_lp_filename, intf.html_file)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = LogPageInterface(user_mode=0)
 

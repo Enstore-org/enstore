@@ -9053,7 +9053,7 @@ def create_instance(module_name, class_name, parameters):
             raise e
     return instance
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     if len(sys.argv)<2:
         sys.argv=["python", "null.mover"] #REMOVE cgw

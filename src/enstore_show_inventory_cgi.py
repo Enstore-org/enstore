@@ -205,6 +205,6 @@ def main():
     print_html(catalog, special, cluster)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     main()

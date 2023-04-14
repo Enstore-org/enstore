@@ -206,7 +206,7 @@ class Selector:
         return match
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     import socket
     import configuration_client
     host = socket.gethostname()

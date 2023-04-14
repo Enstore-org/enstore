@@ -160,7 +160,7 @@ def unit_test(intf):
     print "%s" % (t['fc']['location_cookie'],)   
     
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     intf = LibraryManagerDirectorClientInterface(user_mode=0)
     unit_test(intf)
     

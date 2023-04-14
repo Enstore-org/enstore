@@ -192,7 +192,7 @@ def rates(interfaces):
             pass
     return ret
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     ifs = interfaces()
     print rates(ifs)
     

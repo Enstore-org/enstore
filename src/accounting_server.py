@@ -550,7 +550,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if self.debug:
 			print time.ctime(st), 'finish_event\t', dt
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	Trace.init(string.upper(MY_NAME))
 	intf = Interface()
 	csc = (intf.config_host, intf.config_port)

@@ -494,7 +494,7 @@ class AlarmServerInterface(generic_server.GenericServerInterface):
         return (self.help_options,)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))
     Trace.trace( 6, "alarm server called with args "+repr(sys.argv) )
 

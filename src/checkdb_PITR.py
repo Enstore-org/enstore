@@ -404,7 +404,7 @@ Brought to You by: {}
     connection.close()
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	if "--help" in sys.argv:
 		print_usage()
 		sys.exit(0)

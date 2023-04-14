@@ -122,7 +122,7 @@ def do_work(intf):
     enstore_start.do_work(intf_start)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = EnstoreRestartInterface(user_mode=0)
 

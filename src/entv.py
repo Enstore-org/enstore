@@ -3058,7 +3058,7 @@ def test_for_threading(intf):
             Trace.trace(1, message, out_fp=sys.stderr)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     delete_at_exit.setup_signal_handling()
 

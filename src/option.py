@@ -1836,7 +1836,7 @@ class Interface:
 
 ############################################################################
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     intf = Interface()
 
     # print the options value

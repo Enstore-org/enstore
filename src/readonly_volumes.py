@@ -13,7 +13,7 @@ import enstore_functions2
 def usage(s):
 	print 'usage: %s [yyyy-mm-dd [hh:mm:ss]]'%(s)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
 	# help
 	if '-h' in sys.argv or '--help' in sys.argv:

@@ -412,7 +412,7 @@ def erase():
 def usage(cmd):
     print "Usage: %s -i [--install] -e [erase] -h [--help]"%(cmd,)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     try:
         do_erase=False
         do_install=False

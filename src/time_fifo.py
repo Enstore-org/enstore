@@ -48,7 +48,7 @@ class time_fifo:
         s=s+']'
         return s
     
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     q = time_fifo()
 
     for x in xrange(30):

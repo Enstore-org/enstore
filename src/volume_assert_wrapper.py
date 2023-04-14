@@ -72,7 +72,7 @@ class VolumeAssert:
 
 	
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	test_volume_assert = VolumeAssert()
 	for i in sys.argv[1:]:
 		print "copying", i, "...",

@@ -60,7 +60,7 @@ def do_work(intf):
     do_rgang_command("enstore", cmd)
     
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = EstartInterface(user_mode=0)
 

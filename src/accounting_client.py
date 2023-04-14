@@ -261,7 +261,7 @@ class accClient(generic_client.GenericClient):
 		self.send2(ticket)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	intf = option.Interface()
 	ac = accClient((intf.config_host, intf.config_port))
 	if sys.argv[1] == 'hello':

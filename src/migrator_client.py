@@ -112,7 +112,7 @@ def do_work(intf):
 	intf.print_help()
         
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = MigratorClientInterface(user_mode=0)
     

@@ -175,7 +175,7 @@ def check_volume(vol):
 
 	return result
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	print "start", time.ctime(time.time())
 	pf = edb.FileDB()
 	pv = edb.VolumeDB()

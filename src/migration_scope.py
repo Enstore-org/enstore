@@ -346,7 +346,7 @@ def scan_watch(l1):
 	root.mainloop()
 	
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	if len(sys.argv) > 1:
 		f = open(sys.argv[1])
 		piped = 0

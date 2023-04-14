@@ -125,7 +125,7 @@ def do_work(intf):
 
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     # fill in interface
     intf = LMDClientInterface(user_mode=0)
 

@@ -513,7 +513,7 @@ def do_work(intf):
         get.halt(1)
 """
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     #setup_put_interface()
 

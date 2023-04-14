@@ -119,7 +119,7 @@ def trace_path(history, module):
         log_trace(a)
 
    
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     m = string.split(sys.argv[1], '.')[0]
     mtrace(m)
     # pprint.pprint(mtable)

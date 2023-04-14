@@ -668,7 +668,7 @@ def do_work(intf):
 
     mcc.check_ticket(ticket)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     Trace.init("MEDCH CLI")
     Trace.trace(6,"mcc called with args "+repr(sys.argv))
 

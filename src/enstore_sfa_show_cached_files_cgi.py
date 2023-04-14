@@ -121,6 +121,6 @@ def main():
     print '</html>'
    
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     main()

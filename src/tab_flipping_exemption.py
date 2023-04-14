@@ -242,6 +242,6 @@ def do_work(intf):
 	elif intf.delete:
 		tfe.delete(intf.delete, intf.file_family)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	intf = Interface(user_mode=0)
 	do_work(intf)

@@ -2768,7 +2768,7 @@ class FileClerkInterface(generic_server.GenericServerInterface):
     pass
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME), "yes")
 
     intf = FileClerkInterface()

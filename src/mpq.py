@@ -84,7 +84,7 @@ class MPQ:
 
 
 # test case
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     class Req:
         def __init__(self, size, priority):

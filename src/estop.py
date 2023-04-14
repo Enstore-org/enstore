@@ -59,7 +59,7 @@ def do_work(intf):
           " >&1- 2>&- <&- &"
     do_rgang_command("enstore", cmd)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = EstopInterface(user_mode=0)
 

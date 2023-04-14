@@ -130,7 +130,7 @@ def cross_check(db, jou, deleted, fix=False):
 			error = error + 1
 	return error
 	
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	# get journal directory
 	if len(sys.argv) > 1:
 		journal_dir = sys.argv[1]

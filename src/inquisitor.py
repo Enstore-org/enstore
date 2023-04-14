@@ -2237,7 +2237,7 @@ class InquisitorInterface(generic_server.GenericServerInterface):
                (self.inquisitor_options, self.alive_rcv_options)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))
     enstore_functions.inqTrace(enstore_constants.INQSTARTDBG,
 			       "inquisitor called with args %s"%(sys.argv,))

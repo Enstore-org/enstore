@@ -287,7 +287,7 @@ def do_mail(db_name) :
     else:
         return False
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     i=0
     cmd="mdb status | awk '{print $2}' | egrep -v 'Name|admin|NULL|test'"
     inp,out = os.popen2 (cmd, 'r')

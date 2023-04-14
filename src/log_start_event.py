@@ -4,7 +4,7 @@ import sys
 import accounting_client
 import option
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
 	if len(sys.argv) < 2:
 		# quit with error yet quiet

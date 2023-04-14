@@ -444,7 +444,7 @@ def interface_name(ip):
     return GL_ifinfo.get(ip)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     lh = '127.0.0.1'  #lh = LocalHost
 
     print gethostinfo()

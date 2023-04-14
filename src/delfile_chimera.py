@@ -198,7 +198,7 @@ class DelfileInterface(option.Interface):
         return (self.help_options,)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     intf_of_delfile = DelfileInterface()
 
     do_work(intf_of_delfile)

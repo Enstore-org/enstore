@@ -39,7 +39,7 @@ def set_enstore_paths():
 ###  function.
 set_enstore_paths()
 
-if __name__=="__main__":   # pragma: no cover
+if __name__=="__main__":
     print sys.path
 
 

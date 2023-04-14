@@ -645,7 +645,7 @@ def enable_trace_at_start(levels):
     for level in levels:
         Trace.print_levels[level]=1
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
   if len(sys.argv) != 2:
     usage()

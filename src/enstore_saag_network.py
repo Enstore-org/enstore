@@ -85,7 +85,7 @@ def do_work(intf):
     saag_file.close()
     saag_file.install()
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = SaagNetworkInterface(user_mode=0)
 

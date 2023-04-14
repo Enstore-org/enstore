@@ -2257,7 +2257,7 @@ def do_work(intf):
     main(intf_of_scanfiles, file_object, file_list)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf_of_scanfiles = ScanfilesInterface(sys.argv, 0) # zero means admin
 

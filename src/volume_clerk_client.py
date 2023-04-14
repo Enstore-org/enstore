@@ -1622,7 +1622,7 @@ def do_work(intf):
 
     vcc.check_ticket(ticket)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     Trace.init(MY_NAME)
     Trace.trace( 6, 'vcc called with args: %s'%(sys.argv,) )
 

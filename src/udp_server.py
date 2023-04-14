@@ -619,7 +619,7 @@ class UDPServer:
             self.raw_requests.set_out_file()
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     def monitor(udp_srv):
         import subprocess

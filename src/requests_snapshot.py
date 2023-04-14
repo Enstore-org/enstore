@@ -23,7 +23,7 @@ def print_help():
     """
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     # parse command line arguments
     library_managers = []

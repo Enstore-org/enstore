@@ -158,7 +158,7 @@ class EcronData:
 		else:
 			return one_week_ago()
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	ecrond = EcronData()
 	names_and_nodes = ecrond.get_all_names_and_nodes()
 	for i in names_and_nodes:

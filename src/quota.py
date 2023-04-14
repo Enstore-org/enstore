@@ -524,6 +524,6 @@ def do_work(intf):
         if db :
             db.close()
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     intf = Interface(user_mode=0)
     do_work(intf)

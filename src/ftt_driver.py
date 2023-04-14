@@ -607,7 +607,7 @@ class FTTDriver(generic_driver.Driver):
             stats = self.ftt.get_stats()
         return stats
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     print "TEST ME!"
 

@@ -1518,7 +1518,7 @@ def main(intf):
     
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     #intf_of_get = GetInterface(sys.argv, 0)
 

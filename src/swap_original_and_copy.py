@@ -209,7 +209,7 @@ def main():
 
 	return rtn1 + rtn2
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	if len(sys.argv) < 2:
 		usage()
 		sys.exit()

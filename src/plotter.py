@@ -416,7 +416,7 @@ def do_work(intf):
     del plotter.csc.u
     del plotter.u     # del now, otherwise get name exception (just for python v1.5???)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     # get interface
     intf_of_plotter = PlotterInterface(user_mode=0)

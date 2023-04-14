@@ -175,7 +175,7 @@ def main(intf):
 		make_recent_file(sg, intf.duration, bfid_brand, database,
 				 out_dir, temp_dir)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	#Get inforation from the Enstore servers.
 	rfl_intf = RecentFileListingInterface()
 

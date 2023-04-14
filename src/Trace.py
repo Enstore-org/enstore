@@ -35,7 +35,7 @@ import event_relay_messages
 import event_relay_client
 import e_errors
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     sys.exit("No unit test, sorry\n")
 
 """

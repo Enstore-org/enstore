@@ -131,7 +131,7 @@ def do_work(intf):
 	sys.exit(exit_status)
 
         
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     intf_of_html = HtmlInterface(sys.argv, 0) # zero means admin
 
     do_work(intf_of_html)

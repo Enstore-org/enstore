@@ -13,6 +13,6 @@ def do_work():
     if intf:
 	ensync.do_work(intf)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     do_work()

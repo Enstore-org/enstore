@@ -797,7 +797,7 @@ def read_obj(fd, timeout=15*60, verbose = True):
     return cPickle.loads(s)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     Trace.init("CALLBACK")
     Trace.trace(6,"callback called with args "+repr(sys.argv))
 

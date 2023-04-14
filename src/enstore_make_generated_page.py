@@ -175,7 +175,7 @@ class GeneratedPageInterface(generic_client.GenericClientInterface):
 	return (self.help_options, self.plot_options)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = GeneratedPageInterface(user_mode=0)
 

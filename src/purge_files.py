@@ -295,7 +295,7 @@ class FilePurger:
         Trace.trace(10, "read query returned %s"%(read_purge_list,))
         return write_purge_list + read_purge_list
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     import getopt
     short_opt = "hp"
     long_opt = ["help", "purge"]

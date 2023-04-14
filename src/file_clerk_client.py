@@ -1174,7 +1174,7 @@ def do_work(intf):
     fcc.check_ticket(ticket)
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     Trace.init(MY_NAME)
     Trace.trace(6,"fcc called with args %s"%(sys.argv,))
 

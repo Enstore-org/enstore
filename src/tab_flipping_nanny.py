@@ -13,7 +13,7 @@ seven_days = one_day * 7
 
 TMP_FILE = '/tmp/tab_flipping_nanny.tmp'
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	# parse command line arguments
 	library = None
 	output = None

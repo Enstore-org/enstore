@@ -133,7 +133,7 @@ class dsClient(generic_client.GenericClient):
 		0,
 		"DummyMover.mover")
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 	intf = option.Interface()
 	dsc = dsClient((intf.config_host, intf.config_port))
 	dsc.test()

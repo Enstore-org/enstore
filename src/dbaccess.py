@@ -361,7 +361,7 @@ class DatabaseAccess:
 
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     dbaccess =  DatabaseAccess(maxconnections=100,
                                maxcached=10,
                                blocking=True,

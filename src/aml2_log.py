@@ -106,7 +106,7 @@ def dump_log_file(addr, month, day, output=sys.stdout, update=0):
         
 
     
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     y,m,d = time.localtime(time.time())[:3]
     dump_log_file("adic2.fnal.gov", m, d)
     

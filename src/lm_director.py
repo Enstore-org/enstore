@@ -255,7 +255,7 @@ class LMD(dispatching_worker.DispatchingWorker,
 class LMDInterface(generic_server.GenericServerInterface):
     pass
 
-if __name__ == "__main__":   # pragma: no cover    
+if __name__ == "__main__":    
     # get the interface
     intf = LMDInterface()
     lmd = LMD((intf.config_host, intf.config_port))

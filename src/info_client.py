@@ -997,6 +997,6 @@ def do_work(intf):
         sys.exit(0)
     ifc.check_ticket(ticket)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     intf = InfoClientInterface(user_mode=0)
     do_work(intf)

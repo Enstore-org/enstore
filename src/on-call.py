@@ -38,7 +38,7 @@ def getInfo(today):
     b = "%s: Backup  is %-9s   %s" % (today,backup,  backup_phone[1])
     return (p,b)
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     now = time.time()
     today =  time.asctime(time.localtime(now))[0:10]
     if len(sys.argv) > 1:

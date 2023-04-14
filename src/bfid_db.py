@@ -160,7 +160,7 @@ def testit():
     db.add_bfid(vol,'00000011L')
     print db.get_all_bfids(vol)
 
-if __name__=="__main__":   # pragma: no cover
+if __name__=="__main__":
     verbose=1
     testit()
     

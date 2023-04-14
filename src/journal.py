@@ -101,7 +101,7 @@ def printdict(dict) :
 		Trace.log(e_errors.INFO, repr(msg))
 		Trace.log(e_errors.INFO, type(dict[k]))
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
 	jd1 = JournalDict({}, "test.jou")
 	jd1["first"] = {'work' : 'test'}

@@ -738,7 +738,7 @@ def do_work(intf):
     return rtn
 
 ##############################################################################
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
 
     intf = NamespaceInterface(user_mode=0)
 

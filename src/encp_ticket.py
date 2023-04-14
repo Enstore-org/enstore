@@ -203,7 +203,7 @@ def read_request_ok(ticket):
     return None
 
     
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":
     
     w_ticket = {'status': ('ok', None), 'routing_callback_addr': ('131.225.202.12', 32970),
               'vc': {'file_family': 'lqcd', 'library': 'CD-9940B', 'address': ('131.225.13.59', 7502),
