@@ -4467,7 +4467,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         if not e_errors.is_ok(rc[0]):
             Trace.log(e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],))
             return e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],)
-        if hasattr(self, 'slots'):  # clear lists
+        if self.slots is not None:  # clear lists
             # save indexes of busy slots
             for i, slot_d in enumerate(self.slots):
                 vol = slot_d.get('volume')
@@ -6091,7 +6091,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
         if not e_errors.is_ok(rc[0]):
             Trace.log(e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],))
             return e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],)
-        if hasattr(self, 'slots'):  # clear lists
+        if self.slots is not None:  # clear lists
             # save indexes of busy slots
             for i, slot_d in enumerate(self.slots):
                 vol = slot_d.get('volume')
