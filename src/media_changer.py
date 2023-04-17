@@ -3825,7 +3825,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             for line in response:
                 if 'Failed' in line:
                     return e_errors.ERROR, e_errors.ERROR, '', response
-                if e_errors.TIMEDOUT in l:
+                if e_errors.TIMEDOUT in line:
                     return e_errors.ERROR, e_errors.TIMEDOUT, '', response
             if '' in message:
                 return e_errors.OK, e_errors.OK, '', ''
