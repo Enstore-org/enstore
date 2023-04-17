@@ -1611,7 +1611,7 @@ class STK_MediaLoader(MediaLoaderMethods):
                         continue
                 if self.DEBUG:
                     print "response line =", nl, line
-                response.append(l)
+                response.append(line)
                 nl = nl + 1
             nlines = len(response)
 
