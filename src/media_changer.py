@@ -1626,7 +1626,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         status = 0
         look = 0
-        while look in range(0, size):  # 1st part of response is STK copyright information
+        for look in range(0, size):  # 1st part of response is STK copyright information
             if string.find(response[look], cmd_lookfor, 0) == 0:
                 break
         if size != 0 and look == size: # FIXME: Never true!
@@ -7330,7 +7330,7 @@ class IBM_3584_MediaLoader(MediaLoaderMethods):
         size = len(response)
         status = 0
         look = 0
-        while look in range(0, size):  # 1st part of response is STK copyright information
+        for look in range(0, size):  # 1st part of response is STK copyright information
             if string.find(response[look], cmd_lookfor, 0) == 0:
                 break
         if size != 0 and look == size: # FIXME: Never true!
