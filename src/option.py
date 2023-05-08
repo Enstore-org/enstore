@@ -1354,47 +1354,13 @@ class Interface:
                 return key  # in other words return the long opt.
         return None
 
-    # Return the next argument in the argument list after the one specified
-    # as argument.  If one does not exist, return None.
-    # some_args is used to avoid problems with duplicate arguments on the
-    # command line.
-    def next_argument(self, argument):
-        if not len(self.some_args) > 1:
-            return None
+    # Return either the first element of some_args or None
+    def next_argument(self, _):
+        rtn = None
+        if len(self.some_args) > 1:
+            rtn = self.some_args[1]
+        return rtn
 
-        # Since, it looks for things based on string.find() placing
-        # the "--" or "-" before the value of argument is ok to
-        # handle the substring problem that argument has the "--"
-        # and "-" removed.
-        if self.is_long_option(argument):
-            compare_opt = "--" + argument
-        elif self.is_short_option(argument):
-            compare_opt = "-" + argument
-        else:
-            compare_opt = argument
-
-        # Get the next option after the option passed in.
-        for some_arg in self.some_args:
-            # For comparison, change underscores to dashes, but only for
-            # those that are options.  Also, use only things up to the first
-            # "=" if present.
-            compare_arg = some_arg.split("=")[0].replace("_", "-")
-
-            # Look for the current argument in the list.
-            # compare_opt is the current index to find
-            # compare_arg comes from the list of arguments.
-            if compare_arg == compare_opt:
-                # Now that the current item in the argument list is found,
-                # make sure it isn't the last and return the next.
-                index = self.some_args.index(some_arg)
-                if index == len(self.some_args[1:]):  # Nothing can follow.
-                    return None
-                rtn = self.some_args[index + 1]
-
-                self.some_args = self.some_args[index + 1:]
-                return rtn
-
-        return None
     ############################################################################
     # These options remove leading "-" or "--" as appropriate from opt
     # and return.

@@ -1569,17 +1569,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         """
 
         if not serial_num:
-            return None
+            return None, None
 
         ticket = {}
         mcc_reply = self.mcc.list_drives(ticket)
         if not e_errors.is_ok(mcc_reply):
-            return None
+            return None, None
         Trace.trace(e_errors.INFO, 'list_drives returned SN %s'%(mcc_reply,))
         for d in mcc_reply['drive_list']:
             if serial_num == d.get('SN'):
                 return d.get('address'), d.get('location')
-        return None
+        return None, None
 
     def fetch_tape_device(self):
         """

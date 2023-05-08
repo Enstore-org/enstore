@@ -1611,7 +1611,7 @@ class STK_MediaLoader(MediaLoaderMethods):
                         continue
                 if self.DEBUG:
                     print "response line =", nl, line
-                response.append(l)
+                response.append(line)
                 nl = nl + 1
             nlines = len(response)
 
@@ -1626,12 +1626,10 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         status = 0
         look = 0
-        while look < size:  # 1st part of response is STK copyright information
+        for look in range(0, size):  # 1st part of response is STK copyright information
             if string.find(response[look], cmd_lookfor, 0) == 0:
                 break
-            else:
-                look += 1
-        if look == size:
+        if size != 0 and look == size: # FIXME: Never true!
             status = -4
             look = 0
         else:
@@ -1902,6 +1900,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                                        stderr=subprocess.STDOUT,
                                        shell=False)
             ticket['status'] = (e_errors.OK, 0, None)
+        # Note: This was previously just `except`. OSError should catch all
+        # socket errors which I think is the only thing we'd see here.
         except OSError:
             lv_proc = subprocess.Popen('true')
             ticket['status'] = (e_errors.OSERROR, 0, str(sys.exc_info()[1]))
@@ -2274,6 +2274,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                 Trace.log(e_errors.ERROR,
                           "Error calling write_tcp_obj. Callback addr. %s"
                           % (ticket['callback_addr'],))
+        # Note: This was previously just `except`. OSError should catch all
+        # socket errors which I think is the only thing we'd see here.
         except OSError:
             Trace.handle_error()
             Trace.log(e_errors.ERROR,
@@ -3326,7 +3328,7 @@ def get_mtx_status(device):
                 os.kill(pid, signal.SIGKILL)
                 time.sleep(2)
                 os.waitpid(pid, os.WNOHANG)
-    except OSError, detail:
+    except OSError as detail:
         os.close(c2pread)
         if detail[0] != errno.ECHILD:
             e, e_msg, e_tb = sys.exc_info()
@@ -3741,6 +3743,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                     Trace.log(79, "select error in receive_reply(): %s" %
                               (str(e),))
                     if e.args[0] in [errno.EINTR]:
+                        r = []
                         # The process was interrupted by a signal; we need
                         # to keep it going.
                         active = time.time() - start
@@ -3822,7 +3825,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             for line in response:
                 if 'Failed' in line:
                     return e_errors.ERROR, e_errors.ERROR, '', response
-                if e_errors.TIMEDOUT in l:
+                if e_errors.TIMEDOUT in line:
                     return e_errors.ERROR, e_errors.TIMEDOUT, '', response
             if '' in message:
                 return e_errors.OK, e_errors.OK, '', ''
@@ -4303,11 +4306,11 @@ class MTXN_MediaLoader(MediaLoaderMethods):
                         res = enstore_functions2.shell_command('enrsh -n %s %s ' % (self.cli_host, cmd,))
                         if not res:
                             Trace.log(e_errors.ERROR, 'viewDataCartridges: IBM CLI returned %s' % (res[1],))
-                        else:
-                            f = open(fn, 'w')
-                            f.write(res[0])
-                            f.close()
-                            Trace.log(e_errors.INFO, 'viewDataCartridges result is in %s' % (fn,))
+                    else:
+                        f = open(fn, 'w')
+                        f.write(res[0])
+                        f.close()
+                        Trace.log(e_errors.INFO, 'viewDataCartridges result is in %s' % (fn,))
                     return -1, -1
             self.status_valid = 1
         found = False
@@ -4464,7 +4467,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         if not e_errors.is_ok(rc[0]):
             Trace.log(e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],))
             return e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],)
-        if hasattr(self, 'slots'):  # clear lists
+        if self.slots is not None:  # clear lists
             # save indexes of busy slots
             for i, slot_d in enumerate(self.slots):
                 vol = slot_d.get('volume')
@@ -4542,7 +4545,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
             self.last_updated_db.value = int(time.time())
         else:
             Trace.log(e_errors.ERROR, 'mtx status returned no result %s' % (rc[0],))
-        if error_string:
+        if error_string:  # error_string is not set anywhere..
             rc = (e_errors.ERROR, error_string, '')
         else:
             rc = (e_errors.OK, '', '')
@@ -4559,7 +4562,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
         __pychecker__ = "no-argsused"
         Trace.log(ACTION_LOG_LEVEL, 'getVolstate: %s' % (ticket,))
         retry_count = 2
-        slot = -1
+        slot = None  # Always set in loop
         while retry_count > 0:
             ticket['status'] = e_errors.OK
             slot, drive = self.locate_volume(ticket['external_label'])
@@ -4596,7 +4599,7 @@ class MTXN_MediaLoader(MediaLoaderMethods):
 
     def getDriveState(self, ticket):
         retry_count = 2
-        rc = []
+        rc = None  # Always set in loop
         while retry_count > 0:
             ticket['status'] = e_errors.OK
             try:
@@ -5284,6 +5287,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
                           (str(e),))
 
                 if e.args[0] in [errno.EINTR]:
+                    r = []
                     # The process was interrupted by a signal; we need
                     # to keep it going.
                     continue
@@ -6087,7 +6091,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
         if not e_errors.is_ok(rc[0]):
             Trace.log(e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],))
             return e_errors.ERROR, 'get_mtx_status returned: %s' % (rc[0],)
-        if hasattr(self, 'slots'):  # clear lists
+        if self.slots is not None:  # clear lists
             # save indexes of busy slots
             for i, slot_d in enumerate(self.slots):
                 vol = slot_d.get('volume')
@@ -6100,7 +6104,7 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
         else:
             self.slots = self.manager.list()
             self.drives = self.manager.list()
-        errorString = ''
+        error_string = ''
         lines = rc[3]
         if lines:
             index = 0
@@ -6168,8 +6172,8 @@ class MTXN_MediaLoaderSL(MediaLoaderMethods):
             self.last_updated_db.value = int(time.time())
         else:
             Trace.log(e_errors.ERROR, 'mtx status returned no result %s' % (rc,))
-        if errorString:
-            rc = (e_errors.ERROR, errorString, '')
+        if error_string:  # error_string is not set anywhere..
+            rc = (e_errors.ERROR, error_string, '')
         else:
             rc = (e_errors.OK, '', '')
         return rc
@@ -7326,12 +7330,10 @@ class IBM_3584_MediaLoader(MediaLoaderMethods):
         size = len(response)
         status = 0
         look = 0
-        while look < size:  # 1st part of response is STK copyright information
+        for look in range(0, size):  # 1st part of response is STK copyright information
             if string.find(response[look], cmd_lookfor, 0) == 0:
                 break
-            else:
-                look += 1
-        if look == size:
+        if size != 0 and look == size: # FIXME: Never true!
             status = -4
             look = 0
         else:

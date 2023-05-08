@@ -1,0 +1,73 @@
+commit 59e0bd4d4aac54edd9aeb8aa0aaddede35ccc1d7
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 12 13:48:57 2023 -0400
+
+    Undo functional indentation changes
+
+commit 6d67c5e82359fe70f21052c77ffee9d94373edd8
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 14:41:48 2023 -0400
+
+    Add note explaining except block change
+
+commit 9954f5b023943a9f3847c4d2615ba5cdde31c0c9
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 14:35:25 2023 -0400
+
+    Add note on except block change
+
+commit 5e59621e2c5f47b2e5a1ec194c8ab413dacec4b8
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 14:22:46 2023 -0400
+
+    Error message assignment fix
+
+commit 61f2ed198c20f33f714a79678fabd059475ebc5f
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 14:13:03 2023 -0400
+
+    Revert else statement indentation to pre-syntax change
+
+commit 454c1fe06a2b6723aac49b866e6cc4a372850017
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 14:09:52 2023 -0400
+
+    Standardize on `error_string`.
+    
+    This should be a non-functional change as error_string is never set.
+
+commit 7d40b8e3ff305bca354153c25d0787c369d82cad
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 14:06:33 2023 -0400
+
+    Revert variable init to None
+
+commit 6a170cb57220995e1172a0e78d1a656750485126
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 14:04:28 2023 -0400
+
+    Revert variable init value to pre-syntax change
+
+commit 78a9705839c9a5db27d63181cf7097f36885f925
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 13:59:35 2023 -0400
+
+    Revert variable assignment in except blog to pre-syntax change behavior
+
+commit 30019613c2b0399d98df3d15f1a0d69a28379c73
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 13:47:46 2023 -0400
+
+    Revert loop behavior to pre-syntax changes
+
+commit 617bbc57c0505c8028103ca03aa6d254c85a4e21
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Wed Apr 5 13:39:05 2023 -0400
+
+    Revert loop behavior to pre-syntax changes
+
+commit 59d88e3e219b961e5ac7627f29aecb9df51c786e
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon Mar 20 10:23:53 2023 -0500
+
+    migration: allow NOTALLOWED volume to be migrated/cloned (#122)

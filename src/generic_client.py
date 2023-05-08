@@ -175,38 +175,38 @@ class GenericClient:
         if not flags & enstore_constants.NO_CSC:
             import configuration_client
 
-        if csc:
-            if type(csc) == type(()):
-                self.csc = configuration_client.ConfigurationClient(csc)
-            else:
-                # it is not a tuple of address and port, so we assume that
-                # it is a configuration client object
-                self.csc = csc
-        else:
-            # it is None or 0 (the default value from i.e. log_client)
-            self.csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
-                                                                enstore_functions2.default_port()))
-
-            # Try to find the logname for this object in the config dict.  use
-            # the lowercase version of the name as the server key.  if this
-            # object is not defined in the config dict, then just use the
-            # passed in name.
-            # This must be done after the self.csc is set.  Client's don't care,
-            # but this prevents servers from crashing.
-            self.log_name = self.get_name(name)
-            if server_address:
-                self.server_address = server_address
-                if server_name:
-                    self.server_name = server_name
+            if csc:
+                if type(csc) == type(()):
+                    self.csc = configuration_client.ConfigurationClient(csc)
                 else:
-                    self.server_name = "server at %s" % (server_address,)
-            elif server_name:
-                self.server_address = self.get_server_address(
-                    server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
+                    # it is not a tuple of address and port, so we assume that
+                    # it is a configuration client object
+                    self.csc = csc
+            else:
+                # it is None or 0 (the default value from i.e. log_client)
+                self.csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
+                                                                    enstore_functions2.default_port()))
+
+        # Try to find the logname for this object in the config dict.  use
+        # the lowercase version of the name as the server key.  if this
+        # object is not defined in the config dict, then just use the
+        # passed in name.
+        # This must be done after the self.csc is set.  Client's don't care,
+        # but this prevents servers from crashing.
+        self.log_name = self.get_name(name)
+        if server_address:
+            self.server_address = server_address
+            if server_name:
                 self.server_name = server_name
             else:
-                self.server_address = None
-                self.server_name = None
+                self.server_name = "server at %s" % (server_address,)
+        elif server_name:
+            self.server_address = self.get_server_address(
+                server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
+            self.server_name = server_name
+        else:
+            self.server_address = None
+            self.server_name = None
 
         # get the log client
         if logc:
