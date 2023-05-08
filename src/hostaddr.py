@@ -29,7 +29,7 @@ import e_errors
 # Return true if the string is an ipv4 dotted-decimal address.
 def is_ip(check_ip):
     if not isinstance(check_ip, type("")):
-        raise TypeError, "Expected string type, not %s." % type(check_ip)
+        raise TypeError("Expected string type, not %s." % type(check_ip))
 
     if re.match(r"[0-9]{1,3}(\.[0-9]{1,3}){0,3}", check_ip):
         return 1
@@ -43,9 +43,7 @@ def is_ip(check_ip):
 hostinfo = None
 
 
-def gethostinfo(verbose=0):
-    __pychecker__ = "unusednames=verbose"  # Some modules still pass verbose...
-
+def gethostinfo(_=0):
     global hostinfo
     if not hostinfo:
         hostname = socket.gethostname()
@@ -103,25 +101,25 @@ def _getdomainaddr(host_info):
     (2, 1, 6, '', ('131.225.191.96', 0)),
     (2, 2, 17, '', ('131.225.191.96', 0)),
     (2, 3, 0, '', ('131.225.191.96', 0))]
-    This is to return domanin name for a single entry.
+    This is to return domain name for a single entry.
     """
 
     address_family = host_info[0]
     rc = None
-    ip = host_info[4][0]
+    host_ip = host_info[4][0]
     if address_family == socket.AF_INET6:
-        rc = ':'.join(ip.split(':')[:3])
+        rc = ':'.join(host_ip.split(':')[:3])
     else:
-        words = ip.split(".")
+        words = host_ip.split(".")
         if len(words) == 4:
             first_byte = int(words[0])
-            if first_byte >= 0 and first_byte < 128:
+            if 0 <= first_byte < 128:
                 # Class A network.  (8 bits network, 24 bits host)
                 rc = '.'.join(words[:1])
-            elif first_byte >= 128 and first_byte < 192:
+            elif 128 <= first_byte < 192:
                 # Class B network.  (16 bits network, 16 bits host)
                 rc = '.'.join(words[:2])
-            elif first_byte >= 192 and first_byte < 224:
+            elif 192 <= first_byte < 224:
                 # Class C network.  (24 bits network, 8 bits host)
                 rc = '.'.join(words[:3])
     return rc
@@ -136,7 +134,7 @@ def getdomainaddr():
             rc = []
             for el in host_info:
                 da = _getdomainaddr(el)
-                if da and not da in rc:
+                if da and da not in rc:
                     rc.append(da)
         else:
             rc = _getdomainaddr(host_info)
@@ -211,7 +209,7 @@ def address_to_name(addr):
         return known_ips[addr]
 
     host_info = __my_gethostbyaddr(addr)
-    if host_info != None:
+    if host_info is not None:
         name = host_info[0]
     else:
         name = addr
@@ -229,7 +227,7 @@ def name_to_address(name):
         return known_names[name]
 
     addr = __my_gethostbyname(name)
-    if addr == None:
+    if addr is None:
         addr = name
 
     known_names[name] = addr
@@ -246,9 +244,9 @@ known_domains = {'invalid_domains': {},
 
 
 # This needs to be called by all servers (done in generic_server.py).  Also,
-# all long lived clients that need to care about multiple systems do to.
-# Short lived clients (that only care about the default Enstore system)
-# will have this information automaticaly pulled down.
+# all long-lived clients that need to care about multiple systems do to.
+# Short-lived clients (that only care about the default Enstore system)
+# will have this information automatically pulled down.
 #
 # Note: The configuration_server is different from the other servers.
 # It needs to call this function directly.
@@ -258,17 +256,17 @@ def update_domains(csc_or_dict):
 
     # Determine the source.  The dict argument type is necessary for the
     # configuration server since it can't create a csc to itself.
-    if type(csc_or_dict) == types.InstanceType:
-        domains = csc_or_dict.get('domains', 3, 3)
+    if isinstance(csc_or_dict, types.InstanceType):
+        dict_domains = csc_or_dict.get('domains', 3, 3)
         system_name = csc_or_dict.get_enstore_system(3, 3)
-    elif type(csc_or_dict) == types.DictType:
-        domains = csc_or_dict
-        system_name = domains.get('system_name', "default2")
+    elif isinstance(csc_or_dict, types.DictType):
+        dict_domains = csc_or_dict
+        system_name = dict_domains.get('system_name', "default2")
     else:
         return
 
-    valid_domains = domains.get('valid_domains', [])
-    invalid_domains = domains.get('invalid_domains', [])
+    valid_domains = dict_domains.get('valid_domains', [])
+    invalid_domains = dict_domains.get('invalid_domains', [])
 
     known_domains['valid_domains'][system_name] = valid_domains
     known_domains['invalid_domains'][system_name] = invalid_domains
@@ -277,7 +275,7 @@ def update_domains(csc_or_dict):
     Trace.trace(19, "invalid_domains: %s" % known_domains['invalid_domains'])
 
 
-# Return None if no matching rule is explicity found.  Return True if this
+# Return None if no matching rule is explicitly found.  Return True if this
 # is a valid address and False if it is not.
 host_name = None
 localhost_addresses = {}
