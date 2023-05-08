@@ -6,7 +6,7 @@
 #
 ###############################################################################
 
-# Caches DNS information so we don't keep hitting the DNS server by calling
+# Caches DNS information, so we don't keep hitting the DNS server by calling
 # socket.gethostname()
 
 import errno
@@ -41,9 +41,9 @@ def is_ip(check_ip):
 ####      else use hostname.
 
 GL_hostinfo = None
-def gethostinfo(verbose=0):
-    __pychecker__ = "unusednames=verbose"  #Some modules still pass verbose...
 
+
+def gethostinfo(_=None):
     global GL_hostinfo
     if not GL_hostinfo:
         hostname = socket.gethostname()
@@ -71,7 +71,7 @@ def gethostinfo(verbose=0):
         # and the sleet alias.
 
         # For compatibility with earlier implementation convert hostinfo1
-        # to presentation retrned by socket.gethostbyname_ex(hostname)
+        # to presentation returned by socket.gethostbyname_ex(hostname)
         GL_hostinfo = [hostname, [hostname.split('.')[0]], [hostinfo1[0][4][0]]]
         if GL_hostinfo[2] == ["127.0.0.1"]:
             intf_ips = []
@@ -199,7 +199,10 @@ def __my_gethostbyname(name):
                 return None
     return addr
 
+
 GL_known_ips = {}
+
+
 def address_to_name(addr):
     ## this will return the address if it can't be resolved into a hostname
     global GL_known_ips
@@ -217,6 +220,8 @@ def address_to_name(addr):
 
 
 GL_known_names = {}
+
+
 def name_to_address(name):
     ## this will return the hostname if it can't be resolved into an address
     global GL_known_names
@@ -230,17 +235,20 @@ def name_to_address(name):
     GL_known_names[name] = addr
     return addr
 
+
 GL_domains = getdomainaddr()
 if isinstance(GL_domains, list):
     GL_domains.append('127.0.0')
 else:
     GL_domains = [GL_domains, '127.0.0']
-GL_known_domains = {'invalid_domains' : {},
-                    'valid_domains' : {'default' : GL_domains}}
-#This needs to be called by all servers (done in generic_server.py).  Also,
-# all long lived clients that need to care about multiple systems do to.
-# Short lived clients (that only care about the default Enstore system)
-# will have this information automaticaly pulled down.
+GL_known_domains = {'invalid_domains': {},
+                    'valid_domains': {'default': GL_domains}}
+
+
+# This needs to be called by all servers (done in generic_server.py).  Also,
+# all long-lived clients that need to care about multiple systems do to.
+# Short-lived clients (that only care about the default Enstore system)
+# will have this information automatically pulled down.
 #
 # Note: The configuration_server is different from the other servers.
 # It needs to call this function directly.
@@ -273,6 +281,8 @@ def update_domains(csc_or_dict):
 # is a valid address and False if it is not.
 GL_host_name = None
 GL_localhost_addresses = {}
+
+
 def _allow(addr):
     global GL_host_name
     global GL_localhost_addresses
@@ -285,7 +295,7 @@ def _allow(addr):
             return 0
     # always allow requests from local host
     try:
-        if not GL_localhost_addresses.has_key(addr):
+        if addr not in GL_localhost_addresses:
             GL_localhost_addresses[addr] = (GL_host_name == socket.gethostbyaddr(addr)[0])
         if GL_localhost_addresses[addr]:
             return 1
@@ -358,7 +368,7 @@ def allow(addr):
     Trace.trace(19, "allow: checking address %s %s" % (addr, len(addr)))
     client_addr = list(addr)
     # If message comes with IPV4 address on IPV6 configured receiver its format is like:
-    # '::ffff:193.109.174.113'.
+    # '::fff:193.109.174.113'.
     # Single out IPV4 address.
     a_list = addr[0].split(':')
     le = a_list[-1]
@@ -368,18 +378,18 @@ def allow(addr):
     # a string (of either the hostname or ip) or a 2-tuple with a string
     # as the first item (tha has the hostname or ip).
     host_info = socket.getaddrinfo(client_addr[0], None)
-    Trace.trace(19, "allow: host_info %s" % (host_info))
+    Trace.trace(19, "allow: host_info %s" % host_info)
 
     address_family = host_info[0][0]
-    if type(addr) is type(()):
+    if isinstance(addr, type(())):
         if len(client_addr) == 2:
             addr = client_addr[0]
         elif address_family == socket.AF_INET6:
             addr = host_info[0][4][0]
         else:
-            raise TypeError, "Tuple addr has wrong length %s." % len(addr)
-    if type(addr) != type(""):
-        raise TypeError, "Variable addr is of type %s." % type(addr)
+            raise TypeError("Tuple addr has wrong length %s." % len(addr))
+    if not isinstance(addr, type("")):
+        raise TypeError("Variable addr is of type %s." % type(addr))
 
     # If we do not have anything to test return false.
     if not addr:
@@ -401,6 +411,8 @@ def allow(addr):
 
 GL_ifconfig_command = None
 GL_ifinfo = {}
+
+
 def find_ifconfig_command():
     global GL_ifconfig_command
     if GL_ifconfig_command:
@@ -413,20 +425,20 @@ def find_ifconfig_command():
     return None
 
 
-def interface_name(ip):
+def interface_name(arg_ip):
     global GL_ifconfig_command
     global GL_ifinfo
-    if not ip:
+    if not arg_ip:
         return
-    if ip[0] not in string.digits:
-        ip = name_to_address(ip)
-    if not ip:
+    if arg_ip[0] not in string.digits:
+        arg_ip = name_to_address(arg_ip)
+    if not arg_ip:
         return
-    if not GL_ifinfo or not GL_ifinfo.has_key(ip):
+    if not GL_ifinfo or arg_ip not in GL_ifinfo:
         find_ifconfig_command()
         if not GL_ifconfig_command:
             return None
-        p = os.popen(GL_ifconfig_command+' -a', 'r')
+        p = os.popen(GL_ifconfig_command + ' -a', 'r')
         text = p.readlines()
         status = p.close()
         if status:
@@ -434,7 +446,7 @@ def interface_name(ip):
         interface = None
 
         # a regular expression to match an IP address in dotted-quad format
-        ip_re = re.compile('([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)')
+        ip_re = re.compile(r'([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)')
         for line in text:
             if not line:
                 interface = None
@@ -453,7 +465,7 @@ def interface_name(ip):
                 if match:
                     GL_ifinfo[match.group(1)] = interface
 
-    return GL_ifinfo.get(ip)
+    return GL_ifinfo.get(arg_ip)
 
 
 if __name__ == "__main__":  # pragma: no cover
