@@ -116,7 +116,6 @@ class RawUDP:
     def set_max_queue_size(self, queue_size=None):
         if queue_size:
             self.max_queue_size = queue_size
-        self.queue.close()
         del(self.queue)
         self.queue = multiprocessing.Queue(self.max_queue_size)
 
@@ -387,12 +386,6 @@ def _receiver(RawUDP_obj):
                             print "Intermediate queue is full", msg
                     else:
                         # reset queue
-                        import tempfile
-                        with tempfile.NamedTemporaryFile() as tmp:
-                            print "Intermediate queue is full, dumping to %s" % tmp.name)
-                            while not RawUDP.queue.empty():
-                                tmp.write(RawUDP.queue.get())
-                        print "Done"
                         print "Intermediate queue is full, resetting queue"
                         RawUDP_obj.set_max_queue_size()
                 except Exception, detail:
