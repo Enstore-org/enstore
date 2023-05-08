@@ -35,12 +35,12 @@ def is_ip(ip):
 ####  XXX Get preferred interface from config file if present,
 ####      else use hostname.
 
-hostinfo = None
+GL_hostinfo = None
 def gethostinfo(verbose=0):
     __pychecker__ = "unusednames=verbose"  #Some modules still pass verbose...
 
-    global hostinfo
-    if not hostinfo:
+    global GL_hostinfo
+    if not GL_hostinfo:
         hostname = socket.gethostname()
         uname = os.uname()[1]
         if hostname != uname:
@@ -67,13 +67,13 @@ def gethostinfo(verbose=0):
 
         # For compatibility with earlier implementation convert hostinfo1
         # to presentation retrned by socket.gethostbyname_ex(hostname)
-        hostinfo = [hostname, [hostname.split('.')[0]], [hostinfo1[0][4][0]]]
-        if hostinfo[2] == ["127.0.0.1"]:
+        GL_hostinfo = [hostname, [hostname.split('.')[0]], [hostinfo1[0][4][0]]]
+        if GL_hostinfo[2] == ["127.0.0.1"]:
             intf_ips = []
             for intf_dict in Interfaces.interfacesGet().values():
                 intf_ips.append(intf_dict['ip'])
-            hostinfo = (hostinfo[0], hostinfo[1], intf_ips)
-    return hostinfo
+            GL_hostinfo = (GL_hostinfo[0], GL_hostinfo[1], intf_ips)
+    return GL_hostinfo
 
 #Return the domain name of the current network.
 def getdomainname():
@@ -189,11 +189,12 @@ def __my_gethostbyname(name):
                 return None
     return addr
 
-known_ips = {}
+GL_known_ips = {}
 def address_to_name(addr):
     ## this will return the address if it can't be resolved into a hostname
-    if addr in known_ips.keys():
-        return known_ips[addr]
+    global GL_known_ips
+    if addr in GL_known_ips.keys():
+        return GL_known_ips[addr]
 
     host_info = __my_gethostbyaddr(addr)
     if host_info != None:
@@ -201,30 +202,31 @@ def address_to_name(addr):
     else:
         name = addr
 
-    known_ips[addr] = name
+    GL_known_ips[addr] = name
     return name
 
 
-known_names = {}
+GL_known_names = {}
 def name_to_address(name):
     ## this will return the hostname if it can't be resolved into an address
-    if name in known_names.keys():
-        return known_names[name]
+    global GL_known_names
+    if name in GL_known_names.keys():
+        return GL_known_names[name]
 
     addr = __my_gethostbyname(name)
     if addr == None:
         addr = name
 
-    known_names[name] = addr
+    GL_known_names[name] = addr
     return addr
 
-domains = getdomainaddr()
-if isinstance(domains, list):
-    domains.append('127.0.0')
+GL_domains = getdomainaddr()
+if isinstance(GL_domains, list):
+    GL_domains.append('127.0.0')
 else:
-    domains = [domains, '127.0.0']
-known_domains = {'invalid_domains' : {},
-                 'valid_domains' : {'default' : domains}}
+    GL_domains = [GL_domains, '127.0.0']
+GL_known_domains = {'invalid_domains' : {},
+                    'valid_domains' : {'default' : GL_domains}}
 #This needs to be called by all servers (done in generic_server.py).  Also,
 # all long lived clients that need to care about multiple systems do to.
 # Short lived clients (that only care about the default Enstore system)
@@ -234,7 +236,7 @@ known_domains = {'invalid_domains' : {},
 # It needs to call this function directly.
 def update_domains(csc_or_dict):
     Trace.trace(19, "update_domains parameter: %s" % (csc_or_dict,))
-    global known_domains
+    global GL_known_domains
 
     #Determine the source.  The dict argument type is necessary for the
     # configuration server since it can't create a csc to itself.
@@ -250,34 +252,37 @@ def update_domains(csc_or_dict):
     valid_domains = domains.get('valid_domains', [])
     invalid_domains = domains.get('invalid_domains', [])
 
-    known_domains['valid_domains'][system_name] = valid_domains
-    known_domains['invalid_domains'][system_name] = invalid_domains
+    GL_known_domains['valid_domains'][system_name] = valid_domains
+    GL_known_domains['invalid_domains'][system_name] = invalid_domains
 
-    Trace.trace(19, "valid_domains: %s" % known_domains['valid_domains'])
-    Trace.trace(19, "invalid_domains: %s" % known_domains['invalid_domains'])
+    Trace.trace(19, "valid_domains: %s" % GL_known_domains['valid_domains'])
+    Trace.trace(19, "invalid_domains: %s" % GL_known_domains['invalid_domains'])
 
 #Return None if no matching rule is explicity found.  Return True if this
 # is a valid address and False if it is not.
-host_name = None
-localhost_addresses = {}
+GL_host_name = None
+GL_localhost_addresses = {}
 def _allow(addr):
-    if not host_name:
+    global GL_host_name
+    global GL_localhost_addresses
+    global GL_known_domains
+    if not GL_host_name:
         try:
-            host_name = socket.getfqdn()
+            GL_host_name = socket.getfqdn()
         except Exception as e:
             Trace.log(e_errors.ERROR, '_allow: getfqdn failed: %s'%(e,))
             return 0
     # always allow requests from local host
     try:
-        if not localhost_addresses.has_key(addr):
-            localhost_addresses[addr] = (host_name == socket.gethostbyaddr(addr)[0])
-        if localhost_addresses[addr]:
+        if not GL_localhost_addresses.has_key(addr):
+            GL_localhost_addresses[addr] = (GL_host_name == socket.gethostbyaddr(addr)[0])
+        if GL_localhost_addresses[addr]:
             return 1
     except Exception as e:
         Trace.log(e_errors.ERROR, '_allow: gethostbyaddr failed for %s: %s'%(addr, e,))
         return 0
-    valid_domains_dict = known_domains.get('valid_domains', {})
-    invalid_domains_dict = known_domains.get('invalid_domains', {})
+    valid_domains_dict = GL_known_domains.get('valid_domains', {})
+    invalid_domains_dict = GL_known_domains.get('invalid_domains', {})
 
     try:
         host_info = socket.getaddrinfo(addr, None)
@@ -377,37 +382,39 @@ def allow(addr):
         Trace.trace(19, "allow: not allowing 5 %s" % (addr,))
         return 0
     #Call the helper _allow() function that test the address against what is
-    # in known_domains.
+    # in GL_known_domains.
     result = _allow(addr)
     return result
 
 
-ifconfig_command = None
-ifinfo = {}
+GL_ifconfig_command = None
+GL_ifinfo = {}
 def find_ifconfig_command():
-    global ifconfig_command
-    if ifconfig_command:
-        return ifconfig_command
+    global GL_ifconfig_command
+    if GL_ifconfig_command:
+        return GL_ifconfig_command
     for testpath in '/sbin', '/usr/sbin', '/etc', '/usr/etc', '/bin', '/usr/bin':
         tryit = os.path.join(testpath, 'ifconfig')
         if os.access(tryit, os.X_OK):
-            ifconfig_command = tryit
-            return ifconfig_command
+            GL_ifconfig_command = tryit
+            return GL_ifconfig_command
     return None
 
 
 def interface_name(ip):
+    global GL_ifconfig_command
+    global GL_ifinfo
     if not ip:
         return
     if ip[0] not in string.digits:
         ip = name_to_address(ip)
     if not ip:
         return
-    if not ifinfo or not ifinfo.has_key(ip):
+    if not GL_ifinfo or not GL_ifinfo.has_key(ip):
         find_ifconfig_command()
-        if not ifconfig_command:
+        if not GL_ifconfig_command:
             return None
-        p = os.popen(ifconfig_command+' -a', 'r')
+        p = os.popen(GL_ifconfig_command+' -a', 'r')
         text = p.readlines()
         status = p.close()
         if status:
@@ -432,9 +439,9 @@ def interface_name(ip):
             for tok in tokens:
                 match = ip_re.search(tok)
                 if match:
-                    ifinfo[match.group(1)] = interface
+                    GL_ifinfo[match.group(1)] = interface
 
-    return ifinfo.get(ip)
+    return GL_ifinfo.get(ip)
 
 
 if __name__ == "__main__":   # pragma: no cover

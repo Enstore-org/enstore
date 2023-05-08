@@ -1,0 +1,13 @@
+commit c89dbad462496e78e2c10cc14ed6813f5711d719
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Apr 14 20:53:23 2023 -0400
+
+    Fix bad return states
+    
+    Now mover will correctly fire alarm and quit instead of giving "Object None is not Iterable" error.
+
+commit 789221d5895f90db6d6a1a4c98186ffe2bc5a795
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Fri Apr 14 20:38:20 2023 -0400
+
+    Fix trying to enumerate None now that values are set in initializer
