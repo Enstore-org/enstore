@@ -27,11 +27,11 @@ import e_errors
 
 
 # Return true if the string is an ipv4 dotted-decimal address.
-def is_ip(ip):
-    if type(ip) != type(""):
-        raise TypeError, "Expected string type, not %s." % type(ip)
+def is_ip(check_ip):
+    if not isinstance(check_ip, type("")):
+        raise TypeError, "Expected string type, not %s." % type(check_ip)
 
-    if re.match("[0-9]{1,3}(\.[0-9]{1,3}){0,3}", ip):
+    if re.match(r"[0-9]{1,3}(\.[0-9]{1,3}){0,3}", check_ip):
         return 1
 
     return 0
