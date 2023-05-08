@@ -9,7 +9,7 @@
 # Caches DNS information so we don't keep hitting the DNS server by calling
 # socket.gethostname()
 
-#system imports
+# system imports
 import os, sys
 import socket
 import string, re
@@ -17,12 +17,13 @@ import types
 import errno
 import time
 
-#Enstore imports
+# Enstore imports
 import Trace
 import Interfaces
 import e_errors
 
-#Return true if the string is an ipv4 dotted-decimal address.
+
+# Return true if the string is an ipv4 dotted-decimal address.
 def is_ip(ip):
     if type(ip) != type(""):
         raise TypeError, "Expected string type, not %s." % type(ip)
@@ -32,12 +33,15 @@ def is_ip(ip):
 
     return 0
 
+
 ####  XXX Get preferred interface from config file if present,
 ####      else use hostname.
 
 hostinfo = None
+
+
 def gethostinfo(verbose=0):
-    __pychecker__ = "unusednames=verbose"  #Some modules still pass verbose...
+    __pychecker__ = "unusednames=verbose"  # Some modules still pass verbose...
 
     global hostinfo
     if not hostinfo:
@@ -51,14 +55,14 @@ def gethostinfo(verbose=0):
                 sys.stderr.flush()
             except IOError:
                 pass
-        #hostinfo=socket.gethostbyname_ex(hostname)
+        # hostinfo=socket.gethostbyname_ex(hostname)
         # For compatibility with IPV6 use socket.getaddrinfo
         hostinfo1 = socket.getaddrinfo(hostname, socket.AF_INET)
         # hostinfo1 is like:
         # [(2, 1, 6, '', ('131.225.13.15', 2)),
         # (2, 2, 17, '', ('131.225.13.15', 2)),
         # (2, 3, 0, '', ('131.225.13.15', 2))]
-        #The following if is necessary for nodes (probably laptops) that
+        # The following if is necessary for nodes (probably laptops) that
         # have 'problematic' /etc/hosts files.  This is because they contain
         # lines in their /etc/hosts file that look like:
         #  127.0.0.1  sleet.dhcp.fnal.gov sleet localhost.localdomain localhost
@@ -75,7 +79,8 @@ def gethostinfo(verbose=0):
             hostinfo = (hostinfo[0], hostinfo[1], intf_ips)
     return hostinfo
 
-#Return the domain name of the current network.
+
+# Return the domain name of the current network.
 def getdomainname():
     fqdn = socket.getfqdn()
     words = fqdn.split(".")
@@ -83,6 +88,7 @@ def getdomainname():
         return string.join(words[1:], ".")
 
     return None
+
 
 def _getdomainaddr(host_info):
     """
@@ -107,17 +113,18 @@ def _getdomainaddr(host_info):
         if len(words) == 4:
             first_byte = int(words[0])
             if first_byte >= 0 and first_byte < 128:
-                #Class A network.  (8 bits network, 24 bits host)
+                # Class A network.  (8 bits network, 24 bits host)
                 rc = '.'.join(words[:1])
             elif first_byte >= 128 and first_byte < 192:
-                #Class B network.  (16 bits network, 16 bits host)
+                # Class B network.  (16 bits network, 16 bits host)
                 rc = '.'.join(words[:2])
             elif first_byte >= 192 and first_byte < 224:
-            #Class C network.  (24 bits network, 8 bits host)
+                # Class C network.  (24 bits network, 8 bits host)
                 rc = '.'.join(words[:3])
     return rc
 
-#Return the domain address of the current network.
+
+# Return the domain address of the current network.
 def getdomainaddr():
     host_info = socket.getaddrinfo(socket.gethostname(), None)
     rc = None
@@ -132,18 +139,19 @@ def getdomainaddr():
             rc = _getdomainaddr(host_info)
     return rc
 
+
 def __my_gethostbyaddr(addr):
     try_count = 0
     while try_count < 60:
         try:
             rc = socket.gethostbyaddr(addr)
-            Trace.trace(19, "__my_gethostbyaddr: socket.gethostbyaddr returned %s"%(rc,))
+            Trace.trace(19, "__my_gethostbyaddr: socket.gethostbyaddr returned %s" % (rc,))
             return rc
         except socket.error, msg:
-            #One known way to get here is to run out of file
+            # One known way to get here is to run out of file
             # descriptors.  I'm sure there are others.
             this_errno = msg.args[0]
-            Trace.trace(19, "__my_gethostbyaddr: socket.error %s"%(msg,))
+            Trace.trace(19, "__my_gethostbyaddr: socket.error %s" % (msg,))
             if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
                 try_count = try_count + 1
                 time.sleep(1)
@@ -151,16 +159,17 @@ def __my_gethostbyaddr(addr):
                 break
         except (socket.gaierror, socket.herror), msg:
             this_herrno = msg.args[0]
-            Trace.trace(19, "__my_gethostbyaddr: exception %s"%(this_herrno,))
+            Trace.trace(19, "__my_gethostbyaddr: exception %s" % (this_herrno,))
             if this_herrno == socket.EAI_AGAIN:
                 try_count = try_count + 1
                 time.sleep(1)
             else:
                 break
         except Exception as e:
-            Trace.trace(19, "__my_gethostbyaddr: Exception %s"%(str(e),))
+            Trace.trace(19, "__my_gethostbyaddr: Exception %s" % (str(e),))
             break
     return None
+
 
 def __my_gethostbyname(name):
     try_count = 0
@@ -168,11 +177,11 @@ def __my_gethostbyname(name):
     while try_count < 60:
         try:
             host_info = socket.getaddrinfo(name, None)
-            #return socket.gethostbyname(name)
+            # return socket.gethostbyname(name)
             addr = host_info[0][4][0]
             break
         except socket.error, msg:
-            #One known way to get here is to run out of file
+            # One known way to get here is to run out of file
             # descriptors.  I'm sure there are others.
             this_errno = msg.args[0]
             if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
@@ -189,7 +198,10 @@ def __my_gethostbyname(name):
                 return None
     return addr
 
+
 known_ips = {}
+
+
 def address_to_name(addr):
     ## this will return the address if it can't be resolved into a hostname
     if addr in known_ips.keys():
@@ -206,6 +218,8 @@ def address_to_name(addr):
 
 
 known_names = {}
+
+
 def name_to_address(name):
     ## this will return the hostname if it can't be resolved into an address
     if name in known_names.keys():
@@ -218,25 +232,28 @@ def name_to_address(name):
     known_names[name] = addr
     return addr
 
+
 domains = getdomainaddr()
 if isinstance(domains, list):
     domains.append('127.0.0')
 else:
     domains = [domains, '127.0.0']
-known_domains = {'invalid_domains' : {},
-                 'valid_domains' : {'default' : domains}}
-#This needs to be called by all servers (done in generic_server.py).  Also,
+known_domains = {'invalid_domains': {},
+                 'valid_domains': {'default': domains}}
+
+
+# This needs to be called by all servers (done in generic_server.py).  Also,
 # all long lived clients that need to care about multiple systems do to.
 # Short lived clients (that only care about the default Enstore system)
 # will have this information automaticaly pulled down.
 #
-#Note: The configuration_server is different from the other servers.
+# Note: The configuration_server is different from the other servers.
 # It needs to call this function directly.
 def update_domains(csc_or_dict):
     Trace.trace(19, "update_domains parameter: %s" % (csc_or_dict,))
     global known_domains
 
-    #Determine the source.  The dict argument type is necessary for the
+    # Determine the source.  The dict argument type is necessary for the
     # configuration server since it can't create a csc to itself.
     if type(csc_or_dict) == types.InstanceType:
         domains = csc_or_dict.get('domains', 3, 3)
@@ -256,16 +273,19 @@ def update_domains(csc_or_dict):
     Trace.trace(19, "valid_domains: %s" % known_domains['valid_domains'])
     Trace.trace(19, "invalid_domains: %s" % known_domains['invalid_domains'])
 
-#Return None if no matching rule is explicity found.  Return True if this
+
+# Return None if no matching rule is explicity found.  Return True if this
 # is a valid address and False if it is not.
 host_name = None
 localhost_addresses = {}
+
+
 def _allow(addr):
     if not host_name:
         try:
             host_name = socket.getfqdn()
         except Exception as e:
-            Trace.log(e_errors.ERROR, '_allow: getfqdn failed: %s'%(e,))
+            Trace.log(e_errors.ERROR, '_allow: getfqdn failed: %s' % (e,))
             return 0
     # always allow requests from local host
     try:
@@ -274,7 +294,7 @@ def _allow(addr):
         if localhost_addresses[addr]:
             return 1
     except Exception as e:
-        Trace.log(e_errors.ERROR, '_allow: gethostbyaddr failed for %s: %s'%(addr, e,))
+        Trace.log(e_errors.ERROR, '_allow: gethostbyaddr failed for %s: %s' % (addr, e,))
         return 0
     valid_domains_dict = known_domains.get('valid_domains', {})
     invalid_domains_dict = known_domains.get('invalid_domains', {})
@@ -282,11 +302,11 @@ def _allow(addr):
     try:
         host_info = socket.getaddrinfo(addr, None)
     except Exception as e:
-        Trace.log(e_errors.ERROR, '_allow: gettaddrinfo failed for %s: %s'%(addr, e,))
+        Trace.log(e_errors.ERROR, '_allow: gettaddrinfo failed for %s: %s' % (addr, e,))
         return 0
 
     address_family = host_info[0][0]
-    #Get the address.
+    # Get the address.
     if address_family == socket.AF_INET6:
         try:
             tok = string.split(addr, ':')
@@ -303,8 +323,8 @@ def _allow(addr):
         if len(tok) != 4:
             Trace.trace(19, "allow: not allowing 2 %s" % (addr,))
             return 0
-    #Return false if the ip is in a domain we are not allowed to reply to.
-    Trace.trace(19, 'Invalid domains: %s'%(invalid_domains_dict,))
+    # Return false if the ip is in a domain we are not allowed to reply to.
+    Trace.trace(19, 'Invalid domains: %s' % (invalid_domains_dict,))
     for invalid_domains in invalid_domains_dict.values():
         for v in invalid_domains:
             try:
@@ -319,8 +339,8 @@ def _allow(addr):
                 Trace.log(e_errors.INFO, "allow: in invalid domains, not allowing %s" % (addr,))
                 return 0
 
-    #Return true if the ip is in a domain we are allowed to reply to.
-    Trace.trace(19, 'Valid domains: %s'%(valid_domains_dict,))
+    # Return true if the ip is in a domain we are allowed to reply to.
+    Trace.trace(19, 'Valid domains: %s' % (valid_domains_dict,))
     for valid_domains in valid_domains_dict.values():
         for v in valid_domains:
             try:
@@ -337,6 +357,7 @@ def _allow(addr):
     Trace.trace(19, "allow: not allowing 3 %s" % (addr,))
     return None
 
+
 def allow(addr):
     Trace.trace(19, "allow: checking address %s %s" % (addr, len(addr)))
     client_addr = list(addr)
@@ -346,8 +367,8 @@ def allow(addr):
     a_list = addr[0].split(':')
     le = a_list[-1]
     if len(le.split('.')) == 4:
-        client_addr = [le, addr[1]] # IPV4 over IPV6 connection
-    #Check if the address is of a valid type.  The two valid types are
+        client_addr = [le, addr[1]]  # IPV4 over IPV6 connection
+    # Check if the address is of a valid type.  The two valid types are
     # a string (of either the hostname or ip) or a 2-tuple with a string
     # as the first item (tha has the hostname or ip).
     host_info = socket.getaddrinfo(client_addr[0], None)
@@ -364,19 +385,19 @@ def allow(addr):
     if type(addr) != type(""):
         raise TypeError, "Variable addr is of type %s." % type(addr)
 
-    #If we do not have anything to test return false.
+    # If we do not have anything to test return false.
     if not addr:
         Trace.trace(19, "allow: not allowing 4 %s" % (addr,))
         return 0
 
-    #If the address is not in dotted-decimal form, convert it.
+    # If the address is not in dotted-decimal form, convert it.
     try:
         if not is_ip(addr):
             addr = name_to_address(addr)
     except IndexError:
         Trace.trace(19, "allow: not allowing 5 %s" % (addr,))
         return 0
-    #Call the helper _allow() function that test the address against what is
+    # Call the helper _allow() function that test the address against what is
     # in known_domains.
     result = _allow(addr)
     return result
@@ -384,6 +405,8 @@ def allow(addr):
 
 ifconfig_command = None
 ifinfo = {}
+
+
 def find_ifconfig_command():
     global ifconfig_command
     if ifconfig_command:
@@ -407,14 +430,14 @@ def interface_name(ip):
         find_ifconfig_command()
         if not ifconfig_command:
             return None
-        p = os.popen(ifconfig_command+' -a', 'r')
+        p = os.popen(ifconfig_command + ' -a', 'r')
         text = p.readlines()
         status = p.close()
         if status:
             return None
         interface = None
 
-        #a regular expression to match an IP address in dotted-quad format
+        # a regular expression to match an IP address in dotted-quad format
         ip_re = re.compile('([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)')
         for line in text:
             if not line:
@@ -437,8 +460,8 @@ def interface_name(ip):
     return ifinfo.get(ip)
 
 
-if __name__ == "__main__":   # pragma: no cover
-    lh = '127.0.0.1'  #lh = LocalHost
+if __name__ == "__main__":  # pragma: no cover
+    lh = '127.0.0.1'  # lh = LocalHost
 
     print gethostinfo()
     print lh, "->", address_to_name(lh), "->", interface_name(lh)
