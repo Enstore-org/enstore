@@ -1864,12 +1864,13 @@ __volume_read_test()
     encp="$1"
 
     #Snag a volume_read_test volume.
-    volumes=$($enstore_cmd info --vols  2>/dev/null | sed -e '1,1d'  | grep -v ".deleted" | egrep  "[^\s]\.volume\_read\_test\.[^\s]" | awk '{ print $1}')
+    volumes=$($enstore_cmd info --vols  2>/dev/null | sed -e '1,1d'  | grep -v ".deleted" | grep -v NOTALLOWED  | grep -v NOACCESS | grep -v grep | egrep  "[^\s]\.volume\_read\_test\.[^\s]" | awk '{ print $1}')
     if [ -z "$volumes" ]; then
 	echo "No suitable volumes found.  Skipping test and continuing." 1>&2
     else
 	#Pick a random volume.
 	volume=$(pick_random_volumes 1 $volumes)
+        echo "picked volume $volume"
 
 	outname=/dev/null
 
