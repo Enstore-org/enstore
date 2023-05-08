@@ -9,17 +9,20 @@
 # Caches DNS information so we don't keep hitting the DNS server by calling
 # socket.gethostname()
 
-# system imports
-import os, sys
-import socket
-import string, re
-import types
 import errno
+# system imports
+import os
+import re
+import socket
+import string
+import sys
 import time
+import types
+
+import Interfaces
 
 # Enstore imports
 import Trace
-import Interfaces
 import e_errors
 
 
