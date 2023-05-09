@@ -27,7 +27,7 @@ class NullDriver(generic_driver.Driver):
     def open(self, device=None, mode=None, retry_count=10):
         """open the device
             Args:
-                device(str): device name (optional)
+                device(str): device name (not used, device set by mode)
                 mode(int): 0=read, 1=write, other=error (required)
                 retry_count(int): number of times to retry open (optional)
             Returns:
@@ -168,7 +168,6 @@ class NullDriver(generic_driver.Driver):
         
         Returns:
             int: number of bytes written
-                 -1 if IOError
             
         Raises:
             ValueError if file not open for writing
@@ -177,20 +176,6 @@ class NullDriver(generic_driver.Driver):
             raise ValueError("file not open for writing")
         return nbytes
 
-        t0 = time.time()
-        r = strbuffer.buf_write(self.fd, buf, offset, nbytes)
-
-        if r > 0:
-            now = time.time()
-            self._last_rate = r/(now-t0)
-            if self._bytes_transferred == 0:
-                self._start_time = t0
-            self._bytes_transferred = self._bytes_transferred + r
-            self._active_time = now - self._start_time
-            self._rate = self._bytes_transferred/(now - self._start_time)
-        if r == -1:
-            Trace.log(e_errors.ERROR,  "write error on null device")
-        return r
         
     def writefm(self):
         """write a filemark
