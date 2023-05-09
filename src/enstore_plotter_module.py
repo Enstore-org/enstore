@@ -21,11 +21,9 @@ class EnstorePlotterModule:
         self.parameters = {}
     
     def isActive(self):
-        """implemented by subclasses"""
         return self.is_active
     
     def setActive(self,isActive=True):
-        """implemented by subclasses"""
         self.is_active=isActive
     
     def book(self,frame):
