@@ -28,6 +28,12 @@ import e_errors
 
 # Return true if the string is an ipv4 dotted-decimal address.
 def is_ip(check_ip):
+    """
+    Performs a regex match to see if supplied argument looks like an
+    **IPv4** address.
+
+
+    """
     if not isinstance(check_ip, type("")):
         raise TypeError("Expected string type, not %s." % type(check_ip))
 
