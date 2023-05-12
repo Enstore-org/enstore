@@ -563,7 +563,7 @@ def interface_name(arg_ip):
         arg_ip (str): IP to look for in ifconfig results
 
     Returns:
-        str: Interface name according to ifconfig (e.g. 'wnet0')
+        str: Interface name according to ifconfig (e.g. 'eth0')
     """
     global GL_ifconfig_command
     global GL_ifinfo
