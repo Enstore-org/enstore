@@ -52,7 +52,7 @@ class TestHostaddr(unittest.TestCase):
            self.assertTrue(len(hostinfo) > 0)
            with mock.patch('os.uname', new_callable=mock.MagicMock): 
                with mock.patch('sys.stderr', new_callable=StringIO.StringIO) as stderr_mock:
-                   hostaddr.hostinfo = None
+                   hostaddr.GL_hostinfo = None
                    hostaddr.gethostinfo("www.fnal.gov")
                    self.assertTrue("Warning:  gethostname returns" in stderr_mock.getvalue(), stderr_mock.getvalue())
     
@@ -95,6 +95,15 @@ class TestHostaddr(unittest.TestCase):
         self.assertEqual(atn, "localhost")
         atn = hostaddr.address_to_name(":::1")
         self.assertEqual(atn, ":::1")
+        # test __my_getthostbyaddr exception paths here
+        # some exception paths will retry 60 times,
+        # we wont test these
+        #with mock.patch('socket.gethostbyaddr', new_callable=Exception):
+        #    atn = hostaddr.address_to_name("127.0.0.1")
+        #    self.assertEqual(atn, None)
+        #with mock.patch('socket.gethostbyaddr', new_callable=socket.gaierror):
+        #    atn = hostaddr.address_to_name("127.0.0.1")
+        #    self.assertEqual(atn, None)
         
     
     
@@ -109,7 +118,7 @@ class TestHostaddr(unittest.TestCase):
     def test_update_domains(self):
            d = {'invalid_domains':['999.999']} 
            hostaddr.update_domains(d)
-           self.assertEqual(hostaddr.known_domains['invalid_domains']['default2'], ['999.999'])
+           self.assertEqual(hostaddr.GL_known_domains['invalid_domains']['default2'], ['999.999'])
    
     def test__allow(self):
         host_list = [('2620:6a:0:8421::96', 0, 0, 0), 
@@ -152,7 +161,7 @@ class TestHostaddr(unittest.TestCase):
     
     def test_interface_name(self):
         if not hostaddr.find_ifconfig_command():
-            hostaddr.ifconfig_command = self.ifconfig_command
+            hostaddr.GL_ifconfig_command = self.ifconfig_command
         ifn = hostaddr.interface_name("127.0.0.1")
         self.assertTrue("lo" in ifn)
         ifn = hostaddr.interface_name(None)
