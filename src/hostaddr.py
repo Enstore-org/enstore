@@ -24,6 +24,16 @@ import e_errors
 
 #Return true if the string is an ipv4 dotted-decimal address.
 def is_ip(ip):
+    """Check if a string is an IP4 address
+    
+    Checks if a string is an IP4 address.
+    
+    Args:
+        ip (str): IP address (required)
+    
+    Returns:
+        bool: True if IP address, False if not
+    """
     if type(ip) != type(""):
         raise TypeError, "Expected string type, not %s." % type(ip)
 
@@ -37,6 +47,17 @@ def is_ip(ip):
 
 GL_hostinfo = None
 def gethostinfo(verbose=0):
+    """
+    Return the domain name of the current network.
+    
+    Returns the domain name of the current network.
+    
+    Args:
+        verbose (int): Verbosity level (optional)
+    
+    Returns:
+        tuple: A tuple containing the hostname, aliases, and IP addresses
+    """
     __pychecker__ = "unusednames=verbose"  #Some modules still pass verbose...
 
     global GL_hostinfo
@@ -77,6 +98,16 @@ def gethostinfo(verbose=0):
 
 #Return the domain name of the current network.
 def getdomainname():
+    """Get domain name of the host
+    
+    Gets the fully qualified domain name of the host, and returns the domain name.
+    
+    Args:
+        None
+    
+    Returns:
+        str: Domain name
+    """
     fqdn = socket.getfqdn()
     words = fqdn.split(".")
     if len(words) >= 3:
@@ -88,6 +119,12 @@ def _getdomainaddr(host_info):
     """
     Return the domain address of the current network.
     For dual IP configuration the list of addresses may be returned by socket.gethostname(), like:
+    Args:
+        host_info (tuple): A tuple containing the hostname, aliases, and IP addresses
+    Returns:
+        list: A list of tuples containing the address family, socket type, protocol, canonical name, and socket address
+
+    example:
     [(10, 1, 6, '', ('2620:6a:0:8421::96', 0, 0, 0)),
     (10, 2, 17, '', ('2620:6a:0:8421::96', 0, 0, 0)),
     (10, 3, 0, '', ('2620:6a:0:8421::96', 0, 0, 0)),
@@ -117,8 +154,24 @@ def _getdomainaddr(host_info):
                 rc = '.'.join(words[:3])
     return rc
 
-#Return the domain address of the current network.
 def getdomainaddr():
+    """
+    Return the domain address of the current network.
+    For dual IP configuration the list of addresses may be returned by socket.gethostname(), like:
+    Args:
+        host_info (tuple): A tuple containing the hostname, aliases, and IP addresses
+    Returns:
+        list: A list of tuples containing the address family, socket type, protocol, canonical name, and socket address
+
+     example:
+    [(10, 1, 6, '', ('2620:6a:0:8421::96', 0, 0, 0)),
+    (10, 2, 17, '', ('2620:6a:0:8421::96', 0, 0, 0)),
+    (10, 3, 0, '', ('2620:6a:0:8421::96', 0, 0, 0)),
+    (2, 1, 6, '', ('131.225.191.96', 0)),
+    (2, 2, 17, '', ('131.225.191.96', 0)),
+    (2, 3, 0, '', ('131.225.191.96', 0))]
+    This is to return domanin name for a single entry.
+    """
     host_info = socket.getaddrinfo(socket.gethostname(), None)
     rc = None
     if host_info:
@@ -133,6 +186,15 @@ def getdomainaddr():
     return rc
 
 def __my_gethostbyaddr(addr):
+    """
+    Try to get the hostname for an IP address.
+    
+    Args:
+        addr (str): IP address
+    
+    Returns:
+        str: Hostname
+    """
     try_count = 0
     while try_count < 60:
         try:
@@ -163,6 +225,14 @@ def __my_gethostbyaddr(addr):
     return None
 
 def __my_gethostbyname(name):
+    """ Try to get the IP address for a hostname.
+
+    Args:
+        name (str): fqdn or hostname
+
+    Returns:
+        str: ip address or None
+    """
     try_count = 0
     addr = None
     while try_count < 60:
@@ -208,6 +278,16 @@ def address_to_name(addr):
 
 GL_known_names = {}
 def name_to_address(name):
+    """
+
+    This function is used to get the list of valid domains for a given system.
+    
+    Args:
+        system (str): The system name (optional)
+    
+    Returns:
+        list: A list of valid domains for the given system
+    """
     ## this will return the hostname if it can't be resolved into an address
     global GL_known_names
     if name in GL_known_names.keys():
@@ -235,6 +315,17 @@ GL_known_domains = {'invalid_domains' : {},
 #Note: The configuration_server is different from the other servers.
 # It needs to call this function directly.
 def update_domains(csc_or_dict):
+    """Update the list of known domains
+    
+    Updates the list of known domains, based on the information in the
+    configuration server.
+    
+    Args:
+        csc_or_dict (csc or dict): Configuration server or dictionary (required)
+    
+    Returns:
+        None
+    """
     Trace.trace(19, "update_domains parameter: %s" % (csc_or_dict,))
     global GL_known_domains
 
@@ -258,11 +349,19 @@ def update_domains(csc_or_dict):
     Trace.trace(19, "valid_domains: %s" % GL_known_domains['valid_domains'])
     Trace.trace(19, "invalid_domains: %s" % GL_known_domains['invalid_domains'])
 
-#Return None if no matching rule is explicity found.  Return True if this
-# is a valid address and False if it is not.
 GL_host_name = None
 GL_localhost_addresses = {}
 def _allow(addr):
+    """Determine if a request from a given address should be allowed.
+    
+    Args:
+        addr (str): IP address of the requestor
+    
+    Returns:
+         None if no matching rule is explicity found.
+         True if this is a valid address 
+         False if it is not.
+    """
     global GL_host_name
     global GL_localhost_addresses
     global GL_known_domains
@@ -274,7 +373,7 @@ def _allow(addr):
             return 0
     # always allow requests from local host
     try:
-        if not GL_localhost_addresses.has_key(addr):
+        if not addr in GL_localhost_addresses:
             GL_localhost_addresses[addr] = (GL_host_name == socket.gethostbyaddr(addr)[0])
         if GL_localhost_addresses[addr]:
             return 1
@@ -343,6 +442,18 @@ def _allow(addr):
     return None
 
 def allow(addr):
+    """Check if the address is allowed to connect to the server
+    
+    Checks if the address is allowed to connect to the server.
+    
+    Args:
+        addr (str): Address to check (required)
+    
+    Returns:
+        bool: True if allowed, False if not allowed
+    """
+
+
     Trace.trace(19, "allow: checking address %s %s" % (addr, len(addr)))
     client_addr = list(addr)
     # If message comes with IPV4 address on IPV6 configured receiver its format is like:
@@ -390,6 +501,12 @@ def allow(addr):
 GL_ifconfig_command = None
 GL_ifinfo = {}
 def find_ifconfig_command():
+    """Find the ifconfig command
+    Args:
+        None
+    Returns:
+        str: Path to ifconfig command        
+    """
     global GL_ifconfig_command
     if GL_ifconfig_command:
         return GL_ifconfig_command
@@ -402,6 +519,12 @@ def find_ifconfig_command():
 
 
 def interface_name(ip):
+    """Get the interface name for the given IP addresso
+    Args:
+        ip (str): IP address
+    Returns:
+        str: Interface name
+    """
     global GL_ifconfig_command
     global GL_ifinfo
     if not ip:
@@ -443,6 +566,8 @@ def interface_name(ip):
 
     return GL_ifinfo.get(ip)
 
+
+    
 
 if __name__ == "__main__":   # pragma: no cover
     lh = '127.0.0.1'  #lh = LocalHost
