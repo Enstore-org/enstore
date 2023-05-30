@@ -46,6 +46,18 @@ import re
 # testing for access.  This function does the same thing but for the
 # effective ID.
 def e_access(path, mode, unstable_filesystem=False):
+    """
+    Determine if the supplied access mode is allowed for the given path.
+
+    Args:
+        path (str): filepath
+        mode (bits): access mode
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (int): 1 access is allowed, else 0
+    """
     # Test for existence.
     try:
         file_stats = get_stat(path, unstable_filesystem=unstable_filesystem)
@@ -57,6 +69,16 @@ def e_access(path, mode, unstable_filesystem=False):
 
 # Check the bits to see if we have the requested mode access.
 def e_access_cmp(file_stats, mode):
+    """
+    Determine if the supplied access mode is present in supplied file stats.
+
+    Args:
+        file_stats (bits): file state per the OS
+        mode (bits): access mode
+
+    Returns:
+        (int): 1 access mode is present, else 0
+    """
     stat_mode = file_stats[stat.ST_MODE]
 
     # Make sure a valid mode was passed in.
@@ -64,7 +86,6 @@ def e_access_cmp(file_stats, mode):
         return 0
 
     # Need to check for each type of access permission.
-
     if mode == os.F_OK:
         # In order to get this far, the file must exist.
         return 1
@@ -133,6 +154,16 @@ def e_access_cmp(file_stats, mode):
 
 # Get the mount point of the path.
 def get_mount_point(path):
+    """
+    Get the mount point of supplied path by finding the directory at which
+    the device changes.
+
+    Args:
+        path (str): Full path to search for mount point
+
+    Returns:
+        str or None: Mount point of device containing directory, if found
+    """
     # Strip off one directory segment at a time.  We are looking for
     # where pnfs stops.
     current_path = path
@@ -162,6 +193,18 @@ def get_mount_point(path):
 
 # arg can be: filename, file descriptor, file object, a stat object
 def get_stat(arg, use_lstat=False, unstable_filesystem=False):
+    """
+    Wrap os.fstat for various arg types
+
+    Args:
+        arg (str, fd, File, bits): File to get stats of, or stats object
+        use_lstat (bool): Whether to use lstat
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        bits: Stats object of supplied file
+    """
     if isinstance(arg, types.StringType):
         if use_lstat:
             f_stat = wrapper(os.lstat, (arg,),
@@ -190,6 +233,18 @@ __pychecker__ = "no-shadowbuiltin"
 
 # Open the file fname.  Mode has same meaning as builtin open().
 def open(fname, mode="r", unstable_filesystem=False):
+    """
+    Wrap builtin 'open' function
+
+    Args:
+        fname (str): File name to open
+        mode (str): Mode to use when opening file. Default: "r"
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (File): Opened file handle
+    """
     file_p = wrapper(__builtins__['open'], (fname, mode,),
                      unstable_filesystem=unstable_filesystem)
     return file_p
@@ -198,6 +253,19 @@ def open(fname, mode="r", unstable_filesystem=False):
 # Open the file fname.  This is a wrapper for os.open() (atomic.open() is
 # another level of wrapper for os.open()).
 def open_fd(fname, flags, mode=0777, unstable_filesystem=False):
+    """
+    Wrap os.open, accepting flags
+
+    Args:
+        fname (str): File name to open
+        flags (bits): Flags to use when opening file
+        mode (bits): Mode to use when opening file
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (File): Opened file handle
+    """
     if flags & os.O_CREAT:
         file_fd = wrapper(atomic.open, (fname, flags, mode,),
                           unstable_filesystem=unstable_filesystem)
@@ -209,6 +277,17 @@ def open_fd(fname, flags, mode=0777, unstable_filesystem=False):
 
 # Obtain the contents of the specified directory.
 def listdir(dname, unstable_filesystem=False):
+    """
+    Wrap os.listdir
+
+    Args:
+        dname: Directory to list contents of
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        List[str]: List of files in directory
+    """
     directory_listing = wrapper(os.listdir, (dname,),
                                 unstable_filesystem=unstable_filesystem)
     return directory_listing
@@ -216,6 +295,18 @@ def listdir(dname, unstable_filesystem=False):
 
 # Change the permissions of file fname.  Perms have same meaning as os.chmod().
 def chmod(fname, perms, unstable_filesystem=False):
+    """
+    Wrap os.chmod, accepting permissions
+
+    Args:
+        fname (str): File to change permissions of
+        perms (bits): Permissions to set on file
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        None
+    """
     dummy = wrapper(os.chmod, (fname, perms),
                     unstable_filesystem=unstable_filesystem)
     return dummy
@@ -223,6 +314,20 @@ def chmod(fname, perms, unstable_filesystem=False):
 
 # Change the owner of file fname.  Perms have same meaning as os.chmod().
 def chown(fname, uid, gid, unstable_filesystem=False):
+    """
+    Wrap os.chown, accepting uid and gid
+
+
+    Args:
+        fname (str): File to change ownership of
+        uid (int): User ID to set for owning user
+        gid (int): Group ID to set for file group
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        None
+    """
     dummy = wrapper(os.chown, (fname, uid, gid),
                     unstable_filesystem=unstable_filesystem)
     return dummy
@@ -231,6 +336,18 @@ def chown(fname, uid, gid, unstable_filesystem=False):
 # Update the times of file fname.  Access time and modification time are
 # the same as os.chown().
 def utime(fname, times, unstable_filesystem=False):
+    """
+    Wrap os.utime, accepting access and mod times to set on file
+
+    Args:
+        fname (str): File name of file to update
+        times (Tuple(int)): (Last access time, mod time) to set on file
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        None
+    """
     dummy = wrapper(os.utime, (fname, times),
                     unstable_filesystem=unstable_filesystem)
     return dummy
@@ -238,6 +355,17 @@ def utime(fname, times, unstable_filesystem=False):
 
 # Remove the file fname from the filesystem.
 def remove(fname, unstable_filesystem=False):
+    """
+    Wrap os.remove
+
+    Args:
+        fname (str): File name to remove from filesystem
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        None
+    """
     dummy = wrapper(os.remove, (fname,),
                     unstable_filesystem=unstable_filesystem)
     return dummy
@@ -246,10 +374,32 @@ def remove(fname, unstable_filesystem=False):
 #############################################################################
 
 def readline(fp, unstable_filesystem=False):
+    """
+    Read line from supplied File object, supporting opened PNFS files
+
+    Args:
+        fp (File): File to read line from
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (str): File content
+    """
     return __readline(fp, "readline", unstable_filesystem=unstable_filesystem)
 
 
 def readlines(fp, unstable_filesystem=False):
+    """
+    Read lines from supplied File object, supporting opened PNFS files
+
+    Args:
+        fp (File): File to read line from
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (str): File content
+    """
     return __readline(fp, "readlines", unstable_filesystem=unstable_filesystem)
 
 
@@ -261,6 +411,9 @@ euid_lock = threading.RLock()
 
 
 def acquire_lock_euid_egid():
+    """
+    Acquire lock for updating current euid/egid on this thread
+    """
     if euid_lock._RLock__count > 0 and \
             euid_lock._RLock__owner == threading.currentThread():
         Trace.log(67, "lock count: %s" % (euid_lock._RLock__count,))
@@ -269,6 +422,9 @@ def acquire_lock_euid_egid():
 
 
 def release_lock_euid_egid():
+    """
+    Release euid lock
+    """
     try:
         euid_lock.release()
     except RuntimeError:
@@ -281,6 +437,12 @@ def release_lock_euid_egid():
 # We need to do this when user root, so that migration modify non-/pnfs/fs
 # (and non-trusted) pnfs mount points.
 def match_euid_egid(arg):
+    """
+    Set euid/egid of process to that of specified file
+
+    Args:
+        arg (str, int, File): Filename to check uid/gid of
+    """
     if os.getuid() == 0 or os.getgid() == 0:
 
         f_stat = get_stat(arg)
@@ -299,6 +461,14 @@ def match_euid_egid(arg):
 # euid - The new effective user ID.
 # egid - The new effective group ID.
 def set_euid_egid(euid, egid):
+    """
+    Set euid/egid of process to specified values to the OS
+    Does not obtain locks
+
+    Args:
+        euid (int): User id to set via os.seteuid
+        egid (int): User id to set via os.seteuid
+    """
     if os.getuid() == 0:
 
         # We need to set these back to root, with uid first.  If the group
@@ -319,6 +489,13 @@ def set_euid_egid(euid, egid):
 
 # Release the lock.
 def end_euid_egid(reset_ids_back=False):
+    """
+    Release euid/egid lock, resetting euid/egid to root if at least one is root
+    and reset_ids_back is True
+
+    Args:
+        reset_ids_back (bool): Whether to reset IDs
+    """
     if os.getuid() == 0 or os.getgid() == 0:
         if reset_ids_back:
             os.seteuid(0)
@@ -331,6 +508,12 @@ def end_euid_egid(reset_ids_back=False):
 
 # this function does "rm -f path"
 def rmdir(path):
+    """
+    Remove supplied directory path from file system
+
+    Args:
+        path(str): Directory path to remove (via rm -f)
+    """
     if os.path.isdir(path):
         for direntry in os.listdir(os.path.abspath(path)):
             rmdir(os.path.join(path, direntry))
@@ -348,52 +531,6 @@ def rmdir(path):
             if e_msg.errno not in [errno.ENOENT]:
                 raise OSError(e_msg)
 
-
-#############################################################################
-
-# Used by _wrapper() and __readline().  Only log for clients and server that
-# are set up to log to the log_server.  The default sends log output to
-# stderr, which is not useful for most "enstore pnfs" and "enstore sfs"
-# commands.
-
-access_match = re.compile(r"\.\(access\)\([0-9A-Fa-f]+\)")
-
-
-def __log_file_access(func_name, args):
-    if Trace.log_func != Trace.default_log_func:
-        message = "Starting call %s() for file: %s" % (func_name, str(args))
-        Trace.log(9, message)  # 9 = TIME_LEVEL for encp.
-
-
-# Used by _wrapper() and __readline().  Only log for clients and server that
-# are set up to log to the log_server.  The default sends log output to
-# stderr, which is not useful for most "enstore pnfs" and "enstore sfs"
-# commands.
-def __log_duration(t0, t1, func_name, args, status_message=None):
-    if Trace.log_func != Trace.default_log_func:
-        now = time.time()
-        wait_duration = t1 - t0
-        call_duration = now - t1
-        message = "Time to call %s() for file %s: %f seconds (waited %f seconds)" \
-                  % (func_name, str(args), call_duration, wait_duration)
-        if status_message:
-            # Hack in an optional string to indicate succeed or failure.
-            message = "%s [%s]" % (message, str(status_message))
-        Trace.log(9, message)  # 9 = TIME_LEVEL for encp.
-
-
-def __log_access_path(func_name, args):
-    if Trace.log_func != Trace.default_log_func:
-        if isinstance(args[0], types.StringType) and args[0].find(".(access)(") != -1:
-            # Log information about troublesome .(access)() paths.  If a lot of
-            # these occur, then the kernel might hang.
-            severity = 99
-            message = "Performing %s on file %s at %s." % \
-                      (func_name, args[0], time.ctime())
-            Trace.log(severity, message)
-
-
-#############################################################################
 
 # Hard coded retry count for handling transient file system errors.
 RETRY_COUNT = 4
@@ -425,12 +562,15 @@ try:
 except NameError:
     CPU_COUNT = 1
 
+## unstable_filesystem comment
 # In __wrapper() and __readline(), for unstable filesystems (aka PNFS)
 # only allow a small number of simultaneous file system accesses.
+# (REN): This is done through a sem_lock but... that is ALWAYS NONE. WAT
 try:
     # posix_ipc is an extension module.  If available, use it.
     # sem_lock = posix_ipc.Semaphore("/encp", posix_ipc.O_CREAT, 0777, CPU_COUNT)
-    sem_lock = None
+    sem_lock = None  # WAT. THIS CAN NOT THROW NameError
+    # It has been like this since code was committed!
 except NameError:
     try:
         # If posix_ipc is not available, just use the useless one from
@@ -446,6 +586,8 @@ except NameError:
         # Useless might be a bit harsh, this will still have an effect
         # on migration since it is multithreaded.
         sem_lock = threading.BoundedSemaphore(CPU_COUNT)
+# (REN): So what does unstable_filesystem actually do? It seems to only establish
+# retry list.
 
 # Useful for debugging.
 if sem_lock:
@@ -459,6 +601,19 @@ if sem_lock:
 # The unstable_filesystem parameter should be set true by calls from pnfs.py.
 # This is to allow for automatic retry of known suspect errors.
 def __readline(fp, func="readline", unstable_filesystem=False):
+    """
+    Readline using either readline or readlines
+
+    Args:
+        fp (File): File handle to read line(s) from
+        func (str): Function name to use ("readline" or "readlines")
+            Default: "readline"
+        unstable_filesystem (bool): Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (str): File content
+    """
     if func not in ["readline", "readlines"]:
         raise TypeError("expected readline or readlines")
 
@@ -476,6 +631,7 @@ def __readline(fp, func="readline", unstable_filesystem=False):
                 sem_lock.release()
     except (OSError, IOError) as e_msg:
         try:
+            # The only thing unstable_filesystem actually does
             if unstable_filesystem:
                 retry_list = UNSTABLE_RETRY_LIST
             else:
@@ -555,10 +711,23 @@ def __readline(fp, func="readline", unstable_filesystem=False):
 # The unstable_filesystem parameter should be set true by calls from pnfs.py.
 # This is to allow for automatic retry of known suspect errors.
 def __wrapper(function, args=(), unstable_filesystem=None):
+    """
+    Wrap supplied function with retry logic
+
+    Args:
+        function (Function): Function to wrap
+        args (Tuple(*)): Arguments to pass to function
+        unstable_filesystem: Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (Any): function return value
+    """
     if unstable_filesystem and sem_lock:
         sem_lock.acquire()
 
     try:
+        # The only thing unstable_filesystem actually does
         if unstable_filesystem:
             retry_list = UNSTABLE_RETRY_LIST
         else:
@@ -607,6 +776,22 @@ def __wrapper(function, args=(), unstable_filesystem=None):
 # The unstable_filesystem parameter should be set true by calls from pnfs.py.
 # This is to allow for automatic retry of known suspect errors.
 def wrapper(function, args=(), unstable_filesystem=None):
+    """
+    Wrap supplied function with retry logic, try to resolve uid/gid issues
+    First, attempt access with current euid/guid
+    If this fails, try as root
+    If that fails, try to match euid/guid to the file's as provided by fstat
+    If that fails, set things back to original euid/guid and give up
+
+    Args:
+        function (Function): Function to wrap
+        args (Tuple(*)): Arguments to pass to function
+        unstable_filesystem: Whether the filesystem is unstable (e.g. PNFS)
+            See comment on unstable filesystems. Default: False
+
+    Returns:
+        (Any): function return value
+    """
     if not instanceof(args, types.TupleType):
         use_args = (args,)
     else:
