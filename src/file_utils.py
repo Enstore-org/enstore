@@ -5,7 +5,11 @@
 # $Date$
 # $Id$
 #
-# collection of utility functions taken from encp.py
+# Collection of utility functions taken from encp.py
+# This module used in any Enstore utility that accesses files. It wraps os
+# filesystem access functions to provide retry and impersonation functionality
+# around filesystem access functions.
+#
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 09/05
 #
 ###############################################################################
