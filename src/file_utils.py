@@ -40,7 +40,6 @@ except ImportError, msg:
 import Trace
 import atomic
 import e_errors
-import re
 
 
 ## mode is one of os.F_OK, os.W_OK, os.R_OK or os.X_OK.
