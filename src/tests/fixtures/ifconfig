@@ -1,0 +1,40 @@
+#!/bin/bash
+
+usage() {
+    echo "$0, a quick and dirty mockup of ifconfig 
+    echo "any number of arguments accepted.  "
+    echo "if 'exit_0' in arglist, exit with return code 0.  "
+    echo "if 'exit_1' in arglist, exit with return code 1.  "
+    echo "if '-a' in arglist, return ifconfig output for localhost
+}
+
+loopback() {
+    echo "lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536"
+    echo "        inet 127.0.0.1  netmask 255.0.0.0"
+    echo "        inet6 ::1  prefixlen 128  scopeid 0x10<host>"
+    echo "        loop  txqueuelen 1000  (Local Loopback)"
+    echo "        RX packets 112812043  bytes 595832162492 (554.9 GiB)"
+    echo "        RX errors 0  dropped 0  overruns 0  frame 0"
+    echo "        TX packets 112812043  bytes 595832162492 (554.9 GiB)"
+    echo "        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0"
+}
+
+[ "$1" = "" ] && usage
+[ "$1" = "-h" ] && usage
+
+for arg in "$@"; do
+
+    if [ "$arg" = "-a" ]; then
+        [ ! "$DEBUG" = "" ] && echo "$0 $@ ---> ifconfig loopback output"
+        loopback
+    fi
+    if [ "$arg" = "exit_0" ]; then
+        [ ! "$DEBUG" = "" ] && echo "$0 $@ ---> exiting status  0"
+        exit 0
+    fi
+    if [ "$arg" = "exit_1" ]; then
+        [ ! "$DEBUG" = "" ] && echo "$0 $@ ---> exiting status  1"
+        exit 1
+    fi
+done
+exit 0

@@ -450,4 +450,5 @@ class LogFileAlarm(GenericAlarm):
 
 if __name__ == "__main__" :
     print "unit tests are in enstore/src/tests/test_alarm.py"
+    import sys
     sys.exit(0)
