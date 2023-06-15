@@ -37,8 +37,7 @@ class TestAlarmClient(unittest.TestCase):
         self.sent_msg = mock.MagicMock()
         udp_client.UDPClient.send = self.sent_msg
         udp_client.UDPClient.send_no_wait = self.sent_msg
-        m_csc = mock_csc.MockCSC()
-        csc = m_csc.get_csc()
+        csc = mock_csc.csc()
         self.alarm_client = alarm_client.AlarmClient(csc)
 
     def test___init__(self):
