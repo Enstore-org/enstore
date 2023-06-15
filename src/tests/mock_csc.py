@@ -7,11 +7,9 @@ import os
 import time
 
 
-
-
 class MockCSC(object):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.csc = configuration_client.ConfigurationClient()
         self.csc.send = mock.MagicMock()
         atexit.register(self.tearDown)
@@ -93,3 +91,6 @@ class MockCSC(object):
             os.remove(filename)
 
 
+def csc(*args, **kwargs):
+    m_csc = MockCSC(*args, **kwargs)
+    return m_csc.get_csc()
