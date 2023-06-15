@@ -27,6 +27,6 @@ RUN yum install -y rpm-sign expect
 RUN cp data/rpmmacros /tmp/rpmmacros
 RUN cp data/rpmmacros /etc/rpm/macros
 RUN chmod 444 /tmp/rpmmacros
-RUN chmod 444 /etc/rpm/rpmmacros
+RUN chmod 444 /etc/rpm/macros
 RUN cp data/rpm-sign.exp /tmp/rpm-sign.exp
 RUN chmod 555 /tmp/rpm-sign.exp
