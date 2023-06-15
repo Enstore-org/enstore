@@ -56,8 +56,8 @@ jobs:
         ENSTORE_ADMIN_RPM_GPG_SIGN: ${{ secrets.ENSTORE_ADMIN_RPM_GPG_SIGN }}
         ENSTORE_ADMIN_RPM_GPG_SIGN_PASSPHRASE: ${{ secrets.ENSTORE_ADMIN_RPM_GPG_SIGN_PASSPHRASE }}
       run: |
-       echo -e "$ENSTORE_ADMIN_RPM_GPG_SIGN" | gpg --import
        cp /tmp/rpmmacros ~/.rpmmacros
+       echo -e "$ENSTORE_ADMIN_RPM_GPG_SIGN" | gpg --import
        /tmp/rpm-sign.exp ${PWD}/RPMS/x86_64/${{ steps.prepare_build.outputs.rpm_name }}.el7.x86_64.rpm
     - name: Create Release
       id: create_release
