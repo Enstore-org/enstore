@@ -4,7 +4,7 @@
 
 spawn rpm --addsign {*}$argv
 expect -exact "Enter pass phrase: "
-send -- "$env(ENSTORE_ADMIN_RPM_GPG_SIGN_PASSPHRASE)\n"
+send_user "$env(ENSTORE_ADMIN_RPM_GPG_SIGN_PASSPHRASE)\n"
 expect eof
 
 ## end of rpm-sign.exp
