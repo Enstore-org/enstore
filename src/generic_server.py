@@ -31,6 +31,7 @@ class ServerError(generic_client.ClientError):
     def __repr__(self):
         return "ServerError"
 
+
 class GenericServerInterface(option.Interface):
 
     def __init__(self):
@@ -42,21 +43,22 @@ class GenericServerInterface(option.Interface):
         self.dont_alarm = []
         self.help = 0
         self.usage = 0
-	option.Interface.__init__(self)
-        
+        option.Interface.__init__(self)
+
     def valid_dictionaries(self):
         return (self.help_options, self.trace_options)
+
 
 class GenericServer(generic_client.GenericClient):
 
     def handle_er_msg(self, fd):
         __pychecker__ = "no-argsused"
-        
-	msg = enstore_erc_functions.read_erc(self.erc)
-	if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
+
+        msg = enstore_erc_functions.read_erc(self.erc)
+        if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
             self._reinit2()
 
-	return msg
+        return msg
 
     def _reinit2(self):
         Trace.log(e_errors.INFO,
@@ -65,7 +67,7 @@ class GenericServer(generic_client.GenericClient):
 
     def _reinit(self):
         Trace.log(e_errors.INFO, "(Re)loading configuration")
-        
+
         self.csc.new_config_obj.new_config_msg()
         try:
             hostaddr.update_domains(self.csc)
@@ -75,7 +77,7 @@ class GenericServer(generic_client.GenericClient):
             # configuration server should never call this function
             # either.
             pass
-        
+
         #Individually defined actions for each Enstore server.
         self.reinit()
 
@@ -92,14 +94,14 @@ class GenericServer(generic_client.GenericClient):
         # do this in order to centralize getting a log, alarm and configuration
         # client. and to record the fact that we only want to do it once.
         use_flags = enstore_constants.NO_UDP | flags
-        generic_client.GenericClient.__init__(self, csc, name, 
+        generic_client.GenericClient.__init__(self, csc, name,
                                               flags=use_flags,
-					      logc=logc, alarmc=alarmc)
+                                              logc=logc, alarmc=alarmc)
 
         #Servers need to communicate with the event relay.  Instantiate the
         # event relay client class to facilitate that communication.
-	self.erc = event_relay_client.EventRelayClient(self, function)
-        
+        self.erc = event_relay_client.EventRelayClient(self, function)
+
         #We want the servers to cache the config file contents, because
         # they can wait for the NEWCONFIGFILE message from the event relay.
         try:
@@ -115,6 +117,7 @@ class GenericServer(generic_client.GenericClient):
             Trace.log(e_errors.WARNING, "Unable to cache configuration.")
 
     __pychecker__ = "no-override"
+
     def handle_generic_commands(self, intf):
         if intf.do_print:
             Trace.do_print(intf.do_print)
@@ -137,9 +140,9 @@ class GenericServer(generic_client.GenericClient):
     def get_log_name(self, name):
         parts = string.split(name, '.')
         if len(parts) == 2:
-            new_name = "%s.%s"%(string.upper(parts[0][0:8]),
-                                string.upper(self.__dict__.get("name_ext",
-                                                               parts[1])))
+            new_name = "%s.%s" % (string.upper(parts[0][0:8]),
+                                  string.upper(self.__dict__.get("name_ext",
+                                                                 parts[1])))
         else:
             new_name = string.upper(name)
         return new_name
@@ -165,7 +168,7 @@ class GenericServer(generic_client.GenericClient):
         #Extract filename and line number information.
         try:
             filename = tb.tb_frame.f_code.co_filename
-            if not filename or type(filename)!= type(""):
+            if not filename or type(filename) != type(""):
                 filename = "???"
         except:
             filename = "???"
@@ -189,7 +192,7 @@ class GenericServer(generic_client.GenericClient):
         #Be sure to include a traceback in the log file.
         Trace.handle_error(exc, msg, tb)
 
-        del tb  #Avoid resource leak.
+        del tb  # Avoid resource leak.
 
     """
     # send back our response
@@ -208,6 +211,7 @@ class GenericServer(generic_client.GenericClient):
 
     # get the alive_interval from the server or the default from the inquisitor
     DEFAULT_ALIVE_INTERVAL = 30
+
     def get_alive_interval(self):
         config = self.csc.get(self.name)
         alive_interval = config.get(enstore_constants.ALIVE_INTERVAL, None)
