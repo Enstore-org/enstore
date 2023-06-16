@@ -1,21 +1,13 @@
 import unittest
-import generic_server
-import sys
-import string
 import socket
 import Trace
-import traceback
-import timeofday
 import mock
-import StringIO
 import e_errors
 import option
 import generic_client
 import generic_server
 import mock_csc
-import event_relay_client
 import event_relay_messages
-import enstore_constants
 import enstore_erc_functions
 import hostaddr
 import udp_client
@@ -54,7 +46,6 @@ class TestGenericServer(unittest.TestCase):
         self.sent_msg = mock.MagicMock()
         udp_client.UDPClient.send = self.sent_msg
         udp_client.UDPClient.send_no_wait = self.sent_msg
-        csc = mock_csc.csc()
         self.csc = mock_csc.csc()
         self.svr = generic_server.GenericServer(self.csc, 'test_server')
 
@@ -97,17 +88,17 @@ class TestGenericServer(unittest.TestCase):
                             with mock.patch('Trace.dont_alarm') as dont_alarm:
                                 self.svr.handle_generic_commands(gsi)
                                 self.assertFalse(do_print.called)
-                                self.assertFalse(dont_print.called) 
-                                self.assertFalse(do_log.called) 
-                                self.assertFalse(dont_log.called)   
-                                self.assertFalse(do_alarm.called)   
+                                self.assertFalse(dont_print.called)
+                                self.assertFalse(do_log.called)
+                                self.assertFalse(dont_log.called)
+                                self.assertFalse(do_alarm.called)
                                 self.assertFalse(dont_alarm.called)
                                 gsi.do_print.append('test')
                                 gsi.dont_print.append('test')
-                                gsi.do_log.append('test')   
-                                gsi.dont_log.append('test') 
-                                gsi.do_alarm.append('test') 
-                                gsi.dont_alarm.append('test')   
+                                gsi.do_log.append('test')
+                                gsi.dont_log.append('test')
+                                gsi.do_alarm.append('test')
+                                gsi.dont_alarm.append('test')
                                 self.svr.handle_generic_commands(gsi)
                                 self.assertTrue(do_print.called)
                                 self.assertTrue(dont_print.called)
@@ -115,7 +106,6 @@ class TestGenericServer(unittest.TestCase):
                                 self.assertTrue(dont_log.called)
                                 self.assertTrue(do_alarm.called)
                                 self.assertTrue(dont_alarm.called)
-
 
     def test_get_log_name(self):
         logn = self.svr.get_log_name('foo.bar')
@@ -125,7 +115,7 @@ class TestGenericServer(unittest.TestCase):
 
     def test_get_name(self):
         nm = self.svr.get_name('foo')
-        self.assertEqual(nm,'FOO',nm)
+        self.assertEqual(nm, 'FOO', nm)
 
     def test_server_bind(self):
         socket = mock.MagicMock()
@@ -138,17 +128,15 @@ class TestGenericServer(unittest.TestCase):
         self.assertTrue(setsockopt.called)
         self.assertTrue(bind.called)
 
-
     def test_serve_forever_error(self):
         with mock.patch('Trace.alarm') as alarm:
             self.svr.serve_forever_error('whoopsie')
-            alarm.assert_called_with(e_errors.ALARM,
+            alarm.assert_called_with(
+                e_errors.ALARM,
                 'Exception in file ??? at line -1: (None, None).  See system log for details.')
 
-
-
     def test_get_alive_interval(self):
-        self.assertEqual(40,self.svr.get_alive_interval())
+        self.assertEqual(40, self.svr.get_alive_interval())
 
     def test_event_relay_subscribe(self):
         erc = mock.MagicMock()
@@ -160,7 +148,6 @@ class TestGenericServer(unittest.TestCase):
         self.svr.event_relay_subscribe(['foo'])
         self.assertTrue(start.called)
         self.assertTrue(start_heartbeat.called)
-
 
     def test_event_relay_unsubscribe(self):
         erc = mock.MagicMock()
