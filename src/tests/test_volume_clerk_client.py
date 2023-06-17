@@ -527,43 +527,127 @@ class TestVolumeClerkClient(unittest.TestCase):
         self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_can_write_volume(self):
-        pass
+        expected_work_ticket = bogus_ticket('can_write_volume',
+                                            'library',
+                                            'min_remaining_bytes',
+                                            'volume_family',
+                                            'external_label')
+        self.sent_msg.reset_mock()
+        self.vcc.can_write_volume(
+            'library',
+            'min_remaining_bytes',
+            'volume_family',
+            'external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_clear_lm_pause(self):
-        pass
+        expected_work_ticket = bogus_ticket('clear_lm_pause',
+                                            'library')
+        self.sent_msg.reset_mock()
+        self.vcc.clear_lm_pause('library')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_rename_volume(self):
-        pass
+        expected_work_ticket = bogus_ticket('rename_volume',
+                                            'old',
+                                            'new')
+        self.sent_msg.reset_mock()
+        self.vcc.rename_volume('old', 'new')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_delete_volume(self):
-        pass
+        expected_work_ticket = bogus_ticket('delete_volume',
+                                            'external_label')
+        self.sent_msg.reset_mock()
+        self.vcc.delete_volume('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
+        expected_work_ticket['check_state'] = True
+        self.sent_msg.reset_mock()
+        self.vcc.delete_volume('external_label', check_state=True)
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_erase_volume(self):
-        pass
+        expected_work_ticket = bogus_ticket('erase_volume',
+                                            'external_label')
+        self.sent_msg.reset_mock()
+        self.vcc.erase_volume('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_restore_volume(self):
-        pass
+        expected_work_ticket = bogus_ticket('restore_volume',
+                                            'external_label')
+        self.sent_msg.reset_mock()
+        self.vcc.restore_volume('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_recycle_volume(self):
-        pass
+        expected_work_ticket = bogus_ticket('recycle_volume',
+                                            'external_label',
+                                            reset_declared=True)
+        self.sent_msg.reset_mock()
+        self.vcc.recycle_volume('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
+        expected_work_ticket['clear_sg'] = True
+        self.sent_msg.reset_mock()
+        self.vcc.recycle_volume('external_label', clear_sg=True)
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_ignored_sg(self):
-        pass
+        expected_work_ticket = bogus_ticket('set_ignored_sg',
+                                            'sg')
+        self.sent_msg.reset_mock()
+        self.vcc.set_ignored_sg('sg')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_clear_ignored_sg(self):
-        pass
+        expected_work_ticket = bogus_ticket('clear_ignored_sg',
+                                            'sg')
+        self.sent_msg.reset_mock()
+        self.vcc.clear_ignored_sg('sg')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_clear_all_ignored_sg(self):
-        pass
+        expected_work_ticket = bogus_ticket('clear_all_ignored_sg')
+        self.sent_msg.reset_mock()
+        self.vcc.clear_all_ignored_sg()
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_list_ignored_sg(self):
-        pass
+        expected_work_ticket = bogus_ticket('list_ignored_sg')
+        self.sent_msg.reset_mock()
+        self.vcc.list_ignored_sg()
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_comment(self):
-        pass
+        expected_work_ticket = bogus_ticket('set_comment',
+                                            'vol',
+                                            'comment')
+        self.sent_msg.reset_mock()
+        self.vcc.set_comment('vol', 'comment')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_assign_sg(self):
-        pass
+        expected_work_ticket = bogus_ticket('reassign_sg',
+                                            'external_label',
+                                            'storage_group')
+        self.sent_msg.reset_mock()
+        self.vcc.assign_sg('external_label', 'storage_group')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_list_migrated_files(self):
         pass
