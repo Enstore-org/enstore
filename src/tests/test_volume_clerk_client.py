@@ -233,7 +233,7 @@ class TestVolumeClerkClient(unittest.TestCase):
 
     def test_restore(self):
         self.sent_msg.reset_mock()
-        self.vcc.restore('external_label',1)
+        self.vcc.restore('external_label', 1)
         expected_work_ticket = {
             "work": "restorevol",
             "external_label": "external_label",
@@ -242,113 +242,289 @@ class TestVolumeClerkClient(unittest.TestCase):
         self.assertEqual(generated_work_ticket, expected_work_ticket)
         expected_work_ticket['restore'] = "no"
         self.sent_msg.reset_mock()
-        self.vcc.restore('external_label',0)
+        self.vcc.restore('external_label', 0)
         generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
         self.assertEqual(generated_work_ticket, expected_work_ticket)
 
-    
     def test_rebuild_sg_count(self):
         self.sent_msg.reset_mock()
         self.vcc.rebuild_sg_count()
-        expected_work_ticket = {"work": "rebuild_sg_count"} 
+        expected_work_ticket = {"work": "rebuild_sg_count"}
         generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
         self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_sg_count(self):
         self.sent_msg.reset_mock()
         expected_work_ticket = {'work': 'set_sg_count',
-                  'library': 'library',
-                  'storage_group': 'storage_group',
-                  'count': 0
-        }
-        self.vcc.set_sg_count('library','storage_group',0)
+                                'library': 'library',
+                                'storage_group': 'storage_group',
+                                'count': 0
+                                }
+        self.vcc.set_sg_count('library', 'storage_group', 0)
         generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
-        self.assertEqual(generated_work_ticket, expected_work_ticket)   
-
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_get_sg_count(self):
-        pass
+        expected_work_ticket = {'work': 'get_sg_count',
+                                'library': 'library',
+                                'storage_group': 'storage_group'}
+        self.sent_msg.reset_mock()
+        self.vcc.get_sg_count('library', 'storage_group')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_inquire_vol(self):
-        pass
+        expected_work_ticket = {'work': 'inquire_vol',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.inquire_vol('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_touch(self):
-        pass
+        expected_work_ticket = {'work': 'touch',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.touch('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_check_record(self):
-        pass
+        expected_work_ticket = {'work': 'check_record',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.check_record('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_write_protect_on(self):
-        pass
+        expected_work_ticket = {'work': 'write_protect_on',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.write_protect_on('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_write_protect_off(self):
-        pass
+        expected_work_ticket = {'work': 'write_protect_off',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.write_protect_off('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_write_protect_status(self):
-        pass
+        expected_work_ticket = {'work': 'write_protect_status',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.write_protect_status('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_show_quota(self):
-        pass
+        expected_work_ticket = {'work': 'show_quota'}
+        self.sent_msg.reset_mock()
+        self.vcc.show_quota()
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_new_library(self):
-        pass
+        expected_work_ticket = {'work': 'new_library',
+                                'external_label': 'external_label',
+                                'new_library': 'new_library'}
+        self.sent_msg.reset_mock()
+        self.vcc.new_library('external_label', 'new_library')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_writing(self):
-        pass
+        expected_work_ticket = {'work': 'set_writing',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_writing('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_readonly(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_readonly',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_readonly('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_notallowed(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_notallowed',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_notallowed('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_noaccess(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_noaccess',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_noaccess('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_full(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_full',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_full('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_migrated(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_migrated',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_migrated('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_migrating(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_migrating',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_migrating('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_duplicated(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_duplicated',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_duplicated('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_duplicating(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_duplicating',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_duplicating('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_cloned(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_cloned',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_cloned('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_cloning(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_cloning',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_cloning('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_system_none(self):
-        pass
+        expected_work_ticket = {'work': 'set_system_none',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.set_system_none('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_clr_system_inhibit(self):
-        pass
+        expected_work_ticket = {'work': 'clr_system_inhibit',
+                                'external_label': 'external_label',
+                                'inhibit': None,
+                                'position': 0}
+
+        self.sent_msg.reset_mock()
+        self.vcc.clr_system_inhibit('external_label')
+
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_decr_file_count(self):
-        pass
+        expected_work_ticket = {'work': 'decr_file_count',
+                                'external_label': 'external_label',
+                                'count': 1}
+
+        self.sent_msg.reset_mock()
+        self.vcc.decr_file_count('external_label')
+
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_get_remaining_bytes(self):
-        pass
+        expected_work_ticket = {'work': 'get_remaining_bytes',
+                                'external_label': 'external_label'}
+        self.sent_msg.reset_mock()
+        self.vcc.get_remaining_bytes('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_remaining_bytes(self):
-        pass
+        expected_work_ticket = {'work': 'set_remaining_bytes',
+                                'external_label': 'external_label',
+                                'remaining_bytes': 'remaining_bytes',
+                                'eod_cookie': 'eod_cookie',
+                                'bfid': 'bfid'}
+
+        self.sent_msg.reset_mock()
+        self.vcc.set_remaining_bytes(
+            'external_label',
+            'remaining_bytes',
+            'eod_cookie',
+            'bfid')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_update_counts(self):
-        pass
+        expected_work_ticket = bogus_ticket(
+            'update_counts',
+            'external_label',
+            wr_err=0,
+            rd_err=0,
+            wr_access=0,
+            rd_access=0,
+            mounts=0)
+        #import pdb; pdb.set_trace()
+        self.sent_msg.reset_mock()
+        self.vcc.update_counts('external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_is_vol_available(self):
-        pass
+        expected_work_ticket = bogus_ticket('is_vol_available',
+                                            'external_label',
+                                            'action',
+                                            volume_family=None,
+                                            file_size=0
+                                            )
+        self.sent_msg.reset_mock()
+        self.vcc.is_vol_available('action', 'external_label')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_next_write_volume(self):
-        pass
+        expected_work_ticket = bogus_ticket('next_write_volume',
+                                            'library',
+                                            'min_remaining_bytes',
+                                            'volume_family',
+                                            'first_found',
+                                            vol_veto_list='[]',
+                                            mover={},
+                                            use_exact_match=0)
+        self.sent_msg.reset_mock()
+        self.vcc.next_write_volume(
+            'library',
+            'min_remaining_bytes',
+            'volume_family',
+            [],
+            'first_found')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_can_write_volume(self):
         pass
@@ -400,6 +576,16 @@ class TestVolumeClerkClient(unittest.TestCase):
 
     def test_set_migration_history_closed(self):
         pass
+
+
+def bogus_ticket(*args, **kwargs):
+    retval = {}
+    retval['work'] = args[0]
+    for arg in args[1:]:
+        retval[arg] = arg
+    for key, value in kwargs.items():
+        retval[key] = value
+    return retval
 
 
 class TestVolumeClerkClientInterface(unittest.TestCase):
