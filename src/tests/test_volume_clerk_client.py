@@ -25,6 +25,19 @@ from en_eval import en_eval
 import mock_csc
 
 
+def bogus_ticket(*args, **kwargs):
+    """ Return a bogus ticket for test input
+        (aka a dictionary)
+    """
+    retval = {}
+    retval['work'] = args[0]
+    for arg in args[1:]:
+        retval[arg] = arg
+    for key, value in kwargs.items():
+        retval[key] = value
+    return retval
+
+
 class TestMisc(unittest.TestCase):
     def test_timestamp2time(self):
         t = volume_clerk_client.timestamp2time("1980-01-01 00:00:01")
@@ -489,7 +502,6 @@ class TestVolumeClerkClient(unittest.TestCase):
             wr_access=0,
             rd_access=0,
             mounts=0)
-        #import pdb; pdb.set_trace()
         self.sent_msg.reset_mock()
         self.vcc.update_counts('external_label')
         generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
@@ -650,26 +662,41 @@ class TestVolumeClerkClient(unittest.TestCase):
         self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_list_migrated_files(self):
-        pass
+        expected_work_ticket = bogus_ticket('list_migrated_files',
+                                            'src_vol',
+                                            'dst_vol')
+        self.sent_msg.reset_mock()
+        ret_ticket = self.vcc.list_migrated_files('src_vol', 'dst_vol')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_list_duplicated_files(self):
-        pass
+        expected_work_ticket = bogus_ticket('list_duplicated_files',
+                                            'src_vol',
+                                            'dst_vol')
+        self.sent_msg.reset_mock()
+        ret_ticket = self.vcc.list_duplicated_files('src_vol', 'dst_vol')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_migration_history(self):
-        pass
+        expected_work_ticket = bogus_ticket('set_migration_history',
+                                            'src_vol',
+                                            'dst_vol')
+        self.sent_msg.reset_mock()
+        ret_ticket = self.vcc.set_migration_history('src_vol', 'dst_vol')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
     def test_set_migration_history_closed(self):
-        pass
-
-
-def bogus_ticket(*args, **kwargs):
-    retval = {}
-    retval['work'] = args[0]
-    for arg in args[1:]:
-        retval[arg] = arg
-    for key, value in kwargs.items():
-        retval[key] = value
-    return retval
+        expected_work_ticket = bogus_ticket('set_migration_history_closed',
+                                            'src_vol',
+                                            'dst_vol')
+        self.sent_msg.reset_mock()
+        ret_ticket = self.vcc.set_migration_history_closed(
+            'src_vol', 'dst_vol')
+        generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
+        self.assertEqual(generated_work_ticket, expected_work_ticket)
 
 
 class TestVolumeClerkClientInterface(unittest.TestCase):
