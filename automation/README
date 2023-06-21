@@ -1,0 +1,3 @@
+This folder contains automation scripts intended to help releaes new versions to Enstore deployments.
+
+In general, these scripts are intended to be run as cron jobs on Enstore host machines.
