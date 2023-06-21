@@ -118,17 +118,18 @@ class TestMisc(unittest.TestCase):
         self.assertAlmostEqual(
             volume_clerk_client.my_atol('3 tb'),
             3000000000000)
-
         with self.assertRaises(ValueError):
             volume_clerk_client.my_atol('1.0 mib')
-
         with self.assertRaises(ValueError):
             volume_clerk_client.my_atol('')
+        with self.assertRaises(ValueError):
+            volume_clerk_client.my_atol('1.0 quatloo')
 
     def test_sumup(self):
         self.assertEqual(volume_clerk_client.sumup([]), 0)
         self.assertEqual(volume_clerk_client.sumup("a"), 97)
         self.assertEqual(volume_clerk_client.sumup("A"), 65)
+        self.assertEqual(volume_clerk_client.sumup("ABC"), 198)
         self.assertEqual(volume_clerk_client.sumup([1, 2, 3]), 6)
         self.assertEqual(volume_clerk_client.sumup({"a": 1, "b": 2}), 198)
         self.assertEqual(volume_clerk_client.sumup(
@@ -139,6 +140,7 @@ class TestMisc(unittest.TestCase):
         self.assertEqual(volume_clerk_client.check_label("VR6995L1"), 0)
         self.assertEqual(volume_clerk_client.check_label("VR6995"), 0)
         self.assertEqual(volume_clerk_client.check_label("9R6995"), 1)
+        self.assertEqual(volume_clerk_client.check_label("9R699"), 1)
         self.assertEqual(volume_clerk_client.check_label("9R6995L1"), 1)
         self.assertEqual(volume_clerk_client.check_label("VR699VL1"), 1)
 
@@ -526,15 +528,16 @@ class TestVolumeClerkClient(unittest.TestCase):
                                             'volume_family',
                                             'first_found',
                                             vol_veto_list='[]',
-                                            mover={},
-                                            use_exact_match=0)
+                                            mover={'mover_type': 'DiskMover'},
+                                            use_exact_match=1)
         self.sent_msg.reset_mock()
         self.vcc.next_write_volume(
             'library',
             'min_remaining_bytes',
             'volume_family',
             [],
-            'first_found')
+            'first_found',
+            {'mover_type': 'DiskMover'})
         generated_work_ticket = self.sent_msg.mock_calls[0][1][0]
         self.assertEqual(generated_work_ticket, expected_work_ticket)
 
@@ -721,6 +724,7 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
         self.assertTrue(isinstance(vd[0], dict))
 
     def test_do_work(self):
+        #import pdb; pdb.set_trace()
         sent_msg = mock.MagicMock()
         udp_client.UDPClient.send = sent_msg
         udp_client.UDPClient.send_no_wait = sent_msg
@@ -728,9 +732,569 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
             with mock.patch('sys.stdout', new=StringIO.StringIO()) as std_out:
                 with mock.patch("sys.exit") as exit_mock:
                     with mock.patch('generic_client.GenericClient.check_ticket') as check_please:
+                        # test = Usage
                         volume_clerk_client.do_work(self.vci)
                         exit_mock.assert_called_with(0)
-                        self.assertTrue('help' in std_out.getvalue())
+                        self.assertTrue('Usage' in std_out.getvalue())
+
+                        # -------------
+                        test = "backup"
+                        # -------------
+                        self.vci.backup = 1
+                        exit_mock.reset_mock()
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        exit_mock.assert_not_called()
+                        self.assertEqual(
+                            {'work': 'start_backup'}, sent_msg.mock_calls[102][1][0],
+                            test + ": " + str(sent_msg.mock_calls))
+                        self.assertEqual({'work': 'backup'},
+                                         sent_msg.mock_calls[104][1][0],
+                                         test + ": " + str(sent_msg.mock_calls))
+                        self.assertEqual(
+                            {'work': 'stop_backup'}, sent_msg.mock_calls[106][1][0],
+                            test + ": " + str(sent_msg.mock_calls))
+
+                        # -------------
+                        test = "show_state"
+                        # -------------
+                        self.vci.backup = 0
+                        self.vci.show_state = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertEqual({'work': 'show_state'},
+                                         sent_msg.mock_calls[102][1][0],
+                                         test + ": " + str(sent_msg.mock_calls))
+
+                        # -------------
+                        test = "vols"
+                        # -------------
+                        self.vci.show_state = 0
+                        self.vci.vols = 1
+                        sent_msg.reset_mock()
+                        std_out.truncate()
+
+                        # test usage string gets printed when wrong number of
+                        # args (0) given
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            "Usage" in std_out.getvalue(), std_out.getvalue())
+
+                        # test error string gets printed when wrong number of
+                        # args (4) given
+                        std_out.truncate()
+                        for ch in 'abcd':
+                            self.vci.args.append(ch)
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            "Wrong number of arguments" in std_out.getvalue(),
+                            std_out.getvalue())
+                        self.vci.args = []
+
+                        # now test with some correct args
+                        sent_msg.reset_mock()
+                        std_out.truncate()
+                        self.vci.args.append('noaccess')
+                        volume_clerk_client.do_work(self.vci)
+                        arglebargle = """{'not': None, 'work': 'get_vols3', 'key': None, 'in_state': 'noaccess'}"""
+                        self.assertTrue(
+                            """'work': 'get_vols3'""" in str(
+                                sent_msg.mock_calls), test + ": " + str(
+                                sent_msg.mock_calls))
+                        self.assertTrue(
+                            """'in_state': 'noaccess'""" in str(
+                                sent_msg.mock_calls), test + ": " + str(
+                                sent_msg.mock_calls))
+
+                        # -------------
+                        test = "pvols"
+                        # -------------
+                        self.vci.vols = 0
+                        self.vci.pvols = 1
+                        self.vci.force = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'get_pvols2'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+
+                        # -------------
+                        test = "labels"
+                        # -------------
+                        self.vci.pvols = 0
+                        self.vci.labels = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'get_vol_list2'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+
+                        # -------------
+                        test = "next"
+                        # -------------
+                        self.vci.next = 1
+                        self.vci.labels = 0
+                        sent_msg.reset_mock()
+                        self.vci.args[0] = 'library'
+                        self.vci.args.append('20599088733')
+                        self.vci.args.append('volume_family')
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'next_write_volume'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.assertTrue(
+                            """'min_remaining_bytes': 20599088733L""" in str(
+                                sent_msg.mock_calls), str(
+                                sent_msg.mock_calls))
+                        self.assertTrue(
+                            """'library': 'library'""" in str(
+                                sent_msg.mock_calls), str(
+                                sent_msg.mock_calls))
+                        self.assertTrue(
+                            """'volume_family': 'volume_family'""" in str(
+                                sent_msg.mock_calls), str(
+                                sent_msg.mock_calls))
+
+                        # -------------
+                        test = "assign_sg"
+                        # -------------
+                        self.vci.next = 0
+                        self.vci.assign_sg = 'storage_group'
+                        self.vci.volume = 'volume'
+                        sent_msg.reset_mock()
+                        self.vci.args[0] = ''
+                        self.vci.args[1] = ''
+                        self.vci.args[2] = ''
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'reassign_sg'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.assertTrue(
+                            """'external_label': 'volume'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.assertTrue(
+                            """'storage_group': 'storage_group'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+
+                        # -------------
+                        test = "rebuild_sg_count"
+                        # -------------
+                        self.vci.rebuild_sg_count = 1
+                        self.vci.assign_sg = 0
+                        self.vci.volume = 0
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'rebuild_sg_count'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.rebuild_sg_count = 0
+
+                        # -------------
+                        test = "ls_sg_count"
+                        # -------------
+                        self.vci.ls_sg_count = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'list_sg_count2'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.ls_sg_count = 0
+
+                        # -------------
+                        test = "get_sg_count"
+                        # -------------
+                        self.vci.get_sg_count = 1
+                        self.vci.storage_group = 'storage_group'
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'get_sg_count'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.get_sg_count = 0
+
+                        # -------------
+                        test = "set_sg_count"
+                        # -------------
+                        self.vci.set_sg_count = 1
+                        self.vci.count = 12345
+                        self.vci.storage_group = 'storage_group'
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_sg_count'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.assertTrue(
+                            """'count': 12345""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.set_sg_count = 0
+                        self.vci.count = 0
+                        self.vci.storage_group = 0
+
+                        # -------------
+                        test = "trim_obsolete"
+                        # -------------
+                        self.vci.trim_obsolete = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'check_record'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.trim_obsolete = 0
+
+                        # -------------
+                        test = "show_quota"
+                        # -------------
+                        self.vci.show_quota = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'show_quota'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.show_quota = 0
+
+                        # -------------
+                        test = "vol"
+                        # -------------
+                        self.vci.vol = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'inquire_vol'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+
+                        self.vci.vol = 0
+                        # if intf.force:
+
+                        # -------------
+                        test = "gvol"
+                        # -------------
+                        self.vci.gvol = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'inquire_vol'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        # if intf.force:
+                        self.vci.gvol = 0
+
+                        # -------------
+                        test = "check"
+                        # -------------
+                        self.vci.check = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'inquire_vol'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        # if intf.force:
+                        self.vci.check = 0
+
+                        # -------------
+                        test = "history"
+                        # -------------
+                        self.vci.history = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'history2'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        # if intf.force:
+                        self.vci.history = 0
+
+                        # -------------
+                        test = "write_protect_on"
+                        # -------------
+                        self.vci.write_protect_on = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'write_protect_on'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        # if intf.force:
+                        self.vci.write_protect_on = 0
+
+                        # -------------
+                        test = "write_protect_off"
+                        # -------------
+                        self.vci.write_protect_off = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'write_protect_off'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        # if intf.force:
+                        self.vci.write_protect_off = 0
+
+                        # -------------
+                        test = "write_protect_status"
+                        # -------------
+                        self.vci.write_protect_status = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'write_protect_status'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        # if intf.force:
+                        self.vci.write_protect_status = 0
+
+                        # -------------
+                        test = "set_comment"  # set comment of vol
+                        # -------------
+                        self.vci.set_comment = 1
+                        self.vci.comment = 'comment'
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_comment'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.set_comment = 0
+
+                        # -------------
+                        test = "export"  # volume export
+                        # -------------
+                        self.vci.export = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'inquire_vol'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.export = 0
+
+                        #test = "_import"  # volume import
+
+                        # -------------
+                        test = "ignore_storage_group"
+                        # -------------
+                        self.vci.ignore_storage_group = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_ignored_sg'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.ignore_storage_group = 0
+
+                        test = "forget_ignored_storage_group"
+                        self.vci.forget_ignored_storage_group = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'clear_ignored_sg'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.forget_ignored_storage_group = 0
+
+                        test = "forget_all_ignored_storage_groups"
+                        self.vci.forget_all_ignored_storage_groups = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'clear_all_ignored_sg'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.forget_all_ignored_storage_groups = 0
+
+                        # -------------
+                        test = "show_ignored_storage_groups"
+                        # -------------
+                        self.vci.show_ignored_storage_groups = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'list_ignored_sg'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.show_ignored_storage_groups = 0
+
+
+                        #test = "add"
+                        #test = "modify"
+
+                        # -------------
+                        test = "new_library"
+                        # -------------
+                        self.vci.new_library = 1
+                        self.vci.volume = 'volume'
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'new_library'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.new_library = 0
+
+                        # -------------
+                        test = "delete"
+                        # -------------
+                        self.vci.delete = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'delete_volume'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.delete = 0
+
+                        # -------------
+                        test = "erase"
+                        # -------------
+                        self.vci.erase = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'erase_volume'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.erase = 0
+
+                        # -------------
+                        test = "restore"
+                        # -------------
+                        self.vci.restore = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'restore_volume'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.restore = 0
+
+                        # -------------
+                        test = "recycle"
+                        # -------------
+                        self.vci.recycle = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'recycle_volume'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.recycle = 0
+
+                        #test = "clear_sg" 
+                        #test = "clear"
+
+                        # -------------
+                        test = "decr_file_count"
+                        # -------------
+                        self.vci.decr_file_count = 1
+                        self.vci.args.append('decr_file_count')
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'decr_file_count'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.decr_file_count = 0
+
+                        # -------------
+                        test = "read_only"
+                        # -------------
+                        self.vci.read_only = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_system_readonly'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.read_only = 0
+
+                        # -------------
+                        test = "full"
+                        # -------------
+                        self.vci.full = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_system_full'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.full = 0
+
+                        # -------------
+                        test = "migrated"
+                        # -------------
+                        self.vci.migrated = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_system_migrated'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.migrated = 0
+
+                        # -------------
+                        test = "duplicated"
+                        # -------------
+                        self.vci.duplicated = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_system_duplicated'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.duplicated = 0
+
+                        # -------------
+                        test = "no_access"
+                        # -------------
+                        self.vci.no_access = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_system_notallowed'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.no_access = 0
+
+                        # -------------
+                        test = "not_allowed"
+                        # -------------
+                        self.vci.not_allowed = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'set_system_notallowed'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.not_allowed = 0
+
+                        # -------------
+                        test = "lm_to_clear"
+                        # -------------
+                        self.vci.lm_to_clear = 1
+                        sent_msg.reset_mock()
+                        volume_clerk_client.do_work(self.vci)
+                        self.assertTrue(
+                            """'work': 'clear_lm_pause'""" in str(
+                                sent_msg.mock_calls), test + ': ' + str(
+                                sent_msg.mock_calls))
+                        self.vci.lm_to_clear = 0
+
+                        #test = "list"
+                        #test = "ls_active"
 
 
 if __name__ == "__main__":
