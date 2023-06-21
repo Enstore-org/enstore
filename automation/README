@@ -1,3 +1,12 @@
 This folder contains automation scripts intended to help releaes new versions to Enstore deployments.
 
 In general, these scripts are intended to be run as cron jobs on Enstore host machines.
+
+There are intended to be scripts that do the following:
+
+- Download nonprod release rpms to a yum repo and verify
+- Download prod release rpms to a yum repo and very
+- Install releases on Enstore machines
+- Restart Enstore to pick up new version and run qual tests
+
+Note hosting of the PGP public key used to verify rpms is a WIP
