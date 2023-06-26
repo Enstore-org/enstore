@@ -203,7 +203,7 @@ def signal_handler(sig, frame):
         pass
 
     # A lot of utilities return different values when a signal terminates them.
-    quit(128 + sig)
+    delete_and_quit(128 + sig)
 
 
 def setup_signal_handling():
@@ -265,7 +265,7 @@ def setup_signal_handling():
 __pychecker__ = "no-shadowbuiltin"
 
 
-def quit(exit_code=1):
+def delete_and_quit(exit_code=1):
     # Perform cleanup.
     delete()
 
