@@ -214,11 +214,11 @@ def setup_signal_handling():
     #
     # This is important on Linux, which uses signals 32 (SIGCANCEL & SIGTIMER)
     # and 33 (SIGSETXID) to handle inter-thread processing of per-process
-    # resources.  SIGSETXID is used to coordinate all threads in a process
-    # changing thier UID and GID (and other things), which is a process
+    # resources. SIGSETXID is used to coordinate all threads in a process
+    # changing their UID and GID (and other things), which is a process
     # resource and not a per-thread resource.  These extra signals are not
-    # defined in signal.h, and thusly not in the singal module; which is why
-    # all of this extra coding is necesary to detect if there are even any
+    # defined in signal.h, and thus not in the signal module; which is why
+    # all of this extra coding is necessary to detect if there are even any
     # on a given system.  On Linux 2.6 the greatest normal signal is 31 and
     # SIGRTMIN is 34, which is why 32 and 33 need to be handled special.
     max_regular_signal = 0
@@ -257,12 +257,6 @@ def setup_signal_handling():
                     sys.stderr.flush()
                 except IOError:
                     pass
-
-
-# Simply ignoring the pychecker warning really isn't a great solution.  A
-# different name other than "quit" sould really be used.  It is just used
-# in so many places.
-__pychecker__ = "no-shadowbuiltin"
 
 
 def delete_and_quit(exit_code=1):
