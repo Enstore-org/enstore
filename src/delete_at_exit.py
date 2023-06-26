@@ -278,7 +278,7 @@ def quit(exit_code=1):
     except IOError:
         pass
 
-    # Exit in a unclean way.
+    # Exit in an unclean way.
     ### Note MWZ 2-26-2004: There is (likely) a reason why this has always
     ### been done with os._exit(), but I don't know what it is...
     os._exit(exit_code)
