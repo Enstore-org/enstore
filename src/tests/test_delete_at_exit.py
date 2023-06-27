@@ -27,61 +27,61 @@ class TestNullDriver(unittest.TestCase):
         return tsd
 
     def test_get_deletion_lists(self):
-        tsd = _get_tsd()
+        tsd = self._get_tsd()
         assertIsInstance(tsd, type(threading.local()))
         assertIsInstance(tsd.bfids, type([]))
         assertIsInstance(tsd.files, type([]))
 
     def test_clear_deletion_lists(self):
-        _register_fns()
-        _register_bfids()
-        tsd = _get_tsd()
+        self._register_fns()
+        self._register_bfids()
+        tsd = self._get_tsd()
         assertTrue(tsd.files)  # Non-empty lists are True
         assertTrue(tsd.bfids)
         delete_at_exit.deletion_list_lock.acquire()
         delete_at_exit.clear_deletion_lists()
         delete_at_exit.deletion_list_lock.release()
-        tsd = _get_tsd()
+        tsd = self._get_tsd()
         assertFalse(tsd.files)  # Empty lists are False
         assertFalse(tsd.bfids)
 
-    def test_register(self)
-        _register_fns()
-        tsd = _get_tsd()
+    def test_register(self):
+        self._register_fns()
+        tsd = self._get_tsd()
         assertTrue("fn" in tsd.files)
         assertTrue("fn2" in tsd.files)
 
-    def test_register_bfid(self)
-        _register_bfids()
-        tsd = _get_tsd()
+    def test_register_bfid(self):
+        self._register_bfids()
+        tsd = self._get_tsd()
         assertTrue("xxx1234" in tsd.bfids)
         assertTrue("xxx2234" in tsd.bfids)
 
-    def test_unregister(self)
-        _register_fns()
+    def test_unregister(self):
+        self._register_fns()
         delete_at_exit.unregister("fn")
-        tsd = _get_tsd()
+        tsd = self._get_tsd()
         assertFalse("fn" in tsd.files)
         assertTrue("fn2" in tsd.files)
         delete_at_exit.unregister("not_present_fn")
-        tsd = _get_tsd()
+        tsd = self._get_tsd()
         assertFalse("fn" in tsd.files)
         assertTrue("fn2" in tsd.files)
 
-    def test_unregister_bfid(self)
-        _register_bfids()
+    def test_unregister_bfid(self):
+        self._register_bfids()
         delete_at_exit.unregister_bfid("xxx1234")
-        tsd = _get_tsd()
+        tsd = self._get_tsd()
         assertFalse("xxx1234" in tsd.bfids)
         assertTrue("xxy2234" in tsd.bfids)
         delete_at_exit.unregister_bfid("not_present_bfid")
-        tsd = _get_tsd()
+        tsd = self._get_tsd()
         assertFalse("xxx1234" in tsd.bfids)
         assertTrue("xxy2234" in tsd.bfids)
 
-    def test_delete(self)
-        _register_fns()
-        _register_bfids()
+    def test_delete(self):
+        self._register_fns()
+        self._register_bfids()
         with patch.object(os.path, "exists", side_effect=[True, False]):
             with patch.object(namespace.storageFS, "rm") as mock_rm:
                 with patch.object(file_clerk_client.FileClient,
