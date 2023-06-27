@@ -41,9 +41,16 @@ signal_in_progress = False
 sip_lock = threading.Lock()
 
 
-# Build thread specific data.  get_deletion_lists() should only be called
+# Build thread specific data. Should only be called
 # from functions that have acquired the deletion_list_lock lock.
 def get_deletion_lists():
+    """
+    Build thread-specific data. Should only be called after acquiring
+    the deletion_list_lock lock.
+
+    returns:
+      threading.local: object with bfids and files being handled in thread
+    """
     global thread_specific_data
 
     if not hasattr(thread_specific_data, "bfids"):
@@ -54,9 +61,13 @@ def get_deletion_lists():
     return thread_specific_data
 
 
-# get_deletion_lists() should only be called from functions that have
+# Should only be called from functions that have
 # acquired the deletion_list_lock lock.
 def clear_deletion_lists():
+    """
+    Clear thread-specific data. Should only be called after acquiring
+    the deletion_list_lock lock.
+    """
     global thread_specific_data
 
     thread_specific_data.bfids = []
@@ -64,6 +75,13 @@ def clear_deletion_lists():
 
 
 def register(filename):
+    """
+    Add a filename to the tracking lists for this thread. Acquires and releases
+    deletion_list_lock
+
+    args:
+      filename (str): Filename to add to thread's tracking lists
+    """
     if filename == '/dev/null':
         return
 
@@ -77,6 +95,13 @@ def register(filename):
 
 
 def register_bfid(bfid):
+    """
+    Add a BFID to the tracking lists for this thread. Acquires and releases
+    deletion_list_lock
+
+    args:
+      bfid (str): BFID to add to thread's tracking lists
+    """
     deletion_list_lock.acquire()
 
     _deletion_list_bfids = get_deletion_lists().bfids
@@ -87,6 +112,13 @@ def register_bfid(bfid):
 
 
 def unregister(filename):
+    """
+    Remove a filename from the tracking lists for this thread. Acquires and
+    releases deletion_list_lock. Performs no action if file is not in the list.
+
+    args:
+      filename (str): Filename to add to thread's tracking lists
+    """
     if filename == '/dev/null':
         return
 
@@ -100,6 +132,13 @@ def unregister(filename):
 
 
 def unregister_bfid(bfid):
+    """
+    Remove a BFID from the tracking lists for this thread. Acquires and
+    releases deletion_list_lock. Performs no action if BFID is not in the list.
+
+    args:
+      bfid (str): BFID to add to thread's tracking lists
+    """
     deletion_list_lock.acquire()
 
     _deletion_list_bfids = get_deletion_lists().bfids
@@ -110,6 +149,12 @@ def unregister_bfid(bfid):
 
 
 def delete():
+    """
+    Delete files and BFIDs registered to this thread. Filenames are deleted
+    from the namespace, which must be mounted to the host. BFIDs are deleted
+    from Enstore via a file clerk client. Acquires and releases
+    deletion_list_lock.
+    """
     deletion_list_lock.acquire()
 
     # Acquire the list of things to delete.
@@ -162,6 +207,15 @@ def delete():
 
 
 def signal_handler(sig, frame):
+    """
+    Replacement signal handler function to provide cleanup functionality in
+    response to signals. Logs signal details and flushes any stderr contents,
+    then calls delete function before exiting with sig-specific error code.
+
+    args:
+      sig (int): Signal number
+      frame (Frame): Stack frame when sig is received
+    """
     global signal_in_progress
 
     if signal_in_progress:
@@ -207,6 +261,11 @@ def signal_handler(sig, frame):
 
 
 def setup_signal_handling():
+    """Set the signal handler of most signals to the signal_handler method
+    above. Includes special casing to handle SIGCANCEL, SIGTIMER, and
+    SIGSETXID, which are not included in the signal module. For full
+    list of signals which do not have handlers replaced, see code.
+    """
     # This block of code is necessary on systems that use signals internally
     # within the C libraries.  It finds the highest user defined signal.
     # Then it creates a list of all signals between the highest signal
@@ -260,6 +319,12 @@ def setup_signal_handling():
 
 
 def delete_and_quit(exit_code=1):
+    """
+    Clean up files and BFIDs that are part of a work in progress and exit.
+
+    args:
+      exit_code (int): The exit code to exit with (default: 1)
+    """
     # Perform cleanup.
     delete()
 
