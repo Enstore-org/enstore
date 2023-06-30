@@ -1,0 +1,18 @@
+The scripts in this directory are planned to replace the
+existing 'farmlets' setup which is used along with enstore
+Estart/Estop to push reload Enstore.
+
+The idea is to use make_ansible.sh to create an ansible
+inventory that contains host and server information from
+the Enstore config, and use ansible playbooks to
+stop/start/restart servers in a more dependable fashion.
+
+In addition, this method should allow us to recognize
+servers which have been removed from the Enstore config,
+and turn these servers down appropriately by marking
+them with tombstones.
+
+
+So far, some progress has been made on generating the
+inventory, but playbooks to start/stop/restart have
+not been started.
