@@ -14,7 +14,7 @@ if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 # Setup Enstore vars
 . /usr/local/etc/setups.sh
 if [ $? -ne 0 ]
-then
+then 
     echo setup failed
     exit 1
 fi
@@ -51,14 +51,14 @@ else
     fi
 fi
 
-ansible_file=${ansible_dir}/${ENSTORE_GANG}.yml
+ansible_file=${ansible_dir}/${ENSTORE_GANG}.ini
 echo "Inventory file is ${ansible_file}"
 
 if [ -f ${ansible_file} ]; then
-    "Inventory file already exists; updating"
+    echo "Inventory file already exists; updating"
     update="update"
     sleep 2  # Give a chance to cancel
 fi
 
 inventory_script=$ENSTORE_DIR/external_distr/generate_ansible_inventory.py
-$inventory_script -o $ansible_file -c $ENSTORE_CONFIG_FILE $update
+$inventory_script -o $ansible_file -c $ENSTORE_CONFIG_FILE ${update-}
