@@ -1,93 +1,73 @@
 #!/usr/bin/env python
 
-import os
-import sys
 import configuration_server
-import pprint
 import argparse
 import re
 
+special_case_servers = {
+    'config': ['configuration_server'],
+    'server': [
+        'dispatcher',
+        'lm_director',
+        'backup',
+        'inquisitor',
+        'ratekeeper',
+        'event_relay',
+        'amqp_broker',
+    ],
+}
 
-def flatten2(prefix, value, flat_dict):
-        if type(value) == type({}):
-                for i in value.keys():
-                        flatten2(prefix+'.'+str(i), value[i], flat_dict)
-        elif type(value) == type([]) or type(value) == type(()):
-                for i in range(len(value)):
-                        flatten2(prefix+'.'+str(i), value[i], flat_dict)
-        else:
-                flat_dict[prefix] = value
-	
-def get_by_key(dict, key):
-    for i in dict.keys():
-        if dict[i].has_key(key):
-            print "%s.%s.%s"%(i,key,dict[i][key])
+allowed_groups = [
+    'mover',
+    'media_changer',
+    'library_manager',
+    'server',
+    'migrator',
+    'clerk',
+]
 
-def get_entry(dict, key):
+def get_server_group(server):
+    global special_case_servers
+    global allowed_groups
+    for group, special_servers in special_case_servers.items():
+        if server in special_servers:
+            return group
+    group = server.split('.')[-1]
+    if group in allowed_groups:
+        return group
+    group = server.split('_')[-1]
+    if group in allowed_groups:
+        return group
+    return ''
 
-    for i in dict[key].keys():
-      flat_dict = {}
-      flatten2(i, dict[key][i], flat_dict)
-      for j in flat_dict.keys():
-        print "%s:%s"%(j, flat_dict[j])
-      #pprint.pprint(flat_dict)
-    #for i in flat_dict.keys():
-    #    print i,flat_dict[i]
-	
-def server_hosts(dict):
-    o_d = []
-    for i in dict.keys():
-        if (dict[i].has_key("host")) and (not dict[i]["host"] in o_d):
-            if ((i.find("library_manager")  != -1) or
-                (i.find("media_changer")  != -1) or
-                (i.find("clerk") != -1) or
-                (i.find("server") != -1)):
-		    o_d.append(dict[i]["host"])
-            
-    o_d.sort()
-    for i in o_d:
-        h = i.split(".")[0]
-	print h
+def add_to_config_servers(config_servers, group, host, server):
+    if not config_servers.has_key(group):
+       config_servers[group] = {}
+    if not config_servers[group].has_key(host):
+       config_servers[group][host] = set()
+    config_servers[group][host].add(server)
 
-def int_part(s):
-    ipart = 0
-    for ch in s:
-        if ch.isdigit():
-            ipart = ipart * 10. +(ord(ch)-ord('0'))*1.
-    return ipart
+def extract_servers(config_file):
+    config_dict = load_config_dict(config_file)
+    config_servers = {}
+    for server in config_dict.keys():
+        if config_dict[server].has_key("host"):
+            group = get_server_group(server)
+            host = config_dict[server]["host"]
+            add_to_config_servers(config_servers, group, host, server)
+    return config_servers
 
-    
-def _sort(list_to_sort):
-    o_d = {}
-    for i in list_to_sort:
-        o_d[int_part(i)] = i
-    keys = o_d.keys()
-    keys.sort()
-    o_l = []
-    for key in keys:
-        o_l.append(o_d[key])
-    return o_l
 
-def mover_hosts(dict):
-    o_d = []
-    for i in dict.keys():
-        if (dict[i].has_key("host")) and (not dict[i]["host"] in o_d):
-            try:
-                if i.split(".")[1] == "mover":
-                    o_d.append(dict[i]["host"])
-            except IndexError:
-                pass
-
-    o_l = _sort(o_d)
-    for i in o_l:
-        h = i.split(".")[0]
-        print h
+def load_config_dict(config_file):
+    cd = configuration_server.ConfigurationDict()
+    cd.read_config(config_file)
+    return cd.configdict
 
 
 def parse_ini(ini_file):
     f = open(ini_file, 'r')
     group_re = r"\[([a-z_]+)\]"
-    host_re = r"([a-z0-9]+) s=\"([a-zA-Z0-9_ \.]+)\""
+    host_re = r"([a-z0-9\.]+) s=\"([a-zA-Z0-9_ \.]+)\""
     servers = {}
     current_group=''
     for line in f.readlines():
@@ -105,8 +85,6 @@ def parse_ini(ini_file):
            host_servers = host_match.groups()[1].split(" ")
            servers[current_group][host] = host_servers
     f.close()
-    pp = pprint.PrettyPrinter()
-    pp.pprint(servers)
     return servers
 
 def dump_ini(args):
@@ -121,13 +99,24 @@ def dump_ini(args):
     f.close()
 
 def update(args):
+    # Regenerate inventory from config and use that,
+    # but add servers from old ini to tombstone group
+    # if they are not in the newly generated inventory
     existing_inventory = parse_ini(args.output)
-    return (args.output + ".out", existing_inventory)
+    _, config_inventory = make(args)
+    for group, host_servers in existing_inventory.items():
+        config_host_servers = config_inventory.get(group, {})
+        for host, servers in host_servers.items():
+            config_servers = config_host_servers.get(host, [])
+            for server in servers:
+                if not server in config_servers:
+                    add_to_config_servers(config_inventory, 'tombstone', host, server)
+    return args.output, config_inventory
 
 
 def make(args):
-    ## TODO use approximate functions above to get data from config file
-    pass
+    config_inventory = extract_servers(args.config)
+    return args.output, config_inventory
 
 
 if __name__ == '__main__':
