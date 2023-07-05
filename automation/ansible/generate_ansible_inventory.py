@@ -67,7 +67,7 @@ def load_config_dict(config_file):
 def parse_ini(ini_file):
     f = open(ini_file, 'r')
     group_re = r"\[([a-z_]+)\]"
-    host_re = r"([a-z0-9\.]+) s=\"([a-zA-Z0-9_ \.]+)\""
+    host_re = r"([a-z0-9\.]+) [a-z_]+=\"([a-zA-Z0-9_ \.]+)\""
     servers = {}
     current_group=''
     for line in f.readlines():
@@ -94,7 +94,7 @@ def dump_ini(args):
         if group != '':
             f.write("[%s]\n" % group)
         for host, servers in node.items():
-            f.write("%s s=\"%s\"\n" % (host, " ".join(servers)))
+            f.write("%s %s=\"%s\"\n" % (host, group, " ".join(servers)))
         f.write("\n")
     f.close()
 
@@ -115,7 +115,10 @@ def update(args):
 
 
 def make(args):
+    # Get servers from config
     config_inventory = extract_servers(args.config)
+    # Add config server host
+    config_inventory['config'] = {args.config_server_host: ['configuration_server']}
     return args.output, config_inventory
 
 
@@ -128,6 +131,7 @@ if __name__ == '__main__':
     parser.add_argument('update', nargs='?', choices=['update'], help='Whether to update existing file or create new')
     parser.add_argument('-o', '--output', required=True, help='Output (ansible inventory) file')
     parser.add_argument('-c', '--config', required=True, help='(Enstore) config file')
+    parser.add_argument('-s', '--config-server-host', required=True, help='Config server')
     args = parser.parse_args()
 
     if args.update == "update":
