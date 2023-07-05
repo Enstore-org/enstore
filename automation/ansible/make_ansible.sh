@@ -61,4 +61,4 @@ if [ -f ${ansible_file} ]; then
 fi
 
 inventory_script=$ENSTORE_DIR/external_distr/generate_ansible_inventory.py
-$inventory_script -o $ansible_file -c $ENSTORE_CONFIG_FILE ${update-}
+$inventory_script -s $ENSTORE_CONFIG_HOST -o $ansible_file -c $ENSTORE_CONFIG_FILE ${update-}
