@@ -1,6 +1,6 @@
 import callback
 import fcntl
-import mocker
+import mock
 import os
 import pytest_socket
 import socket
@@ -28,7 +28,7 @@ class TestCallback(unittest.TestCase):
         self.assertRaises(OverflowError, callback.hex8, 4294967296)
 
     def test_get_socket_read_queue_length(self):
-        mock_socket = mocker.Mock(spec=socket.socket)
+        mock_socket = mock.Mock(spec=socket.socket)
         known_op_codes = {
             "Linux": 0x541B,
             "IRIX": 1074030207,
@@ -38,13 +38,13 @@ class TestCallback(unittest.TestCase):
 
         # Test fcntl.FIONREAD set
         fcntl.FIONREAD = "FIONREAD"
-        fcntl_mock = mocker.patch("fcntl.ioctl")
+        fcntl_mock = mock.patch("fcntl.ioctl")
         fcntl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == fcntl.FIONREAD else None
         self.assertTrue(get_socket_read_queue_length(mock_socket), 4)
 
         # Test fcntl.FIONREAD not set but known OS
         fcntl.FIONREAD = None
-        uname_mock = mocker.patch("os.uname")
+        uname_mock = mock.patch("os.uname")
         for os_name, op_code in known_op_codes.values():
             uname_mock.return_value = [os_name]
             fcntl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == op_code else None
@@ -59,8 +59,8 @@ class TestCallback(unittest.TestCase):
 
     def test___get_socket_state(self):
         import stat
-        os_mock = mocker.Mock()
-        mocker.patch('os', os_mock)
+        os_mock = mock.Mock()
+        mock.patch('os', os_mock)
         node_name = "my_inode"
 
         # Non-Linux OS returns None
@@ -71,7 +71,7 @@ class TestCallback(unittest.TestCase):
         os_mock.uname.return_value = ["Linux"]
         os_mock.fstat.return_value = {stat.ST_INO: [node_name]}
 
-        net_tcp_mock = mocker.Mock()
+        net_tcp_mock = mock.Mock()
         test_states = {
             4: "FIN_WAIT1",
             11: "CLOSING",
@@ -84,7 +84,7 @@ class TestCallback(unittest.TestCase):
                 "x",
                 node_name + "0" * (37 - len(node_name) - len(test_state_string)) + test_state_string,
             ]
-            self.assertEqual(__get_socket_state(mocker.Mock()), expected_state)
+            self.assertEqual(__get_socket_state(mock.Mock()), expected_state)
 
         # Test handled errors: these return None
         handled_error_types = [
@@ -95,14 +95,14 @@ class TestCallback(unittest.TestCase):
         ]
         for error in handled_error_types:
             os_mock.fstat.side_effect = error()
-            self.assertIsNone(__get_socket_state(mocker.Mock()))
+            self.assertIsNone(__get_socket_state(mock.Mock()))
 
     def test_log_socket_State(self):
         # Not that much to do here, this function just logs socket state
         # It has no return statements and raises no errors
-        mock_sock = mocker.Mock(spec=socket.socket)
-        mocker.patch('socket', mock_sock)
-        mock_trace = mocker.Mock()
+        mock_sock = mock.Mock(spec=socket.socket)
+        mock.patch('socket', mock_sock)
+        mock_trace = mock.Mock()
         mock.patch(Trace, mock_trace)
 
         # Test success even if socket throws errors
@@ -118,16 +118,16 @@ class TestCallback(unittest.TestCase):
         default_sock_ip = "0.0.0.0"
         arg_sock_ip = "1.1.1.1"
 
-        mock_sock = mocker.Mock(spec=socket.socket)
-        mocker.patch('socket', mock_sock)
+        mock_sock = mock.Mock(spec=socket.socket)
+        mock.patch('socket', mock_sock)
 
-        magic_mock_sock = mocker.MagicMock()
+        magic_mock_sock = mock.MagicMock()
         mock_sock.socket.return_value = magic_mock_sock
 
-        mock_config = mocker.Mock()
+        mock_config = mock.Mock()
         mock_config.get.return_value = default_sock_ip
 
-        mock_host_config = mocker.Mock()
+        mock_host_config = mock.Mock()
         mockpatch(host_config, mock_host_config)
         mock_host_config.get_config.return_value = mock_config
 
