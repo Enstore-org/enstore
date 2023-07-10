@@ -5,6 +5,7 @@ import os
 import pytest_socket
 import socket
 import unittest
+import struct
 
 import Trace
 
@@ -28,7 +29,11 @@ class TestCallback(unittest.TestCase):
         self.assertEqual(callback.hex8(4294967295), "ffffffff")
         self.assertRaises(OverflowError, callback.hex8, 4294967296)
 
-    def test_get_socket_read_queue_length(self):
+    @mock.patch('fcntl.ioctl')
+    @mock.patch('os.uname')
+    def test_get_socket_read_queue_length(self,
+            uname_mock,
+            ioctl_mock):
         mock_socket = mock.Mock(spec=socket.socket)
         known_op_codes = {
             "Linux": 0x541B,
@@ -39,21 +44,20 @@ class TestCallback(unittest.TestCase):
 
         # Test fcntl.FIONREAD set
         fcntl.FIONREAD = "FIONREAD"
-        fcntl_mock = mock.patch("fcntl.ioctl")
-        fcntl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == fcntl.FIONREAD else None
+        ioctl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == fcntl.FIONREAD else None
         self.assertTrue(callback.get_socket_read_queue_length(mock_socket), 4)
 
         # Test fcntl.FIONREAD not set but known OS
         fcntl.FIONREAD = None
-        uname_mock = mock.patch("os.uname")
-        for os_name, op_code in known_op_codes.values():
+        for os_name, op_code in known_op_codes.items():
             uname_mock.return_value = [os_name]
-            fcntl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == op_code else None
+            ioctl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == op_code else None
             self.assertTrue(callback.get_socket_read_queue_length(mock_socket), 4)
 
         # Test fcntl.FIONREAD not set and unknown OS
         uname_mock.return_value = "unknown"
-        self.assertRaises(AttributeError, callback.get_socket_read_queue_length(mock_socket))
+        with self.assertRaises(AttributeError):
+            callback.get_socket_read_queue_length(mock_socket)
 
     def test_get_unacked_packet_count(self):
         pass  # This function is unused
