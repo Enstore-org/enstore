@@ -179,7 +179,9 @@ def __get_socket_state(fd):
             # Find the entry that corresponds to this socket.
             state = ""
             for line in net_tcp_data:
+                print line
                 result = line.find(inode)
+                print result
                 if result >= 0:
                     state = line[33:37]
                     break

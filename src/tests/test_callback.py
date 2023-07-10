@@ -15,6 +15,7 @@ class TestCallback(unittest.TestCase):
         # Make sure we don't get actual sockets
         # This allows us to mock less
         pytest_socket.disable_socket()
+        pass
 
     def test___init__(self):
         pass
@@ -57,34 +58,40 @@ class TestCallback(unittest.TestCase):
     def test_get_unacked_packet_count(self):
         pass  # This function is unused
 
-    def test___get_socket_state(self):
+    @mock.patch('os.fstat')
+    @mock.patch('os.uname')
+    def test___get_socket_state(self, os_uname_mock, os_fstat_mock):
         import stat
-        os_mock = mock.Mock()
-        mock.patch('os', os_mock)
         node_name = "my_inode"
+        test_fd = open("/dev/null", "r").fileno()
+        _callback__get_socket_state = getattr(callback, '__get_socket_state')
 
         # Non-Linux OS returns None
-        os_mock.uname.return_value = ["Unknown"]
-        self.assertIsNone(__get_socket_state(123))
+        os_uname_mock.return_value = ["Unknown"]
+         
+        self.assertIsNone(_callback__get_socket_state(test_fd))
 
         # Test good responses (only on Linux)
-        os_mock.uname.return_value = ["Linux"]
-        os_mock.fstat.return_value = {stat.ST_INO: [node_name]}
+        os_uname_mock.return_value = ["Linux"]
+        # Mock fstat return my inode
+        os_fstat_mock.return_value = {stat.ST_INO: node_name}
 
-        net_tcp_mock = mock.Mock()
         test_states = {
             4: "FIN_WAIT1",
             11: "CLOSING",
             18: "UNKNOWN",
         }
-        for test_state, expected_state in test_states:
+        for test_state, expected_state in test_states.items():
             hex_test_state = str(hex(test_state))
-            test_state_string = "0" * (37 - 33 - len(hex_test_state)) + hex_test_state
-            net_tcp_mock.readlines.return_value = [
-                "x",
-                node_name + "0" * (37 - len(node_name) - len(test_state_string)) + test_state_string,
-            ]
-            self.assertEqual(__get_socket_state(mock.Mock()), expected_state)
+            print(hex_test_state)
+            # Pad read data starting with inode
+            read_data = node_name + "0" * (33 - len(node_name))
+            # End read data with padded hex state
+            read_data = read_data + "0x" + "0" * (2 - len(hex_test_state[2:])) + hex_test_state[2:]
+            m = mock.mock_open(read_data=read_data)
+            with mock.patch('__builtin__.open', m):
+                print expected_state
+                self.assertEqual(_callback__get_socket_state(test_fd), expected_state)
 
         # Test handled errors: these return None
         handled_error_types = [
@@ -94,8 +101,8 @@ class TestCallback(unittest.TestCase):
             OSError,
         ]
         for error in handled_error_types:
-            os_mock.fstat.side_effect = error()
-            self.assertIsNone(__get_socket_state(mock.Mock()))
+            os_fstat_mock.side_effect = error()
+            self.assertIsNone(_callback__get_socket_state(test_fd))
 
     def test_log_socket_State(self):
         # Not that much to do here, this function just logs socket state
