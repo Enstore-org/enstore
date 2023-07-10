@@ -51,6 +51,14 @@ jobs:
       run: |
        cd ~/rpmbuild/
        rpmbuild -ba SPECS/enstore_rpm.spec
+    - name: Sign Enstore RPM
+      env:
+        ENSTORE_ADMIN_RPM_GPG_SIGN: ${{ secrets.ENSTORE_ADMIN_RPM_GPG_SIGN }}
+        ENSTORE_ADMIN_RPM_GPG_SIGN_PASSPHRASE: ${{ secrets.ENSTORE_ADMIN_RPM_GPG_SIGN_PASSPHRASE }}
+      run: |
+       cp /tmp/rpmmacros ~/.rpmmacros
+       echo -e "$ENSTORE_ADMIN_RPM_GPG_SIGN" | gpg --import
+       /tmp/rpm-sign.exp /github/home/rpmbuild/RPMS/x86_64/${{ steps.prepare_build.outputs.rpm_name }}.el7.x86_64.rpm
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
