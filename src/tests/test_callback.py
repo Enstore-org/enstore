@@ -41,7 +41,7 @@ class TestCallback(unittest.TestCase):
         fcntl.FIONREAD = "FIONREAD"
         fcntl_mock = mock.patch("fcntl.ioctl")
         fcntl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == fcntl.FIONREAD else None
-        self.assertTrue(get_socket_read_queue_length(mock_socket), 4)
+        self.assertTrue(callback.get_socket_read_queue_length(mock_socket), 4)
 
         # Test fcntl.FIONREAD not set but known OS
         fcntl.FIONREAD = None
@@ -49,11 +49,11 @@ class TestCallback(unittest.TestCase):
         for os_name, op_code in known_op_codes.values():
             uname_mock.return_value = [os_name]
             fcntl_mock.side_effect = lambda fd, op, arg: struct.pack("i", 4) if op == op_code else None
-            self.assertTrue(get_socket_read_queue_length(mock_socket), 4)
+            self.assertTrue(callback.get_socket_read_queue_length(mock_socket), 4)
 
         # Test fcntl.FIONREAD not set and unknown OS
         uname_mock.return_value = "unknown"
-        self.assertRaises(AttributeError, get_socket_read_queue_length(mock_socket))
+        self.assertRaises(AttributeError, callback.get_socket_read_queue_length(mock_socket))
 
     def test_get_unacked_packet_count(self):
         pass  # This function is unused
@@ -121,32 +121,41 @@ class TestCallback(unittest.TestCase):
         # Make sure it logs something: state and/or socket errors
         mock_trace.log.assert_called()
 
-    def test_get_callback(self):
+    @mock.patch('socket.socket')
+    @mock.patch('host_config.get_config')
+    @mock.patch('host_config.get_default_interface_ip')
+    def test_get_callback(self,
+            get_default_interface_ip_mock,
+            get_config_mock,
+            socket_mock):
+        config_sock_ip = "0.1.0.1"
         default_sock_ip = "0.0.0.0"
         arg_sock_ip = "1.1.1.1"
 
-        mock_sock = mock.Mock(spec=socket.socket)
-        mock.patch('socket', mock_sock)
-
         magic_mock_sock = mock.MagicMock()
-        mock_sock.socket.return_value = magic_mock_sock
+        magic_mock_sock.getsockname.return_value = ['a', '2']
+        socket_mock.return_value = magic_mock_sock
+
+        get_config_mock.return_value = None
+        get_default_interface_ip_mock.return_value = config_sock_ip
+
+        _, _, s = callback.get_callback()
+        magic_mock_sock.bind.assert_called_once_with((config_sock_ip, 0))
+        self.assertEqual(s, magic_mock_sock)
+        magic_mock_sock.reset_mock()
 
         mock_config = mock.Mock()
+        get_config_mock.return_value = mock_config
         mock_config.get.return_value = default_sock_ip
 
-        mock_host_config = mock.Mock()
-        mockpatch(host_config, mock_host_config)
-        mock_host_config.get_config.return_value = mock_config
+        _, _, s = callback.get_callback()
+        magic_mock_sock.bind.assert_called_once_with((default_sock_ip, 0))
+        self.assertEqual(s, magic_mock_sock)
+        magic_mock_sock.reset_mock()
 
-        h, _, s = get_callback()
-        assertEqual(h, default_sock_ip)
-        magic_mock_sock.assert_called_once('bind', (default_sock_ip, 0))
-        assertEqual(s, magic_mock_sock)
-
-        h, _, s = get_callback(arg_sock_ip)
-        assertEqual(h, arg_sock_ip)
-        magic_mock_sock.assert_called_once('bind', (arg_sock_ip, 0))
-        assertEqual(s, magic_mock_sock)
+        _, _, s = callback.get_callback(arg_sock_ip)
+        magic_mock_sock.bind.assert_called_once_with((arg_sock_ip, 0))
+        self.assertEqual(s, magic_mock_sock)
 
 
     def test_connect_to_callback(self):
