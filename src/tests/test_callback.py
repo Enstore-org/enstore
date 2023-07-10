@@ -9,6 +9,10 @@ import struct
 
 import Trace
 
+"""
+Note this does not test many of the methods in callback.py which are
+essentially wrappers for socket IO.
+"""
 
 class TestCallback(unittest.TestCase):
 
