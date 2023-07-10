@@ -108,22 +108,26 @@ class TestCallback(unittest.TestCase):
             os_fstat_mock.side_effect = error()
             self.assertIsNone(_callback__get_socket_state(test_fd))
 
-    def test_log_socket_State(self):
+    @mock.patch('Trace.log')
+    @mock.patch('callback.get_socket_read_queue_length')
+    def test_log_socket_state(self,
+            gsrql_mock,
+            log_mock):
         # Not that much to do here, this function just logs socket state
         # It has no return statements and raises no errors
-        mock_sock = mock.Mock(spec=socket.socket)
-        mock.patch('socket', mock_sock)
-        mock_trace = mock.Mock()
-        mock.patch(Trace, mock_trace)
+        mock_sock = mock.MagicMock()
 
         # Test success even if socket throws errors
         mock_sock.getsockopt.side_effect = socket.error()
         mock_sock.getpeername.side_effect = socket.error()
 
-        log_socket_state(sock)
+        callback.log_socket_state(mock_sock)
+
+        # Make sure it tries to get some state
+        gsrql_mock.assert_called()
 
         # Make sure it logs something: state and/or socket errors
-        mock_trace.log.assert_called()
+        log_mock.assert_called()
 
     @mock.patch('socket.socket')
     @mock.patch('host_config.get_config')
