@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+
+### rpm-sign.exp -- Sign RPMs by sending the passphrase.
+
+set timeout 600
+set rpmfile [lindex $argv 0]
+spawn rpm --addsign $rpmfile
+expect -exact "Enter pass phrase: "
+send "$env(ENSTORE_ADMIN_RPM_GPG_SIGN_PASSPHRASE)\n"
+expect eof
+
+## end of rpm-sign.exp
