@@ -1,5 +1,6 @@
 import unittest
 import os
+import pwd
 import StringIO
 import threading
 import mock
@@ -19,6 +20,7 @@ class TestLoggerClient(unittest.TestCase):
 
     def setUp(self):
         self.sent_msg = mock.MagicMock()
+        self.user = pwd.getpwuid(os.getuid())[0]
         udp_client.UDPClient.send = self.sent_msg
         udp_client.UDPClient.send_no_wait = self.sent_msg
         csc = mock_csc.csc()
@@ -36,7 +38,7 @@ class TestLoggerClient(unittest.TestCase):
         self.log_client.log_func(t, pid, name, args)
         unique_id = True
         p1 = {
-            'message': '9999999 %s M LOG_CLIENT  6 an log message' %os.getenv('USER'),
+            'message': '9999999 %s M LOG_CLIENT  6 an log message' % self.user,
             'work': 'log_message'}
         p2 = ('131.225.214.78', 7504)
         self.sent_msg.assert_called_with(p1, p2, unique_id=True)
@@ -77,6 +79,7 @@ class TestTCPLoggerClient(unittest.TestCase):
         enstore_functions.get_enstore_tmp_dir.side_effect = tmp_dir_side_effect
         threading.Thread = mock.MagicMock()
         self.sent_msg = mock.MagicMock()
+        self.user = pwd.getpwuid(os.getuid())[0]
         csc = mock_csc.csc()
         self.log_client = log_client.TCPLoggerClient(csc)
 
@@ -95,7 +98,7 @@ class TestTCPLoggerClient(unittest.TestCase):
         self.log_client.message_buffer.put_nowait = self.sent_msg
         self.log_client.log_func(t, pid, name, args)
         p1 = {
-            'message': '9999999 %s M LOG_CLIENT  6 an log message' % os.getenv('USER'),
+            'message': '9999999 %s M LOG_CLIENT  6 an log message' % self.user,
             'work': 'log_message',
             'sender': mock.ANY}
         self.sent_msg.assert_called_with(p1)
@@ -120,6 +123,9 @@ class TestTCPLoggerClient(unittest.TestCase):
 
 
 class TestMisc(unittest.TestCase):
+    
+    def setUp(self):
+        self.user = pwd.getpwuid(os.getuid())[0]
 
     def test_genMsgType(self):
         """
@@ -176,20 +182,20 @@ class TestMisc(unittest.TestCase):
         os.environ['ENSTORE_CONFIG_HOST'] = '127.0.0.1'
         with mock.patch('sys.stderr', new=StringIO.StringIO()):
             log_client.logthis()
-        formatted_str = "%06d %s I LOGIT  HELLO" % (os.getpid(),os.getenv('USER'))
+        formatted_str = "%06d %s I LOGIT  HELLO" % (os.getpid(),self.user)
         param_1 = {'message': formatted_str, 'work': 'log_message'}
         sent_msg.assert_called_with(param_1, None, unique_id=True)
 
     def test_parse(self):
         keys = ['time', 'host', 'pid', 'user', 'severity', 'server', 'msg']
         s_keys = ['msg_type', 'msg_dict']
-        linein = "15:30:11 fmv18019.fnal.gov 052082 %s I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread" % os.getenv('USER')
+        linein = "15:30:11 fmv18019.fnal.gov 052082 %s I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread" % self.user 
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)
         for k in s_keys:
             self.assertFalse(k in a_dict, k)
-        linein = "06:10:40 dmsen02.fnal.gov 029136 %s I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients" % os.getenv('USER')
+        linein = "06:10:40 dmsen02.fnal.gov 029136 %s I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients" % self.user 
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)

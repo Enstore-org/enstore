@@ -613,9 +613,9 @@ class TCPLoggerClient(LoggerClient):
 def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
     """stand alone function to send a log message
     Args:
-        sev_level: severity level
-        message: message to send
-        logname: name of the log
+        sev_level (int): severity level
+        message (str): message to send
+        logname (str): name of the log
 
     """
     import configuration_client
@@ -633,11 +633,10 @@ def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
     Trace.init(logname)
     Trace.log(sev_level, message)
 
-# send a message to the logger
 
 
 def logit(logc, message="HELLO", logname="LOGIT"):
-    """Test function to send a log message"""
+    """Test function to send a log message to log server"""
     # reset our log name
     logc.log_name = logname
 
@@ -663,16 +662,16 @@ def parse(lineIn):
     """parse a log line and return a dictionary
        NB - doesn't seem to be used anywhere
     Args:
-        lineIn(str): log line to parse
+        lineIn (str): log line to parse
     Returns:
         msg_dict: dictionary with the following values:
-            time(str): time
-            host(str): host 
-            pid(str): pid
-            user(str): user
-            severity(str): severity
-            server(str): server
-            msg(str): message
+            time (str): time
+            host (str): host 
+            pid (str): pid
+            user (str): user
+            severity (str): severity
+            server (str): server
+            msg (str): message
 
         """
 
