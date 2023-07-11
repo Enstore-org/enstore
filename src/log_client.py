@@ -58,6 +58,7 @@ MAX_QUEUE_SIZE = 200000
 
 def genMsgType(msg, ln, severity):
     """generate formatted message for log server
+       NB - does not seem to be used anywhere
     args:
         msg(str): message
         ln(int): line number
@@ -354,6 +355,8 @@ class LoggerClient(generic_client.GenericClient):
         """method that is called to send message to log_server.
           Intended to be over_ridden using Trace.set_log_func()
           or log_client.LoggerClient.log_func = <function>
+          NB - only reset in encp as far as I can tell
+
           Args:
             time: time of message
             pid: process id of message

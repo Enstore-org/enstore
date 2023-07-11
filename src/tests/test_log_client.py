@@ -13,6 +13,8 @@ import mock_csc
     Author: Dennis Box
     Date: 2023-07-10
 """
+
+
 class TestLoggerClient(unittest.TestCase):
 
     def setUp(self):
@@ -123,7 +125,7 @@ class TestMisc(unittest.TestCase):
 
         the list test_lines was derived from the log_client.py file with the
         following command:
-        grep 'if string.find.*lowLine' ../log_client.py | sed -e 's/^.*Line, //g' -e 's/\(".*"\)\(.*\)/\1/'| sort | tr "\n" ","
+        grep 'if string.find.*lowLine' ../log_client.py | sed -e 's/^.*Line, //g' -e 's/\\(".*"\\)\\(.*\\)/\1/'| sort | tr "\n" ","
         sometimes members in test_lines are repeated, the same input line
         is handled by different if statements
         """
@@ -171,7 +173,7 @@ class TestMisc(unittest.TestCase):
         os.environ['ENSTORE_CONFIG_HOST'] = '127.0.0.1'
         with mock.patch('sys.stderr', new=StringIO.StringIO()):
             log_client.logthis()
-        formatted_str = "%06d enstore I LOGIT  HELLO" % os.getpid()
+        formatted_str = "%06d %s I LOGIT  HELLO" % (os.getlogin(), os.getpid())
         param_1 = {'message': formatted_str, 'work': 'log_message'}
         sent_msg.assert_called_with(param_1, None, unique_id=True)
 
@@ -184,7 +186,8 @@ class TestMisc(unittest.TestCase):
             self.assertTrue(k in a_dict, k)
         for k in s_keys:
             self.assertFalse(k in a_dict, k)
-        linein = "06:10:40 dmsen02.fnal.gov 029136 enstore I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients"
+        linein = "06:10:40 dmsen02.fnal.gov 029136 %s I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients" % os.getlogin(
+        )
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)
