@@ -17,7 +17,8 @@ jobs:
        source /data/setup-enstore
        cd /__w/enstore/enstore
        export PYTHONPATH=`pwd`:`pwd`/src:`pwd`/HTMLgen:`pwd`/PyGreSQL:$PYTHONPATH
-       su enstore -m  -c coverage run -m pytest src/tests || printf "some unit test  exited code $?\n\n"
+       export USER=enstore
+       coverage run -m pytest src/tests || printf "some unit test  exited code $?\n\n"
        coverage report --omit 'HTMgen/*','DBUtils/*','config-file*','/opt/*','src/tests/*','*/__init__.py'
        coverage html  --omit 'HTMgen/*','DBUtils/*','config-file*','/opt/*','src/tests/*','*/__init__.py'
        tar cvzf htmlcov.tar htmlcov
