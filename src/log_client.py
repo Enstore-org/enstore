@@ -612,6 +612,7 @@ def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
 
 
 def logit(logc, message="HELLO", logname="LOGIT"):
+    """Test function to send a log message"""
     # reset our log name
     logc.log_name = logname
 
