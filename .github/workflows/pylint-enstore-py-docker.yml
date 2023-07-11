@@ -14,16 +14,13 @@ jobs:
     - uses: actions/checkout@v2
     - name: run unittests with pytest
       run: |
-       function unittests(){
        source /data/setup-enstore
        cd /__w/enstore/enstore
        export PYTHONPATH=`pwd`:`pwd`/src:`pwd`/HTMLgen:`pwd`/PyGreSQL:$PYTHONPATH
-       coverage run -m pytest src/tests || printf "some unit test  exited code $?\n\n"
+       su enstore -c coverage run -m pytest src/tests || printf "some unit test  exited code $?\n\n"
        coverage report --omit 'HTMgen/*','DBUtils/*','config-file*','/opt/*','src/tests/*','*/__init__.py'
        coverage html  --omit 'HTMgen/*','DBUtils/*','config-file*','/opt/*','src/tests/*','*/__init__.py'
        tar cvzf htmlcov.tar htmlcov
-       }
-       su enstore -c unittests 
     - name: Archive coverage report
       uses: actions/upload-artifact@v2
       with:

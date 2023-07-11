@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 """
-Log client.                                                           #
-This is a simple log client. It sends log messages to the log server  #
-via port specified in the Log Server dictionary entry in the enstore  #
-configuration file ( can be specified separately)                     #
+This is a simple log client. It sends log messages to the log server  
+via port specified in the Log Server dictionary entry in the enstore  
+configuration file ( can be specified separately)                     
 """
 
 # system imports
@@ -322,6 +321,9 @@ def genMsgType(msg, ln, severity):
 
 
 class LoggerClient(generic_client.GenericClient):
+    """The LoggerClient class is a generic client that is used to send
+    messages to the logger server. 
+    """
 
     def __init__(self, csc, name=MY_NAME, server_name=MY_SERVER,
                  server_address=None, flags=0, alarmc=None,
@@ -349,8 +351,20 @@ class LoggerClient(generic_client.GenericClient):
         Trace.set_log_func(self.log_func)
 
     def log_func(self, time, pid, name, args):
+        """method that is called to send message to log_server.
+          Intended to be over_ridden using Trace.set_log_func()
+          or log_client.LoggerClient.log_func = <function>
+          Args:
+            time: time of message
+            pid: process id of message
+            name: name of sender
+            args: tuple of arguments
+
+        """
+
         #Even though this implimentation of log_func() does not use the time
         # parameter, others will.
+
         __pychecker__ = "unusednames=time"
 
         severity = args[0]
@@ -570,16 +584,22 @@ class TCPLoggerClient(LoggerClient):
                         except socket.error, detail:
                             print "will try to reconnect"
 
-# stand alone function to send a log message
 
 
 def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
+    """stand alone function to send a log message
+    Args:
+        sev_level: severity level
+        message: message to send
+        logname: name of the log
+    """
     import configuration_client
     # get config port and host
     port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
     host = os.environ.get('ENSTORE_CONFIG_HOST', '')
     # convert port to integer
-    if port: port = int(port)
+    if port:
+        port = int(port)
     if port and host:
         # if port and host defined create config client
         csc = configuration_client.ConfigurationClient((host, port))
@@ -614,6 +634,20 @@ def logit(logc, message="HELLO", logname="LOGIT"):
 
 
 def parse(lineIn):
+    """parse a log line and return a dictionary
+    Args:
+        lineIn(str): log line to parse
+    Returns:
+        msg_dict: dictionary with the following values:
+            time(str): time
+            host(str): host 
+            pid(str): pid
+            user(str): user
+            severity(str): severity
+            server(str): server
+            msg(str): message
+
+        """
 
     tmpLine = string.split(lineIn)
     time = tmpLine[0]
