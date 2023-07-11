@@ -1,20 +1,9 @@
 import unittest
 import os
-import pwd
-import socket
-import sys
-import time
 import mock
 import StringIO
 import threading
-import multiprocessing
-import socket
-import fcntl
-import select
-import Queue
-import Trace
 import e_errors
-import generic_client
 import enstore_functions
 import log_client
 import udp_client
@@ -55,19 +44,19 @@ class TestLoggerClient(unittest.TestCase):
 
     def test_get_logfile_name(self):
         self.sent_msg.reset_mock()
-        logname = self.log_client.get_logfile_name()
+        self.log_client.get_logfile_name()
         self.sent_msg.assert_called_with(
             {'work': 'get_logfile_name'}, ('131.225.214.78', 7504), 0, 0)
 
     def test_get_logfiles(self):
         self.sent_msg.reset_mock()
-        logname = self.log_client.get_logfiles('today')
+        self.log_client.get_logfiles('today')
         self.sent_msg.assert_called_with(
             {'work': 'get_logfiles', 'period': 'today'}, ('131.225.214.78', 7504), 0, 0)
 
     def test_get_last_logfile_name(self):
         self.sent_msg.reset_mock()
-        logname = self.log_client.get_last_logfile_name()
+        self.log_client.get_last_logfile_name()
         self.sent_msg.assert_called_with(
             {'work': 'get_last_logfile_name'}, ('131.225.214.78', 7504), 0, 0)
 
@@ -210,7 +199,7 @@ class TestLoggerClientInterface(unittest.TestCase):
         with mock.patch('sys.stderr', new=StringIO.StringIO()) as std_err:
             with mock.patch('sys.stdout', new=StringIO.StringIO()) as std_out:
                 with mock.patch("sys.exit") as exit_mock:
-                    with mock.patch('generic_client.GenericClient.check_ticket') as check_please:
+                    with mock.patch('generic_client.GenericClient.check_ticket'):
                         log_client.do_work(self.lci)
                         exit_mock.assert_called_with(0)
                         self.assertTrue('help' in std_out.getvalue())
