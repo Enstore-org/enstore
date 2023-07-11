@@ -562,6 +562,7 @@ class TCPLoggerClient(LoggerClient):
         return True
 
     def pull_message(self):
+        """pull message from tcp buffer if possible"""
         message = None
         try:
             message = self.message_buffer.get(True, 1)
@@ -659,6 +660,7 @@ def logit(logc, message="HELLO", logname="LOGIT"):
 
 def parse(lineIn):
     """parse a log line and return a dictionary
+       NB - doesn't seem to be used anywhere
     Args:
         lineIn(str): log line to parse
     Returns:

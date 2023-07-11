@@ -36,12 +36,15 @@ class TestLoggerClient(unittest.TestCase):
         self.log_client.log_func(t, pid, name, args)
         unique_id = True
         p1 = {
-            'message': '9999999 %s M LOG_CLIENT  6 an log message' %os.getlogin(),
+            'message': '9999999 %s M LOG_CLIENT  6 an log message' %os.getenv('USER'),
             'work': 'log_message'}
         p2 = ('131.225.214.78', 7504)
         self.sent_msg.assert_called_with(p1, p2, unique_id=True)
 
     def test_set_get_logpriority(self):
+        # NB the log server reacts to the log priority
+        # this needs to be tested with the log server running
+        # or in the log server test
         log_prio = 99999
         self.assertNotEqual(self.log_client.get_logpriority(), log_prio)
         self.log_client.set_logpriority(log_prio)
@@ -92,7 +95,7 @@ class TestTCPLoggerClient(unittest.TestCase):
         self.log_client.message_buffer.put_nowait = self.sent_msg
         self.log_client.log_func(t, pid, name, args)
         p1 = {
-            'message': '9999999 %s M LOG_CLIENT  6 an log message' %os.getlogin(),
+            'message': '9999999 %s M LOG_CLIENT  6 an log message' % os.getenv('USER'),
             'work': 'log_message',
             'sender': mock.ANY}
         self.sent_msg.assert_called_with(p1)
@@ -173,21 +176,20 @@ class TestMisc(unittest.TestCase):
         os.environ['ENSTORE_CONFIG_HOST'] = '127.0.0.1'
         with mock.patch('sys.stderr', new=StringIO.StringIO()):
             log_client.logthis()
-        formatted_str = "%06d %s I LOGIT  HELLO" % (os.getlogin(), os.getpid())
+        formatted_str = "%06d %s I LOGIT  HELLO" % (os.getpid(),os.getenv('USER'))
         param_1 = {'message': formatted_str, 'work': 'log_message'}
         sent_msg.assert_called_with(param_1, None, unique_id=True)
 
     def test_parse(self):
         keys = ['time', 'host', 'pid', 'user', 'severity', 'server', 'msg']
         s_keys = ['msg_type', 'msg_dict']
-        linein = "15:30:11 fmv18019.fnal.gov 052082 %s I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread" % os.getlogin()
+        linein = "15:30:11 fmv18019.fnal.gov 052082 %s I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread" % os.getenv('USER')
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)
         for k in s_keys:
             self.assertFalse(k in a_dict, k)
-        linein = "06:10:40 dmsen02.fnal.gov 029136 %s I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients" % os.getlogin(
-        )
+        linein = "06:10:40 dmsen02.fnal.gov 029136 %s I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients" % os.getenv('USER')
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)
