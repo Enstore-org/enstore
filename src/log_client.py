@@ -427,6 +427,25 @@ class LoggerClient(generic_client.GenericClient):
 
 
 class TCPLoggerClient(LoggerClient):
+    """
+    Optional TCP/IP communications for log server.
+
+    Under heavy network traffic a lot of UDP log messages may 
+    get lost. TCP/IP communications guarantee message delivery. 
+    This change implements TCP/IP log server, running in a separate 
+    thread and accepting connections on the same as UDP server port. 
+    TCP/IP log client takes messages into intermediate queue 
+    and sends the out of it. IF log client looses connection 
+    is starts dumping messages into a local file and tries to 
+    re-establish connection. 
+    The TCP/Client is used in mover.py to guaranty that all messages 
+    from movers are logged and in migrator.py to log messages which 
+    can be very big in size.
+
+    To use, 'use_tcp_log_client': True in the config file for
+    particular mover or migrator.
+    """
+
     def __init__(self, csc, name=MY_NAME, server_name=MY_SERVER,
                  server_address=None, flags=0, alarmc=None,
                  rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES, reconnect_timeout=RECONNECT_TIMEOUT):
@@ -595,6 +614,7 @@ def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
         sev_level: severity level
         message: message to send
         logname: name of the log
+
     """
     import configuration_client
     # get config port and host

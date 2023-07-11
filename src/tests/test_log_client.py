@@ -36,7 +36,7 @@ class TestLoggerClient(unittest.TestCase):
         self.log_client.log_func(t, pid, name, args)
         unique_id = True
         p1 = {
-            'message': '9999999 enstore M LOG_CLIENT  6 an log message',
+            'message': '9999999 %s M LOG_CLIENT  6 an log message' %os.getlogin(),
             'work': 'log_message'}
         p2 = ('131.225.214.78', 7504)
         self.sent_msg.assert_called_with(p1, p2, unique_id=True)
@@ -92,7 +92,7 @@ class TestTCPLoggerClient(unittest.TestCase):
         self.log_client.message_buffer.put_nowait = self.sent_msg
         self.log_client.log_func(t, pid, name, args)
         p1 = {
-            'message': '9999999 enstore M LOG_CLIENT  6 an log message',
+            'message': '9999999 %s M LOG_CLIENT  6 an log message' %os.getlogin(),
             'work': 'log_message',
             'sender': mock.ANY}
         self.sent_msg.assert_called_with(p1)
@@ -180,7 +180,7 @@ class TestMisc(unittest.TestCase):
     def test_parse(self):
         keys = ['time', 'host', 'pid', 'user', 'severity', 'server', 'msg']
         s_keys = ['msg_type', 'msg_dict']
-        linein = "15:30:11 fmv18019.fnal.gov 052082 enstore I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread"
+        linein = "15:30:11 fmv18019.fnal.gov 052082 %s I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread" % os.getlogin()
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)
