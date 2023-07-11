@@ -1,15 +1,18 @@
 import unittest
 import os
-import mock
 import StringIO
 import threading
+import mock
 import e_errors
 import enstore_functions
 import log_client
 import udp_client
 import mock_csc
-
-
+""" Test the log_client module
+    The log_client module is used to send log messages to the log server.
+    Author: Dennis Box
+    Date: 2023-07-10
+"""
 class TestLoggerClient(unittest.TestCase):
 
     def setUp(self):
@@ -114,13 +117,16 @@ class TestTCPLoggerClient(unittest.TestCase):
 class TestMisc(unittest.TestCase):
 
     def test_genMsgType(self):
-        # test the gentMsgType function
-        # test_lines was derived from the log_client.py file with the
-        # following command:
-        # grep 'if string.find.*lowLine' ../log_client.py | sed -e 's/^.*Line, //g' -e 's/\(".*"\)\(.*\)/\1/'| sort | tr "\n" ","
-        # sometimes members in test_lines are repeated, the same input line
-        # is handled by different if statements
+        """
+        test the gentMsgType function which formats
+        the message type for the log server
 
+        the list test_lines was derived from the log_client.py file with the
+        following command:
+        grep 'if string.find.*lowLine' ../log_client.py | sed -e 's/^.*Line, //g' -e 's/\(".*"\)\(.*\)/\1/'| sort | tr "\n" ","
+        sometimes members in test_lines are repeated, the same input line
+        is handled by different if statements
+        """
         test_lines = [
             " mover ", " vol", "(re)", "added to mover list", "log server", "log_server",
                        "backup", "bad", "badmount", "busy_vols", "busy_vols", "cantrestart",
@@ -163,7 +169,7 @@ class TestMisc(unittest.TestCase):
         udp_client.UDPClient.send_no_wait = sent_msg
         os.environ['ENSTORE_CONFIG_PORT'] = '7777'
         os.environ['ENSTORE_CONFIG_HOST'] = '127.0.0.1'
-        with mock.patch('sys.stderr', new=StringIO.StringIO()) as std_err:
+        with mock.patch('sys.stderr', new=StringIO.StringIO()):
             log_client.logthis()
         formatted_str = "%06d enstore I LOGIT  HELLO" % os.getpid()
         param_1 = {'message': formatted_str, 'work': 'log_message'}
@@ -196,7 +202,7 @@ class TestLoggerClientInterface(unittest.TestCase):
         self.assertEqual(4, len(self.lci.valid_dictionaries()))
 
     def test_do_work(self):
-        with mock.patch('sys.stderr', new=StringIO.StringIO()) as std_err:
+        with mock.patch('sys.stderr', new=StringIO.StringIO()):
             with mock.patch('sys.stdout', new=StringIO.StringIO()) as std_out:
                 with mock.patch("sys.exit") as exit_mock:
                     with mock.patch('generic_client.GenericClient.check_ticket'):
