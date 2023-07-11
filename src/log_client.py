@@ -2,7 +2,6 @@
 
 """
 #########################################################################
-#                                                                       #
 # Log client.                                                           #
 # This is a simple log client. It sends log messages to the log server  #
 # via port specified in the Log Server dictionary entry in the enstore  #
