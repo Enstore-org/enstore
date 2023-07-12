@@ -20,7 +20,9 @@ class TestCallback(unittest.TestCase):
         # Make sure we don't get actual sockets
         # This allows us to mock less
         pytest_socket.disable_socket()
-        pass
+
+    def tearDown(self):
+        pytest_socket.enable_socket()
 
     def test___init__(self):
         pass
