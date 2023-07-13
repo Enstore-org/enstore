@@ -1,0 +1,12 @@
+---
+  - name: enstore_rpm_install
+    hosts: all
+    remote_user: root
+
+    tasks:
+
+    - name: install enstore rpm
+      shell:  |
+          yum --disablerepo='*' --enablerepo='enstore-nonprod' --disableexcludes=all makecache
+          yum --disablerepo='*' --enablerepo='enstore-nonprod' --disableexcludes=all install -y enstore
+...

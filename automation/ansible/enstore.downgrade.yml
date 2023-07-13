@@ -1,0 +1,12 @@
+---
+  - name: enstore_rpm_downgrade
+    hosts: all
+    remote_user: root
+
+    tasks:
+
+    - name: downgrade enstore rpm
+      shell:  |
+          yum --disablerepo='*' --enablerepo='enstore-nonprod' --disableexcludes=all makecache
+          yum --disablerepo='*' --enablerepo='enstore-nonprod' --disableexcludes=all downgrade -y enstore
+...
