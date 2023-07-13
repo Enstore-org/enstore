@@ -1,14 +1,14 @@
 ---
-  - name: enstore_stop
-    hosts: head-node
+  - name: enstore_start
+    hosts: all
     remote_user: enstore
 
     tasks:
 
-    - name:  stop enstore
+    - name:  start enstore
       shell:  |
           . /usr/local/etc/setups.sh
           setup enstore
-          eval "echo Y | enstore EStop"
+          enstore EStart
 
 ...

@@ -1,0 +1,17 @@
+---
+  # example usage
+  # ansible-playbook -i inventory -l all enstore-install.yml -e rpm=enstore-6.3.4-19.13.el7
+  - name: enstore_rpm_install
+    hosts: all
+    remote_user: root
+    vars:
+        repo: enstore-nonprod #to install from production, use -e repo=enstore
+        rpm: enstore #default is latest , use -e rpm=enstore-6.3.4-19.13.el7 for specific version 
+
+    tasks:
+
+    - name: install enstore rpm
+      shell:  |
+          yum --disablerepo='*' --enablerepo={{ repo }} --disableexcludes=all makecache
+          yum --disablerepo='*' --enablerepo={{ repo }}  --disableexcludes=all install -y {{ rpm }}
+...

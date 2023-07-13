@@ -12,7 +12,24 @@ servers which have been removed from the Enstore config,
 and turn these servers down appropriately by marking
 them with tombstones.
 
+PLAYBOOKS
+=========
+To start enstore: send this command to the configuration server
+ansible-playbook enstore-start.yml -i inventory-file -l dmsen02.fnal.gov
 
-So far, some progress has been made on generating the
-inventory, but playbooks to start/stop/restart have
-not been started.
+To stop enstore: send this command to all nodes 
+ansible-playbook enstore-stop.yml -i inventory-file -l all
+
+To downgrade enstore one RPM version:
+ansible-playbook enstore-downgrade.yml  -i inventory-file -l all
+
+To install the latest enstore RPM:
+ansible-playbook enstore-install.yml  -i inventory-file -l all 
+
+To install enstore-6.3.4-19.13.el7
+ansible-playbook enstore-install.yml  -i inventory-file -l all -e rpm=enstore-6.3.4-19.13.el7
+
+To see what RPM is installed on every node:
+ansible -i inventory all -m shell -a "yum list enstore"
+
+

@@ -1,0 +1,17 @@
+---
+  - name: enstore_stop
+    hosts: all
+    remote_user: root
+
+    tasks:
+
+    - name:  stop enstore
+      shell:  |
+          . /usr/local/etc/setups.sh
+          setup enstore
+          #eval "echo Y | enstore EStop"
+          enstore stop --all
+          su enstore -c enstore stop -all
+          for P in $(EPS | grep python | grep enstore |grep -v ansible | awk {'print $2'} | sort|uniq); do kill -9 $P; done
+
+...
