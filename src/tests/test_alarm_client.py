@@ -28,7 +28,12 @@ class TestLock(unittest.TestCase):
         self.assertEqual(self.lock.locked, 0)
 
     def test_test_and_set(self):
+        self.lock.unlock()
         s = self.lock.test_and_set()
+        self.assertEqual(s, 0)
+        self.assertEqual(self.lock.locked, 1)
+        s = self.lock.test_and_set()
+        self.assertEqual(s, 1)
         self.assertEqual(self.lock.locked, 1)
 
 
