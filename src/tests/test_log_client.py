@@ -1,6 +1,8 @@
 import unittest
 import os
 import pwd
+import socket
+import errno
 import StringIO
 import threading
 import mock
@@ -108,9 +110,64 @@ class TestTCPLoggerClient(unittest.TestCase):
         self.assertFalse(self.log_client.run)
 
     def test_connect(self):
-        with mock.patch('socket.socket.connect', new_callable=mock.MagicMock):
-            self.log_client.connect()
-            self.assertTrue(self.log_client.connected)
+
+        # turn off complaints to stdout about connection failures
+        with mock.patch('sys.stdout', new_callable=StringIO.StringIO):
+
+            # test normal connect
+            with mock.patch('socket.socket.connect', new_callable=mock.MagicMock):
+                self.log_client.connect()
+                self.assertTrue(self.log_client.connected)
+
+            # test delayed connect
+            self.log_client.connected = False
+            with mock.patch('socket.socket.connect', new_callable=mock.MagicMock,
+                            side_effect=socket.error(errno.EISCONN)):
+                self.log_client.connect()
+                self.assertTrue(self.log_client.connected)
+
+            # test different pathway  to delayed connect
+            self.log_client.connected = False
+            with mock.patch('socket.socket.connect', new_callable=mock.MagicMock,
+                            side_effect=socket.error(errno.EINPROGRESS)):
+                self.log_client.connect()
+                self.assertTrue(self.log_client.connected)
+
+            # test failed connect
+            self.log_client.connected = False
+            with mock.patch('socket.socket.connect', new_callable=mock.MagicMock,
+                            side_effect=socket.error(errno.EACCES)):
+                try:
+                    self.log_client.connect()
+                    self.assertTrue(False)
+                except socket.error as err:
+                    self.assertEqual(errno.EACCES, err.message)
+                self.assertFalse(self.log_client.connected)
+
+            # test other socket conditions
+            with mock.patch('socket.socket.connect', new_callable=mock.MagicMock):
+                with mock.patch('select.select', new_callable=mock.MagicMock, return_value=(1, 1, 1)):
+
+                    # test good connect
+                    self.log_client.connect()
+                    self.assertTrue(self.log_client.connected)
+
+                    # test getsockopt failure
+                    self.log_client.connected = False
+                    with mock.patch('socket.socket.getsockopt', new_callable=mock.MagicMock, return_value=errno.EACCES):
+                        try:
+                            self.log_client.connect()
+                            self.assertTrue(False)
+                        except socket.error as err:
+                            self.assertTrue('Permission denied' in str(err))
+
+                # test select timeout
+                with mock.patch('select.select', new_callable=mock.MagicMock, return_value=(0, 0, 0)):
+                    try:
+                        self.log_client.connect()
+                        self.assertTrue(False)
+                    except Exception as err:
+                        self.assertTrue(str(errno.ETIMEDOUT) in str(err))
 
     def test_pull_message(self):
         self.assertEqual(None, self.log_client.pull_message())
@@ -123,7 +180,7 @@ class TestTCPLoggerClient(unittest.TestCase):
 
 
 class TestMisc(unittest.TestCase):
-    
+
     def setUp(self):
         self.user = pwd.getpwuid(os.getuid())[0]
 
@@ -182,20 +239,20 @@ class TestMisc(unittest.TestCase):
         os.environ['ENSTORE_CONFIG_HOST'] = '127.0.0.1'
         with mock.patch('sys.stderr', new=StringIO.StringIO()):
             log_client.logthis()
-        formatted_str = "%06d %s I LOGIT  HELLO" % (os.getpid(),self.user)
+        formatted_str = "%06d %s I LOGIT  HELLO" % (os.getpid(), self.user)
         param_1 = {'message': formatted_str, 'work': 'log_message'}
         sent_msg.assert_called_with(param_1, None, unique_id=True)
 
     def test_parse(self):
         keys = ['time', 'host', 'pid', 'user', 'severity', 'server', 'msg']
         s_keys = ['msg_type', 'msg_dict']
-        linein = "15:30:11 fmv18019.fnal.gov 052082 %s I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread" % self.user 
+        linein = "15:30:11 fmv18019.fnal.gov 052082 %s I TS4500F1MC  FINISHED listDrives returned ('ok', 0, None) Thread MainThread" % self.user
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)
         for k in s_keys:
             self.assertFalse(k in a_dict, k)
-        linein = "06:10:40 dmsen02.fnal.gov 029136 %s I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients" % self.user 
+        linein = "06:10:40 dmsen02.fnal.gov 029136 %s I EVRLY  MSG_TYPE=EVENT_RELAY  Cleaning up ('131.225.80.65', 44501) from clients" % self.user
         a_dict = log_client.parse(linein)
         for k in keys:
             self.assertTrue(k in a_dict, k)

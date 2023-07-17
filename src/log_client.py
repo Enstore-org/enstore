@@ -523,7 +523,7 @@ class TCPLoggerClient(LoggerClient):
         self.socket.bind((socket.gethostname(), 0))
         try:
             self.socket.connect(self.logger_address)
-        except socket.error, detail:
+        except socket.error as detail:
             print detail
             if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
                 pass
@@ -533,7 +533,7 @@ class TCPLoggerClient(LoggerClient):
             else:
                 print "error connecting to %s (%s)" %\
                     (self.logger_address, detail)
-                raise socket.error, detail
+                raise detail
 
         #Check if the socket is open for reading and/or writing.
         r, w, ex = select.select([self.socket], [self.socket], [], self.rcv_timeout)
@@ -550,11 +550,11 @@ class TCPLoggerClient(LoggerClient):
         else:
             print "error connecting to %s (%s)" %\
                 (self.logger_address, os.strerror(errno.ETIMEDOUT))
-            raise errno.ETIMEDOUT
+            raise socket.error(errno.ETIMEDOUT, os.strerror(errno.ETIMEDOUT))
 
         #...if it is zero then success, otherwise it failed.
         if rtn != 0:
-            raise socket.error, (rtn, os.strerror(rtn))
+            raise socket.error(rtn, os.strerror(rtn))
             #raise RuntimeError('error connecting to %s (%s)'%\
             #    (self.logger_address, os.strerror(rtn)))
         # we have a connection
