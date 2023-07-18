@@ -3,25 +3,14 @@ import volume_clerk_client
 import sys
 import string
 import StringIO
-import time
-import errno
 import socket
-import re
-import pprint
 import StringIO
 import mock
-import hostaddr
 import option
 import generic_client
 import udp_client
-import backup_client
 import Trace
 import e_errors
-import file_clerk_client
-import cPickle
-import info_client
-import enstore_constants
-from en_eval import en_eval
 import mock_csc
 
 
@@ -49,9 +38,15 @@ class TestMisc(unittest.TestCase):
         inp = 1024
         c1 = volume_clerk_client.capacity_str(inp, 'B')
         self.assertEqual(c1, "1024.00B ")
+        inp *= -1
+        c1 = volume_clerk_client.capacity_str(inp, 'B')
+        self.assertEqual(c1, "-1024.00B ")
         c2 = volume_clerk_client.capacity_str(inp, 'KB')
-        self.assertEqual(c2, "1024.00B ")
-        inp *= 1024
+        self.assertEqual(c2, "-1024.00B ")
+        inp *= -1024
+        c3 = volume_clerk_client.capacity_str(inp, 'KB')
+        self.assertEqual(c3, '1024.00KB')
+
         c3 = volume_clerk_client.capacity_str(inp)
         self.assertEqual(c3, '   0.00GB')
         inp *= 1024
@@ -66,6 +61,9 @@ class TestMisc(unittest.TestCase):
         inp *= 1024
         c7 = volume_clerk_client.capacity_str(inp, 'PB')
         self.assertEqual(c7, '1024.00PB')
+        inp *= -1
+        c8 = volume_clerk_client.capacity_str(inp, 'PB')
+        self.assertEqual(c8, '-1024.00PB')
 
     def test_show_volume_header(self):
         cmp = 'label               avail.   system_inhibit                              library          volume_family                        comment     \n'
@@ -754,22 +752,22 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                         self.assertEqual(
                             {'work': 'stop_backup'}, sent_msg.mock_calls[106][1][0],
                             test + ": " + str(sent_msg.mock_calls))
+                        self.vci.backup = 0
 
                         # -------------
                         test = "show_state"
                         # -------------
-                        self.vci.backup = 0
                         self.vci.show_state = 1
                         sent_msg.reset_mock()
                         volume_clerk_client.do_work(self.vci)
                         self.assertEqual({'work': 'show_state'},
                                          sent_msg.mock_calls[102][1][0],
                                          test + ": " + str(sent_msg.mock_calls))
+                        self.vci.show_state = 0
 
                         # -------------
                         test = "vols"
                         # -------------
-                        self.vci.show_state = 0
                         self.vci.vols = 1
                         sent_msg.reset_mock()
                         std_out.truncate()
@@ -796,7 +794,6 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                         std_out.truncate()
                         self.vci.args.append('noaccess')
                         volume_clerk_client.do_work(self.vci)
-                        arglebargle = """{'not': None, 'work': 'get_vols3', 'key': None, 'in_state': 'noaccess'}"""
                         self.assertTrue(
                             """'work': 'get_vols3'""" in str(
                                 sent_msg.mock_calls), test + ": " + str(
@@ -805,11 +802,11 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                             """'in_state': 'noaccess'""" in str(
                                 sent_msg.mock_calls), test + ": " + str(
                                 sent_msg.mock_calls))
+                        self.vci.vols = 0
 
                         # -------------
                         test = "pvols"
                         # -------------
-                        self.vci.vols = 0
                         self.vci.pvols = 1
                         self.vci.force = 1
                         sent_msg.reset_mock()
@@ -818,11 +815,12 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                             """'work': 'get_pvols2'""" in str(
                                 sent_msg.mock_calls), test + ': ' + str(
                                 sent_msg.mock_calls))
+                        self.vci.pvols = 0
+                        self.vci.force = 0
 
                         # -------------
                         test = "labels"
                         # -------------
-                        self.vci.pvols = 0
                         self.vci.labels = 1
                         sent_msg.reset_mock()
                         volume_clerk_client.do_work(self.vci)
@@ -830,12 +828,12 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                             """'work': 'get_vol_list2'""" in str(
                                 sent_msg.mock_calls), test + ': ' + str(
                                 sent_msg.mock_calls))
+                        self.vci.labels = 0
 
                         # -------------
                         test = "next"
                         # -------------
                         self.vci.next = 1
-                        self.vci.labels = 0
                         sent_msg.reset_mock()
                         self.vci.args[0] = 'library'
                         self.vci.args.append('20599088733')
@@ -857,11 +855,11 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                             """'volume_family': 'volume_family'""" in str(
                                 sent_msg.mock_calls), str(
                                 sent_msg.mock_calls))
+                        self.vci.next = 0
 
                         # -------------
                         test = "assign_sg"
                         # -------------
-                        self.vci.next = 0
                         self.vci.assign_sg = 'storage_group'
                         self.vci.volume = 'volume'
                         sent_msg.reset_mock()
@@ -881,13 +879,13 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                             """'storage_group': 'storage_group'""" in str(
                                 sent_msg.mock_calls), test + ': ' + str(
                                 sent_msg.mock_calls))
+                        self.vci.assign_sg = 0
+                        self.vci.volume = 0
 
                         # -------------
                         test = "rebuild_sg_count"
                         # -------------
                         self.vci.rebuild_sg_count = 1
-                        self.vci.assign_sg = 0
-                        self.vci.volume = 0
                         sent_msg.reset_mock()
                         volume_clerk_client.do_work(self.vci)
                         self.assertTrue(
@@ -1082,7 +1080,7 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                                 sent_msg.mock_calls))
                         self.vci.export = 0
 
-                        #test = "_import"  # volume import
+                        # test = "_import"  # volume import
 
                         # -------------
                         test = "ignore_storage_group"
@@ -1127,7 +1125,6 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                                 sent_msg.mock_calls), test + ': ' + str(
                                 sent_msg.mock_calls))
                         self.vci.show_ignored_storage_groups = 0
-
 
                         #test = "add"
                         #test = "modify"
@@ -1193,7 +1190,7 @@ class TestVolumeClerkClientInterface(unittest.TestCase):
                                 sent_msg.mock_calls))
                         self.vci.recycle = 0
 
-                        #test = "clear_sg" 
+                        #test = "clear_sg"
                         #test = "clear"
 
                         # -------------
