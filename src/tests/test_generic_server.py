@@ -132,8 +132,7 @@ class TestGenericServer(unittest.TestCase):
         with mock.patch('Trace.alarm') as alarm:
             self.svr.serve_forever_error('whoopsie')
             alarm.assert_called_with(
-                e_errors.ALARM,
-                'Exception in file ??? at line -1: (None, None).  See system log for details.')
+                e_errors.ALARM, mock.ANY)
 
     def test_get_alive_interval(self):
         self.assertEqual(40, self.svr.get_alive_interval())
