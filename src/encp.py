@@ -11845,18 +11845,18 @@ class EncpInterface(option.Interface):
                     print_error(e_errors.USERERROR, msg % "unix")
                 else:
                     print_error(e_errors.USERERROR, msg % "/pnfs/...")
-                delete_at_exit.quit()
+                delete_at_exit.delete_and_quit()
             elif self.args[i] in self.input:
                 msg = "Duplicate filenames is not allowed: %s"
                 print_error(e_errors.USERERROR, msg % self.args[i])
-                delete_at_exit.quit()
+                delete_at_exit.delete_and_quit()
             else:
                 self.input.append(self.args[i]) #Do this way for a copy.
 
             if m[i][0] != m1[0]:
                 msg = "Not all input files are on node %s."
                 print_error(e_errors.USERERROR, msg % m1[0])
-                delete_at_exit.quit()
+                delete_at_exit.delete_and_quit()
 
         #We need to check to make sure that only one enstore system has
         # been specified.
@@ -11888,7 +11888,7 @@ class EncpInterface(option.Interface):
         if m1[0] not in this_host_list and m2[0] not in this_host_list:
             msg = "Not able to perform remote site to remote site transfer."
             print_error(e_errors.USERERROR, msg)
-            delete_at_exit.quit()
+            delete_at_exit.delete_and_quit()
 
         #Assign the collection of types to these variables.
         if p1 == 1:
@@ -12338,4 +12338,4 @@ def start(mode, do_work=do_work, main=main, Interface=EncpInterface):
         return 2
 
 if __name__ == "__main__":   # pragma: no cover
-    delete_at_exit.quit(start(0))  #0 means admin
+    delete_at_exit.delete_and_quit(start(0))  #0 means admin

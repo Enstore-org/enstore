@@ -2206,7 +2206,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             elif cur_thread_name == 'tape_thread':
                 Trace.log(e_errors.INFO,"restart was called from tape thread")
         if  self.local_mcc:
-            self.mcc.quit()
+            self.mcc.delete_and_quit()
 
         if do_restart:
             cmd = '/usr/bin/at now+1minute'
@@ -9108,7 +9108,7 @@ if __name__ == "__main__":   # pragma: no cover
         except SystemExit:
             Trace.log(e_errors.INFO, "mover %s exiting." % (mover.name,))
             if  mover.local_mcc:
-                mover.mcc.quit()
+                mover.mcc.delete_and_quit()
             os._exit(0)
         except:
             try:

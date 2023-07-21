@@ -643,9 +643,9 @@ def do_work(intf):
 
     try:
         main(intf)
-        delete_at_exit.quit(0)
+        delete_at_exit.delete_and_quit(0)
     except SystemExit:
-        delete_at_exit.quit(1)
+        delete_at_exit.delete_and_quit(1)
     except:
         exc, msg, tb = sys.exc_info()
         try:
@@ -656,7 +656,7 @@ def do_work(intf):
             pass
         Trace.handle_error(exc, msg, tb)
         del tb  #Avoid resource leak.
-        delete_at_exit.quit(1)
+        delete_at_exit.delete_and_quit(1)
 
 
 if __name__ == "__main__":   # pragma: no cover
