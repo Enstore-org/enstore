@@ -795,7 +795,7 @@ def wrapper(function, args=(), unstable_filesystem=None):
     Returns:
         (Any): function return value
     """
-    if not instanceof(args, types.TupleType):
+    if not isinstance(args, types.TupleType):
         use_args = (args,)
     else:
         use_args = args
