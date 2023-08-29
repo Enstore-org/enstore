@@ -2060,7 +2060,7 @@ class LibraryManagerMethods:
         return rq, ret, would_preempt
 
     def init_request_selection(self):
-        """"
+        """
         Make all necessary resets
         before starting a new cycle of request selection
         """
@@ -2836,7 +2836,8 @@ class LibraryManagerMethods:
             ret = self.is_vol_available(rq.work, external_label,
                                         rq.ticket['vc']['volume_family'],
                                         fsize, rq.ticket['vc']['address'],
-                                        mover=requestor.get('mover'))
+                                        mover=requestor.get('mover'),
+                                        override_notallowed=bool(rq.ticket.get("override_notallowed", 0)))
             Trace.trace(100, "vcc.is_vol_avail, time in state %s" % (time.time() - start_t,))
         Trace.trace(self.trace_level + 12, "check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
