@@ -92,8 +92,14 @@
 #endif
 #if defined(HAVE_SYS_QUOTA_H)
    #include <sys/quota.h>
+   #include <linux/version.h>
+   /* for kernels 2 and 3 */
    #if defined(_LINUX_QUOTA_VERSION) && _LINUX_QUOTA_VERSION-0 > 1
       /* There is some incompatibility between Linux quota version 1 and 2. */
+      #define dqb_curblocks dqb_curspace
+   #endif
+   /* for kernels 4+  */
+   #if defined(LINUX_VERSION_MAJOR) && LINUX_VERSION_MAJOR-0 > 3
       #define dqb_curblocks dqb_curspace
    #endif
 #endif
