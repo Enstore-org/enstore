@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
 Enstore UDP client is used to communicate with Enstore UDP server.
-It is thread safe.
+It is thread safe. 
+
 """
 
 # system imports
