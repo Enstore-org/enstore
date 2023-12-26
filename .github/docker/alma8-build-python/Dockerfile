@@ -1,4 +1,7 @@
 from almalinux:8.9
+# Docker image that builds Python-enstore and friends for almalinux 8
+# to build: run command /data/build_enstore_python_rpm.sh
+# resulting rpms end up in in /root/rpmbuild/RPMS/
 
 
 RUN dnf -y install rpmdevtools && rpmdev-setuptree
