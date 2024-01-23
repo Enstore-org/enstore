@@ -9,15 +9,18 @@
 # QA_RPATHS=$[ 0x0001|0x0010 ] rpmbuild -bb ~/rpmbuild/SPECS/python27.spec
 
 
+#uncomment the next 2 lines to see all the rpm macro expansions
+##%%dump
+#exit 1
 ##########################
 #  User-modifiable configs
 ##########################
 ## WARNING:
 ##  Commenting out doesn't work
 ##  Last line is what's used.
+# commenting out %macro_name like this works: ##%%macro_name
 
 #  Define Constants
-%undefine __brp_mangle_shebangs 
 %define name Python-enstore
 %define version 2.7.18
 %define libvers 2.7
@@ -38,8 +41,8 @@
 
 
 #  Include tools?
-%define config_include_tools no
 %define config_include_tools yes
+%define config_include_tools no
 
 
 #  Enable IPV6?
@@ -69,6 +72,10 @@
 #################################
 #  End of user-modifiable configs
 #################################
+
+
+%undefine __brp_mangle_shebangs 
+%define debug_package %{nil}
 
 #  detect if tkinter should be included
 %define include_tkinter %(if [ \\( "%{config_tkinter}" = auto -a -f /usr/bin/wish \\) -o "%{config_tkinter}" = yes ]; then echo 1; else echo 0; fi)
@@ -296,11 +303,11 @@ then
 fi
 
 #  add the binsuffix
-#if [ ! -z "%{binsuffix}" ]
-#then
-#   ( cd $RPM_BUILD_ROOT%{__prefix}/bin;
-#      for file in 2to3  pydoc  python-config  idle smtpd.py; do [ -f "$file" ] && ln -s  "$file" "$file"%{binsuffix}; done;)
-#fi
+if [ ! -z "%{binsuffix}" ]
+then
+   ( cd $RPM_BUILD_ROOT%{__prefix}/bin;
+      for file in 2to3  pydoc  python-config  idle smtpd.py; do [ -f "$file" ] && ln -s  "$file" "$file"%{binsuffix}; done;)
+fi
 
 # Fix permissions
 chmod 644 $RPM_BUILD_ROOT%{__prefix}/%{libdirname}/libpython%{libvers}*
@@ -310,14 +317,14 @@ chmod 644 $RPM_BUILD_ROOT%{__prefix}/%{libdirname}/libpython%{libvers}*
 %if %{include_tools}
 cp -a Tools $RPM_BUILD_ROOT%{__prefix}/%{libdirname}/python%{libvers}
 install -D -m 644 Tools/gdb/libpython.py $RPM_BUILD_ROOT%{__prefix}/%{libdirname}/debug/usr/bin/python%{libvers}.debug-gdb.py
-echo "%{__prefix}/%{libdirname}/debug/usr/bin/python%{libvers}.debug-gdb.py" >> debugfiles.list
+#touch debugfiles.list
+#echo "%{__prefix}/%{libdirname}/debug/usr/bin/python%{libvers}.debug-gdb.py" >> debugfiles.list
 %endif
 
 #  MAKE FILE LISTS
 rm -f mainpkg.files
 find "$RPM_BUILD_ROOT""%{__prefix}"/%{libdirname}/python%{libvers} -type f |
         sed "s|^${RPM_BUILD_ROOT}|/|" | grep -v -e '_tkinter.so$' >mainpkg.files
-echo "debug file list =  `pwd`/mainpkg.files"
 find "$RPM_BUILD_ROOT""%{__prefix}"/bin -type f -o -type l  |
         sed "s|^${RPM_BUILD_ROOT}|/|" |
         grep -v -e '/bin/2to3%{binsuffix}$' |
@@ -327,6 +334,18 @@ find "$RPM_BUILD_ROOT""%{__prefix}"/bin -type f -o -type l  |
 echo %{__prefix}/bin/python >>mainpkg.files
 echo %{__prefix}/bin/python2 >>mainpkg.files
 echo %{__prefix}/include/python%{libvers}/pyconfig.h >> mainpkg.files
+
+# copy the paritally built python source into build_root
+# enstore expects it there to make its own RPM
+cd "$RPM_BUILD_ROOT%{__prefix}"
+tar xzf /tmp/built_python_src.tgz
+cp -r Python-2.7.18/Include/* include/python2.7
+cd -
+cd $RPM_BUILD_ROOT
+for SFILE in `find %{__prefix}/Python-2.7.18 -type f `; do
+	echo $SFILE >> mainpkg.files
+done
+cd -
 
 %if %{include_tools}
 rm -f tools.files
@@ -375,6 +394,8 @@ rm -f mainpkg.files tools.files
 ########
 %files -f mainpkg.files
 %defattr(-,root,root)
+%{__prefix}/Python-2.7.18
+%{__prefix}/include
 %doc Misc/README Misc/cheatsheet Misc/Porting
 %doc LICENSE Misc/ACKS Misc/HISTORY Misc/NEWS
 %doc %{__prefix}/share/man/man1/python2.7.1

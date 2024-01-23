@@ -401,7 +401,7 @@ LIBRARY_OBJS=	\
 
 # Default target
 all:		@DEF_MAKE_ALL_RULE@
-build_all:	check-clean-src $(BUILDPYTHON) oldsharedmods sharedmods gdbhooks
+build_all:	check-clean-src $(BUILDPYTHON) built_python_src oldsharedmods sharedmods gdbhooks
 
 # Check that the source is clean when building out of source.
 check-clean-src:
@@ -411,6 +411,9 @@ check-clean-src:
 		echo "Try to run: make -C \"$(srcdir)\" clean" ; \
 		exit 1; \
 	fi
+
+built_python_src: $(BUILDPYTHON)
+	@cd ..; tar cvzf /tmp/built_python_src.tgz  Python-2.7.18; cd -
 
 # Compile a binary with profile guided optimization.
 profile-opt:
