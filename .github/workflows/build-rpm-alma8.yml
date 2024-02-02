@@ -1,0 +1,28 @@
+name: Build-RPM-Alma8
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: enstoredev/alma8-build-enstore:latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: create enstore tgz
+      run: tar czvf ~/enstore.tgz .
+    - name: prepare build filetree
+      run: |
+       ln -s "$(pwd)" ~/enstore
+       mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
+       ./build_versioned_spec8.sh | tee ~/rpmbuild/SPECS/enstore_rpm.spec
+       cp ~/enstore.tgz ~/rpmbuild/SOURCES/
+    - name: build enstore rpm
+      run: |
+       cd ~/rpmbuild/
+       rpmbuild -ba SPECS/enstore_rpm.spec # > 6.3.4-15.out 2>&1
+       # cat 6.3.4-15.out
+    - name: upload enstore rpm as artifact
+      uses: actions/upload-artifact@v2
+      with: 
+        name: enstore-rpm
+        path: ~/rpmbuild/RPMS/x86_64/enstore-*.rpm
