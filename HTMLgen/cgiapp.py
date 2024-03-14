@@ -59,7 +59,7 @@ class CGI(Document):
             if not self.form.has_key(tok):
                 self.form[tok] = self.form_defaults[tok]
         for tok in self.form_errors.keys():
-            if not form.has_key(tok):
+            if not self.form.has_key(tok):
                 self.form_messages.append(self.form_errors[tok])
                 self.form_ok = 0
 
