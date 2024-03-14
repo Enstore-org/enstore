@@ -47,7 +47,6 @@ rm -rf enstore-setup
 # copy all supporting products
 cp -rp * $RPM_BUILD_ROOT/%{prefix}
 pydir=/opt/python/python-enstore-2.7.18
-#pydir=`rpm -ql Python-enstore2.7.18* | head -1`
 PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
 mkdir -p $PYTHON_DIR
 mkdir -p Python
@@ -55,13 +54,11 @@ cp -rp $pydir/* $PYTHON_DIR
 cp -rp $pydir/* Python
 rm -rf $PYTHON_DIR/*.tgz
 rm -rf Python/*.tgz
-#echo "debug pwd=`pwd` ls=`ls`"
-#exit 1
 ftt_dir=$RPM_BUILD_DIR/opt/enstore/ftt
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
 mkdir -p $FTT_DIR
 cp -rp $ftt_dir/* $FTT_DIR
-swigdir=`swig -swiglib`
+swigdir=$(swig -swiglib)
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
 mkdir -p $SWIG_DIR
 mkdir -p SWIG
@@ -98,7 +95,6 @@ echo "BUILD RPM"
 pushd .
 
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
-echo FTT_DIR=$FTT_DIR
 cd $FTT_DIR/ftt_lib
 rm -f ftt_mtio.h # do not know how did it get here
 make clean
@@ -118,12 +114,12 @@ echo LS `ls`
 echo LS1 `$RPM_BUILD_ROOT/%{prefix}`
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
 cp -rp * $RPM_BUILD_ROOT/%{prefix}
-#if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
-#	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
-#fi
-#if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
-#	cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
-#fi
+if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
+	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
+fi
+if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
+	cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+fi
 mkdir -p $RPM_BUILD_ROOT/usr/local/etc/
 touch $RPM_BUILD_ROOT/usr/local/etc/setups.sh
 #mkdir -p $RPM_BUILD_ROOT/etc
@@ -234,9 +230,6 @@ rm -rf $RPM_BUILD_ROOT/*
 %defattr(-,enstore,enstore,-)
 %doc
 /%{prefix}
-#%config /%{prefix}/etc/enstore_configuration
-#%config /%{prefix}/etc/sam.conf
-#%config /%{prefix}/etc/stk.conf
 %config /usr/local/etc/setups.sh
 
 %changelog
