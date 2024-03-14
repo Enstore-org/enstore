@@ -4,6 +4,7 @@
 from downloadCommon import DownloadCommon, getSeqName
 from DdlCommonInterface import DdlCommonInterface
 import re
+import sys
 
 class PgDownloader(DownloadCommon):
     """ Silly me, I didn't know about INFORMATION_SCHEMA """
