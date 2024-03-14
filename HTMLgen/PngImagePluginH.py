@@ -400,6 +400,10 @@ def _save(im, fp, filename, chunk = putchunk):
 
     if 0:
 	# FIXME: to be supported some day
+    try:
+        gamma = im.info["gamma"]
+    except:
+        gamma=0
 	chunk(fp, "gAMA", o32(int(gamma * 100000.0)))
 
     ImageFileH._save(im, _idat(fp, chunk), [("zip", (0,0)+im.size, 0, rawmode)])
