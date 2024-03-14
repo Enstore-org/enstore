@@ -254,7 +254,7 @@ class PnfsDbRestore:
                     'sed -i "s/^[ \t\r]*logging_collector[ \t\r]*=[ \t\r]*on/logging_collector = off/g" %s/postgresql.conf '% (pgdb,),\
 		    "mkdir -p %s/pg_xlog/archive_status"% (pgdb,),\
 		    "chown -R enstore.enstore %s/pg_xlog"% (pgdb,),\
-                    "chown enstore.enstore %s/recovery.conf"%(pgdb)),\
+                    "chown enstore.enstore %s/recovery.conf"%(pgdb),\
                     "rm -f %s/postmaster.pid"%(pgdb),\
                     "/sbin/service postgresql-%s start"%(postgresqlVersion,)]:
             rc = os.system(cmd)
