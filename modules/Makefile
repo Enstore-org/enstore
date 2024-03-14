@@ -71,9 +71,10 @@ Modules:
 	cp checksumcmodule.so _checksummodule.so
 	cp socket_extcmodule.so _socket_extmodule.so
 	cp strbuffercmodule.so _strbuffermodule.so
-	- cp ftt2cmodule.so _ftt2module.so
+	cp ftt2cmodule.so _ftt2module.so
 	cp runoncmodule.so _runonmodule.so
 	cp enroutecmodule.so _enroutemodule.so
+	cp mtxcmodule.so _mtxmodule.so
 
 adler32.o: adler32.c
 	$(CC) $(CFLAGS) -c $(PIC) adler32.c

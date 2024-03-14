@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version:3 
-Release: 6.3.4.el8
+Version:6.3.4 
+Release: 20.2.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -33,9 +33,9 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-rpm -q swig-enstore
+rpm -q swig
 if [ $? -ne 0 ]; then
-	echo "swig-enstore is not installed"
+	echo "swig is not installed"
 	exit 1
 fi
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
@@ -61,12 +61,16 @@ ftt_dir=$RPM_BUILD_DIR/opt/enstore/ftt
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
 mkdir -p $FTT_DIR
 cp -rp $ftt_dir/* $FTT_DIR
-swigdir=`rpm -ql swig-enstore | head -1`
+swigdir=`swig -swiglib`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
 mkdir -p $SWIG_DIR
 mkdir -p SWIG
 cp -rp $swigdir/* $SWIG_DIR
 cp -rp $swigdir/* SWIG
+cd $SWIG_DIR
+ln -s /usr/bin/swig .
+cd -
+
 
 # create a tepmorary setup file
 #+++++++++++

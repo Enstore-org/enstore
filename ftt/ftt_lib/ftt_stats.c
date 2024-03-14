@@ -34,12 +34,12 @@ ftt_alloc_stat() {
     ENTERING("ftt_alloc_stat");
     res =  malloc(sizeof(ftt_stat));
     if (0 != res) {
-	memset(res,0,sizeof(ftt_stat));
-	return res;
+	    memset(res,0,sizeof(ftt_stat));
+	    return res;
     } else {
-	ftt_eprintf("ftt_alloc_stat: unable to allocate statistics buffer, errno %d\n", errno);
-	ftt_errno = FTT_ENOMEM;
-	return res;
+	    ftt_eprintf("ftt_alloc_stat: unable to allocate statistics buffer, errno %d\n", errno);
+	    ftt_errno = FTT_ENOMEM;
+	    return res;
     }
 }
 
@@ -53,8 +53,8 @@ ftt_alloc_statdb() {
         memset(res,0,sizeof(ftt_statdb));
         return res;
     } else {
-	ftt_eprintf("ftt_alloc_stat: unable to allocate statistics buffer, errno %d\n", errno);
-	ftt_errno = FTT_ENOMEM;
+	    ftt_eprintf("ftt_alloc_stat: unable to allocate statistics buffer, errno %d\n", errno);
+	    ftt_errno = FTT_ENOMEM;
         return res;
     }
 }
@@ -64,15 +64,29 @@ ftt_free_stat(ftt_stat_buf b) {
     int i;
 
     ENTERING("ftt_free_stat");
-    CKNULL("statistics buffer pointer", b);
-
-    for (i = 0; i < FTT_MAX_STAT; i++) {
-	if (b->value[i]) {
-		free(b->value[i]);
-		b->value[i] = 0;
+	if (b != NULL){
+		CKNULL("statistics buffer pointer", b);
+		
+		int length = 0;
+		while (b->value[length] != 0) length++;
+		fprintf(stderr, "FTT_MAX_STAT value = %d\n", FTT_MAX_STAT);
+		fprintf(stderr, "Length: b->value\n", length);
+		for (i = 0; i < FTT_MAX_STAT; i++) {
+			int valid = i >= 0 && i < length;
+			if (valid && b->value[i]) {
+				fprintf(stderr, "Freeing values %d in b->value\n", i);
+				free(b->value[i]);
+				b->value[i] = 0;
+			}
+		}
+		free(b);
+		
 	}
-    }
-    free(b);
+	else{
+		ENTERING("statistics buffer was never initialized");
+	}
+    
+	
     return 0;
 }
 
@@ -121,45 +135,64 @@ ftt_dtoa(double n) {
 **
 ** handy routine to fill in the n-th slot in the stat buffer
 */
+// ltrestka | 03-08-2024 | Corrected incorrect null pointer handling, leading to segmentation faults
 static void
 set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
-    char save = 'n';
+    char save = 'n'; // Initial non-null character to indicate no saved character.
     int do_freeme = 0;
-	char *freeme;
+    char *freeme = NULL;
 
-    /* clean out old value */
-    if (b->value[n] != 0) {
-		do_freeme = 1;
-		freeme = b->value[n];
-		b->value[n] = 0;
+    // Clean out old value
+    if (b->value[n] != NULL) {
+        do_freeme = 1;
+        freeme = b->value[n];
     }
 
-    /* if null, leave it */
-    if (pcStart != 0) {
+    // If pcStart is not null, proceed
+    if (pcStart != NULL && pcStart != 0) {
+        // If pcEnd is NULL, it implies the intention to use the string up to its natural null terminator
+        if (pcEnd == NULL) {
+            pcEnd = pcStart + strlen(pcStart); // Point pcEnd to the null terminator of pcStart
+        } else if (pcEnd > pcStart) {
+            // Save character at pcEnd only if pcEnd is after pcStart
+            save = *pcEnd;
+            *pcEnd = '\0'; // Temporarily null-terminate at pcEnd
+        }
 
-		/* null terminate at pcEnd, copy the string,
-		** and then put the byte back where we scribbled the null
-		** ... after eating blanks off the end
-		*/
-		if (pcEnd == 0) {
-		pcEnd = pcStart + strlen(pcStart); /* pcEnd = pcStart if string has ) length */
+        // DEBUG logs can be safely placed here without duplicating pcStart
+		int length = 0;
+    	while (ftt_stat_names[length] != 0) length++;
+		int valid = n >= 0 && n < length;
+		if (valid) {
+			// 'n' is within bounds, safe to use
+			if (ftt_stat_names[n] != NULL && pcStart != NULL) {
+				DEBUG3(stderr, "Setting stat %d(%s) to %s\n", n, ftt_stat_names[n], pcStart);
+				b->value[n] = strdup(pcStart);
+			}
+		} else {
+			// Handle 'n' being out of bounds
+			fprintf(stderr, "Error: Index n=%d is out of bounds for ftt_stat_names.\n", n);
 		}
-		if ( *pcEnd ) {
-		  do {
-		    pcEnd--;
-		  } while(*pcEnd == ' ');
-		  pcEnd++;
-		  save = *pcEnd;
-		  *pcEnd = 0;
-		}
-	DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
-		b->value[n] = strdup(pcStart);
-		/* why is this "if" here??? I forget now... mengel*/
-		if ( save != 'n' ) *pcEnd = save;
+       
+		// Correct the format specifier for sizeof to %zu, which is used for sizes
+		DEBUG3(stderr, "size of b->value (in bytes) = %zu\n", sizeof(b->value));
+
+		
+        /* why is this "if" here??? I forget now... mengel*/
+		// ^^ To Restore the overwritten character, 'if' any ... ltrestka (^_^)
+        if (save != 'n') {
+            *pcEnd = save; 
+        }
+
+    }
+	
+	// Free the old value, if needed
+	if (do_freeme) {
+		DEBUG3(stderr, "freeing previous value: %s\n", freeme);
+		free(freeme);
+		DEBUG3(stderr, "free succeeded\n");
 	}
-    if (do_freeme) {
-         free(freeme);
-    }
+
 }
 
 int ftt_numeric_tab[FTT_MAX_STAT] = {
@@ -167,59 +200,61 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_PRODUCT_ID		1 * 0,*/4,
     /*  FTT_FIRMWARE		2 * 0,*/4,
     /*  FTT_SERIAL_NUM		3 * 0,*/4,
-    /*  FTT_CLEANING_BIT	5*/ 0,
-    /*  FTT_READ_COUNT		6*/ 1,
-    /*  FTT_WRITE_COUNT		7*/ 1,
-    /*  FTT_READ_ERRORS		8*/ 1,
-    /*  FTT_WRITE_ERRORS	9*/ 1,
-    /*  FTT_READ_COMP		11*/ 0,
-    /*  FTT_FILE_NUMBER		12*/ 0,
-    /*  FTT_BLOCK_NUMBER	13*/ 0,
-    /*  FTT_BOT			14*/ 0,
-    /*  FTT_READY		15*/ 0,
-    /*  FTT_WRITE_PROT		16*/ 0,
-    /*  FTT_FMK			17*/ 0,
-    /*  FTT_EOM			18*/ 0,
-    /*  FTT_PEOT		19*/ 0,
-    /*  FTT_MEDIA_TYPE		20*/ 0,
-    /*  FTT_BLOCK_SIZE		21*/ 0,
-    /*  FTT_BLOCK_TOTAL		22*/ 0,
-    /*  FTT_TRANS_DENSITY	23*/ 0,
-    /*  FTT_TRANS_COMPRESS	24*/ 0,
-    /*  FTT_REMAIN_TAPE		25   0,*/4,
-    /*  FTT_USER_READ		26*/ 1,
-    /*  FTT_USER_WRITE		27*/ 1,
-    /*  FTT_CONTROLLER		28*/ 0,
-    /*  FTT_DENSITY		29   0,*/4,
-    /*  FTT_ILI			30*/ 0,
-    /*  FTT_SCSI_ASC		31*/ 0,
-    /*  FTT_SCSI_ASCQ		32*/ 0,
-    /*  FTT_PF			33*/ 0,
-    /*  FTT_CLEANED_BIT	        34*/ 0,
-    /*  FTT_WRITE_COMP		35*/ 0,
-    /*  FTT_TRACK_RETRY		36*/ 0,
-    /*  FTT_UNDERRUN		37*/ 1,
-    /*  FTT_MOTION_HOURS	38*/ 1,
-    /*  FTT_POWER_HOURS		39*/ 1,
-    /*  FTT_TUR_STATUS		40*/ 0,
-    /*  FTT_BLOC_LOC		41*/ 1,
-    /*  FTT_COUNT_ORIGIN	42*/ 0,
-    /*  FTT_N_READS		43*/ 1,
-    /*  FTT_N_WRITES		44*/ 1,
-    /*  FTT_TNP			45*/ 0,
-    /*  FTT_SENSE_KEY		46*/ 0,
-    /*  FTT_TRANS_SENSE_KEY	47*/ 0,
-    /*  FTT_RETRIES		48*/ 1,
-    /*  FTT_FAIL_RETRIES	49*/ 1,
-    /*  FTT_RESETS		50*/ 1,
-    /*  FTT_HARD_ERRORS		51*/ 1,
+    /*  FTT_CLEANING_BIT	4*/ 0,
+    /*  FTT_READ_COUNT		5*/ 1,
+    /*  FTT_WRITE_COUNT		6*/ 1,
+    /*  FTT_READ_ERRORS		7*/ 1,
+    /*  FTT_WRITE_ERRORS	8*/ 1,
+    /*  FTT_READ_COMP		9*/ 0,
+    /*  FTT_FILE_NUMBER		10*/ 0,
+    /*  FTT_BLOCK_NUMBER	11*/ 0,
+    /*  FTT_BOT				12*/ 0,
+    /*  FTT_READY			13*/ 0,
+    /*  FTT_WRITE_PROT		15*/ 0,
+    /*  FTT_FMK				16*/ 0,
+    /*  FTT_EOM				17*/ 0,
+    /*  FTT_PEOT			18*/ 0,
+    /*  FTT_MEDIA_TYPE		18*/ 0,
+    /*  FTT_BLOCK_SIZE		19*/ 0,
+    /*  FTT_BLOCK_TOTAL		20*/ 0,
+    /*  FTT_TRANS_DENSITY	21*/ 0,
+    /*  FTT_TRANS_COMPRESS	22*/ 0,
+    /*  FTT_REMAIN_TAPE		23   0,*/4,
+    /*  FTT_USER_READ		24*/ 1,
+    /*  FTT_USER_WRITE		25*/ 1,
+    /*  FTT_CONTROLLER		26*/ 0,
+    /*  FTT_DENSITY			27   0,*/4,
+    /*  FTT_ILI				28*/ 0,
+    /*  FTT_SCSI_ASC		29*/ 0,
+    /*  FTT_SCSI_ASCQ		30*/ 0,
+    /*  FTT_PF				31*/ 0,
+    /*  FTT_CLEANED_BIT	    32*/ 0,
+    /*  FTT_WRITE_COMP		33*/ 0,
+    /*  FTT_TRACK_RETRY		34*/ 0,
+    /*  FTT_UNDERRUN		35*/ 1,
+    /*  FTT_MOTION_HOURS	36*/ 1,
+    /*  FTT_POWER_HOURS		37*/ 1,
+    /*  FTT_TUR_STATUS		38*/ 0,
+    /*  FTT_BLOC_LOC		39*/ 1,
+    /*  FTT_COUNT_ORIGIN	40*/ 0,
+    /*  FTT_N_READS			41*/ 1,
+    /*  FTT_N_WRITES		42*/ 1,
+    /*  FTT_TNP				43*/ 0,
+    /*  FTT_SENSE_KEY		44*/ 0,
+    /*  FTT_TRANS_SENSE_KEY	45*/ 0,
+    /*  FTT_RETRIES			46*/ 1,
+    /*  FTT_FAIL_RETRIES	47*/ 1,
+    /*  FTT_RESETS			48*/ 1,
+    /*  FTT_HARD_ERRORS		49*/ 1,
     /*  FTT_UNC_WRITE		50*/ 1,
     /*  FTT_UNC_READ		51*/ 1,
     /*  FTT_CMP_WRITE		52*/ 1,
     /*  FTT_CMP_READ		53*/ 1,
     /*  FTT_ERROR_CODE		54*/ 0,
-    /*  FTT_CUR_PART		54*/ 0,
-    /*  FTT_MOUNT_PART		54*/ 0,
+    /*  FTT_CUR_PART		55*/ 0,
+    /*  FTT_MOUNT_PART		56*/ 0,
+	/*  FTT_MEDIA_END_LIFE	57*/ 0,
+	/*  FTT_NEARING_MEDIA_END_LIFE		58*/ 0
 };
 
 void
@@ -233,12 +268,12 @@ ftt_add_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 
     for( i = 0; i < FTT_MAX_STAT; i++) {
         if( ftt_numeric_tab[i] && b1->value[i] && b2->value[i] ) {
- 	    set_stat(res, i, ftt_itoa((long)atoi(b1->value[i]) + atoi(b2->value[i])),0);
+ 	        set_stat(res, i, ftt_itoa((long)atoi(b1->value[i]) + atoi(b2->value[i])),0);
         } else if ( b2->value[i] ) {
- 	    set_stat(res, i, b2->value[i],0);
+ 	        set_stat(res, i, b2->value[i],0);
         } else if ( b1->value[i] ) {
- 	    set_stat(res, i, b1->value[i],0);
-	}
+ 	        set_stat(res, i, b1->value[i],0);
+	    }
     }
 }
 
@@ -253,14 +288,14 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 
     for( i = 0; i < FTT_MAX_STAT; i++) {
         if( ftt_numeric_tab[i] && b1->value[i] && b2->value[i] ) {
- 	    set_stat(res, i, ftt_itoa((long)atoi(b1->value[i]) - atoi(b2->value[i])),0);
+ 	        set_stat(res, i, ftt_itoa((long)atoi(b1->value[i]) - atoi(b2->value[i])),0);
         } else if ( b1->value[i] ) {
- 	    set_stat(res, i, b1->value[i],0);
+ 	        set_stat(res, i, b1->value[i],0);
         } else if ( b2->value[i] && ftt_numeric_tab[i] ) {
- 	    set_stat(res, i, ftt_itoa(-(long)atoi(b2->value[i])),0);
+ 	        set_stat(res, i, ftt_itoa(-(long)atoi(b2->value[i])),0);
         } else if ( b2->value[i] ) {
- 	    set_stat(res, i, b2->value[i],0);
-	}
+ 	        set_stat(res, i, b2->value[i],0);
+	    }
     }
 }
 
@@ -317,30 +352,29 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, double divide
     length = pack(0,0,buf[2],buf[3]);
     DEBUG3(stderr,"decrypt_ls: length is %d \n", length);
     while( page < (buf + length) ) {
-	thisparam = pack(0,0,page[0],page[1]);
-	thislength = page[3];
-	value = 0.0;
-        if (thislength < 8) {
-	    for(i = 0; i < thislength ; i++) {
-		value = value * 256 + page[4+i];
-	    }
-        }
-	DEBUG3(stderr, "parameter %d, length %d value %g\n", thisparam, thislength, value);
-	if ( thisparam == param ) {
-	    if ( value / divide > 1.0e+127 ) {
-		/* do something if its really huge... */
-		sprintf(printbuf, "%g", value / divide );
-	    } else {
-		sprintf(printbuf, "%.0f", value / divide);
+    	thisparam = pack(0,0,page[0],page[1]);
+    	thislength = page[3];
+    	value = 0.0;
+            if (thislength < 8) {
+    	        for(i = 0; i < thislength ; i++) {
+    		        value = value * 256 + page[4+i];
+    	        }
             }
-          if ( (buf[0] != 0x32) || ((buf[0] == 0x32) && (param == 0 || param == 1)))
-          {
-	    set_stat(b,stat,printbuf,0);
-	    DEBUG3(stderr," stat %d - value %s = %g \n",stat,printbuf,value / divide);
-          }
-            return;
-	}
-	page += 4 + thislength;
+    	DEBUG3(stderr, "parameter %d, length %d value %g\n", thisparam, thislength, value);
+    	if ( thisparam == param ) {
+    	    if ( value / divide > 1.0e+127 ) {
+    		    /* do something if its really huge... */
+    		    sprintf(printbuf, "%g", value / divide );
+    	    } else {
+    		    sprintf(printbuf, "%.0f", value / divide);
+            }
+            if ( (buf[0] != 0x32) || ((buf[0] == 0x32) && (param == 0 || param == 1))) {
+    	        set_stat(b,stat,printbuf,0);
+    	        DEBUG3(stderr," stat %d - value %s = %g \n",stat,printbuf,value / divide);
+            }
+            return (value / divide);
+    	}
+    	page += 4 + thislength;
     }
 }
 
@@ -362,6 +396,7 @@ ftt_get_stat_ops(char *name) {
     return 0;
 }
 
+// ltrestka | 03-08-2024 | Corrected incorrect null pointer handling, leading to segmentation faults
 int
 ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int res;
@@ -383,7 +418,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     CKNULL("ftt_descriptor", d);
     CKNULL("statistics buffer pointer", b);
 
-    memset(b,0,sizeof(ftt_stat));
+    // Correctly clear the entire structure that b points to, ensuring it's fully initialized
+    memset(b, 0, sizeof(*b)); // Use sizeof(*b) to get the size of the structure, not the pointer
+    DEBUG3(stderr, "statistics buffer b has size %zu\n", sizeof(*b)); // Corrected format specifier
+    
 
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
@@ -555,16 +593,22 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	} else {
 	    set_stat(b,FTT_VENDOR_ID,  (char *)buf+8,  (char *)buf+16);
 	    set_stat(b,FTT_PRODUCT_ID, (char *)buf+16, (char *)buf+32);
-/*	    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+35);             */
-	    if ( 0 != strcmp(d->prod_id, ftt_extract_stats(b,FTT_PRODUCT_ID))) {
-		char *tmp;
+/*	    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+35);            */
+		if (ftt_extract_stats != NULL && b != NULL){
+			const char* prod_id_stats = ftt_extract_stats(b, FTT_PRODUCT_ID);
+			if (d->prod_id == NULL || prod_id_stats == NULL) {
+				// Handle the NULL case: either log an error, or handle it according to your application's logic.
+			} else if (0 != strcmp(d->prod_id, prod_id_stats)) {
+				char *tmp;
 
-		/* update or product id and stat_ops if we were wrong */
+				/* update or product id and stat_ops if we were wrong */
 
-		tmp = d->prod_id;
-		d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
-		free(tmp);
-	    }
+				tmp = d->prod_id;
+				d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
+				free(tmp);
+			}
+		}
+		
 /***********************************************************************
 *         different drives has different length of a Product Revision Number
 *         for STK T9940A/B it takes bytes 32-39
@@ -1159,10 +1203,10 @@ char *
 ftt_extract_stats(ftt_stat_buf b, int stat) {
 
     ENTERING("ftt_extract_stats");
-    PCKNULL("statistics buffer pointer",b);
+    PCKNULL("statistics buffer pointer", b);
 
     if (stat < FTT_MAX_STAT && stat >= 0 ) {
-	return b->value[stat];
+		return b->value[stat];
     } else {
 	ftt_eprintf("ftt_extract_stats was given an out of range statistic number.");
 	ftt_errno= FTT_EFAULT;

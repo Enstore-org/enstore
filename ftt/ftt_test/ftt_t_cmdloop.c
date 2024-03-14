@@ -40,6 +40,7 @@ Revision history:-
 
 #endif
 
+#include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <stdio.h>

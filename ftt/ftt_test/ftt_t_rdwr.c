@@ -13,6 +13,7 @@ Include files:-
 ===============
 */
 
+#include <unistd.h>
 #include <time.h>
 #include <math.h>
 #include "ftt.h"

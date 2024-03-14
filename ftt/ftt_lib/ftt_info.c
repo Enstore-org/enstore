@@ -11,6 +11,12 @@ static char rcsid[] = "@(#)$Id$";
 
 extern int errno;
  
+int ftt_set_debug_level(int lvl) {
+    ftt_debug = lvl;
+    return ftt_debug;
+}
+	
+
 int 
 ftt_get_data_direction(ftt_descriptor d) {
     ENTERING("ftt_get_data_direction");

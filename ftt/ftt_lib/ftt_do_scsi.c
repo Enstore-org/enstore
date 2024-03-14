@@ -360,7 +360,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
     }
     return res;
 }
-extern ftt_itoa(long n);
+extern char* ftt_itoa(long n);
 
 int
 ftt_scsi_locate( ftt_descriptor d, int blockno) {

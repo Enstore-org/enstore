@@ -211,7 +211,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	    res = -1;
 	    guess_errno = FTT_EBLANK;
 	} else {
-	    ftt_eprintf(stderr, "Sense key was %s\n", p);
+	    ftt_eprintf("Sense key was %s\n", p);
 	    DEBUG3(stderr, "Sense key was %s\n", p);
 	    if (0 != (p = ftt_extract_stats(&sbuf,FTT_BLOC_LOC))) {
 		ftt_eprintf("Current loc %s, last loc %d\n", p, d->last_pos);

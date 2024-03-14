@@ -5,6 +5,8 @@
 #define DEBUG0 if(ftt_debug>=1) (void)fprintf
 #endif
 
+#define FTT_SET_DEBUG_LEVEL(lvl)  ftt_debug=lvl
+
 #define DEBUG1 if(ftt_debug>=1) (void)fprintf
 #define DEBUG2 if(ftt_debug>=2) (void)fprintf
 #define DEBUG3 if (ftt_debug>=3) (void)fprintf
@@ -38,7 +40,6 @@
     if( 0 == p ) {  						\
 	ftt_eprintf("%s called with NULL %s\n", _name, what);	\
 	ftt_errno = FTT_EFAULT;					\
-	return;							\
     }
 
 /*

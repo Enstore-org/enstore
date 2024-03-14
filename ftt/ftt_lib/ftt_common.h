@@ -4,7 +4,8 @@
 ** are visible to the end user and within the library.
 */
 
-
+#ifndef _FTT_COMMON_H
+#define _FTT_COMMON_H
 /* ftt entry points
 ** See docs for what they do, arguments, etc.
 */
@@ -120,4 +121,4 @@ extern int 		ftt_set_part_size(ftt_partbuf,int,long);
 extern int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
 extern int		ftt_write_partitions(ftt_descriptor,ftt_partbuf);
 extern int		ftt_skip_part(ftt_descriptor,int);
-
+#endif

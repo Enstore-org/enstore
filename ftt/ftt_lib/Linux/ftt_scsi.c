@@ -19,6 +19,8 @@ static char rcsid[] = "@(#)$Id$";
  *******************************************************************************
  */
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <scsi/sg.h>
 #include <string.h>

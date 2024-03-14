@@ -15,6 +15,8 @@
 #define MB KB*KB
 #define GB MB*KB
 
+extern int ftt_writefm_buffered(ftt_descriptor d);
+extern int ftt_flush_data(ftt_descriptor d);
 
 long write_data(ftt_descriptor  fd,
 		                 long f_size,

@@ -5,7 +5,7 @@ ADD data/* data/
 # set up enstore repo
 RUN cp data/enstore.repo /etc/yum.repos.d/enstore.repo
 # set up rpm build requirements
-RUN dnf update -y && dnf install -y tk which swig Python-enstore-2.7.18 rpm-build swig-enstore make gcc && dnf clean all
+RUN dnf update -y && dnf install -y tk which swig Python-enstore-2.7.18 rpm-build make gcc && dnf clean all
 RUN dnf  --downloadonly --disablerepo='*' --enablerepo=enstore install -y mtx
 RUN rpm -i `find /var/cache/ -name mtx-1.3.12-18fnal.el7.x86_64.rpm` 
 RUN dnf -y --enablerepo=powertools install perl-IPC-Run && dnf clean all

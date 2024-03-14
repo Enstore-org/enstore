@@ -78,3 +78,4 @@
 #define tape_op st_op
 #define tape_count st_count
 #endif
+#include "local/ftt_mtio.h"

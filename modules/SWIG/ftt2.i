@@ -109,9 +109,11 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
 %{
 /* Include in the generated wrapper file */
 typedef char * cptr;
+typedef char * byteptr; // to map python list < - > array of bytes for do_scsi_command
 %}
 /* Tell SWIG about it */
 typedef char * cptr;
+typedef char * byteptr; // to map python list < - > array of bytes for do_scsi_command
 
 %typemap(in) cptr{
         $1 = PyString_AsString($input);
@@ -141,13 +143,19 @@ typedef char * cptr;
 	PyList_SetItem($target, i, PyString_FromString($source[i]));
     }
 }
+%{
+/* Include in the generated wrapper file */
+typedef char * cptr;
+typedef char * byteptr; // to map python list < - > array of bytes for do_scsi_command
+%}
+/* Tell SWIG about it */
+typedef char * cptr;
+typedef char * byteptr; 
 
-
-%typedef char * cptr;
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
 }
-%typedef char * byteptr; // to map python list < - > array of bytes for do_scsi_command
+// to map python list < - > array of bytes for do_scsi_command
 
 %typemap(python, in) byteptr{
   if (PyString_Check($source)) {
@@ -347,7 +355,7 @@ extern char *ftt_ascii_rewindflags[];
 ** -- ftt_label_type_names[] in ftt_higher.c
 ** so that it can print reasonable error messages.
 */
-extern char *ftt_label_type_names[];
+extern char * ftt_label_type_names[];
 #define FTT_ANSI_HEADER     0
 #define FTT_FMB_HEADER      1
 #define FTT_TAR_HEADER      2
@@ -389,6 +397,7 @@ extern char *ftt_label_type_names[];
 ftt_stat_buf	ftt_alloc_stat(void);
 ftt_stat_buf	*ftt_alloc_stats(void);
 int		ftt_all_scsi(ftt_descriptor);
+int 		ftt_scsi_check(ftt_descriptor,char *, int, int);
 char *		ftt_avail_mode(ftt_descriptor, int, int, int);
 char *		ftt_get_mode(ftt_descriptor, int *OUTPUT, int* OUTPUT, int *OUTPUT);
 void 		ftt_add_stats(ftt_stat_buf,ftt_stat_buf,ftt_stat_buf);
@@ -408,6 +417,7 @@ int		ftt_fork(ftt_descriptor);
 int 		ftt_format_label(char*, int, char*, int, int);
 int		ftt_free_stat(ftt_stat_buf);
 void 		ftt_free_stats(ftt_stat_buf *);
+int             ftt_set_debug_level(int lvl);
 char *		ftt_get_basename(ftt_descriptor d);
 char *		ftt_get_error(int *OUTPUT);
 int 		ftt_get_max_blocksize(ftt_descriptor);
@@ -484,9 +494,9 @@ int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_write_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_skip_part(ftt_descriptor,int);
 
-int             ftt_do_scsi_command(ftt_descriptor, const cptr,  const byteptr, int, byteptr, int, int, int);
+int     ftt_do_scsi_command(ftt_descriptor, const cptr,  const byteptr, int, byteptr, int, int, int);
 
-extern char *ftt_ascii_error[]; /* maps error numbers to their names */
+extern char * ftt_ascii_error[]; /* maps error numbers to their names */
 
 /* This is a Hack*/
 int ftt_set_last_operation(ftt_descriptor, int);

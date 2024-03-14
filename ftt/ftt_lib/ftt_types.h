@@ -2,7 +2,8 @@
 ** Private data structurs for FTT internals
 */
 
-
+#ifndef _FTT_TYPES_H
+#define _FTT_TYPES_H
 #define FTT_EPRINT_BUF_SIZE 512
 extern char ftt_eprint_buf[];
 
@@ -194,4 +195,4 @@ extern int ftt_skip_fm_internal(ftt_descriptor, int);
 extern int ftt_open_scsi_dev(ftt_descriptor d);
 extern int ftt_close_scsi_dev(ftt_descriptor d);
 extern char *ftt_find_last_part(char*);
-
+#endif

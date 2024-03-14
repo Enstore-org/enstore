@@ -2,6 +2,7 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "ftt_private.h"
 
 #ifdef WIN32
@@ -342,7 +343,7 @@ char *ftt_stat_names[] = {
  /* FTT_READ_COUNT	 5 */ "FTT_READ_COUNT",
  /* FTT_WRITE_COUNT	 6 */ "FTT_WRITE_COUNT",
  /* FTT_READ_ERRORS	 7 */ "FTT_READ_ERRORS",
- /* FTT_WRITE_ERRORS	 8 */ "FTT_WRITE_ERR'S",
+ /* FTT_WRITE_ERRORS	 8 */ "FTT_WRITE_ERRORS",
  /* FTT_READ_COMP	 9 */ "FTT_READ_COMP",
  /* FTT_FILE_NUMBER	10 */ "FTT_FILE_NUMBER",
  /* FTT_BLOCK_NUMBER	11 */ "FTT_BLOCK_NUMBER",
@@ -370,7 +371,7 @@ char *ftt_stat_names[] = {
  /* FTT_WRITE_COMP	33 */ "FTT_WRITE_COMP",
  /* FTT_TRACK_RETRY	34 */ "FTT_TRACK_RETRY",
  /* FTT_UNDERRUN	35 */ "FTT_UNDERRUN",
- /* FTT_MOTION_HOURS	36 */ "FTT_MOTION_H-RS",
+ /* FTT_MOTION_HOURS	36 */ "FTT_MOTION_HOURS",
  /* FTT_POWER_HOURS	37 */ "FTT_POWER_HOURS",
  /* FTT_TUR_STATUS	38 */ "FTT_TUR_STATUS",
  /* FTT_BLOC_LOC	39 */ "FTT_BLOC_LOC",
@@ -380,7 +381,8 @@ char *ftt_stat_names[] = {
  /* FTT_TNP		43 */ "FTT_TNP",
  /* FTT_SENSE_KEY	44 */ "FTT_SENSE_KEY",
  /* FTT_TRANS_SENSE_KEY	45 */ "FTT_TRANS_SENSE_KEY",
- /* FTT_RETRIES		46 */ "FTT_F_RETRIES",
+ /* FTT_RETRIES		46 */ "FTT_RETRIES",
+ /* FTT_FAIL_RETRIES		47 */ "FTT_FAIL_RETRIES",
  /* FTT_RESETS		48 */ "FTT_RESETS",
  /* FTT_HARD_ERRORS	49 */ "FTT_HARD_ERRORS",
  /* FTT_UNC_WRITE	50 */ "FTT_UNC_WRITE",
@@ -390,7 +392,9 @@ char *ftt_stat_names[] = {
  /* FTT_ERROR_CODE	54 */ "FTT_ERROR_CODE",
  /* FTT_CUR_PART	55 */ "FTT_CUR_PART",
  /* FTT_MOUNT_PART	56 */ "FTT_MOUNT_PART",
- /* FTT_MAX_STAT	57 */ "FTT_MAX_STAT",
+ /* FTT_MEDIA_END_LIFE	57 */ "FTT_MEDIA_END_LIFE",
+ /* FTT_NEARING_MEDIA_END_LIFE	58 */ "FTT_NEARING_MEDIA_END_LIFE",
+ /* FTT_MAX_STAT	59 */ "FTT_MAX_STAT",
  0
 };
 

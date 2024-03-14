@@ -8,6 +8,11 @@ static char rcsid[] = "@(#)$Id$";
 #include <unistd.h>
 #endif
 
+extern int ftt_locate_part(ftt_descriptor d, int blockno, int part);
+extern void ftt_undump_partitions(ftt_partbuf p, FILE *pf);
+extern void ftt_dump_partitions(ftt_partbuf parttab, FILE *pf);
+extern int ftt_verify_blank(ftt_descriptor d);
+
 void
 usage(void) {
    fprintf(stderr, "usage: ftt_suid [-w] -s basename	 # print stats\n");
@@ -99,7 +104,7 @@ main(int argc, char **argv) {
 	}
 
 	/* ftt_debug = 3; */
-	d = ftt_open(basename,FTT_RDONLY);
+	d = ftt_open(basename, FTT_RDONLY);
 
 	d->data_direction = direction;
 

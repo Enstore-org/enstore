@@ -8,6 +8,7 @@ static char *rcslink = ftt_version;
 #include <ftt_private.h>
 
 extern int errno;
+extern int ftt_scsi_set_compression(ftt_descriptor d, int compression);
 
 #ifdef WIN32
 #include <io.h>
@@ -36,10 +37,10 @@ ftt_open(const char *name, int rdonly) {
     ENTERING("ftt_open");
     PCKNULL("base name", name);
     ftt_eprintf("Ok"); /* clear error buffer */ 
-    DEBUG2(stderr, "ftt_open( %s, %d )\n", name, rdonly);
+    DEBUG1(stderr, "ftt_open( %s, %d )\n", name, rdonly);
     strcpy(alignname, name);
     os=ftt_get_os();
-    DEBUG2(stderr,"os is %s\n", os);
+    DEBUG1(stderr,"os is %s\n", os);
     if( 0 == os ){
 	ftt_eprintf("ftt_open: unable to determine operating system type");
 	ftt_errno=FTT_ENOTSUPPORTED;
@@ -47,7 +48,7 @@ ftt_open(const char *name, int rdonly) {
     }
 
     basename=ftt_strip_to_basename(alignname, os);
-    DEBUG2(stderr,"basename is %s\n", basename);
+    DEBUG1(stderr,"basename is %s\n", basename);
     if ( basename == 0 ) {
 	ftt_eprintf("ftt_open: unable to determine drive basename.\n");
 	ftt_errno=FTT_ENOTSUPPORTED;
@@ -55,13 +56,14 @@ ftt_open(const char *name, int rdonly) {
     }
 
     drivid=ftt_get_driveid(basename, os);
-    DEBUG2(stderr,"drivid is %s\n", drivid);
+    DEBUG1(stderr,"drivid is %s\n", drivid);
     if( 0 == drivid ){
 	ftt_eprintf("ftt_open: Warning unable to determine tape drive type.\n");
 	drivid=strdup("unknown");
     }
 
     res = ftt_open_logical(basename, os, drivid, rdonly);
+	DEBUG1(stderr, "ftt_open: %s\n", res);
     free(basename);
     return res;
 }
@@ -82,7 +84,7 @@ ftt_unalias( const char *s1 ) {
     if( p->real ) {
        return p->real;
     } else {
-       return s1;
+       return (char *) s1;
     }
 }
 
@@ -404,6 +406,7 @@ ftt_open_io_dev(ftt_descriptor d) {
 	
 	d->which_is_open = d->which_is_default;
 	DEBUG1(stderr,"Actually opening file \n");
+	DEBUG1(stderr,"filename to open %s\n",d->devinfo[d->which_is_default].device_name);
 
 #ifndef WIN32
 
@@ -411,7 +414,12 @@ ftt_open_io_dev(ftt_descriptor d) {
 		d->devinfo[d->which_is_default].device_name,
 		(d->readonly?O_RDONLY:O_RDWR)|FNONBLOCK|O_EXCL,
 		0);
+	DEBUG1(stderr,"File %s after  OPEN : id = %d : IO = %s \n",
+	       d->devinfo[d->which_is_default].device_name,d->file_descriptor,
+	       ( d->readonly?"READ":"READ-WRITE"));
+
 	if ( d->file_descriptor < 0 ) { /* file wasn't open */
+          DEBUG1(stderr, "file failed to open calling ftt_translate_error\n");
 	  d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
 						   d->file_descriptor, "ftt_open_dev",1);
 
@@ -444,7 +452,7 @@ ftt_open_dev(ftt_descriptor d) {
     ENTERING("ftt_open_dev");
     CKNULL("ftt_descriptor" , d);
 
-    if (d->which_is_default < 0 ) {
+    if (d == NULL || (d != NULL && d->which_is_default < 0) ) {
 		ftt_errno = FTT_EFAULT;
 		ftt_eprintf("ftt_open_dev: called with invalid (closed?) ftt descriptor");
 		return -1;
@@ -532,22 +540,27 @@ ftt_close_io_dev(ftt_descriptor d) {
     if ( d->which_is_open >= 0 ) {
 		ftt_write_fm_if_needed(d);
         DEBUG1(stderr,"Actually closing\n");
+	
+		if (d != NULL){
+			if (d->devinfo != NULL){
+				#ifndef WIN32
+					res = close(d->file_descriptor); 
+					DEBUG2(stderr,"close returns %d errno %d\n", res, errno);
+				#else
+					
+					res = (CloseHandle((HANDLE)d->file_descriptor)) ? 0 : -1;
+					DEBUG2(stderr,"WIN32 close returns %s errno %d\n", res, (int)GetLastError());
+				
+				#endif
 
-#ifndef WIN32
-		res = close(d->file_descriptor); 
-		DEBUG2(stderr,"close returns %d errno %d\n", res, errno);
-#else
-		res = (CloseHandle((HANDLE)d->file_descriptor)) ? 0 : -1;
-		DEBUG2(stderr,"close returns %d errno %d\n", res, (int)GetLastError());
-#endif
-		DEBUG1(stderr,"File %s is CLOSE : id = %d : IO = %s \n",
-		       d->devinfo[d->which_is_default].device_name,
-		       d->file_descriptor,
-		       d->readonly?"READ":"READ-WRITE");
-
-		
-		d->which_is_open = -1;
-		d->file_descriptor = -1;
+				DEBUG1(stderr,"File %s is CLOSED : id = %s : IO = %s \n",
+					(d->devinfo[d->which_is_default].device_name != NULL) ? d->devinfo[d->which_is_default].device_name : "Unknown",
+					d->file_descriptor ? 0 : -1,
+					d->readonly ? "READ" : "READ-WRITE");
+				}
+			d->which_is_open = -1;
+			d->file_descriptor = -1;
+		}
     }
     return res;
 }
