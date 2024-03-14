@@ -59,7 +59,7 @@ class FbDownloader(DownloadCommon):
             if scale and scale < 0:
                 scale = -scale
             
-            if not size and numprecradix == 10:
+            if not size:
                 size = numsize
             
             strType = self.convertTypeId(nType)
