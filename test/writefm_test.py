@@ -16,7 +16,7 @@ def write(tape_driver, f_size, block):
             if bytes_written == BLOCK_SIZE:
                 tot_written = tot_written + bytes_written
             else:
-                raise Error("bytes to write %s, bytes written %s total %s"%(BLOCK_SIZE, bytes_written, tot_written))
+                raise Exception("bytes to write %s, bytes written %s total %s"%(BLOCK_SIZE, bytes_written, tot_written))
         except:
             exc, msg = sys.exc_info()[:2]
             print "Exception while doing write. Total written %s"%(tot_written,)
