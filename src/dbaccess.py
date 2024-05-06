@@ -250,7 +250,7 @@ class DatabaseAccess:
         try:
             db=self.pool.connection();
             cursor=db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            s += " RETURNING *, oid"
+            s += " RETURNING *"
             if values:
                 cursor.execute(s,values)
             else:
