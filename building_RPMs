@@ -1,0 +1,58 @@
+
+Enstore RPMS are currently built via two different methods,
+via github actions and purpose-built containers.
+
+Building via github actions:
+This works to create el7 and el8 enstore rpms.
+
+   1. go to https://github.com/Enstore-org/enstore and click on 'Actions'
+      on the top row
+
+   2. On the side bar some Actions are listed.  To build an el7 RPM
+      use the Build-RPM action.  To build an el8 rpm use Build-RPM-Alma8
+
+   3. Clicking on either of these two actions will change the browser
+      space to show a usage history.  At the top of the browser page
+      there is a "Run workflow" pulldown.  Pulling it down lets you
+      choose which git branch to build the RPM from and another button
+      that starts the build.  The rpm version of the resulting RPM is set 
+      from the file 'rpm_version' in the top level directory of the
+      branch you chose.  EDIT THIS FILE TO CHANGE release, version,
+      and commit number.
+
+   4. The resulting RPM will be produced as a build artifact.
+      Download this from the github web site, then install,
+      test, load to a repo for distribution. 
+
+Building via container:
+This method currently works for el8 enstore RPMS, el8 python-enstore RPMS,
+and el8 mtx rpms.  The README for mtx at https://github.com/Enstore-org/mtx shows
+in detail how to do this using podman for an mtx RPM. 
+The steps to build the other RPMS are similar. In general:
+
+    1. checkout the github repo example 
+        git checkout https://github.com/Enstore-org/enstore.git
+
+    2. change directory to 'enstore/.github/docker/<project>' directory
+       for the product you want to build. 
+       For el8, <project>=='alma8-build-enstore'
+       For el8 enstore-python, needed to build el8 enstore,
+                <project>=='alma8-build-python'
+       For el8 mtx, see the README for https://github.com/Enstore-org/mtx
+
+    3. Build the container image using podman, docker, or whatever
+       container management system you prefer.  
+       See https://github.com/Enstore-org/mtx/README for 
+       an example of using podman.
+
+    4. Start a container from the built image, and run
+       the build script.
+
+       For el8 enstore, the build script is located in the
+       running container at  /data/build_enstore_rpm.sh
+       For el8 enstore-python, build script is /data/run_build.sh
+       For el8 mtx, build script is /data/build_enstore_mtx_rpm.sh
+
+    5. Copy the resulting RPM out of the container from
+       /root/rpmbuild/RPMS/x86_64/ and install, test, etc 
+    
