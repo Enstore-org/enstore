@@ -218,7 +218,7 @@ def start_postmaster(db_path):
                 # "hot_standby = on" by default from v10 on.
                 # You could change the configuration and set it to "off",
                 # then PostgreSQL will continue to work as before.
-                cmd = "postmaster -c archive_mode=off -c hot_standby=off -D %s &"%(db_path)
+                cmd = "postmaster -c archive_mode=off -c hot_standby=off -D %s -k /tmp &"%(db_path)
 		os.system(cmd)
 		time.sleep(15)
                 rc = checkPostgres()
@@ -246,7 +246,7 @@ def extract_backup(backup_dir, container, db_path):
     os.system(cmd)
 
     # create recovery file
-    rf = open('%s/recovery.conf'%(db_path,), 'w')
+    rf = open('%s/conf.d/recovery.conf'%(db_path,), 'w')
     rf.write("restore_command = 'unxz <"+'"%s/pg_xlog_archive/enstore/'%(backup_dir,)+'%f.xz" >"%p"'+"'\n")
     rf.close()
 
