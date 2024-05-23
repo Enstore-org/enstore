@@ -1,0 +1,21 @@
+commit 73de778b6810ce931471b547870f495b5c7638dc
+Merge: f8edc0459 1873eec84
+Author: Leopoldo Muñoz <130390913+vlmunoz@users.noreply.github.com>
+Date:   Tue Dec 5 15:28:51 2023 -0600
+
+    Merge pull request #135 from Enstore-org/fix/media-changer-client
+    
+    Fix/media changer client, missing a validation on a property.
+
+commit 1873eec8420ebf23edbcac3d462da4f5ee126b52
+Author: Leopoldo Munoz <victormf@fnal.gov>
+Date:   Mon Apr 10 01:49:23 2023 -0500
+
+    fix: relocation header print statement
+
+commit 5c8fdcbebd2305a185f505a7aa5beba0cabee1f0
+Author: Leopoldo Munoz <victormf@fnal.gov>
+Date:   Mon Apr 10 01:42:46 2023 -0500
+
+    fix: type validation on associative array
+          when printing value.

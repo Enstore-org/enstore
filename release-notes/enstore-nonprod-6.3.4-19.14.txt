@@ -1,0 +1,174 @@
+commit d0d4c0aff4046683cbc741584988ab06e379b9d5
+Merge: f018e949e ad0a5d297
+Author: renbauer-fnal <renbauer@fnal.gov>
+Date:   Mon Jul 24 11:15:01 2023 -0700
+
+    Merge pull request #130 from dbox-fnal/test_volume_clerk_client
+    
+    Test volume clerk client
+
+commit f018e949ed703279b9a757334916c4ed5cea8708
+Merge: 1e283c7cd fc91cedab
+Author: renbauer-fnal <renbauer@fnal.gov>
+Date:   Mon Jul 24 11:13:07 2023 -0700
+
+    Merge pull request #129 from dbox-fnal/test_generic_server
+    
+    Test generic server
+
+commit 1e283c7cdd5b64c7f3e22650b424d9a9bb695520
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue May 30 14:48:03 2023 -0400
+
+    Unused import
+
+commit c1307b3152d8a8b4448f19af60382532eba585af
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue May 30 14:46:40 2023 -0400
+
+    Module comment
+
+commit a9eef247daa19abfa23a684c8a1482ac8fa90a52
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue May 30 14:42:29 2023 -0400
+
+    Docstrings
+
+commit d0112732e497063882dea9f628145805c8301262
+Author: Ren Bauer <renbauer@fnal.gov>
+Date:   Tue May 30 13:41:45 2023 -0400
+
+    Code cleanup
+
+commit 6df99b0297d8aadc5d97830adb628cba68a64439
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 17 18:24:33 2023 -0500
+
+    reviewer suggestions and one new caught bug fix in log_client.py
+
+commit 6d89d6f04e5ac0aa15a57dd03b27700fd1ddfb5d
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 16:49:37 2023 -0500
+
+    final docstrings and tweaks .... ?
+
+commit 8269c71c3bbdb2e05da037950f918269d1ac6640
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 13:31:26 2023 -0500
+
+    works in my container, why not in github action
+
+commit 6a0529688864311bde43bf009a700c3bd3a3c6b2
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 13:22:05 2023 -0500
+
+    more tweaks
+
+commit 249b1fcf4fda77c3492ff3ea238c9bf6a56042ec
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 12:38:07 2023 -0500
+
+    test tweak
+
+commit fbb375dff114c19e40a18d96b8d8fdfc01094ac8
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 12:23:52 2023 -0500
+
+    more docstrings
+
+commit 30a8403407fdde9dd2fa8a9bb9e2eefe8525d63f
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 12:11:53 2023 -0500
+
+    more docstrings
+
+commit 18374a2f9162a2d339b801987fbfa510583ab14d
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 12:02:38 2023 -0500
+
+    more docstrings
+
+commit 226928930c268031c4f2209218608ba340da6575
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Jul 11 11:53:20 2023 -0500
+
+    added docstrings
+
+commit 6ba32346b48a5a1fe96072477774cfe1c651e0cd
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 10 23:12:54 2023 -0500
+
+    still trying to run as non root
+
+commit 7f6886d286d83b57eaf4bd852ee027c728fea4b8
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 10 23:03:52 2023 -0500
+
+    try this to run non root
+
+commit 492e2537505d35e8f9f30bc6116e88f57265f236
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 10 22:06:50 2023 -0500
+
+    some tests fail because github runs tests as root. Try this fix
+
+commit 7ef7540277faa42d34185decdf1181d9470973f4
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 10 21:25:05 2023 -0500
+
+    linted
+
+commit f9042b447dcd39f9fd6086123a0871371c3925ae
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 10 16:47:03 2023 -0500
+
+    get rid of confusing files to  make reviewers job easier
+
+commit e72958e63826132e7b0a5afe935d3cf2f263bb25
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 10 16:42:08 2023 -0500
+
+    cleanup to make reviewers job easier
+
+commit c2802d44d8d33d887d8a070024799a14dc240ba7
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Mon Jul 10 16:33:17 2023 -0500
+
+    make job of reviewer easier
+
+commit 97759202065bd8e6ff14bf3428bff96a96d70ebd
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Fri Jun 16 18:41:18 2023 -0500
+
+    test for volume_clerk_client.
+
+commit b049dffacda12a59bf09a1141cb861d3b3461fbb
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Fri Jun 16 10:38:16 2023 -0500
+
+    unit test for generic_server
+
+commit 242dfe0bde14fd50a4ca1aaf6a83bbb3800f9bc4
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Thu Jun 15 13:35:52 2023 -0500
+
+     autopep8 --select E1,E2,E3,E401,W2,W3 --ignore E226,E24,E26 --in-place --recursive --verbose
+
+commit 2186c250ac1df3a68a3cb3b24a46c11df7db11cb
+Merge: cc1f7ba3a 3d350f740
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Thu Jun 8 17:54:50 2023 -0500
+
+    Merge branch 'test_event_relay_messages' into develop
+
+commit cc1f7ba3a42ea128f12752a53493510d3fffabd6
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Thu Jun 8 17:22:02 2023 -0500
+
+    test alarm_client.py
+
+commit 3d350f740d22c50aefc612299847c500adcb780b
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Wed May 24 14:39:57 2023 -0500
+
+    tests and comments for event_relay_messages

@@ -1,0 +1,7 @@
+commit 275e9c414a331abe0d213348bc59a0702f64c06e
+Author: Dennis D Box <dennis@xnet.com>
+Date:   Fri Aug 4 17:04:26 2023 -0500
+
+    Update file_utils.py
+    
+    no python2 method instanceof, change to isinstance

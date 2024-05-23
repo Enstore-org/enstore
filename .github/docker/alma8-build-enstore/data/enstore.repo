@@ -1,0 +1,15 @@
+[enstore]
+name=Enstore
+baseurl=https://ssasrv1.fnal.gov/en/slf7x/x86_64
+enabled=1
+gpgcheck=0
+priority=85
+sslverify=0
+
+[enstore-el8]
+name=Enstore-el8
+baseurl=https://ssasrv1.fnal.gov/en/el8/x86_64
+enabled=1
+gpgcheck=0
+priority=85
+sslverify=0
