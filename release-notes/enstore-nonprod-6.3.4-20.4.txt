@@ -1,0 +1,18 @@
+commit 267c0e62b5ffa790955c64966e8872c233007d58
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu May 23 12:28:34 2024 -0500
+
+    checkdb_PITR: adapt to postgresql 15
+
+commit e4834a943fefb88f296251c0813b388f42f74312
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Mon May 6 14:05:03 2024 -0500
+
+    Remove explicit reference to oid in RETURNING clause because
+    oid field is de-supported in postgresql version > 11.
+
+commit f9014dda0377c3a61d98884b351a7a4eb9205f3c
+Author: Dennis Box <dbox@fnal.gov>
+Date:   Tue Dec 26 15:02:25 2023 -0600
+
+    update to build with newer kernels
