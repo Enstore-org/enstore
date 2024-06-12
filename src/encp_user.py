@@ -9,4 +9,4 @@ import delete_at_exit
 
 if __name__ == "__main__":   # pragma: no cover
 
-    delete_at_exit.quit(encp.start(1))  #1 means user
+    delete_at_exit.delete_and_quit(encp.start(1))  #1 means user
