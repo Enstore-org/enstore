@@ -92,6 +92,8 @@ def this_host():
 
         interfaces_list = Interfaces.interfacesGet()
         for interface in interfaces_list.keys():
+            if interface[:3] == 'usb':
+                continue
             ip = interfaces_list[interface]['ip']
             if ip == "127.0.0.1":
                 continue

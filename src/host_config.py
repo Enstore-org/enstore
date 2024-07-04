@@ -174,6 +174,8 @@ def get_default_interface_ip(preferred_ip=None):
                     continue  #Skip loopback.
                 if intf['ip'][:8] == "192.168.":
                     continue
+                if intf['interface'][:3] == 'usb':
+                    continue
             except KeyError:
                 print intf
                 continue

@@ -131,6 +131,8 @@ def get_enstore_tmp_dir():
         # of them.
         if item['ip'] == "127.0.0.1": #Ignore localhost.
             continue
+        if item['interface'][:3] == 'usb':
+            continue
         # Get hostnames for each ip in set of network interfaces
         tmp_hostnames = socket.gethostbyaddr(item['ip'])
         tmp_hostnames = [tmp_hostnames[0]] + tmp_hostnames[1] + tmp_hostnames[2]

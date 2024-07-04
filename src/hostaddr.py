@@ -92,6 +92,8 @@ def gethostinfo(verbose=0):
         if GL_hostinfo[2] == ["127.0.0.1"]:
             intf_ips = []
             for intf_dict in Interfaces.interfacesGet().values():
+                if intf_dict['interface'][:3] == 'usb':
+                    continue
                 intf_ips.append(intf_dict['ip'])
             GL_hostinfo = (GL_hostinfo[0], GL_hostinfo[1], intf_ips)
     return GL_hostinfo
