@@ -21,6 +21,9 @@ import ftt2
 # the C module is called _ftt2module.so and the python wrapper is ftt2.py.
 _ftt = ftt2
 
+# uncomment the next line to spew lots of debug tracing from ftt
+#_ftt.cvar.ftt_debug = 5
+
 ascii_error = _ftt.cvar.ftt_ascii_error
 
 #grab all the constants, which start with "FTT_"
