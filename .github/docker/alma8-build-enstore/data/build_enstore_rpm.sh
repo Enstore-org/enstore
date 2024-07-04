@@ -1,13 +1,15 @@
 #!/bin/bash
-cd ~
-rm -rf ~/rpmbuild
+cd /root
+rm -rf /root/rpmbuild /root/enstore
 for DIR in BUILD  BUILDROOT  RPMS	SOURCES  SPECS	SRPMS; do
-    mkdir -p ~/rpmbuild/$DIR
+    mkdir -p /root/rpmbuild/$DIR
 done
-cp /data/enstore_auto.spec ~/rpmbuild/SPECS
+cp /data/enstore_auto.spec /root/rpmbuild/SPECS
 git clone https://github.com/Enstore-org/enstore.git
-cd enstore
-tar czf ~/rpmbuild/SOURCES/enstore.tgz .
-rpmbuild -ba --noclean ~/rpmbuild/SPECS/enstore_auto.spec 2>&1 | tee /tmp/build.log
+cd /root/enstore
+git checkout $1
+tar czf /root/rpmbuild/SOURCES/enstore.tgz .
+cd /root
+rpmbuild -ba --noclean  /root/rpmbuild/SPECS/enstore_auto.spec 2>&1 | tee /tmp/build.log
 
 
