@@ -28,13 +28,14 @@ OBJ= $(SYSOBJ) ftt_do_scsi.o ftt_error.o ftt_debug.o ftt_global.o \
 	ftt_partition.o ftt_version.o $(EXTRAOBJ)
 
 
-CFLAGS=-I. -Ilocal -g  $(WARN) `cat local/flags`
+CFLAGS=-I. -Ilocal -g  -fPIC $(WARN) `cat local/flags`
 
 LIB=libftt.a
+LIBSO=libftt.so
 
 PROGS=ftt_suid asyncdemo ftt_checktable opendemo writefmdemo
 
-all: local $(LIB) $(PROGS)
+all: local $(LIB) $(LIBSO) $(PROGS) $(BINPROGS)
 
 clean:
 	rm -f $(LIB) $(PROGS) *.o local
@@ -52,6 +53,18 @@ BINDIR=../bin
 LIBDIR=../lib
 INCDIR=../include
 
+INCDIR:
+	mkdir -p ../include
+
+LIBDIR:
+	mkdir -p ../lib
+
+BINDIR: 
+	mkdir -p ../bin
+
+BINPROGS: $(BINDIR) $(PROGS)
+	cp $< ../bin/
+
 dirs: $(INCDIR) $(BINDIR) $(LIBDIR)
 
 includes: \
@@ -59,11 +72,13 @@ includes: \
 	$(INCDIR)/ftt_common.h \
 	$(INCDIR)/ftt_scsi.h \
 	$(INCDIR)/ftt_voidtypes.h \
+	$(INCDIR)/ftt_types.h \
+	$(INCDIR)/ftt_dbd.h \
 	$(INCDIR)/ftt_defines.h
 
-fttlib: $(LIBDIR)/libftt.a $(LIBDIR)/libs
+fttlib: $(LIBDIR)/libftt.a $(LIBDIR)/libs $(LIBDIR)/libftt.so
 
-install: all dirs includes fttlib $(BINDIR)/ftt_suid
+install: all dirs includes fttlib  $(BINPROGS) $(BINDIR)/ftt_suid
 
 dmalloc/malloc.o: dmalloc/malloc.c dmalloc/malloc.h dmalloc/debugmalloc.h
 	cd dmalloc; $(CC) $(CFLAGS) -c malloc.c
@@ -73,6 +88,9 @@ $(LIBDIR)/libftt.a: libftt.a
 
 $(LIBDIR)/libs: local/libs
 	cp local/libs $(LIBDIR)/
+
+$(LIBDIR)/libftt.so: libftt.so
+	cp libftt.so $(LIBDIR)/
 
 $(BINDIR)/ftt_suid: ftt_suid
 	rm -f $@
@@ -97,6 +115,12 @@ $(INCDIR)/ftt_voidtypes.h :ftt_voidtypes.h
 
 $(INCDIR)/ftt_defines.h : ftt_defines.h
 	cp ftt_defines.h  $(INCDIR)/
+
+$(INCDIR)/ftt_types.h : ftt_types.h
+	cp ftt_types.h  $(INCDIR)/
+
+$(INCDIR)/ftt_dbd.h: ftt_dbd.h
+	cp ftt_dbd.h $(INCDIR)/    
 
 
 local:
@@ -140,6 +164,9 @@ $(OBJ): $(HDR)
 $(LIB): $(OBJ)
 	rm -f $(LIB)
 	if [ `uname` = Linux ];then opts=qvs;else opts=qv;fi; ar $$opts $(LIB) $(OBJ)
+
+$(LIBSO): $(OBJ)
+	$(CC) -shared -o $(LIBSO) $(OBJ)
 
 ftt_scsi.o: $(SCSISRC)
 	$(CC) $(CFLAGS) -c local/ftt_scsi.c
