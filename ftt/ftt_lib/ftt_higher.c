@@ -332,7 +332,7 @@ ftt_update_statdb(ftt_descriptor d, ftt_statdb_buf *bp) {
 
 }        
 
-
+/*if you change this also change corresponding ftt_defines.h entry */
 char *ftt_stat_names[] = {
  /* FTT_VENDOR_ID	 0 */ "FTT_VENDOR_ID",
  /* FTT_PRODUCT_ID	 1 */ "FTT_PRODUCT_ID",
@@ -390,7 +390,9 @@ char *ftt_stat_names[] = {
  /* FTT_ERROR_CODE	54 */ "FTT_ERROR_CODE",
  /* FTT_CUR_PART	55 */ "FTT_CUR_PART",
  /* FTT_MOUNT_PART	56 */ "FTT_MOUNT_PART",
- /* FTT_MAX_STAT	57 */ "FTT_MAX_STAT",
+ /* FTT_MEDIA_END_LIFE  57 */ "FTT_MEDIA_END_OF_LIFE",
+ /* FTT_NEARING_MEDIA_END_LIFE  58 */ "FTT_NEARING_MEDIA_END_LIFE",
+ /* FTT_MAX_STAT	59 */         "FTT_MAX_STAT",
  0
 };
 

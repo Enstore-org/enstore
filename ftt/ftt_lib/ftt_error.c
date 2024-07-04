@@ -144,7 +144,9 @@ static char *messages[] = {
     "We do not yet know our current tape position.",
 	/* FTT_ENOTBOT  	29 */ 
     "FTT_ENOTBOT",
-	/* FTT_MAX_ERROR	30 */ 
+    /* FTT_EPARTIALWRITE  	30 */ 
+    "FTT_EPARTIALWRITE",
+	/* FTT_MAX_ERROR	31 */ 
     "FTT_MAX_ERROR",
     0
 };

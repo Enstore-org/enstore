@@ -126,6 +126,10 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
     char save = 'n';
     int do_freeme = 0;
 	char *freeme;
+    if (n >= FTT_MAX_STAT){
+       printf("ERROR tried to set stat %d, max is %d\n",n,FTT_MAX_STAT);
+       return NULL;
+    }
 
     /* clean out old value */
     if (b->value[n] != 0) {
@@ -221,6 +225,9 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_CUR_PART		54*/ 0,
     /*  FTT_MOUNT_PART		54*/ 0,
 };
+
+#define FTT_MAX_NUMDB           50
+#define FTT_MAX_STATDB          26
 
 void
 ftt_add_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
