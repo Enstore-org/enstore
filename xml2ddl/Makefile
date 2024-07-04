@@ -14,5 +14,5 @@ all:
 	cd ../modules/xml2ddl && python -m compileall .
 clean:
 	rm -rf ../modules/xml2ddl
-	rm ../bin/diffxml2ddl ../bin/downloadXml  ../bin/xml2ddl  ../bin/xml2html
+	rm -f  ../bin/diffxml2ddl ../bin/downloadXml  ../bin/xml2ddl  ../bin/xml2html
 	@echo "Cleaning xml2ddl"
