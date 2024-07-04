@@ -11,6 +11,8 @@ extern char ftt_eprint_buf[];
 #define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
 /* device information structure */
 #define MAXDEVSLOTS 80
+#define FTT_MAX_STATDB 26
+#define FTT_MAX_STAT 59
 typedef struct {
 	char *device_name;	/* pathname for device */
 	short int density;	/* density code */
@@ -57,6 +59,12 @@ typedef struct {
 	int		nresets;		/* unexpected BOT's */
 	int		nharderrors;		/* unrecovered r/w errors */
 } ftt_descriptor_buf;
+typedef struct {
+        char *value[FTT_MAX_STAT];
+} ftt_buf;
+
+typedef void * ftt_stat_buf;
+
 int ftt_set_last_operation(ftt_descriptor d, int op){
 	int prev;
 	ftt_descriptor_buf* fbd;
@@ -70,9 +78,9 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
 
 %include typemaps.i
 
-
 #ifdef SWIG_VERSION
-/* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. */
+/* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. 
+   SWIG_VERSION does not appear to be in swig 3.x  */
 
 %include cpointer.i
 
@@ -109,18 +117,26 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
 %{
 /* Include in the generated wrapper file */
 typedef char * cptr;
+typedef char * byteptr; 
 %}
 /* Tell SWIG about it */
-typedef char * cptr;
+%typedef char * cptr;
+%typedef char * byteptr; 
 
 %typemap(in) cptr{
+        $1 = PyString_AsString($input);
+}
+%typemap(in) byteptr{
         $1 = PyString_AsString($input);
 }
 
 #else
 /* No SWIG_VERSION defined means a version older than 1.3.11.  Here we only
  * care to differentiate between 1.3.x and 1.1.y, though an issue exists
- * for 1.3 versions with a patch level 10 or less. */
+ * for 1.3 versions with a patch level 10 or less. 
+ * SWIG 3.x compiles the above section before the #else
+ * this should be rewritten, but enstore is end of life
+ * and swig may be as well   */
 
 %include pointer.i
 
@@ -240,6 +256,7 @@ PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const by
 #define FTT_USER_READ		24
 #define FTT_USER_WRITE		25
 #define FTT_CONTROLLER		26
+#define FTT_MAX_STATDB		26
 #define FTT_DENSITY		27
 #define FTT_ILI			28
 #define FTT_SCSI_ASC		29
@@ -344,10 +361,10 @@ extern char *ftt_ascii_rewindflags[];
 
 /* header types
 ** if you add/change these, you need to update
-** -- ftt_label_type_names[] in ftt_higher.c
+** -- ftt_label_type_names[] in ftt_label.c
 ** so that it can print reasonable error messages.
 */
-extern char *ftt_label_type_names[];
+extern char *ftt_label_type_names[8];
 #define FTT_ANSI_HEADER     0
 #define FTT_FMB_HEADER      1
 #define FTT_TAR_HEADER      2
@@ -486,7 +503,7 @@ int		ftt_skip_part(ftt_descriptor,int);
 
 int             ftt_do_scsi_command(ftt_descriptor, const cptr,  const byteptr, int, byteptr, int, int, int);
 
-extern char *ftt_ascii_error[]; /* maps error numbers to their names */
+extern char *ftt_ascii_error[34]; /* maps error numbers to their names see ftt_error.c*/
 
 /* This is a Hack*/
 int ftt_set_last_operation(ftt_descriptor, int);

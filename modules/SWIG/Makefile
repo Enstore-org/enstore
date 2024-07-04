@@ -3,12 +3,12 @@
 # $Id$
 #
 
-SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c \
+SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c  \
 	../checksum_wrap_thread.c ../socket_ext_wrap.c \
 	../strbuffer_wrap_thread.c ../ftt2_wrap_thread.c \
 	../runon_wrap.c ../enroute_wrap.c ../mtx_wrap_thread.c
 
-SWIG_GENERATED_PY_FILES=../aci_shadow.py ../derrno.py ../checksum.py \
+SWIG_GENERATED_PY_FILES=../aci_shadow.py  ../checksum.py \
 	../ftt2.py ../socket_ext.py ../strbuffer.py ../enroute.py \
 	../runon.py ../mtx.py
 
@@ -22,23 +22,14 @@ clean:
 	rm -f $(SWIG_GENERATED_PY_FILES)
 
 ../aci_shadow_wrap.c: aci_shadow.i aci_typemaps.i aci_typedefs.h
-	if [ "$(ACI_DIR)_" != _ ] ; then \
-	swig -shadow -python -D__STDC__ aci_shadow.i ;\
-	mv aci_shadow_wrap.c .. ;\
-	mv aci_shadow.py .. ;\
-	fi
+	swig -shadow -python -D__STDC__ aci_shadow.i 
+	mv aci_shadow_wrap.c .. 
+	mv aci_shadow.py .. 
 
 ../aci_shadow.py: ../aci_shadow_wrap.c
 
 
-../derrno_wrap.c: derrno.i
-	if [ "$(ACI_DIR)_" != _ ] ; then \
-	swig -I$(ACI_DIR)/inc -shadow -python derrno.i ; \
-	mv derrno_wrap.c .. ; \
-	mv derrno.py .. ; \
-	fi
 
-../derrno.py: ../derrno_wrap.c
 
 
 ../checksum_wrap_thread.c: checksum.i
@@ -52,12 +43,10 @@ clean:
 
 
 ../ftt2_wrap_thread.c: ftt2.i
-	if [ "$(FTT_DIR)_" != _ ] ; then \
-		swig -I$(FTT_DIR)/include -shadow -python ftt2.i ; \
-		./threadit.py < ftt2_wrap.c > ../ftt2_wrap_thread.c; \
-		rm ftt2_wrap.c ; \
-		mv ftt2.py .. ; \
-	fi
+	swig -I$(FTT_DIR)/include -shadow -python ftt2.i 
+	./threadit.py < ftt2_wrap.c > ../ftt2_wrap_thread.c
+	rm ftt2_wrap.c 
+	mv ftt2.py .. 
 
 ../ftt2.py: ../ftt2_wrap_thread.c
 
@@ -72,7 +61,7 @@ clean:
 
 ../strbuffer_wrap_thread.c: strbuffer.i
 	swig -shadow -python strbuffer.i
-	./threadit.py < strbuffer_wrap.c > ../strbuffer_wrap_thread.c ; \
+	./threadit.py < strbuffer_wrap.c > ../strbuffer_wrap_thread.c 
 	rm strbuffer_wrap.c ;
 	mv strbuffer.py ..
 
