@@ -86,7 +86,7 @@ VERSIONFILES=Makefile README $(UPS_SUBDIR)/INSTALL_NOTE
 
 SUBDIRS=ftt_lib ftt_test
 all: proddir_is_set
-        @echo  $(VERS)":"$(FLAVOR)":"$(QUALS) > $(ADDDIR)ups/Version
+	@echo  $(VERS)":"$(FLAVOR)":"$(QUALS) > $(ADDDIR)ups/Version
 	for d in $(SUBDIRS); do (cd $$d; $(MAKE) install); done
 
 memdebug: proddir_is_set
