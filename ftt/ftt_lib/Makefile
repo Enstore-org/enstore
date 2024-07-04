@@ -35,7 +35,7 @@ LIBSO=libftt.so
 
 PROGS=ftt_suid asyncdemo ftt_checktable opendemo writefmdemo
 
-all: local $(LIB) $(LIBSO) $(PROGS) $(BINPROGS)
+all: local $(LIB) $(LIBSO) $(PROGS) $(BINPROGS) install
 
 clean:
 	rm -f $(LIB) $(PROGS) *.o local

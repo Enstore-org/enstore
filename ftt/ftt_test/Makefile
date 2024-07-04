@@ -17,7 +17,7 @@ BINDIR=../bin
 MAIDIR=..
 LIBDIR=../lib
 
-all: ftt_test ftt_random ftt_copy
+all: install ftt_test ftt_random ftt_copy
 
 scripts: \
 	$(BINDIR)/ftt_ansi_prelabel \
@@ -38,7 +38,7 @@ testlib: $(LIBDIR)/libftt_test.a
 clean:
 	rm -f *.o ftt_test ftt_random ftt_copy
 
-install: all testlib exes scripts 
+install: testlib exes scripts 
 
 $(LIBDIR)/libftt_test.a: libftt_test.a 
 	cp libftt_test.a $(LIBDIR)
