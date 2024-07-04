@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version:3 
-Release: 6.3.4.el8
+Version: 6.3.4
+Release: 20.7.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -12,12 +12,23 @@ AutoReq: no
 Prefix: opt/enstore
 Requires: mt-st,sg3_utils
 
+%define __os_install_post %{nil}
+%global __strip /bin/true
 %global _missing_build_ids_terminate_build 0
 %undefine __brp_mangle_shebangs
+%define __brp_strip /bin/true
 %define _build_id_links none
-%define debug_package %{nil}
+##%%define debug_package %{nil}
 %global __arch_install_post %{nil}
 # disable python_byte_compile
+#to exit and show all macro expansions
+##%%dump
+#exit 1
+%global _enable_debug_packages 1
+%global _include_muinidebuginfo 1
+%global _include_gdb_index 1
+%global _build_id_links alldebug
+
 %global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
 %description
 Enstore Distributed Mass Storage System.
@@ -33,9 +44,9 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-rpm -q swig-enstore
+rpm -q swig
 if [ $? -ne 0 ]; then
-	echo "swig-enstore is not installed"
+	echo "swig is not installed"
 	exit 1
 fi
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
@@ -61,12 +72,16 @@ ftt_dir=$RPM_BUILD_DIR/opt/enstore/ftt
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
 mkdir -p $FTT_DIR
 cp -rp $ftt_dir/* $FTT_DIR
-swigdir=`rpm -ql swig-enstore | head -1`
+swigdir=`swig -swiglib`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
-mkdir -p $SWIG_DIR
-mkdir -p SWIG
-cp -rp $swigdir/* $SWIG_DIR
-cp -rp $swigdir/* SWIG
+mkdir -p $SWIG_DIR/swig_lib
+mkdir -p SWIG/swig_lib
+cp -rp $swigdir/* $SWIG_DIR/swig_lib
+cp -rp $swigdir/* SWIG/swig_lib
+cp /usr/bin/swig $SWIG_DIR
+cp /usr/bin/swig SWIG
+#cp -rp /usr/share/swig/3.0.12/* $SWIG_DIR/swig_lib
+#cp -rp /usr/share/swig/3.0.12/* SWIG/swig_lib
 
 # create a tepmorary setup file
 #+++++++++++
@@ -86,7 +101,7 @@ echo SWIG_DIR=$SWIG_DIR >> /tmp/enstore-setup
 echo export SWIG_DIR >> /tmp/enstore-setup
 echo SWIG_LIB=$SWIG_DIR/swig_lib >> /tmp/enstore-setup
 echo export SWIG_LIB >> /tmp/enstore-setup
-echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-12/bin:"$"PATH >> /tmp/enstore-setup
+echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-15/bin:"$"PATH >> /tmp/enstore-setup
 
 %build
 . /tmp/enstore-setup
@@ -114,18 +129,19 @@ echo LS `ls`
 echo LS1 `$RPM_BUILD_ROOT/%{prefix}`
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
 cp -rp * $RPM_BUILD_ROOT/%{prefix}
-#if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
-#	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
-#fi
-#if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
-#	cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
-#fi
+if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
+	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
+fi
+if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
+	cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+fi
+
 mkdir -p $RPM_BUILD_ROOT/usr/local/etc/
-touch $RPM_BUILD_ROOT/usr/local/etc/setups.sh
-#mkdir -p $RPM_BUILD_ROOT/etc
-#touch $RPM_BUILD_ROOT/etc/enstore_configuration
-#touch $RPM_BUILD_ROOT/etc/sam.conf
-#touch $RPM_BUILD_ROOT/etc/stk.conf
+#touch $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+mkdir -p $RPM_BUILD_ROOT/etc
+#cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/enstore_configuration $RPM_BUILD_ROOT/etc/enstore_configuration
+#cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/sam.conf $RPM_BUILD_ROOT/etc/sam.conf
+#cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/stk.conf  $RPM_BUILD_ROOT/etc/stk.conf
 echo INSTALL DONE
 %pre
 PATH=/usr/sbin:$PATH
@@ -230,9 +246,9 @@ rm -rf $RPM_BUILD_ROOT/*
 %defattr(-,enstore,enstore,-)
 %doc
 /%{prefix}
-#%config /%{prefix}/etc/enstore_configuration
-#%config /%{prefix}/etc/sam.conf
-#%config /%{prefix}/etc/stk.conf
+%config /%{prefix}/etc/enstore_configuration
+%config /%{prefix}/etc/sam.conf
+%config /%{prefix}/etc/stk.conf
 %config /usr/local/etc/setups.sh
 
 %changelog
