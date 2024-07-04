@@ -9074,7 +9074,7 @@ if __name__ == "__main__":   # pragma: no cover
 
     import __main__
 
-    #Trace.do_print([5, 200])
+    #Trace.do_print(range(5, 200))
 
     constructor=getattr(__main__, mc_type)
     logclient = None
@@ -9097,7 +9097,7 @@ if __name__ == "__main__":   # pragma: no cover
     mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient, media_changer_client = media_changer_cl)
 
     mover.handle_generic_commands(intf)
-    #mover._do_print({'levels':range(21, 36)})
+    #mover._do_print({'levels':range(1, 360)})
 
     mover.start()
     mover.starting = 0
