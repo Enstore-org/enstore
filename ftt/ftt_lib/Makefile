@@ -35,10 +35,8 @@ LIBSO=libftt.so
 
 PROGS=ftt_suid asyncdemo ftt_checktable opendemo writefmdemo
 
-all: local $(LIB) $(LIBSO) $(PROGS) $(BINPROGS) install
+all: local $(LIB) $(LIBSO) $(PROGS)  install
 
-clean:
-	rm -f $(LIB) $(PROGS) *.o local
 
 PRINTEM=$(SRC) $(HDR) Makefile
 
@@ -49,23 +47,20 @@ print.ps: $(PRINTEM)
 slides.ps: $(PRINTEM)
 	a2ps -c -p -1 -n -l80 $(PRINTEM) > slides.ps
 
-BINDIR=../bin
-LIBDIR=../lib
 INCDIR=../include
 
-INCDIR:
-	mkdir -p ../include
+LIBDIR=../lib
 
-LIBDIR:
-	mkdir -p ../lib
+BINDIR=../bin
 
-BINDIR: 
-	mkdir -p ../bin
+$(INCDIR) $(LIBDIR) $(BINDIR):
+	mkdir -p @
 
-BINPROGS: $(BINDIR) $(PROGS)
-	cp $< ../bin/
+
 
 dirs: $(INCDIR) $(BINDIR) $(LIBDIR)
+
+binprogs: dirs $(PROGS) $(BINDIR)/asyncdemo  $(BINDIR)/ftt_checktable $(BINDIR)/opendemo  $(BINDIR)/writefmdemo
 
 includes: \
 	$(INCDIR)/ftt.h \
@@ -78,28 +73,42 @@ includes: \
 
 fttlib: $(LIBDIR)/libftt.a $(LIBDIR)/libs $(LIBDIR)/libftt.so
 
-install: all dirs includes fttlib  $(BINPROGS) $(BINDIR)/ftt_suid
+install:  dirs includes fttlib  binprogs $(BINDIR)/ftt_suid
 
 dmalloc/malloc.o: dmalloc/malloc.c dmalloc/malloc.h dmalloc/debugmalloc.h
 	cd dmalloc; $(CC) $(CFLAGS) -c malloc.c
 
-$(LIBDIR)/libftt.a: libftt.a
+$(LIBDIR)/libftt.a: libftt.a $(LIBDIR)
 	cp libftt.a $(LIBDIR)/
 
-$(LIBDIR)/libs: local/libs
+$(LIBDIR)/libs: local/libs $(LIBDIR)
 	cp local/libs $(LIBDIR)/
 
-$(LIBDIR)/libftt.so: libftt.so
+$(LIBDIR)/libftt.so: libftt.so $(LIBDIR)
 	cp libftt.so $(LIBDIR)/
 
-$(BINDIR)/ftt_suid: ftt_suid
+
+$(BINDIR)/asyncdemo: $(PROGS) $(BINDIR)
+	cp asyncdemo $(BINDIR)/asyncdemo 
+
+$(BINDIR)/ftt_checktable: $(PROGS) $(BINDIR)
+	cp ftt_checktable $(BINDIR)/ftt_checktable 
+
+$(BINDIR)/opendemo: $(PROGS) $(BINDIR)
+	cp  opendemo $(BINDIR)/opendemo 
+
+$(BINDIR)/writefmdemo: $(PROGS) $(BINDIR)
+	cp  writefmdemo $(BINDIR)/writefmdemo
+
+$(BINDIR)/ftt_suid: ftt_suid $(BINDIR)
 	rm -f $@
 	cp ftt_suid $@
 	-chown root $@
 	-chmod 4755 $@
 
-$(INCDIR) $(BINDIR) $(LIBDIR):
-	mkdir $@
+clean:
+	rm -f $(LIB) $(PROGS) *.o local fttlib include $(LIBSO) binprogs
+
 
 $(INCDIR)/ftt.h : ftt.h
 	cp ftt.h $(INCDIR)/
