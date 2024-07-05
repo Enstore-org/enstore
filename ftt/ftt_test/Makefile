@@ -1,185 +1,194 @@
 SHELL=/bin/sh
 
-LIBS=`cat local/libs`
+LIBS=-L. -L../ftt_lib -lftt_test -lftt `cat ../ftt_lib/local/libs`
 
-SYSOBJ= ftt_scsi.o ftt_machdep.o
+SRC= ftt_t_cmdline.c ftt_t_cmdloop.c ftt_t_cmdproc.c ftt_t_parse.c \
+ ftt_t_stats.c ftt_t_rdwr.c ftt_t_open.c ftt_t_position.c ftt_t_misc.c \
+ ftt_t_error.c ftt_t_block.c ftt_t_name.c ftt_t_label.c ftt_t_partition.c ftt_t_remain.c
 
-SCSISRC= AIX/ftt_scsi.c IRIX+4/ftt_scsi.c IRIX+5/ftt_scsi.c OSF1/ftt_scsi.c \
-	SunOS/ftt_scsi.c VMS/ftt_scsi.c Linux/ftt_scsi.c
+OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
+ ftt_t_stats.o ftt_t_rdwr.o ftt_t_open.o ftt_t_position.o ftt_t_misc.o \
+ ftt_t_error.o ftt_t_block.o ftt_t_name.o ftt_t_label.o ftt_t_partition.o ftt_t_remain.o
 
-MACHDEPSRC= AIX/ftt_machdep.c IRIX+4/ftt_machdep.c IRIX+5/ftt_machdep.c \
-		OSF1/ftt_machdep.c SunOS/ftt_machdep.c Linux/ftt_machdep.c
-
-SUIDSRC= ftt_suid.c
-SUIDOBJ= ftt_suid.o
-
-SRC= ftt_open.c ftt_tables.c ftt_skip.c ftt_stats.c ftt_info.c \
-	ftt_rdwr.c ftt_do_scsi.c ftt_error.c ftt_debug.c ftt_global.c \
-	ftt_label.c ftt_higher.c ftt_async.c ftt_find.c\
-	ftt_partition.c ftt_version.c\
-	$(SCSISRC) $(MACHDEPSRC)
-
-HDR= ftt_private.h ftt_common.h ftt_macros.h local/ftt_mtio.h \
-	ftt_scsi.h ftt_types.h ftt.h ftt_voidtypes.h ftt_defines.h
-
-OBJ= $(SYSOBJ) ftt_do_scsi.o ftt_error.o ftt_debug.o ftt_global.o \
-	ftt_open.o ftt_rdwr.o ftt_tables.o ftt_skip.o ftt_stats.o ftt_info.o \
-	ftt_label.o ftt_higher.o ftt_async.o ftt_find.o \
-	ftt_partition.o ftt_version.o $(EXTRAOBJ)
-
-
-CFLAGS=-I. -Ilocal -g  -fPIC $(WARN) `cat local/flags`
-
-LIB=libftt.a
-LIBSO=libftt.so
-
-PROGS=ftt_suid asyncdemo ftt_checktable opendemo writefmdemo
-
-all: local $(LIB) $(LIBSO) $(PROGS)  install
-
-
-PRINTEM=$(SRC) $(HDR) Makefile
-
-print.ps: $(PRINTEM)
-	a2ps -c -s2 -2 -n -l80 $(SRC) > print.ps
-	a2ps -c -s2 -2 -n -l80 $(HDR) Makefile > header.ps
-
-slides.ps: $(PRINTEM)
-	a2ps -c -p -1 -n -l80 $(PRINTEM) > slides.ps
-
-INCDIR=../include
-
-LIBDIR=../lib
+# CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
+CFLAGS=-I. -I../ftt_lib -g $(WARN) `cat ../ftt_lib/local/flags`
 
 BINDIR=../bin
+MAIDIR=..
+LIBDIR=../lib
 
-$(INCDIR) $(LIBDIR) $(BINDIR):
-	mkdir -p @
+all: install ftt_test ftt_random ftt_copy
 
+scripts: \
+	$(BINDIR)/ftt_ansi_prelabel \
+	$(BINDIR)/ftt_dump \
+	$(BINDIR)/ftt_exercise \
+	$(BINDIR)/ftt_fast \
+	$(BINDIR)/ftt_multitest \
+	$(BINDIR)/ftt_run_test \
+	$(BINDIR)/ftt_slow 
 
+exes: \
+	$(BINDIR)/ftt_test \
+	$(BINDIR)/ftt_copy \
+	$(BINDIR)/ftt_random 
 
-dirs: $(INCDIR) $(BINDIR) $(LIBDIR)
-
-binprogs: dirs $(PROGS) $(BINDIR)/asyncdemo  $(BINDIR)/ftt_checktable $(BINDIR)/opendemo  $(BINDIR)/writefmdemo
-
-includes: \
-	$(INCDIR)/ftt.h \
-	$(INCDIR)/ftt_common.h \
-	$(INCDIR)/ftt_scsi.h \
-	$(INCDIR)/ftt_voidtypes.h \
-	$(INCDIR)/ftt_types.h \
-	$(INCDIR)/ftt_dbd.h \
-	$(INCDIR)/ftt_defines.h
-
-fttlib: $(LIBDIR)/libftt.a $(LIBDIR)/libs $(LIBDIR)/libftt.so
-
-install:  dirs includes fttlib  binprogs $(BINDIR)/ftt_suid
-
-dmalloc/malloc.o: dmalloc/malloc.c dmalloc/malloc.h dmalloc/debugmalloc.h
-	cd dmalloc; $(CC) $(CFLAGS) -c malloc.c
-
-$(LIBDIR)/libftt.a: libftt.a $(LIBDIR)
-	cp libftt.a $(LIBDIR)/
-
-$(LIBDIR)/libs: local/libs $(LIBDIR)
-	cp local/libs $(LIBDIR)/
-
-$(LIBDIR)/libftt.so: libftt.so $(LIBDIR)
-	cp libftt.so $(LIBDIR)/
-
-
-$(BINDIR)/asyncdemo: $(PROGS) $(BINDIR)
-	cp asyncdemo $(BINDIR)/asyncdemo 
-
-$(BINDIR)/ftt_checktable: $(PROGS) $(BINDIR)
-	cp ftt_checktable $(BINDIR)/ftt_checktable 
-
-$(BINDIR)/opendemo: $(PROGS) $(BINDIR)
-	cp  opendemo $(BINDIR)/opendemo 
-
-$(BINDIR)/writefmdemo: $(PROGS) $(BINDIR)
-	cp  writefmdemo $(BINDIR)/writefmdemo
-
-$(BINDIR)/ftt_suid: ftt_suid $(BINDIR)
-	rm -f $@
-	cp ftt_suid $@
-	-chown root $@
-	-chmod 4755 $@
+testlib: $(LIBDIR)/libftt_test.a
 
 clean:
-	rm -f $(LIB) $(PROGS) *.o local fttlib include $(LIBSO) binprogs
+	rm -f *.o ftt_test ftt_random ftt_copy
+
+install: testlib exes scripts 
+
+$(LIBDIR)/libftt_test.a: libftt_test.a 
+	cp libftt_test.a $(LIBDIR)
+
+$(MAIDIR)/test: ftt_test
+	rm -rf  $(MAIDIR)/test
+	cp ftt_test $(MAIDIR)/test
+
+$(MAIDIR)/random: ftt_random 
+	rm -rf $(MAIDIR)/random
+	cp ftt_random $(MAIDIR)/random
+
+$(MAIDIR)/copy: ftt_copy
+	rm -rf  $(MAIDIR)/copy
+	cp ftt_copy $(MAIDIR)/copy
+
+$(BINDIR)/ftt_test: ftt_test
+	rm -rf $(MAIDIR)/bin/ftt_test
+	cp ftt_test $(MAIDIR)/bin
+
+$(BINDIR)/ftt_random: ftt_random
+	rm -rf  $(MAIDIR)/bin/ftt_random
+	cp ftt_random $(MAIDIR)/bin
+
+$(BINDIR)/ftt_copy: ftt_copy
+	rm -rf $(MAIDIR)/bin/ftt_copy
+	cp ftt_copy $(MAIDIR)/bin
+
+$(BINDIR)/ftt_ansi_prelabel: scripts/ftt_ansi_prelabel
+	cp scripts/ftt_ansi_prelabel $(BINDIR)/
+
+$(BINDIR)/ftt_dump: scripts/ftt_dump
+	cp scripts/ftt_dump $(BINDIR)/
+
+$(BINDIR)/ftt_exercise: scripts/ftt_exercise
+	cp scripts/ftt_exercise $(BINDIR)/
+
+$(BINDIR)/ftt_fast: scripts/ftt_fast  
+	cp scripts/ftt_fast $(BINDIR)/
+
+$(BINDIR)/ftt_multitest: scripts/ftt_multitest
+	cp scripts/ftt_multitest $(BINDIR)/
+
+$(BINDIR)/ftt_run_test: scripts/ftt_run_test
+	cp scripts/ftt_run_test $(BINDIR)/
+
+$(BINDIR)/ftt_slow: scripts/ftt_slow
+	cp scripts/ftt_slow $(BINDIR)/
 
 
-$(INCDIR)/ftt.h : ftt.h
-	cp ftt.h $(INCDIR)/
+libftt_test.a: $(OBJ)
+	rm -f libftt_test.a
+	ar qv libftt_test.a $(OBJ)
 
-$(INCDIR)/ftt_common.h : ftt_common.h
-	cp ftt_common.h $(INCDIR)/
+ftt_test: ftt_test.c libftt_test.a ../ftt_lib/libftt.a 
+	$(CC) $(CFLAGS) -o ftt_test ftt_test.c  $(LIBS)
 
-$(INCDIR)/ftt_scsi.h : ftt_scsi.h
-	cp ftt_scsi.h $(INCDIR)/
+ftt_random: ftt_random.c libftt_test.a ../ftt_lib/libftt.a 
+	$(CC) $(CFLAGS) -o ftt_random ftt_random.c  $(LIBS)
 
-$(INCDIR)/ftt_voidtypes.h :ftt_voidtypes.h
-	cp ftt_voidtypes.h  $(INCDIR)/
+ftt_copy: ftt_copy.c libftt_test.a ../ftt_lib/libftt.a 
+	$(CC) $(CFLAGS) -o ftt_copy ftt_copy.c  $(LIBS)
 
-$(INCDIR)/ftt_defines.h : ftt_defines.h
-	cp ftt_defines.h  $(INCDIR)/
+ftt_t_cmdline.o :       ftt_t_cmdline.c        			\
+                        ftt_t_cmdline.h
+ 
+ftt_t_cmdloop.o :       ftt_t_cmdloop.c        			\
+                        ftt_t_cmdline.h        			\
+                        ftt_t_parse.h          			\
+                        ftt_t_cmdtable.h
+ 
+ftt_t_cmdproc.o :       ftt_t_cmdproc.c        			\
+                        ftt_t_cmdline.h        			\
+                        ftt_t_parse.h          			\
+                        ftt_t_cmdtable.h
 
-$(INCDIR)/ftt_types.h : ftt_types.h
-	cp ftt_types.h  $(INCDIR)/
+ftt_t_parse.o :         ftt_t_parse.c				\
+			ftt_t_parse.h
+ 
+ftt_t_block.o :         ftt_t_block.c           
+ 
+ftt_t_error.o :		ftt_t_error.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
-$(INCDIR)/ftt_dbd.h: ftt_dbd.h
-	cp ftt_dbd.h $(INCDIR)/    
+ftt_t_label.o :		ftt_t_label.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
+ftt_t_misc.o :		ftt_t_misc.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
-local:
-	rm -f local ;\
-	if [ -d `uname -s` ] ;\
-	then \
-		ln -s `uname -s` local;\
-	elif [ -d "`uname -s | sed -e ' s/IRIX64/IRIX/' `+`uname -r | cut -c1`" ] ;\
-	then \
-		ln -s "`uname -s | sed -e ' s/IRIX64/IRIX/'`+`uname -r | cut -c1`" local ;\
-	else \
-		ln -s GENERIC local;\
-	fi
-	cd dmalloc; rm -f local; ln -s ../local local
+ftt_t_name.o :		ftt_t_name.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
-testtables:
-	rm -f ftt_error.o
-	$(CC) $(CFLAGS) -DTESTTABLES ftt_error.c ftt_global.o -o testtables
-	rm -f ftt_error.o
+ftt_t_open.o :		ftt_t_open.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
-ftt_suid: $(SUIDOBJ) $(LIB)
-	$(CC) -o $@ $(SUIDOBJ) $(LIB) $(LIBS)
+ftt_t_position.o :	ftt_t_position.c			\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
-asyncdemo: asyncdemo.c $(LIB)
-	$(CC) $(CFLAGS) -o $@ asyncdemo.c $(LIB) $(LIBS)
-opendemo: opendemo.c $(LIB)
-	$(CC) $(CFLAGS) -o $@ opendemo.c $(LIB) $(LIBS)
-writefmdemo: writefmdemo.c $(LIB)
-	$(CC) $(CFLAGS) -o $@ writefmdemo.c $(LIB) $(LIBS)
+ftt_t_remain.o:		ftt_t_remain.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h
 
-listdemo: listdemo.c $(LIB)
-	$(CC) $(CFLAGS) -o $@ listdemo.c $(LIB) $(LIBS)
+ftt_t_rdwr.o :		ftt_t_rdwr.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
-ftt_checktable: ftt_checktable.c $(LIB)
-	$(CC) $(CFLAGS) -o $@ ftt_checktable.c $(LIB) $(LIBS)
-
-
-# this is shotgunning, crude but effective :-)
-$(OBJ): $(HDR)
-
-$(LIB): $(OBJ)
-	rm -f $(LIB)
-	if [ `uname` = Linux ];then opts=qvs;else opts=qv;fi; ar $$opts $(LIB) $(OBJ)
-
-$(LIBSO): $(OBJ)
-	$(CC) -shared -o $(LIBSO) $(OBJ)
-
-ftt_scsi.o: $(SCSISRC)
-	$(CC) $(CFLAGS) -c local/ftt_scsi.c
-
-ftt_machdep.o: $(MACHDEPSRC)
-	$(CC) $(CFLAGS) -c local/ftt_machdep.c
+ftt_t_stats.o :		ftt_t_stats.c				\
+			ftt_t_parse.h				\
+			ftt_t_macros.h				\
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
