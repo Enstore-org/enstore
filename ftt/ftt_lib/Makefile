@@ -54,14 +54,13 @@ LIBDIR=../lib
 BINDIR=../bin
 
 $(INCDIR):
-	mkdir -p INCDIR
+	mkdir -p ../include
 
 $(LIBDIR):
-	mkdir -p LIBDIR
+	mkdir -p ../lib
 
 $(BINDIR):
-	mkdir -p BINDIR
-	mkdir -p @
+	mkdir -p ../bin
 
 
 
