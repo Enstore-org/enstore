@@ -5,7 +5,8 @@ Release: 20.7.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
-BuildRoot: rpmbuild/BUILD
+BuildDir: rpmbuild/BUILD
+BuildRoot: rpmbuild/BUILDROOT
 AutoReqProv: no
 AutoProv: no
 AutoReq: no
@@ -50,8 +51,8 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
-cd $RPM_BUILD_ROOT
-echo "BUILD ROOT $RPM_BUILD_ROOT "
+cd $RPM_BUILD_DIR
+echo "BUILD  $RPM_BUILD_DIR "
 rm -rf enstore-setup
 
 %setup -q -c -n %{prefix}
@@ -85,44 +86,42 @@ cp /usr/bin/swig SWIG
 
 # create a tepmorary setup file
 #+++++++++++
-echo PYTHON_DIR=$PYTHON_DIR> /tmp/enstore-setup
+echo PYTHON_DIR=`pwd`/opt/enstore/Python> /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
-echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
+echo PYTHONINC=`pwd`/opt/enstore/Python/include/python2.7 >> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
-echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
-echo LD_LIBRARY_PATH=$PYTHON_DIR/lib >> /tmp/enstore-setup
+echo PYTHONLIB=`pwd`/opt/enstore/Python/lib/python2.7 >> /tmp/enstore-setup
+echo LD_LIBRARY_PATH=`pwd`/opt/enstore/Python/lib >> /tmp/enstore-setup
 echo export LD_LIBRARY_PATH >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
-echo FTT_DIR=$FTT_DIR >> /tmp/enstore-setup
+echo FTT_DIR=$ftt_dir >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
-echo ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix} >> /tmp/enstore-setup
+echo ftt_dir=$ftt_dir >> /tmp/enstore-setup
+echo export ftt_dir >> /tmp/enstore-setup
+echo ENSTORE_DIR=`pwd`/opt/enstore >> /tmp/enstore-setup
 echo export ENSTORE_DIR >> /tmp/enstore-setup
-echo SWIG_DIR=$SWIG_DIR >> /tmp/enstore-setup
+echo SWIG_DIR=`pwd`/opt/enstore/SWIG >> /tmp/enstore-setup
 echo export SWIG_DIR >> /tmp/enstore-setup
 echo SWIG_LIB=$SWIG_DIR/swig_lib >> /tmp/enstore-setup
 echo export SWIG_LIB >> /tmp/enstore-setup
 echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-15/bin:"$"PATH >> /tmp/enstore-setup
-
 %build
 . /tmp/enstore-setup
 echo "BUILD RPM"
-pushd .
-
-FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
-echo FTT_DIR=$FTT_DIR
-cd $FTT_DIR/ftt_lib
-rm -f ftt_mtio.h # do not know how did it get here
+cd $ftt_dir
+echo now in `pwd`
 make clean
-make
-make install
+cd ftt_lib
+echo now in `pwd`
+make all
 cd ../ftt_test
-make clean
-make
-make install
-popd
+echo now in `pwd`
+make all 
+cd $RPM_BUILD_DIR/opt/enstore
+echo now in `pwd`
 make clean
 make all
-
+##%%exit 1
 %install
 echo INSTALL `pwd`
 echo LS `ls`
@@ -135,17 +134,15 @@ fi
 if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
 	cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
 fi
+if [ ! -f $RPM_BUILD_ROOT/etc/ld.so.conf.d/enstore.conf ];then
+    echo /opt/enstore/ftt/lib >  $RPM_BUILD_ROOT/etc/ld.so.conf.d/enstore.conf
+fi
 
 mkdir -p $RPM_BUILD_ROOT/usr/local/etc/
-#touch $RPM_BUILD_ROOT/usr/local/etc/setups.sh
 mkdir -p $RPM_BUILD_ROOT/etc
-#cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/enstore_configuration $RPM_BUILD_ROOT/etc/enstore_configuration
-#cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/sam.conf $RPM_BUILD_ROOT/etc/sam.conf
-#cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/stk.conf  $RPM_BUILD_ROOT/etc/stk.conf
 echo INSTALL DONE
 %pre
 PATH=/usr/sbin:$PATH
-# check if user "enstore" and group "enstore "exist"
 
 echo 'Checking if group "enstore" exists'
 getent group enstore >/dev/null || groupadd -g 6209 enstore
@@ -177,10 +174,12 @@ echo export FTT_DIR >> /tmp/enstore-setup
 echo PATH="$"PYTHON_DIR/bin:/usr/pgsql-12/bin:"$"PATH >> /tmp/enstore-setup
 echo export PATH  >> /tmp/enstore-setup
 . /tmp/enstore-setup
-rm -rf $FTT_DIR
-ln -s $ENSTORE_DIR/ftt $FTT_DIR
 
-export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
+if [ ! -e $ENSTORE_DIR/FTT ]; then
+    ln -s $ENSTORE_DIR/ftt $ENSTORE_DIR/FTT
+fi
+
+#export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
 # copy qpid extras
 cp -p /opt/enstore/etc/extra_python.pth $PYTHONLIB/site-packages
@@ -231,9 +230,9 @@ if [ ! -d ~enstore/config ]; then
    mkdir -p /var/log/enstore
    chown enstore.enstore /var/log/enstore
 fi
-rm -f $ENSTORE_DIR/debugfiles.list
-rm -f $ENSTORE_DIR/debugsources.list
-rm /tmp/enstore-setup
+#rm -f $ENSTORE_DIR/debugfiles.list
+#rm -f $ENSTORE_DIR/debugsources.list
+#rm /tmp/enstore-setup
 echo "Enstore installed. Please read README file"
 
 %preun
