@@ -239,6 +239,7 @@ fi
 #rm -f $ENSTORE_DIR/debugfiles.list
 #rm -f $ENSTORE_DIR/debugsources.list
 #rm /tmp/enstore-setup
+/usr/sbin/ldconfig -v
 echo "Enstore installed. Please read README file"
 
 %preun
@@ -246,6 +247,7 @@ echo "PRE UNINSTALL"
 $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh $1
 %clean
 rm -rf $RPM_BUILD_ROOT/*
+/usr/sbin/ldconfig -v
 
 %files
 %defattr(-,enstore,enstore,-)
