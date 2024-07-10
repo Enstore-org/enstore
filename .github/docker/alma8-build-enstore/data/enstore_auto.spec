@@ -5,7 +5,6 @@ Release: 20.7.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
-BuildDir: rpmbuild/BUILD
 BuildRoot: rpmbuild/BUILDROOT
 AutoReqProv: no
 AutoProv: no
@@ -19,7 +18,6 @@ Requires: mt-st,sg3_utils
 %undefine __brp_mangle_shebangs
 %define __brp_strip /bin/true
 %define _build_id_links none
-##%%define debug_package %{nil}
 %global __arch_install_post %{nil}
 # disable python_byte_compile
 #to exit and show all macro expansions
@@ -72,9 +70,14 @@ rm -rf Python/*.tgz
 ftt_dir=$RPM_BUILD_DIR/opt/enstore/ftt
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/ftt
 mkdir -p $FTT_DIR
+echo ftt_dir is $ftt_dir
+echo FTT_DIR is $FTT_DIR
 cp -rp $ftt_dir/* $FTT_DIR
-swigdir=`swig -swiglib`
+swigdir=`/usr/bin/swig -swiglib`
+echo swigdir is $swigdir
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
+echo SWIG_DIR is $SWIG_DIR
+echo pwd is `pwd`
 mkdir -p $SWIG_DIR/swig_lib
 mkdir -p SWIG/swig_lib
 cp -rp $swigdir/* $SWIG_DIR/swig_lib
@@ -86,25 +89,26 @@ cp /usr/bin/swig SWIG
 
 # create a tepmorary setup file
 #+++++++++++
-echo PYTHON_DIR=`pwd`/opt/enstore/Python> /tmp/enstore-setup
+echo PYTHON_DIR=`pwd`/Python> /tmp/enstore-setup
+echo '#setup 1' >> /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
-echo PYTHONINC=`pwd`/opt/enstore/Python/include/python2.7 >> /tmp/enstore-setup
+echo PYTHONINC=`pwd`/Python/include/python2.7 >> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
-echo PYTHONLIB=`pwd`/opt/enstore/Python/lib/python2.7 >> /tmp/enstore-setup
-echo LD_LIBRARY_PATH=`pwd`/opt/enstore/Python/lib >> /tmp/enstore-setup
+echo PYTHONLIB=`pwd`/Python/lib/python2.7 >> /tmp/enstore-setup
+echo LD_LIBRARY_PATH=`pwd`/Python/lib >> /tmp/enstore-setup
 echo export LD_LIBRARY_PATH >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 echo FTT_DIR=$ftt_dir >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
 echo ftt_dir=$ftt_dir >> /tmp/enstore-setup
 echo export ftt_dir >> /tmp/enstore-setup
-echo ENSTORE_DIR=`pwd`/opt/enstore >> /tmp/enstore-setup
+echo ENSTORE_DIR=`pwd` >> /tmp/enstore-setup
 echo export ENSTORE_DIR >> /tmp/enstore-setup
-echo SWIG_DIR=`pwd`/opt/enstore/SWIG >> /tmp/enstore-setup
+echo SWIG_DIR=`pwd`/SWIG >> /tmp/enstore-setup
 echo export SWIG_DIR >> /tmp/enstore-setup
-echo SWIG_LIB=$SWIG_DIR/swig_lib >> /tmp/enstore-setup
+echo SWIG_LIB=`pwd`/SWIG/swig_lib >> /tmp/enstore-setup
 echo export SWIG_LIB >> /tmp/enstore-setup
-echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-15/bin:"$"PATH >> /tmp/enstore-setup
+echo PATH=`pwd`/bin:"$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-15/bin:"$"PATH >> /tmp/enstore-setup
 %build
 . /tmp/enstore-setup
 echo "BUILD RPM"
@@ -134,8 +138,9 @@ fi
 if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
 	cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
 fi
-if [ ! -f $RPM_BUILD_ROOT/etc/ld.so.conf.d/enstore.conf ];then
-    echo /opt/enstore/ftt/lib >  $RPM_BUILD_ROOT/etc/ld.so.conf.d/enstore.conf
+if [ ! -f $RPM_BUILD_ROOT/etc/ld.so.conf.d/enstore.conf ]; then
+    mkdir -p $RPM_BUILD_ROOT/etc/ld.so.conf.d
+    echo "/opt/enstore/ftt/lib" >  $RPM_BUILD_ROOT/etc/ld.so.conf.d/enstore.conf
 fi
 
 mkdir -p $RPM_BUILD_ROOT/usr/local/etc/
@@ -163,6 +168,7 @@ rm -rf /tmp/enstore-setup
 PYTHON_DIR=$ENSTORE_DIR/Python
 PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`
 echo PYTHON_DIR=$PYTHON_DIR > /tmp/enstore-setup
+echo '#setup 2' >>/tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
@@ -171,7 +177,7 @@ echo export PYTHONLIB >> /tmp/enstore-setup
 FTT_DIR=$ENSTORE_DIR/FTT
 echo FTT_DIR=$FTT_DIR >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
-echo PATH="$"PYTHON_DIR/bin:/usr/pgsql-12/bin:"$"PATH >> /tmp/enstore-setup
+echo PATH=$ENSTORE_DIR/bin:"$"PYTHON_DIR/bin:/usr/pgsql-12/bin:"$"PATH >> /tmp/enstore-setup
 echo export PATH  >> /tmp/enstore-setup
 . /tmp/enstore-setup
 
@@ -249,8 +255,11 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /%{prefix}/etc/sam.conf
 %config /%{prefix}/etc/stk.conf
 %config /usr/local/etc/setups.sh
+%config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Wed Jul 10 2024 <dbox#fnal.gov> -
+- v 6.3.4-20.7.el8  el8 version 6.3.4-20 from git tag 6.3.4-20.7.el8
 * Wed Feb 02 2022  <moibenko@fnal.gov> -
 - v 6.3.4 release 15. Accumulative changes since 6.3.4-14.
 * Thu Oct 07 2021  <moibenko@fnal.gov> -
