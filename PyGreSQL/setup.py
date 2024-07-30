@@ -93,11 +93,10 @@ def rm_include():
 
 pg_include_dir = pg_config('includedir')
 pg_include_dir_server = pg_config('includedir-server')
-
 rm_include()
 mk_include()
 
-include_dirs = ['include', pg_include_dir,  pg_include_dir_server]
+include_dirs = ['include', pg_include_dir, pg_include_dir_server]
 
 pg_libdir = pg_config('libdir')
 library_dirs = [pg_libdir]

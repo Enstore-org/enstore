@@ -28,7 +28,7 @@
  */
 
 /* Note: This should be linked against the same C runtime lib as Python */
-
+#include <Python.h>
 #include "postgres.h"
 #include "libpq-fe.h"
 #include "libpq/libpq-fs.h"
@@ -40,7 +40,7 @@
 #undef snprintf
 #undef vsnprintf
 
-#include <Python.h>
+
 
 static PyObject *Error, *Warning, *InterfaceError,
 	*DatabaseError, *InternalError, *OperationalError, *ProgrammingError,
@@ -3128,24 +3128,22 @@ escape_bytea(PyObject *self, PyObject *args) {
 static char unescape_bytea__doc__[] =
 "unescape_bytea(str) -- unescape bytea data that has been retrieved as text.";
 
-static PyObject
-*unescape_bytea(PyObject *self, PyObject *args) {
-	unsigned char *from; /* our string argument */
-	unsigned char *to; /* the result */
-	size_t to_length; /* length of result string */
-	PyObject *ret; /* string object to return */
+static PyObject * unescape_bytea(PyObject *self, PyObject *args) {
+    unsigned char *from; /* our string argument */
+    unsigned char *to; /* the result */
+    size_t to_length; /* length of result string */
+    PyObject *ret; /* string object to return */
 
-	if (!PyArg_ParseTuple(args, "s", &from))
-		return NULL;
-	to = PQunescapeBytea(from, &to_length);
-	ret = Py_BuildValue("s#", to, (int)to_length);
-	if (to)
-		PQfreemem((void *)to);
-	if (!ret) /* pass on exception */
-		return NULL;
-	return ret;
+    if (!PyArg_ParseTuple(args, "s", &from))
+        return NULL;
+    to = PQunescapeBytea(from, &to_length);
+    ret = Py_BuildValue("s#", to, (int)to_length);
+    if (to)
+        PQfreemem((void *)to);
+    if (!ret) /* pass on exception */
+        return NULL;
+    return ret;
 }
-
 /* set decimal */
 static char set_decimal__doc__[] =
 "set_decimal(cls) -- set a decimal type to be used for numeric values.";
@@ -3521,16 +3519,11 @@ pgsetdefport(PyObject * self, PyObject * args)
 /* List of functions defined in the module */
 
 static struct PyMethodDef pg_methods[] = {
-	{"connect", (PyCFunction) pgconnect, METH_VARARGS|METH_KEYWORDS,
-			connect__doc__},
-	{"escape_string", (PyCFunction) escape_string, METH_VARARGS,
-			escape_string__doc__},
-	{"escape_bytea", (PyCFunction) escape_bytea, METH_VARARGS,
-			escape_bytea__doc__},
-	{"unescape_bytea", (PyCFunction) unescape_bytea, METH_VARARGS,
-			unescape_bytea__doc__},
-	{"set_decimal", (PyCFunction) set_decimal, METH_VARARGS,
-			set_decimal__doc__},
+	{"connect", (PyCFunction) pgconnect, METH_VARARGS | METH_KEYWORDS, connect__doc__},
+    {"escape_string", (PyCFunction) escape_string, METH_VARARGS, escape_string__doc__},
+    {"escape_bytea", (PyCFunction) escape_bytea, METH_VARARGS, escape_bytea__doc__},
+    {"unescape_bytea", (PyCFunction) unescape_bytea, METH_VARARGS, unescape_bytea__doc__},
+    {"set_decimal", (PyCFunction) set_decimal, METH_VARARGS, set_decimal__doc__},
 
 #ifdef DEFAULT_VARS
 	{"get_defhost", pggetdefhost, METH_VARARGS, getdefhost__doc__},

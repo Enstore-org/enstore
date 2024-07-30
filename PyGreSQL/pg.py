@@ -17,7 +17,6 @@ This is known as the "classic" ("old style") PyGreSQL interface.
 For a DB-API 2 compliant interface use the newer pgdb module.
 
 """
-
 from _pg import *
 try:
     frozenset
@@ -25,6 +24,7 @@ except NameError: # Python < 2.4
     from sets import ImmutableSet as frozenset
 try:
     from decimal import Decimal
+    from pgdb import set_decimal
     set_decimal(Decimal)
 except ImportError:
     pass # Python < 2.4

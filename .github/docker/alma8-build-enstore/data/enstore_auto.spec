@@ -260,6 +260,9 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Tue Jul 30 2024 <dbox@fnal.gov> -
+- v 6.3.4-20.8.el8 from git tag develop-6.3.4-20.8.el8
+- Fixes by <ltreska@fnal.gov>  to PyGreSQL so migration, inquisitor work with modern  postgresql
 * Wed Jul 10 2024 <dbox#fnal.gov> -
 - v 6.3.4-20.7.el8  el8 version 6.3.4-20 from git tag 6.3.4-20.7.el8
 * Wed Feb 02 2022  <moibenko@fnal.gov> -
