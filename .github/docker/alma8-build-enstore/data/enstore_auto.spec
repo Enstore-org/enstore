@@ -10,7 +10,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: mt-st,sg3_utils
+Requires: mt-st,sg3_utils,postgresql15-15.7
 
 %define __os_install_post %{nil}
 %global __strip /bin/true
@@ -109,6 +109,7 @@ echo export SWIG_DIR >> /tmp/enstore-setup
 echo SWIG_LIB=`pwd`/SWIG/swig_lib >> /tmp/enstore-setup
 echo export SWIG_LIB >> /tmp/enstore-setup
 echo PATH=`pwd`/bin:"$"SWIG_DIR:"$"PYTHON_DIR/bin:/usr/pgsql-15/bin:"$"PATH >> /tmp/enstore-setup
+echo export PATH >> /tmp/enstore-setup
 %build
 . /tmp/enstore-setup
 echo "BUILD RPM"
@@ -177,7 +178,7 @@ echo export PYTHONLIB >> /tmp/enstore-setup
 FTT_DIR=$ENSTORE_DIR/FTT
 echo FTT_DIR=$FTT_DIR >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
-echo PATH=$ENSTORE_DIR/bin:"$"PYTHON_DIR/bin:/usr/pgsql-12/bin:"$"PATH >> /tmp/enstore-setup
+echo PATH=$ENSTORE_DIR/bin:"$"PYTHON_DIR/bin:/usr/pgsql-15/bin:"$"PATH >> /tmp/enstore-setup
 echo export PATH  >> /tmp/enstore-setup
 . /tmp/enstore-setup
 
