@@ -10,7 +10,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: mt-st,sg3_utils,postgresql15-15.7
+Requires: mt-st,sg3_utils,postgresql15-devel
 
 %define __os_install_post %{nil}
 %global __strip /bin/true
