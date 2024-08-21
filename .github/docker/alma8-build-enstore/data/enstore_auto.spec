@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 20.9.el8
+Release: 20.10.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -10,7 +10,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: mt-st,sg3_utils,postgresql15-devel
+Requires: mt-st,sg3_utils
 
 %define __os_install_post %{nil}
 %global __strip /bin/true
