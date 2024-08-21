@@ -261,11 +261,24 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Wed Aug 21 <dbox@fnal.gov> -
+- v6.3.4.20.10.el8 from git tag develop-v6.3.4.20.10.el8
+- removed postgresql-15-devel dependency
+* Tue Aug 20 2024 <dbox@fnal.gov>
+- v6.3.4.19.el8 from git tag develop-v6.3.4.20.10.el8
+- Full commit history**: https://github.com/Enstore-org/enstore/compare/enstore-nonprod-6.3.4-20.4...6.3.4-20.8.el8
+- Changed  FTT library to fix misalignments of constants, uninitialized global vars (Dennis Box, 1cd488e)
+- Exposed SWIG internal var to enable FTT debug output (Dennis Box, b1070e3)
+- Fixed SWIG input files for FTT to improve memory management (Dennis Box, bc1f58e)
+- Ignore USB interface when building internal Enstore IP  config (Dennis Box, 1eeeb0d)
+- Refactoring of Makefiles, RPM specs, and Dockerfiles (Dennis Box, 4289405, f448ee9, aa13c54, many more see Full Changelog)
+- Fixed PyGreSQL library to work with modern postgresql (Lucas Truska, 57e8a75)
 * Tue Jul 30 2024 <dbox@fnal.gov> -
 - v 6.3.4-20.8.el8 from git tag develop-6.3.4-20.8.el8
 - Fixes by <ltreska@fnal.gov>  to PyGreSQL so migration, inquisitor work with modern  postgresql
-* Wed Jul 10 2024 <dbox#fnal.gov> -
+* Wed Jul 10 2024 <dbox@fnal.gov> -
 - v 6.3.4-20.7.el8  el8 version 6.3.4-20 from git tag 6.3.4-20.7.el8
+- changes to run on Alma 8
 * Wed Feb 02 2022  <moibenko@fnal.gov> -
 - v 6.3.4 release 15. Accumulative changes since 6.3.4-14.
 * Thu Oct 07 2021  <moibenko@fnal.gov> -
