@@ -571,9 +571,12 @@ class FTTDriver(generic_driver.Driver):
              Trace.log(DEBUG_LOG, 'ftt errors %s'%(ftt_error,))
              return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(detail), ftt_error
         except:
+            # sometimes verify_label throws a non ftt.FTTError exception but ftt_get_error()
+            # can still tell us whats going on
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "reading VOL1 label: %s %s" % (exc, msg))
-            return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(detail)
+            ftt_error = _ftt.ftt_get_error()
+            return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(exc)+str(msg), ftt_error
 
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""

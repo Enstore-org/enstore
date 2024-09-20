@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 20.10.el8
+Release: 20.11.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -261,6 +261,10 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Fri Sep 21 <dbox@fnal.gov> -
+- v6.3.4.20.11.el8 git tag develop-v6.3.4.20.11.el8
+- change to ftt_driver to catch more exceptions in verify_label
+- change to mover.py to write tape label header when verify_label misbehaves 
 * Wed Aug 21 <dbox@fnal.gov> -
 - v6.3.4.20.10.el8 from git tag develop-v6.3.4.20.10.el8
 - removed postgresql-15-devel dependency
