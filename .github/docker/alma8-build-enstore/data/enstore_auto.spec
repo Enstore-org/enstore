@@ -261,7 +261,7 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
-* Fri Sep 21 <dbox@fnal.gov> -
+* Fri Sep 20 2024<dbox@fnal.gov> -
 - v6.3.4.20.11.el8 git tag develop-v6.3.4.20.11.el8
 - change to ftt_driver to catch more exceptions in verify_label
 - change to mover.py to write tape label header when verify_label misbehaves 
