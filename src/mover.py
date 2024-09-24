@@ -5327,6 +5327,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                                 self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                                 return 0
+                            ok_to_label = True
                     elif status[1] is not None and not ok_to_label:
                         msg = "Expected tape label %s, read %s" % (volume_label, status[1])
                         self.set_volume_noaccess(volume_label, msg)
@@ -5337,7 +5338,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 elif status[0] == e_errors.READ_VOL1_MISSING and status[1] == None:
                     ok_to_label = True
                     pass
-                elif not ok_to_label:
+                if not ok_to_label:
                     msg = "expected return code for blank tape is  %s"%(e_errors.READ_VOL1_READ_ERR,)
                     self.set_volume_noaccess(volume_label, msg)
                     Trace.alarm(e_errors.ERROR, msg)
@@ -5345,6 +5346,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
                     return 0
                 try:
+                    # ok_to_label is True, continue
                     Trace.trace(10,"rewind")
                     self.tape_driver.rewind()
                     if self.driver_type == 'FTTDriver':
