@@ -9107,7 +9107,8 @@ if __name__ == "__main__":   # pragma: no cover
     mover = constructor((intf.config_host, intf.config_port), intf.name,  logclient = logclient, media_changer_client = media_changer_cl)
 
     mover.handle_generic_commands(intf)
-    mover._do_print({'levels':range(1, 360)})
+    #uncomment to spew lots of debug info
+    #mover._do_print({'levels':range(1, 360)})
 
     mover.start()
     mover.starting = 0
