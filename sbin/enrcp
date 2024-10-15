@@ -6,11 +6,11 @@ debug=0
 do_rcp () {
    cmd=$1
    shift
-   $cmd $@ 2> /dev/null 
+   $cmd  $@ 2> /dev/null 
    rc=$?
-   if [ "$rc" == "1" ]; then
+   if [ ! "$rc" = "0" ]; then
       # there was an error, maybe rcp support is turned off
-      scp -c blowfish $@ 
+      scp  $@ 
       rc=$?
    fi
    return $rc
@@ -58,22 +58,23 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
       thisHost=${host}${defaultDomain};
    fi
 
-   if [ "$user" = "root" ]; then
-      # the user is root
-      OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
-      KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
-      ${krbdir}/kinit -k host/${thisHost}
-      if [ "${ENSCP:-x}" != "x" ];then
-	rc=do_rcp $ENSCP "$@"
-      else
-	do_rcp $krbdir/rcp "$@"
-      fi
-      rc=$?
-      ${krbdir}/kdestroy
-      # if we had an old ticket cache, restore it
-      if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
+#   if [ "$user" = "root" ]; then
+#      # the user is root
+#      OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
+#      KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
+#      ${krbdir}/kinit -k host/${thisHost}
+#      ${krbdir}/kinit -k -t $enstorekt_path enstore/cd/${thisHost}
+#      if [ "${ENSCP:-x}" != "x" ];then
+#	rc=do_rcp scp "$@"
+#      else
+#	do_rcp scp "$@"
+#      fi
+#      rc=$?
+#      ${krbdir}/kdestroy
+#      # if we had an old ticket cache, restore it
+#      if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
 
-   elif [ "$user" = "enstore" ] || [ "$user" = "postgres" ]; then
+   if [ "$user" = "enstore" ] || [ "$user" = "postgres" ] || [ "$user" = "root" ]; then
       # the user is enstore or postgres
       # postgresql needs to be able to scp WAL files to backup servers
       if [ "$user" = "postgres" ]; then
@@ -83,9 +84,9 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t $enstorekt_path enstore/cd/${thisHost}
       if [ "${ENSCP:-x}" != "x" ];then
-	rc=do_rcp $ENSCP "$@"
+	rc=do_rcp scp "$@"
       else
-	do_rcp $krbdir/rcp "$@"
+	do_rcp scp "$@"
       fi
       rc=$?
       ${krbdir}/kdestroy
@@ -104,9 +105,9 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
 	${krbdir}/kcron 2> /dev/null
       fi
       if [ "${ENSCP:-x}" != "x" ];then
-	rc=do_rcp $ENSCP "$@"
+	rc=do_rcp scp "$@"
       else
-	do_rcp $krbdir/rcp "$@"
+	do_rcp scp "$@"
       fi
       rc=$?
       # only destroy the ticket if we obtained one using kcron
@@ -116,9 +117,9 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
 else
    # we are not kerberized
     if [ "${ENSCP:-x}" != "x" ];then
-	do_rcp $ENSCP "$@" 
+	do_rcp scp "$@" 
    else
-	do_rcp rcp "$@"
+	do_rcp scp "$@"
 	rc=$?
    fi
 fi
