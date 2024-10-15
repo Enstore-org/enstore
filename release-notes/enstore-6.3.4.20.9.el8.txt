@@ -1,0 +1,14 @@
+
+*Full Changelog**: https://github.com/Enstore-org/enstore/compare/enstore-nonprod-6.3.4-20.4...6.3.4-20.8.el8
+
+**Summary of Changes**
+
+* Changed  FTT library to fix misalignments of constants, uninitialized global vars (Dennis Box, 1cd488e)
+* Exposed SWIG internal var to enable FTT debug output (Dennis Box, b1070e3)
+* Fixed SWIG input files for FTT to improve memory management (Dennis Box, bc1f58e)
+* Ignore USB interface when building internal Enstore IP  config (Dennis Box, 1eeeb0d)
+* Refactoring of Makefiles, RPM specs, and Dockerfiles (Dennis Box, 4289405, f448ee9, aa13c54, many more see Full Changelog)
+* Fixed PyGreSQL library to work with modern postgresql (Lucas Truska, 57e8a75)
+
+
+

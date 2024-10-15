@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 20.8.el8
+Release: 20.9.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
