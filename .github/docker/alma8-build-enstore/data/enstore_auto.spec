@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 20.12.el8
+Release: 20.14.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -240,7 +240,7 @@ fi
 #rm -f $ENSTORE_DIR/debugfiles.list
 #rm -f $ENSTORE_DIR/debugsources.list
 #rm /tmp/enstore-setup
-/usr/sbin/ldconfig -v
+/usr/sbin/ldconfig
 echo "Enstore installed. Please read README file"
 
 %preun
