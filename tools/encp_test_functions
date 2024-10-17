@@ -1393,34 +1393,31 @@ transfer()
 
 
     #There are some errors that are likely transient.  We want to retry then.
-    rtn=-1
+    rtn=$((expected_exit_status + 1))
     max_transfers=10
     attempted_transfers=0
-    while [ $rtn -ne 0 -a $attempted_transfers -lt $max_transfers ]; do
-	if [ $attempted_transfers -gt 0 ]; then
-	    #We failed because someone bounced the Enstore servers.
-	    #Wait awile and try again.
-	    echo -e "\n\nRetrying in 60 seconds after $encp_error_status.\n\n"
-	    sleep 60
-	fi
-
-	#
+    while [ $rtn -ne $expected_exit_status ] && [  $attempted_transfers -lt $max_transfers ]; do
+    	if [ $attempted_transfers -gt 0 ]; then
+    	    #We failed because someone bounced the Enstore servers.
+    	    #Wait awile and try again.
+    	    echo "COMMAND: $encp_command $verbose $options $infile $outfile "
+    	    echo "EXPECTED: $expected_exit_status"
+    	    echo "RECEIVED: $rtn , $encp_error_status"
+    	    echo "Retrying in 60 seconds."
+    	    sleep 60
+    	fi
+    
+    	#
         # Run the command.
         #
         cmd_output=$($encp_command $verbose $options $infile $outfile 2>&1)
-	rtn=$?
+    	rtn=$?
+    
+    	echo "$cmd_output" >> $ENCP_OUTPUT 2>&1
+    	encp_error_line=$(echo "$cmd_output" | grep STATUS=)
+    	encp_error_status=$(echo $encp_error_line | sed 's/STATUS=//')
+    	attempted_transfers=$((attempted_transfers + 1))
 
-	echo "$cmd_output" >> $ENCP_OUTPUT 2>&1
-	encp_error_line=$(echo "$cmd_output" | grep STATUS=)
-	encp_error_status=$(echo $encp_error_line | sed 's/STATUS=//')
-
-	attempted_transfers=$((attempted_transfers + 1))
-
-	if [ "$encp_error_status" != "CONFIGDEAD" -a \
-	     "$encp_error_status" != "SERVERDIED" ]; then
-	    #There might be others, just don't know what they are yet.
-	    break
-	fi
     done
 
     #
