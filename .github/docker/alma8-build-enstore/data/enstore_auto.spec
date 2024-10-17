@@ -248,7 +248,7 @@ echo "PRE UNINSTALL"
 $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh $1
 %clean
 rm -rf $RPM_BUILD_ROOT/*
-/usr/sbin/ldconfig -v
+/usr/sbin/ldconfig 
 
 %files
 %defattr(-,enstore,enstore,-)
