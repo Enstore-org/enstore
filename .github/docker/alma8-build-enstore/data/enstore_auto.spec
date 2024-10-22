@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 20.14.el8
+Release: 20.15.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -146,6 +146,12 @@ fi
 
 mkdir -p $RPM_BUILD_ROOT/usr/local/etc/
 mkdir -p $RPM_BUILD_ROOT/etc
+if [ ! -e /usr/share/doc/mtx ]; then
+   MTX=/usr/share/doc/mtx-*
+   if [ -d $MTX ]; then
+      ln -s $MTX /usr/share/doc/mtx
+   fi
+fi 
 echo INSTALL DONE
 %pre
 PATH=/usr/sbin:$PATH
@@ -261,6 +267,14 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Tue Oct 22 2024 <dbox@fnal.gov> -
+- v6.3.4.20.15
+- added logic in install section of rpm make a soft link for mtx if needed
+* Thu Oct 18 2024 <dbox@fnal.gov> -
+- v6.3.4.20.14
+- fix memory leak in ftt interface
+- remove noisy debug info from rpm spec
+- fix retry logic in regression test
 * Fri Sep 20 2024 <dbox@fnal.gov> -
 - v6.3.4.20.11.el8 git tag develop-v6.3.4.20.11.el8
 - change to ftt_driver to catch more exceptions in verify_label
