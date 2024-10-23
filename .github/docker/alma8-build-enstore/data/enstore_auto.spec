@@ -146,12 +146,6 @@ fi
 
 mkdir -p $RPM_BUILD_ROOT/usr/local/etc/
 mkdir -p $RPM_BUILD_ROOT/etc
-if [ ! -e /usr/share/doc/mtx ]; then
-   MTX=/usr/share/doc/mtx-*
-   if [ -d $MTX ]; then
-      ln -s $MTX /usr/share/doc/mtx
-   fi
-fi 
 echo INSTALL DONE
 %pre
 PATH=/usr/sbin:$PATH
@@ -192,6 +186,12 @@ if [ ! -e $ENSTORE_DIR/FTT ]; then
     ln -s $ENSTORE_DIR/ftt $ENSTORE_DIR/FTT
 fi
 
+if [ ! -e /usr/share/doc/mtx ]; then
+   MTX=/usr/share/doc/mtx-*
+   if [ -d $MTX ]; then
+      ln -s $MTX /usr/share/doc/mtx
+   fi
+fi 
 #export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
 # copy qpid extras
