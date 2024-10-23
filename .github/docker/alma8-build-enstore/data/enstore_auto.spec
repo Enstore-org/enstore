@@ -270,7 +270,7 @@ rm -rf $RPM_BUILD_ROOT/*
 * Tue Oct 22 2024 <dbox@fnal.gov> -
 - v6.3.4.20.15
 - added logic in install section of rpm make a soft link for mtx if needed
-* Thu Oct 18 2024 <dbox@fnal.gov> -
+* Thu Oct 17 2024 <dbox@fnal.gov> -
 - v6.3.4.20.14
 - fix memory leak in ftt interface
 - remove noisy debug info from rpm spec
