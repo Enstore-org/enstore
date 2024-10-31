@@ -1,4 +1,5 @@
-
+#ifndef FTT_DEFINES_H_INCLUDED
+#define FTT_DEFINES_H_INCLUDED
 /* ftt_defines.h
 **
 ** this file contains type definitions, prototypes, and #defines that
@@ -195,3 +196,4 @@ extern char *ftt_label_type_names[];
 */
 
 #define FTT_GUESS_ID 0
+#endif

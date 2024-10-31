@@ -4,7 +4,9 @@ rm -rf /root/rpmbuild /root/enstore
 for DIR in BUILD  BUILDROOT  RPMS	SOURCES  SPECS	SRPMS; do
     mkdir -p /root/rpmbuild/$DIR
 done
-cp /data/enstore_auto.spec /root/rpmbuild/SPECS
+cd -
+cp enstore_auto.spec /root/rpmbuild/SPECS
+cd -
 git clone https://github.com/Enstore-org/enstore.git
 cd /root/enstore
 git checkout $1

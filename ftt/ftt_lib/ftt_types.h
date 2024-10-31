@@ -2,7 +2,8 @@
 ** Private data structurs for FTT internals
 */
 
-
+#ifndef FTT_TYPES_H_INCLUDED
+#define FTT_TYPES_H_INCLUDED
 #define FTT_EPRINT_BUF_SIZE 512
 extern char ftt_eprint_buf[];
 
@@ -12,7 +13,6 @@ extern char ftt_eprint_buf[];
 
 /* device information structure */
 #define MAXDEVSLOTS 80
-
 typedef struct {		
 	char *device_name;	/* pathname for device 		*/
 	short int density;	/* density code  		*/
@@ -25,6 +25,7 @@ typedef struct {
 	int  max_blocksize;	/* maximum blocksize allowed in this mode */
 } ftt_devinfo;
 
+typedef long scsi_handle;
 typedef struct {
 	ftt_devinfo 	devinfo[MAXDEVSLOTS];	/* table of above */
 	char 		*basename;		/* basename of device */
@@ -194,4 +195,5 @@ extern int ftt_skip_fm_internal(ftt_descriptor, int);
 extern int ftt_open_scsi_dev(ftt_descriptor d);
 extern int ftt_close_scsi_dev(ftt_descriptor d);
 extern char *ftt_find_last_part(char*);
+#endif
 

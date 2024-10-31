@@ -1,4 +1,5 @@
-
+#ifndef FTT_MACROS_H_INCLUDED
+#define FTT_MACROS_H_INCLUDED
 #ifdef DEBUG0_ON
 #define DEBUG0 if(ftt_debug>=0) (void)fprintf
 #else
@@ -76,4 +77,4 @@
     }									\
     DEBUG4(stderr, "CKOK Ok\n"); \
     ftt_errno = FTT_SUCCESS;
-
+#endif
