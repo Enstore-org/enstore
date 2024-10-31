@@ -141,7 +141,7 @@ extern int ftt_debug;
 #define FTT_DEBUG_MED   2
 #define FTT_DEBUG_HI       3
 
-/* rewind/retension/etc. flags
+/* rewind/retension/etc. flags */
 
 extern char *ftt_ascii_rewindflags[];
 
@@ -190,7 +190,11 @@ extern char *ftt_ascii_rewindflags[];
 #define FTT_EFILEMARK              27
 #define FTT_ELOST              28
 #define FTT_ENOTBOT              29
+#define FTT_EPARTIALWRITE   30
+#define FTT_MAX_ERROR 31
 
+
+extern char *ftt_ascii_error[FTT_MAX_ERROR]; /* maps error numbers to their names see ftt_error.c*/
 
 /* ftt_status return bitflags
 */
@@ -206,7 +210,6 @@ extern char *ftt_ascii_rewindflags[];
 ** -- ftt_label_type_names[] in ftt_label.c
 ** so that it can print reasonable error messages.
 */
-extern char *ftt_label_type_names[8];
 #define FTT_ANSI_HEADER     0
 #define FTT_FMB_HEADER      1
 #define FTT_TAR_HEADER      2
@@ -215,6 +218,7 @@ extern char *ftt_label_type_names[8];
 #define FTT_BLANK_HEADER    5
 #define FTT_DONTCHECK_HEADER 6
 #define FTT_MAX_HEADER       7
+extern char *ftt_label_type_names[FTT_MAX_HEADER];
 
 /* readonly Values
 */
@@ -347,7 +351,6 @@ int              ftt_skip_part(ftt_descriptor,int);
 
 int             ftt_do_scsi_command(ftt_descriptor, const cptr,  const byteptr, int, byteptr, int, int, int);
 
-extern char *ftt_ascii_error[34]; /* maps error numbers to their names see ftt_error.c*/
 /* This is a Hack*/
 int ftt_set_last_operation(ftt_descriptor, int);
 
