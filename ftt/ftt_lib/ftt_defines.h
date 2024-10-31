@@ -115,7 +115,6 @@ extern char *ftt_ascii_rewindflags[];
 ** -- messages[] in ftt_error.c
 ** -- any affected error tranlation tables in ftt_tables.c
 */
-extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 
 #define FTT_SUCCESS		 0
 #define FTT_EPARTIALSTAT	 1
@@ -148,7 +147,9 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 #define FTT_ELOST		28
 #define FTT_ENOTBOT		29
 #define FTT_EPARTIALWRITE	30
+#define FTT_MAX_ERROR 31
 
+extern char *ftt_ascii_error[FTT_MAX_ERROR]; /* maps error numbers to their names */
 
 /* ftt_status return bitflags
 */
