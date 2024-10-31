@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 20.15.el8
+Release: 20.16.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -267,6 +267,9 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Thu Oct 31 2024 <dbox@fnal.gov> -
+- v6.3.4.20.16
+- fixed SWIG interface to ftt to better handle exceptions
 * Tue Oct 22 2024 <dbox@fnal.gov> -
 - v6.3.4.20.15
 - added logic in install section of rpm make a soft link for mtx if needed
