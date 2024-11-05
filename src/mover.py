@@ -63,6 +63,8 @@ import accounting_client
 import drivestat_client
 import Trace
 import generic_driver
+import ftt
+import ftt_driver
 import event_relay_messages
 import file_cache_status
 import scsi_mode_select
@@ -1942,8 +1944,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO,"statitics path %s"%(self.stat_file,))
             self.compression = self.config.get('compression', None)
             if self.compression > 1: self.compression = None
-            import ftt_driver
-            self.ftt = __import__("ftt")
+            #import ftt_driver
+            #self.ftt = __import__("ftt")
+            self.ftt = ftt
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = 0
 
@@ -3383,7 +3386,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.log_processes(logit=1)
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
-                    import ftt
+                    #import ftt
+                    self.ftt = ftt
                     self.ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
                 #initiate cleaning
                 self.force_clean = 1
@@ -3531,7 +3535,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
-                    import ftt
+                    #import ftt
+                    self.ftt = ftt
                     self.ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
                 #initiate cleaning
                 self.force_clean = 1
