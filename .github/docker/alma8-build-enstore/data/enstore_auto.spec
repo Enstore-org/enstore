@@ -267,8 +267,10 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
-* Thu Oct 31 2024 <dbox@fnal.gov> -
+* Tue Nov 5 2024 <dbox@fnal.gov> -
 - v6.3.4.20.16
+- changed import order in mover.py to avoid futex deadlocks
+  see https://stackoverflow.com/questions/3905883/python-hangs-in-futex-calls
 - fixed SWIG interface to ftt to better handle exceptions
 * Tue Oct 22 2024 <dbox@fnal.gov> -
 - v6.3.4.20.15
