@@ -42,8 +42,25 @@ class FTTError(exceptions.Exception):
         self.strerror = cleanup(args[0])
         self.errno = args[1]
         self.value = args[2]
+        self.message = "FTTError"
+
     def __str__(self):
-        return ascii_error[self.errno]
+        try:
+            return ascii_error[self.errno]
+        except:
+            try:
+                st=self.strerror
+                er=self.errno
+                val=self.value
+                err=_ftt.ftt_get_error()
+                if not err[0]:
+                    err[0] = self.message
+                return str(tuple(err)+(st,er,val))
+            except:
+                exc, msg, tb = sys.exc_info()
+                msg = "Unhandled FTTError " + str(msg)
+                Trace.handle_error(exc, msg, tb, force_print=True, severity=10)
+                return str(exc,msg,tb)
 
 def raise_ftt(err=None, value=None):
     if err is None:

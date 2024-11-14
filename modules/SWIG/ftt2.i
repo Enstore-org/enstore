@@ -11,6 +11,16 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
        fbd->last_operation = op;
        return prev;
 }
+char *ftt_label_type_names[] = {
+    /* FTT_ANSI_HEADER         0 */ "FTT_ANSI_HEADER",
+    /* FTT_FMB_HEADER          1 */ "FTT_FMB_HEADER",
+    /* FTT_TAR_HEADER          2 */ "FTT_TAR_HEADER",
+    /* FTT_CPIO_HEADER         3 */ "FTT_CPIO_HEADER",
+    /* FTT_UNKNOWN_HEADER      4 */ "FTT_UNKNOWN_HEADER",
+    /* FTT_BLANK_HEADER        5 */ "FTT_BLANK_HEADER",
+    /* FTT_DONTCHECK_HEADER    6 */ "FTT_DONTCHECK_HEADER",
+    /* FTT_MAX_HEADER          7 */ "FTT_MAX_HEADER",
+};
 %}
 
 %include typemaps.i
@@ -194,7 +204,7 @@ extern char *ftt_ascii_rewindflags[];
 #define FTT_MAX_ERROR 31
 
 
-extern char *ftt_ascii_error[FTT_MAX_ERROR]; /* maps error numbers to their names see ftt_error.c*/
+extern char *ftt_ascii_error[]; /* maps error numbers to their names see ftt_error.c*/
 
 /* ftt_status return bitflags
 */
@@ -218,7 +228,8 @@ extern char *ftt_ascii_error[FTT_MAX_ERROR]; /* maps error numbers to their name
 #define FTT_BLANK_HEADER    5
 #define FTT_DONTCHECK_HEADER 6
 #define FTT_MAX_HEADER       7
-extern char *ftt_label_type_names[FTT_MAX_HEADER];
+
+extern char *ftt_label_type_names[];
 
 /* readonly Values
 */

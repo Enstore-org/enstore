@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 6.3.4
-Release: 20.16.el8
+Release: 20.17.el8
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -267,6 +267,9 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Thu Nov 14 2024 <dbox@fnal.gov>
+- v6.3.4.20.17
+- corrected problem in SWIG interface to actually implement ftt exception handling
 * Tue Nov 5 2024 <dbox@fnal.gov> -
 - v6.3.4.20.16
 - changed import order in mover.py to avoid futex deadlocks
