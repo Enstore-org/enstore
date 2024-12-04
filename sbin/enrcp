@@ -6,18 +6,18 @@ debug=0
 do_rcp () {
    cmd=$1
    shift
-   $cmd $@ 2> /dev/null 
+   $cmd $@ 2> /dev/null
    rc=$?
    if [ "$rc" == "1" ]; then
       # there was an error, maybe rcp support is turned off
-      scp -c blowfish $@ 
+      scp -c blowfish $@
       rc=$?
    fi
    return $rc
 }
 
-if [ "${1:-}" = "-x" ] ; 
-then 
+if [ "${1:-}" = "-x" ] ;
+then
     set -xv
     shift
     debug=1
@@ -52,9 +52,9 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
    host=`uname -n`
 
    # we need the full domain name, if no domain is there, add default one on
-   if expr $host : '.*\.' >/dev/null;then 
+   if expr $host : '.*\.' >/dev/null;then
       thisHost=$host;
-   else 
+   else
       thisHost=${host}${defaultDomain};
    fi
 
@@ -64,7 +64,7 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
       if [ "${ENSCP:-x}" != "x" ];then
-	rc=do_rcp $ENSCP "$@"
+	do_rcp $ENSCP "$@"
       else
 	do_rcp $krbdir/rcp "$@"
       fi
@@ -83,7 +83,7 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t $enstorekt_path enstore/cd/${thisHost}
       if [ "${ENSCP:-x}" != "x" ];then
-	rc=do_rcp $ENSCP "$@"
+	do_rcp $ENSCP "$@"
       else
 	do_rcp $krbdir/rcp "$@"
       fi
@@ -104,7 +104,7 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
 	${krbdir}/kcron 2> /dev/null
       fi
       if [ "${ENSCP:-x}" != "x" ];then
-	rc=do_rcp $ENSCP "$@"
+	do_rcp $ENSCP "$@"
       else
 	do_rcp $krbdir/rcp "$@"
       fi
@@ -116,7 +116,7 @@ if [ -d $krbdir -a -f $enstorekt_path ]; then
 else
    # we are not kerberized
     if [ "${ENSCP:-x}" != "x" ];then
-	do_rcp $ENSCP "$@" 
+	do_rcp $ENSCP "$@"
    else
 	do_rcp rcp "$@"
 	rc=$?
