@@ -8,9 +8,9 @@ do_rcp () {
    shift
    $cmd $@ 2> /dev/null
    rc=$?
-   if [ "$rc" == "1" ]; then
+   if [ ${rc} -ne 0 ]; then
       # there was an error, maybe rcp support is turned off
-      scp -c blowfish $@
+      scp $@
       rc=$?
    fi
    return $rc
