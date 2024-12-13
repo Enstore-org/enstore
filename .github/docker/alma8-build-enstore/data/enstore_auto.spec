@@ -267,6 +267,11 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /etc/ld.so.conf.d/enstore.conf
 
 %changelog
+* Thu Dec 12 2024 <dbox@fnal.gov>
+- v6.3.4.20.18
+- revert library_manager to pre-date 'Mounted in another device' error
+- improve SWIG generated modules that use threading
+- fix to enrcp
 * Thu Nov 14 2024 <dbox@fnal.gov>
 - v6.3.4.20.17
 - corrected problem in SWIG interface to actually implement ftt exception handling
