@@ -33,7 +33,7 @@ clean:
 
 
 ../checksum_wrap_thread.c: checksum.i
-	swig -shadow -python -D__STDC__ checksum.i
+	swig -threads -shadow -python -D__STDC__ checksum.i
 	./threadit.py < checksum_wrap.c > ../checksum_wrap_thread.c
 	rm checksum_wrap.c
 	mv checksum.py ..
@@ -43,7 +43,7 @@ clean:
 
 
 ../ftt2_wrap_thread.c: ftt2.i
-	swig -I$(FTT_DIR)/include -shadow -python ftt2.i 
+	swig -I$(FTT_DIR)/include -threads  -shadow -python ftt2.i 
 	./threadit.py < ftt2_wrap.c > ../ftt2_wrap_thread.c
 	rm ftt2_wrap.c 
 	mv ftt2.py .. 
@@ -60,7 +60,7 @@ clean:
 
 
 ../strbuffer_wrap_thread.c: strbuffer.i
-	swig -shadow -python strbuffer.i
+	swig -threads -shadow -python strbuffer.i
 	./threadit.py < strbuffer_wrap.c > ../strbuffer_wrap_thread.c 
 	rm strbuffer_wrap.c ;
 	mv strbuffer.py ..
@@ -88,7 +88,7 @@ clean:
 ../runon.py: ../runon_wrap.c
 
 ../mtx_wrap_thread.c: mtx.i
-	swig -I$(ENSTORE_DIR)/mtx/mtx-1.3.12 -shadow -python mtx.i
+	swig -I$(ENSTORE_DIR)/mtx/mtx-1.3.12 -threads -shadow -python mtx.i
 	./threadit.py < mtx_wrap.c > ../mtx_wrap_thread.c ; \
 	rm mtx_wrap.c ;
 	mv mtx.py ..
