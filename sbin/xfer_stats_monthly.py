@@ -532,7 +532,7 @@ def plot_tape_bytes():
     for p in plotters:
         p.reshuffle()
         p.add_command("set key outside width 2")
-        p.add_command("set xtics border nomirror rotate by 90")
+        p.add_command("set xtics border in scale 1,0.5 nomirror rotate by -45")
         tmp=p.get_histogram_list()[0]
 
         t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)

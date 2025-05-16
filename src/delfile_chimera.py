@@ -104,7 +104,12 @@ def main(intf):
         dbcon = value
         if "master" in value :
             dbcon = value.get("master")
-
+            if dbcon["dbhost"].find("fndcadb") != -1:
+                dbcon["dbhost"] == "fndcadbbackup.fnal.gov"
+            elif  dbcon["dbhost"].find("cms") != -1:
+                sys.stdout.write(
+                    "Skipping %s \n" % (dbcon["dbhost"],))
+                continue
         try:
             connectionPool = PooledDB.PooledDB(psycopg2,
                                                maxconnections = 1,
@@ -142,12 +147,17 @@ def main(intf):
                         continue
                     bfid = url_dict.get('bfid')[0]
                     fcc.bfid = bfid
-                    if fcc.bfid_info().get('active_package_files_count', 0) > 0 and \
-                                    fcc.bfid_info().get('package_id', None) == bfid:
+                    bfid_info = fcc.bfid_info()
+                    if not bfid_info['status'][0]  in (e_errors.OK,):
+                        print "Failed to retrieve bfid ", bfid, bfid_info['status']
+                        continue
+
+                    if bfid_info.get('active_package_files_count', 0) > 0 and \
+                                    bfid_info.get('package_id', None) == bfid:
                         Trace.log(e_errors.WARNING,
                                   'Skipping non-empy package file %s' % (bfid,),
-                                  fcc.bfid_info().get('pnfs_name0', None))
-                        print 'skipping non-empty package file', bfid, '...'
+                                  bfid_info.get('pnfs_name0', None))
+                        print 'skipping non-empty package file', bfid, pnfsid, '...'
                         continue
                     print 'deleting', bfid, '...',
                     result = fcc.set_deleted('yes')
