@@ -751,4 +751,4 @@ if __name__ == "__main__":   # pragma: no cover
 
     intf._mode = "admin"
 
-    delete_at_exit.quit(do_work(intf))
+    delete_at_exit.delete_and_quit(do_work(intf))

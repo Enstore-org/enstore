@@ -200,7 +200,7 @@ def quit_process(gc):
     #Send the quit message.
     try:
         #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
-        rtn = gc.quit(SEND_TO, SEND_TM)
+        rtn = gc.delete_and_quit(SEND_TO, SEND_TM)
     except (socket.error, select.error, e_errors.EnstoreError), msg:
         if msg.errno == errno.ETIMEDOUT:
             rtn = {'status':(e_errors.TIMEDOUT, gc.server_name)}

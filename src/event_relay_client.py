@@ -434,7 +434,7 @@ def do_work(intf):
     elif intf.dump:
         erc.dump()
 
-    elif intf.quit:
+    elif intf.delete_and_quit:
         erc.quit()
     elif intf.doprint:
         erc.do_print()

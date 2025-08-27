@@ -163,7 +163,7 @@ def error_output(request):
 def halt(exit_code=1):
     Trace.message(DONE_LEVEL, "Get exit status: %s" % (exit_code,))
     Trace.log(e_errors.INFO, "Get exit status: %s" % (exit_code,))
-    delete_at_exit.quit(exit_code)
+    delete_at_exit.delete_and_quit(exit_code)
 
 def untried_output(requests):
 
@@ -1546,4 +1546,4 @@ if __name__ == "__main__":   # pragma: no cover
 
     #print encp.format_class_for_print(intf_of_get, "intf_of_get")
 
-    delete_at_exit.quit(encp.start(0, encp.do_work, main, GetInterface))
+    delete_at_exit.delete_and_quit(encp.start(0, encp.do_work, main, GetInterface))

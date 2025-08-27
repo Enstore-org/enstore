@@ -546,4 +546,4 @@ if __name__ == "__main__":   # pragma: no cover
     #print encp.format_class_for_print(intf_of_put, "intf_of_put")
 
     #delete_at_exit.quit(do_work(intf_of_put))
-    delete_at_exit.quit(encp.start(0, encp.do_work, main, PutInterface))
+    delete_at_exit.delete_and_quit(encp.start(0, encp.do_work, main, PutInterface))
